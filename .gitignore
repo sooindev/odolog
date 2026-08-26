@@ -1,0 +1,19 @@
+### Gradle ###
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+### IntelliJ IDEA ###
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+### macOS ###
+.DS_Store
+
+### 로컬 환경 설정 (비밀번호 등) ###
+application-local.yml
+*.local.yml
+.env
