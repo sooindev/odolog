@@ -94,7 +94,8 @@
     │   ├── VehicleRepository.java           (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
     │   │                                     findByPlateNumber, existsByPlateNumber)
     │   └── MaintenanceRecordRepository.java (findByVehicleIdOrderByServiceDateDesc,
-    │                                         findTopByVehicleIdAndTypeOrderByServiceDateDesc)
+    │                                         findTopByVehicleIdAndTypeOrderByServiceDateDesc,
+    │                                         deleteByVehicleId — 차량 삭제 시 이력 함께 삭제용)
     ├── dto/
     │   ├── SignUpRequest.java          (record, @NotBlank/@Email/@Size 검증)
     │   ├── LoginRequest.java           (record, email/password)
@@ -120,6 +121,7 @@
     │   ├── VehicleService.java           (register — 번호판 중복 체크·@Transactional,
     │   │                                  findMyVehicles — 조회 전용, @Transactional 없음,
     │   │                                  updateOdometer — dirty checking으로 save() 불필요,
+    │   │                                  delete — MaintenanceRecordRepository로 이력 먼저 삭제 후 차량 삭제,
     │   │                                  findOwnedVehicle() — 소유권 검증, 다른 서비스도 재사용)
     │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService,
     │                                      VehicleService.findOwnedVehicle()을 주입받아 재사용)
@@ -129,7 +131,8 @@
         │                                     POST /api/users/logout — session.invalidate(),
         │                                     GET/PATCH /api/users/me — @LoginUser 사용)
         ├── VehicleController.java           (POST /api/vehicles, GET /api/vehicles,
-        │                                     PATCH /api/vehicles/{vehicleId}/odometer — @LoginUser로 소유자 식별)
+        │                                     PATCH /api/vehicles/{vehicleId}/odometer,
+        │                                     DELETE /api/vehicles/{vehicleId} — @LoginUser로 소유자 식별)
         ├── MaintenanceRecordController.java (POST/GET /api/vehicles/{vehicleId}/maintenance-records,
         │                                     GET .../next-service?type=... — @LoginUser로 요청자 식별)
         ├── LoginUser.java                   (@Target(PARAMETER) 커스텀 애노테이션 — 로그인 사용자 주입 표시)
@@ -195,6 +198,12 @@
       → 영속 상태 엔티티라 `save()` 호출 없이 dirty checking으로 UPDATE 반영됨.
       → `findOwnedVehicle()`을 `MaintenanceRecordService`에서 `VehicleService`(원래 책임 소재)로 이동,
         `MaintenanceRecordService`는 `VehicleService`를 주입받아 재사용하도록 리팩토링.
+- [x] `DELETE /api/vehicles/{vehicleId}` — 차량 삭제 (연관 정비 이력 함께 삭제)
+      → JPA cascade(양방향 필요, 규칙 4 위배)나 DB `ON DELETE CASCADE`(코드에서 안 보이는 숨은 동작) 대신,
+        서비스 계층에서 `MaintenanceRecordRepository.deleteByVehicleId()` → `vehicleRepository.delete()`
+        순서로 명시적으로 삭제. 순서를 바꾸면 FK 제약 위반으로 실패함.
+      → `VehicleService`는 `MaintenanceRecordService`가 아니라 `MaintenanceRecordRepository`를
+        직접 주입받음 — 서비스끼리 서로 의존하면 순환 참조가 생기기 때문.
 
 ## 다음 단계 (예정) — 상세 체크리스트
 
@@ -206,13 +215,7 @@
       → 현재는 `MethodArgumentTypeMismatchException`을 처리하는 핸들러가 없어서 스프링 기본
         에러 포맷(400)이 그대로 나감. `GlobalExceptionHandler`에 핸들러 추가 검토.
 
-### 2. 차량 정보 수정 API
-
-- [ ] `DELETE /api/vehicles/{vehicleId}` — 차량 삭제
-      → 연관된 `MaintenanceRecord`를 어떻게 할지 정책 결정이 먼저 필요함 (같이 삭제할지,
-        정비 이력이 남아있으면 삭제를 막을지). FK 제약조건의 `ON DELETE` 정책과도 연결됨.
-
-### 3. 정비 이력 기능 보강
+### 2. 정비 이력 기능 보강
 
 - [ ] `PATCH /api/vehicles/{vehicleId}/maintenance-records/{recordId}` — 정비 이력 수정
 - [ ] `DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` — 정비 이력 삭제
@@ -221,22 +224,22 @@
         기간 기준으로도 계산하려면 `ServiceType`에 권장 주기(개월 수)를 추가하고,
         `NextServiceResponse`에 날짜 필드를 더해야 함.
 
-### 4. 목록 조회 확장성
+### 3. 목록 조회 확장성
 
 - [ ] 차량 목록 / 정비 이력 목록에 페이지네이션 도입 검토 (`Pageable`, `Page<T>`)
       → 지금은 차량이나 정비 이력이 몇 개 안 될 걸 가정하고 전체를 다 반환함.
         데이터가 쌓이기 시작하면 필요해짐 — 당장 급하지 않음.
 
-### 5. 테스트 보강
+### 4. 테스트 보강
 
 - [ ] Service 계층 단위 테스트 (Mockito로 Repository를 mock)
       → 지금 테스트는 `@DataJpaTest` 기반 Repository 테스트뿐이라, `UserService`/
         `VehicleService`/`MaintenanceRecordService`의 비즈니스 로직(중복 체크, 소유권
-        검증, 다음 정비 시점 계산)은 자동 검증이 안 되고 있음.
+        검증, 다음 정비 시점 계산, 차량 삭제 시 이력 함께 삭제)은 자동 검증이 안 되고 있음.
 - [ ] Controller 계층 테스트 (`@WebMvcTest` + `MockMvc`, 또는 `@SpringBootTest` 통합 테스트)
       → 세션 인증이 걸린 API를 테스트할 때 `MockHttpSession`을 어떻게 다루는지도 같이 다룰 예정.
 
-### 6. 인프라/운영 (당장 급하지 않음)
+### 5. 인프라/운영 (당장 급하지 않음)
 
 - [ ] API 문서화 검토 (springdoc-openapi 등)
 - [ ] `@EnableJpaAuditing` 도입 검토

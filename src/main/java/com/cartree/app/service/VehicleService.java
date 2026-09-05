@@ -6,6 +6,7 @@ import com.cartree.app.dto.UpdateOdometerRequest;
 import com.cartree.app.dto.VehicleRegisterRequest;
 import com.cartree.app.exception.ForbiddenAccessException;
 import com.cartree.app.exception.ResourceNotFoundException;
+import com.cartree.app.repository.MaintenanceRecordRepository;
 import com.cartree.app.repository.UserRepository;
 import com.cartree.app.repository.VehicleRepository;
 import org.springframework.stereotype.Service;
@@ -18,10 +19,13 @@ public class VehicleService {
 
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
+    private final MaintenanceRecordRepository maintenanceRecordRepository;
 
-    public VehicleService(VehicleRepository vehicleRepository, UserRepository userRepository) {
+    public VehicleService(VehicleRepository vehicleRepository, UserRepository userRepository,
+                           MaintenanceRecordRepository maintenanceRecordRepository) {
         this.vehicleRepository = vehicleRepository;
         this.userRepository = userRepository;
+        this.maintenanceRecordRepository = maintenanceRecordRepository;
     }
 
     @Transactional
@@ -49,6 +53,13 @@ public class VehicleService {
         vehicle.updateOdometer(request.odometer());
 
         return vehicle;
+    }
+
+    @Transactional
+    public void delete(Long requesterId, Long vehicleId) {
+        Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
+        maintenanceRecordRepository.deleteByVehicleId(vehicle.getId());
+        vehicleRepository.delete(vehicle);
     }
 
     public Vehicle findOwnedVehicle(Long requesterId, Long vehicleId) {
