@@ -12,7 +12,8 @@
 1. 코드는 최소 단위로만 (파일 1~2개)
 2. 새로 등장한 어노테이션·문법을 초보자 관점에서 한 줄씩 설명
 3. 왜 그렇게 썼는지를 **대안과 비교해서** 설명 (예: EAGER 대신 LAZY를 쓰는 이유)
-4. 마지막에 이해 확인 질문 2~3개를 던지고, 답을 받은 뒤 다음 단계로 진행
+
+이해 확인 질문은 던지지 않는다. 설명 후 바로 다음 단계로 진행한다.
 
 설명은 한국어로 한다.
 
@@ -78,21 +79,34 @@
     │   ├── User.java        (id, email, password, nickname, phone, createdAt, updatedAt)
     │   └── Vehicle.java     (id, owner→User, plateNumber, manufacturer, modelName,
     │                         modelYear, odometer, createdAt, updatedAt)
-    └── repository/
-        ├── UserRepository.java     (findByEmail, existsByEmail)
-        └── VehicleRepository.java  (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
-                                     findByPlateNumber, existsByPlateNumber)
+    ├── repository/
+    │   ├── UserRepository.java     (findByEmail, existsByEmail)
+    │   └── VehicleRepository.java  (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
+    │                                findByPlateNumber, existsByPlateNumber)
+    ├── dto/
+    │   ├── SignUpRequest.java   (record, @NotBlank/@Email/@Size 검증)
+    │   └── UserResponse.java    (record, User.from() 팩토리)
+    ├── service/
+    │   └── UserService.java     (signUp — 중복 이메일 체크, BCrypt 암호화, @Transactional)
+    └── controller/
+        └── UserController.java  (POST /api/users)
+
+    src/test/java/com/cartree/app/repository/
+    ├── UserRepositoryTest.java     (save, findByEmail, existsByEmail)
+    └── VehicleRepositoryTest.java  (save, findByOwner, findByOwnerId, findByPlateNumber,
+                                     ownerIsLazy, updateOdometer)
 
 ## 진행 상황
 
 - [x] build.gradle / 실행 진입점
 - [x] application.yml (MariaDB 연결)
-- [x] `User` 엔티티 — `users` 테이블 생성 확인 완료
-- [x] `Vehicle` 엔티티 — **미검증** (추가 후 아직 실행해보지 않음)
-- [x] `UserRepository` / `VehicleRepository` — **미검증**
-- [ ] Repository 동작 확인 (`@DataJpaTest` vs `CommandLineRunner` — 사용자가 선택)
-- [ ] 회원가입 API: `UserService` + `UserController` + 요청/응답 DTO
-      → 계층 분리, `@Transactional`, 엔티티를 그대로 응답하면 안 되는 이유를 설명할 것
+- [x] `User` 엔티티 — 유니크 제약 이름을 `uk_users_email` 로 직접 지정 (규칙 6)
+- [x] `Vehicle` 엔티티 — 검증 완료
+- [x] `UserRepository` / `VehicleRepository` — 검증 완료
+- [x] Repository 동작 확인 — `@DataJpaTest` 채택. 테스트 9개 통과
+- [x] 회원가입 API: `UserService` + `UserController` + 요청/응답 DTO
+      → `POST /api/users`. BCrypt 암호화, 계층 분리, `@Transactional`, 엔티티 미노출 설명 완료.
+      → 미해결: 이메일 중복 시 `IllegalArgumentException`이 500으로 나감 (전역 예외 처리 미도입)
 - [ ] 차량 등록/조회 API: `VehicleService` + `VehicleController`
 - [ ] `MaintenanceRecord`(정비 이력) 엔티티 — 이 앱의 핵심 기능
 - [ ] 정비 이력 API + 다음 정비 시점 계산 로직
