@@ -83,9 +83,11 @@
     │   └── MaintenanceRecord.java (id, vehicle→Vehicle, type, description, cost,
     │                               serviceOdometer, serviceDate, createdAt, updatedAt)
     ├── repository/
-    │   ├── UserRepository.java     (findByEmail, existsByEmail)
-    │   └── VehicleRepository.java  (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
-    │                                findByPlateNumber, existsByPlateNumber)
+    │   ├── UserRepository.java              (findByEmail, existsByEmail)
+    │   ├── VehicleRepository.java           (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
+    │   │                                     findByPlateNumber, existsByPlateNumber)
+    │   └── MaintenanceRecordRepository.java (findByVehicleIdOrderByServiceDateDesc,
+    │                                         findTopByVehicleIdAndTypeOrderByServiceDateDesc)
     ├── dto/
     │   ├── SignUpRequest.java          (record, @NotBlank/@Email/@Size 검증)
     │   ├── LoginRequest.java           (record, email/password)
@@ -138,6 +140,9 @@
       → `type`은 자유 텍스트 대신 `ServiceType` enum + `@Enumerated(EnumType.STRING)` (ORDINAL은 순서 변경 시 데이터 깨짐)
       → `Vehicle.odometer`(현재 주행거리)와 구분하려고 필드명을 `serviceOdometer`로 지정
       → 아직 변경 메서드 없음 (수정 요구사항 생기면 그때 추가)
+- [x] `MaintenanceRecordRepository` — 조회 메서드만 우선 작성
+      → `findByVehicleIdOrderByServiceDateDesc`(이력 목록), `findTopByVehicleIdAndTypeOrderByServiceDateDesc`
+        (같은 종류 중 최신 1건 — 다음 정비 시점 계산에 사용 예정)
 - [ ] 정비 이력 API + 다음 정비 시점 계산 로직
 
 단계를 완료할 때마다 이 체크리스트를 갱신한다.
