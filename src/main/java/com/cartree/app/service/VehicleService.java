@@ -2,7 +2,10 @@ package com.cartree.app.service;
 
 import com.cartree.app.domain.User;
 import com.cartree.app.domain.Vehicle;
+import com.cartree.app.dto.UpdateOdometerRequest;
 import com.cartree.app.dto.VehicleRegisterRequest;
+import com.cartree.app.exception.ForbiddenAccessException;
+import com.cartree.app.exception.ResourceNotFoundException;
 import com.cartree.app.repository.UserRepository;
 import com.cartree.app.repository.VehicleRepository;
 import org.springframework.stereotype.Service;
@@ -38,5 +41,24 @@ public class VehicleService {
 
     public List<Vehicle> findMyVehicles(Long ownerId) {
         return vehicleRepository.findByOwnerIdOrderByCreatedAtDesc(ownerId);
+    }
+
+    @Transactional
+    public Vehicle updateOdometer(Long requesterId, Long vehicleId, UpdateOdometerRequest request) {
+        Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
+        vehicle.updateOdometer(request.odometer());
+
+        return vehicle;
+    }
+
+    public Vehicle findOwnedVehicle(Long requesterId, Long vehicleId) {
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 차량입니다: " + vehicleId));
+
+        if (!vehicle.getOwner().getId().equals(requesterId)) {
+            throw new ForbiddenAccessException("본인 소유의 차량만 접근할 수 있습니다.");
+        }
+
+        return vehicle;
     }
 }

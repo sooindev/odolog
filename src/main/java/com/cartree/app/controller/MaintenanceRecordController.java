@@ -5,10 +5,7 @@ import com.cartree.app.domain.ServiceType;
 import com.cartree.app.dto.MaintenanceRecordRegisterRequest;
 import com.cartree.app.dto.MaintenanceRecordResponse;
 import com.cartree.app.dto.NextServiceResponse;
-import com.cartree.app.exception.AuthenticationFailedException;
 import com.cartree.app.service.MaintenanceRecordService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,17 +32,14 @@ public class MaintenanceRecordController {
     @PostMapping
     public ResponseEntity<MaintenanceRecordResponse> register(@PathVariable Long vehicleId,
                                                                 @Valid @RequestBody MaintenanceRecordRegisterRequest request,
-                                                                HttpServletRequest httpRequest) {
-        Long requesterId = extractLoginUserId(httpRequest);
+                                                                @LoginUser Long requesterId) {
         MaintenanceRecord record = maintenanceRecordService.register(requesterId, vehicleId, request);
-
         return ResponseEntity.status(HttpStatus.CREATED).body(MaintenanceRecordResponse.from(record));
     }
 
     @GetMapping
     public ResponseEntity<List<MaintenanceRecordResponse>> findByVehicle(@PathVariable Long vehicleId,
-                                                                          HttpServletRequest httpRequest) {
-        Long requesterId = extractLoginUserId(httpRequest);
+                                                                          @LoginUser Long requesterId) {
         List<MaintenanceRecordResponse> records = maintenanceRecordService.findByVehicle(requesterId, vehicleId)
                 .stream()
                 .map(MaintenanceRecordResponse::from)
@@ -57,19 +51,8 @@ public class MaintenanceRecordController {
     @GetMapping("/next-service")
     public ResponseEntity<NextServiceResponse> nextService(@PathVariable Long vehicleId,
                                                              @RequestParam ServiceType type,
-                                                             HttpServletRequest httpRequest) {
-        Long requesterId = extractLoginUserId(httpRequest);
+                                                             @LoginUser Long requesterId) {
         NextServiceResponse response = maintenanceRecordService.calculateNextService(requesterId, vehicleId, type);
-
         return ResponseEntity.ok(response);
-    }
-
-    private Long extractLoginUserId(HttpServletRequest httpRequest) {
-        HttpSession session = httpRequest.getSession(false);
-        if (session == null || session.getAttribute(SessionConst.LOGIN_USER_ID) == null) {
-            throw new AuthenticationFailedException("로그인이 필요합니다.");
-        }
-
-        return (Long) session.getAttribute(SessionConst.LOGIN_USER_ID);
     }
 }

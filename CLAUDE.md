@@ -70,6 +70,12 @@
 8. **타입 선택**: "없음"이라는 상태가 존재하는 값만 래퍼 타입(`Integer`), 아니면 기본형(`int`).
    PK는 저장 전 `null` 구분을 위해 항상 `Long`.
 9. **테이블명은 복수형** (`users`, `vehicles`). `user` 는 예약어라 반드시 `users`.
+10. **로그인한 사용자 식별은 세션에서만 한다.** 요청 바디나 URL의 사용자 ID는 클라이언트가
+    조작할 수 있으므로 신뢰하지 않는다 (`SessionConst.LOGIN_USER_ID`).
+11. **예외는 의미에 맞는 상태 코드로 세분화한다**: 400(입력 검증 실패) / 401(미인증) /
+    403(권한 없음) / 404(리소스 없음) / 409(리소스 중복). 서버 쪽 불변식이 깨진 경우
+    (예: 세션엔 있는데 DB엔 없는 사용자)는 일부러 핸들러를 만들지 않고 500으로 흘려보내
+    로그에 남긴다 — 모든 예외를 친절한 응답으로 감쌀 필요는 없다.
 
 ## 현재 구조
 
@@ -92,9 +98,11 @@
     ├── dto/
     │   ├── SignUpRequest.java          (record, @NotBlank/@Email/@Size 검증)
     │   ├── LoginRequest.java           (record, email/password)
+    │   ├── UpdateProfileRequest.java   (record, nickname/phone 둘 다 nullable — 보낸 필드만 변경)
     │   ├── UserResponse.java           (record, User.from() 팩토리)
     │   ├── VehicleRegisterRequest.java           (record, owner 없음 — 세션에서 식별)
     │   ├── VehicleResponse.java                  (record, owner 없음 — LAZY 필드 미접근으로 N+1 방지)
+    │   ├── UpdateOdometerRequest.java             (record, @PositiveOrZero)
     │   ├── MaintenanceRecordRegisterRequest.java (record, @NotNull/@PositiveOrZero/@Size 검증)
     │   ├── MaintenanceRecordResponse.java        (record, MaintenanceRecord.from() 팩토리)
     │   ├── NextServiceResponse.java              (record, type/lastServiceOdometer/nextServiceOdometer —
@@ -106,30 +114,41 @@
     │   └── ResourceNotFoundException.java     (RuntimeException — 리소스 없음, 404)
     ├── service/
     │   ├── UserService.java              (signUp — 중복 이메일 체크·BCrypt 암호화·@Transactional,
-    │   │                                   login — 이메일/비밀번호 검증, 실패 사유 통일 메시지)
+    │   │                                   login — 이메일/비밀번호 검증, 실패 사유 통일 메시지,
+    │   │                                   findById — 없으면 IllegalStateException→500,
+    │   │                                   updateProfile — 널 아닌 필드만 changeNickname/changePhone 호출)
     │   ├── VehicleService.java           (register — 번호판 중복 체크·@Transactional,
-    │   │                                  findMyVehicles — 조회 전용, @Transactional 없음)
+    │   │                                  findMyVehicles — 조회 전용, @Transactional 없음,
+    │   │                                  updateOdometer — dirty checking으로 save() 불필요,
+    │   │                                  findOwnedVehicle() — 소유권 검증, 다른 서비스도 재사용)
     │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService,
-    │                                      findOwnedVehicle()로 소유권 검증 공통화)
+    │                                      VehicleService.findOwnedVehicle()을 주입받아 재사용)
     └── controller/
-        ├── UserController.java              (POST /api/users, POST /api/users/login — 세션에 loginUserId 저장,
-        │                                     POST /api/users/logout — session.invalidate())
-        ├── VehicleController.java           (POST /api/vehicles, GET /api/vehicles —
-        │                                     extractLoginUserId()로 세션에서 소유자 식별)
+        ├── UserController.java              (POST /api/users, POST /api/users/login — 세션 저장 +
+        │                                     changeSessionId()로 세션 고정 공격 방지,
+        │                                     POST /api/users/logout — session.invalidate(),
+        │                                     GET/PATCH /api/users/me — @LoginUser 사용)
+        ├── VehicleController.java           (POST /api/vehicles, GET /api/vehicles,
+        │                                     PATCH /api/vehicles/{vehicleId}/odometer — @LoginUser로 소유자 식별)
         ├── MaintenanceRecordController.java (POST/GET /api/vehicles/{vehicleId}/maintenance-records,
-        │                                     GET .../next-service?type=... — extractLoginUserId() 2번째 중복,
-        │                                     3번째 생기면 HandlerMethodArgumentResolver로 추출)
+        │                                     GET .../next-service?type=... — @LoginUser로 요청자 식별)
+        ├── LoginUser.java                   (@Target(PARAMETER) 커스텀 애노테이션 — 로그인 사용자 주입 표시)
+        ├── LoginUserArgumentResolver.java   (HandlerMethodArgumentResolver — 세션에서 LOGIN_USER_ID 추출,
+        │                                     없으면 AuthenticationFailedException. 컨트롤러 3곳 중복 제거)
         ├── SessionConst.java                (세션 키 상수 LOGIN_USER_ID)
         └── GlobalExceptionHandler.java      (@RestControllerAdvice — 리소스 중복 409, 인증 실패 401,
                                                권한 없음 403, 리소스 없음 404, 검증 실패 400.
                                                IllegalStateException 등은 의도적으로 미처리 → 500)
+
+    src/main/java/com/cartree/app/config/
+    └── WebConfig.java (WebMvcConfigurer — LoginUserArgumentResolver 등록)
 
     src/test/java/com/cartree/app/repository/
     ├── UserRepositoryTest.java     (save, findByEmail, existsByEmail)
     └── VehicleRepositoryTest.java  (save, findByOwner, findByOwnerId, findByPlateNumber,
                                      ownerIsLazy, updateOdometer)
 
-## 진행 상황
+## 진행 상황 (완료)
 
 - [x] build.gradle / 실행 진입점
 - [x] application.yml (MariaDB 연결)
@@ -161,5 +180,69 @@
       → 소유권 검증 실패를 404(리소스 없음)/403(소유자 아님)으로 구분, 로그인 안 함은 기존 401 재사용
       → `ServiceType.recommendedIntervalKm` + 최근 이력의 `serviceOdometer`로 다음 정비 시점 계산
       → LAZY `owner`의 `getId()`는 프록시가 FK를 이미 들고 있어 초기화 없이 조회 가능 (@Transactional 불필요)
+- [x] 로그인 성공 시 세션 고정 공격(session fixation) 방지
+      → `UserController.login()`에서 세션에 값을 저장한 직후 `httpRequest.changeSessionId()` 호출.
+        세션 내용은 유지한 채 클라이언트에 내려가는 세션 ID만 새로 발급.
+- [x] `extractLoginUserId()` 중복 제거 — `HandlerMethodArgumentResolver` + 커스텀 `@LoginUser` 애노테이션
+      → `LoginUser`(애노테이션) + `LoginUserArgumentResolver` + `WebConfig`(등록) 추가.
+        `VehicleController`/`MaintenanceRecordController`는 `@LoginUser Long userId` 파라미터로 정리.
+- [x] `GET /api/users/me`, `PATCH /api/users/me`
+      → `UpdateProfileRequest`(nickname/phone 둘 다 nullable, 보낸 필드만 반영).
+        기존에 미사용이던 `User.changeNickname()`/`changePhone()`를 처음으로 API에 연결.
+- [x] `PATCH /api/vehicles/{vehicleId}/odometer` — 주행거리 갱신
+      → `Vehicle.updateOdometer()`를 처음으로 API에 연결. 감소 시 `IllegalArgumentException` →
+        기존 409 핸들러 재사용 ("요청 값이 리소스의 현재 상태와 충돌"로 해석).
+      → 영속 상태 엔티티라 `save()` 호출 없이 dirty checking으로 UPDATE 반영됨.
+      → `findOwnedVehicle()`을 `MaintenanceRecordService`에서 `VehicleService`(원래 책임 소재)로 이동,
+        `MaintenanceRecordService`는 `VehicleService`를 주입받아 재사용하도록 리팩토링.
 
-단계를 완료할 때마다 이 체크리스트를 갱신한다.
+## 다음 단계 (예정) — 상세 체크리스트
+
+우선순위 순서를 뜻하지 않는다. 착수하는 시점에 사용자와 다시 상의해서 순서/범위를 정한다.
+
+### 1. 인증/보안 개선
+
+- [ ] `@RequestParam ServiceType type`에 존재하지 않는 값이 들어왔을 때 처리
+      → 현재는 `MethodArgumentTypeMismatchException`을 처리하는 핸들러가 없어서 스프링 기본
+        에러 포맷(400)이 그대로 나감. `GlobalExceptionHandler`에 핸들러 추가 검토.
+
+### 2. 차량 정보 수정 API
+
+- [ ] `DELETE /api/vehicles/{vehicleId}` — 차량 삭제
+      → 연관된 `MaintenanceRecord`를 어떻게 할지 정책 결정이 먼저 필요함 (같이 삭제할지,
+        정비 이력이 남아있으면 삭제를 막을지). FK 제약조건의 `ON DELETE` 정책과도 연결됨.
+
+### 3. 정비 이력 기능 보강
+
+- [ ] `PATCH /api/vehicles/{vehicleId}/maintenance-records/{recordId}` — 정비 이력 수정
+- [ ] `DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` — 정비 이력 삭제
+- [ ] 다음 정비 시점 계산에 "날짜 기준" 추가
+      → 지금은 주행거리 기준(`recommendedIntervalKm`)만 있음. "마지막 정비 후 6개월"처럼
+        기간 기준으로도 계산하려면 `ServiceType`에 권장 주기(개월 수)를 추가하고,
+        `NextServiceResponse`에 날짜 필드를 더해야 함.
+
+### 4. 목록 조회 확장성
+
+- [ ] 차량 목록 / 정비 이력 목록에 페이지네이션 도입 검토 (`Pageable`, `Page<T>`)
+      → 지금은 차량이나 정비 이력이 몇 개 안 될 걸 가정하고 전체를 다 반환함.
+        데이터가 쌓이기 시작하면 필요해짐 — 당장 급하지 않음.
+
+### 5. 테스트 보강
+
+- [ ] Service 계층 단위 테스트 (Mockito로 Repository를 mock)
+      → 지금 테스트는 `@DataJpaTest` 기반 Repository 테스트뿐이라, `UserService`/
+        `VehicleService`/`MaintenanceRecordService`의 비즈니스 로직(중복 체크, 소유권
+        검증, 다음 정비 시점 계산)은 자동 검증이 안 되고 있음.
+- [ ] Controller 계층 테스트 (`@WebMvcTest` + `MockMvc`, 또는 `@SpringBootTest` 통합 테스트)
+      → 세션 인증이 걸린 API를 테스트할 때 `MockHttpSession`을 어떻게 다루는지도 같이 다룰 예정.
+
+### 6. 인프라/운영 (당장 급하지 않음)
+
+- [ ] API 문서화 검토 (springdoc-openapi 등)
+- [ ] `@EnableJpaAuditing` 도입 검토
+      → 엔티티가 늘어날수록 `@PrePersist`/`@PreUpdate` 반복 코드가 계속 늘어남. 이 부담이
+        커지면 규칙 7을 재검토하고 auditing 도입을 제안할 것.
+
+---
+
+단계를 완료할 때마다 "진행 상황 (완료)" 섹션을 갱신하고, 해당 항목을 위 "다음 단계"에서 제거한다.

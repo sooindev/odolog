@@ -3,6 +3,7 @@ package com.cartree.app.service;
 import com.cartree.app.domain.User;
 import com.cartree.app.dto.LoginRequest;
 import com.cartree.app.dto.SignUpRequest;
+import com.cartree.app.dto.UpdateProfileRequest;
 import com.cartree.app.exception.AuthenticationFailedException;
 import com.cartree.app.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -38,6 +39,25 @@ public class UserService {
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new AuthenticationFailedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+
+        return user;
+    }
+
+    public User findById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + userId));
+    }
+
+    @Transactional
+    public User updateProfile(Long userId, UpdateProfileRequest request) {
+        User user = findById(userId);
+
+        if (request.nickname() != null) {
+            user.changeNickname(request.nickname());
+        }
+        if (request.phone() != null) {
+            user.changePhone(request.phone());
         }
 
         return user;

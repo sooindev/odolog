@@ -3,6 +3,7 @@ package com.cartree.app.controller;
 import com.cartree.app.domain.User;
 import com.cartree.app.dto.LoginRequest;
 import com.cartree.app.dto.SignUpRequest;
+import com.cartree.app.dto.UpdateProfileRequest;
 import com.cartree.app.dto.UserResponse;
 import com.cartree.app.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +11,8 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +40,7 @@ public class UserController {
 
         HttpSession session = httpRequest.getSession();
         session.setAttribute(SessionConst.LOGIN_USER_ID, user.getId());
+        httpRequest.changeSessionId();
 
         return ResponseEntity.ok(UserResponse.from(user));
     }
@@ -49,5 +53,18 @@ public class UserController {
         }
 
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> me(@LoginUser Long userId) {
+        User user = userService.findById(userId);
+        return ResponseEntity.ok(UserResponse.from(user));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserResponse> updateMe(@LoginUser Long userId,
+                                                  @Valid @RequestBody UpdateProfileRequest request) {
+        User user = userService.updateProfile(userId, request);
+        return ResponseEntity.ok(UserResponse.from(user));
     }
 }
