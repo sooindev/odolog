@@ -181,18 +181,24 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     src/test/java/com/cartree/app/
     ├── user/
     │   ├── repository/UserRepositoryTest.java (@DataJpaTest — save, findByEmail, existsByEmail)
-    │   └── service/UserServiceTest.java       (Mockito — signUp 중복/암호화, login 성공·실패,
-    │                                            findById, updateProfile 부분 수정)
+    │   ├── service/UserServiceTest.java       (Mockito — signUp 중복/암호화, login 성공·실패,
+    │   │                                        findById, updateProfile 부분 수정)
+    │   └── controller/UserControllerTest.java (@WebMvcTest+MockMvc — signUp 201/409,
+    │                                            login 200(세션 저장 확인)/401, /me 401/200)
     ├── vehicle/
     │   ├── repository/VehicleRepositoryTest.java (@DataJpaTest — save, findByOwner, findByOwnerId,
     │   │                                          findByPlateNumber, ownerIsLazy, updateOdometer)
-    │   └── service/VehicleServiceTest.java       (Mockito — register 중복/성공, findOwnedVehicle
-    │                                              404·403, updateOdometer 감소 방지,
-    │                                              delete 순서(InOrder) 검증)
+    │   ├── service/VehicleServiceTest.java       (Mockito — register 중복/성공, findOwnedVehicle
+    │   │                                          404·403, updateOdometer 감소 방지,
+    │   │                                          delete 순서(InOrder) 검증)
+    │   └── controller/VehicleControllerTest.java (@WebMvcTest+MockMvc — 미인증 401, 검증 실패 400,
+    │                                              register 201, updateOdometer 403)
     └── maintenance/
-        └── service/MaintenanceRecordServiceTest.java (Mockito — register, calculateNextService
-                                                        3가지 케이스, update 부분 수정,
-                                                        타 차량 소속 id 접근 404)
+        ├── service/MaintenanceRecordServiceTest.java (Mockito — register, calculateNextService
+        │                                              3가지 케이스, update 부분 수정,
+        │                                              타 차량 소속 id 접근 404)
+        └── controller/MaintenanceRecordControllerTest.java (@WebMvcTest+MockMvc — next-service 200,
+                                                             잘못된 enum 값 400, 차량 없음 404, delete 204)
 
 **의존 방향**: `maintenance` → `vehicle` → `user`, 그리고 셋 다 필요하면 `common`을 본다.
 반대 방향 의존(`user`가 `vehicle`을 알아야 하는 것 등)이 생기면 설계가 잘못된 신호로 보고 재검토한다.
@@ -273,6 +279,15 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
       → 각 서비스는 자신이 직접 의존하는 대상만 mock — `MaintenanceRecordService`는
         `VehicleRepository`가 아니라 `VehicleService`를 mock (소유권 검증 로직 자체는
         `VehicleServiceTest`가 이미 검증했다고 신뢰).
+- [x] Controller 계층 테스트 (`@WebMvcTest` + `MockMvc`) — `UserControllerTest`/
+      `VehicleControllerTest`/`MaintenanceRecordControllerTest`, 총 14개
+      → `@MockitoBean`(Spring Boot 3.4+의 `@MockBean` 대체)으로 Service를 컨테이너에 가짜로 등록,
+        `@WebMvcTest`가 `GlobalExceptionHandler`/`WebConfig`까지 포함해 웹 계층만 띄움(DB 없음).
+      → `MockHttpSession`으로 `@LoginUser` 인증 흐름(401/성공)을 실제 HTTP 요청처럼 검증.
+      → 로그인 성공 테스트는 응답 바디가 아니라 `result.getRequest().getSession(false)`로
+        "세션에 값이 저장됐는지, `changeSessionId()`가 동작하는지"라는 부수 효과를 검증.
+      → 이전에 추가만 해두고 테스트가 없었던 `MethodArgumentTypeMismatchException`(400) 핸들러를
+        `type=존재하지않는값` 요청으로 처음 실제 검증.
 
 ## 다음 단계 (예정) — 상세 체크리스트
 
@@ -291,12 +306,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
       → 지금은 차량이나 정비 이력이 몇 개 안 될 걸 가정하고 전체를 다 반환함.
         데이터가 쌓이기 시작하면 필요해짐 — 당장 급하지 않음.
 
-### 3. 테스트 보강
-
-- [ ] Controller 계층 테스트 (`@WebMvcTest` + `MockMvc`, 또는 `@SpringBootTest` 통합 테스트)
-      → 세션 인증이 걸린 API를 테스트할 때 `MockHttpSession`을 어떻게 다루는지도 같이 다룰 예정.
-
-### 4. 인프라/운영 (당장 급하지 않음)
+### 3. 인프라/운영 (당장 급하지 않음)
 
 - [ ] API 문서화 검토 (springdoc-openapi 등)
 - [ ] `@EnableJpaAuditing` 도입 검토
