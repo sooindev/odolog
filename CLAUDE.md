@@ -308,6 +308,15 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         `cartree`/`cartree_test` → `odolog`/`odolog_test`까지 전부 갱신.
       → GitHub 저장소 이름(`CarTree`)은 `gh` CLI가 없어 대신 수동 변경 방법만 안내.
         운영 DB `cartree` 스키마는 애초에 존재하지 않아(아직 운영 전) 마이그레이션 없이 `odolog`만 새로 생성.
+- [x] CORS 설정 — `WebConfig.addCorsMappings()`
+      → `/api/**`에 대해 `http://localhost:5173`(Vite 기본 포트) origin 허용, GET/POST/PATCH/DELETE 메서드,
+        `allowCredentials(true)`로 세션 쿠키 전송 허용.
+      → `allowCredentials(true)`와 `allowedOrigins("*")`는 브라우저 스펙상 공존 불가 — CSRF 위험 때문에
+        브라우저가 막으므로 origin을 구체적으로 나열해야 함.
+      → 컨트롤러마다 `@CrossOrigin`을 붙이는 대신 `WebMvcConfigurer`에 전역 설정 — 컨트롤러 3개에
+        같은 설정을 반복하지 않기 위해. `LoginUserArgumentResolver` 등록과 같은 자리.
+      → 프론트 착수 시 `fetch(url, { credentials: 'include' })`가 짝으로 필요함. 실제 Vite 포트가
+        5173이 아니면 `allowedOrigins`를 그때 갱신.
 - [x] 정비 이력 단건 상세 조회 API — `GET /api/vehicles/{vehicleId}/maintenance-records/{recordId}`
       → 차량 단건 조회와 같은 패턴. `MaintenanceRecordService`의 기존 private `findRecordInVehicle()`을
         감싸는 `findOne()` public 메서드만 추가. `/next-service`(리터럴)와 `/{recordId}`(변수 경로)는
@@ -340,17 +349,6 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 ## 다음 단계 (예정) — 상세 체크리스트 (Phase 1: 백엔드 마무리)
 
 우선순위 순서를 뜻하지 않는다. 착수하는 시점에 사용자와 다시 상의해서 순서/범위를 정한다.
-
-### 1. API 완성도 (프론트 연동 전에 먼저 갖춰야 함)
-
-- [ ] CORS 설정 추가
-      → 프론트(`http://localhost:5173` 등)와 백엔드(`http://localhost:8080`)는 포트가 달라
-        브라우저가 기본적으로 요청을 막음(same-origin policy). `WebMvcConfigurer.addCorsMappings()`로
-        프론트 origin을 명시적으로 허용해야 함.
-      → 세션 쿠키 기반 인증이라 `allowCredentials(true)`가 필수인데, 이 옵션을 켜면 브라우저 스펙상
-        `allowedOrigins("*")`(와일드카드)를 못 쓰고 구체적인 origin을 하나하나 적어야 함.
-      → 프론트에서도 `fetch(url, { credentials: 'include' })`를 안 쓰면 세션 쿠키가 안 실려서
-        로그인이 유지 안 됨 — 백엔드/프론트 양쪽 다 설정이 필요한 부분.
 
 ### 2. 정비 이력 기능 보강
 
