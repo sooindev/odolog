@@ -40,6 +40,14 @@
 - 드라이버: `org.mariadb.jdbc:mariadb-java-client`, URL은 `jdbc:mariadb://`
 - 실행: **IntelliJ IDEA**에서 `OdoLogApplication` 을 직접 실행한다.
   Gradle 래퍼(`./gradlew`)는 프로젝트에 있으므로 빌드 확인은 터미널에서도 가능하다.
+- API 문서: 앱 실행 후 `http://localhost:8080/swagger-ui.html` (스펙 JSON은 `/v3/api-docs`).
+- 터미널에서 앱을 띄워 확인해야 할 때는 테스트 계정을 쓴다 (운영 계정 비밀번호는 IntelliJ에만 있음):
+
+      SPRING_DATASOURCE_URL='jdbc:mariadb://localhost:3306/odolog_test' \
+      SPRING_DATASOURCE_USERNAME=odolog_test SPRING_DATASOURCE_PASSWORD=odolog_test ./gradlew bootRun
+
+  (`odolog_test` 스키마는 테스트 실행 때마다 `create-drop`으로 초기화되므로 데이터가 남아도 무방하다.
+  JDBC 유닉스 소켓 접속(`localSocket=`)은 시도해 봤으나 동작하지 않으니 시간 낭비하지 말 것.)
 - DB 자격증명은 IntelliJ 실행 구성의 **환경변수** `DB_USERNAME` / `DB_PASSWORD` 로 주입한다.
   `application.yml` 에는 `${DB_USERNAME:root}` / `${DB_PASSWORD:}` 형태로만 존재하며
   평문 비밀번호를 파일에 절대 적지 않는다.
@@ -320,6 +328,18 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         같은 설정을 반복하지 않기 위해. `LoginUserArgumentResolver` 등록과 같은 자리.
       → 프론트 착수 시 `fetch(url, { credentials: 'include' })`가 짝으로 필요함. 실제 Vite 포트가
         5173이 아니면 `allowedOrigins`를 그때 갱신.
+- [x] API 문서화 — `springdoc-openapi` 도입 (`/swagger-ui.html`, `/v3/api-docs`)
+      → `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6`. 서드파티라 스프링 부트가
+        버전을 관리해 주지 않으므로 버전을 직접 명시해야 함. `springfox`는 Jakarta 미지원이라 제외.
+      → `common/config/OpenApiConfig` — `@OpenAPIDefinition`으로 제목/설명, 그리고 정적 블록의
+        `SpringDocUtils.addAnnotationsToIgnore(LoginUser.class)`로 `@LoginUser Long userId`가
+        문서에 요청 파라미터로 잘못 노출되는 것을 차단(세션에서 오는 값이라 클라이언트 입력이 아님).
+      → 목록 API의 `Pageable`에 `@ParameterObject`를 붙여 `page`/`size`/`sort` 3개 쿼리 파라미터로 펼침.
+      → 검증 결과: 엔드포인트 16개 자동 생성, `PageResponse<T>` 제네릭도
+        `PageResponseVehicleResponse`처럼 타입별 스키마로 분리되어 `items` 원소 타입까지 정확히 나옴.
+      → 세션 쿠키는 Swagger UI가 같은 출처(localhost:8080)라 자동 전송된다.
+        `POST /api/users/login`을 먼저 실행하면 이후 요청이 그대로 인증됨 — `@SecurityScheme` 불필요.
+
 - [x] 차량 목록 / 정비 이력 목록 페이지네이션 (`Pageable`, `Page<T>`)
       → 공용 `common/dto/PageResponse<T>` 신설(`items/page/size/totalElements/totalPages/hasNext`).
         스프링 `Page`를 그대로 내리면 필드가 20개 가까이 쏟아지고 부트 3.x가 직렬화 경고를 남기며
@@ -352,9 +372,9 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 **"완성"의 정의**: 회원/차량/정비 이력을 관리하는 백엔드 API + 그걸 실제로 쓸 수 있는
 프론트엔드 웹앱까지. 배포(서버 인프라, 도메인, CI/CD)는 범위 밖 — **로컬에서 완전히 동작하는 것**까지가 목표다.
 
-- **Phase 1 — 백엔드 마무리** (기능 항목 완료, API 문서화만 남음)
-  프론트가 호출할 API 표면 완성. 단건 조회, 날짜 기준 다음 정비, 페이지네이션, CORS.
-- **Phase 2 — 프론트엔드 프로젝트 셋업** (다음 차례)
+- **Phase 1 — 백엔드 마무리** (완료)
+  프론트가 호출할 API 표면 완성. 단건 조회, 날짜 기준 다음 정비, 페이지네이션, CORS, API 문서화.
+- **Phase 2 — 프론트엔드 프로젝트 셋업** (지금 여기)
   `frontend/`에 Vite+React+TypeScript, Tailwind/shadcn, API 클라이언트, 세션 쿠키 연동 확인.
 - **Phase 3 — 인증 화면**
   회원가입/로그인/로그아웃, 로그인 상태 전역 관리, 보호 라우트.
@@ -373,18 +393,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 
 ## Phase 1 (잔여) — 백엔드 마무리
 
-### 1-A. API 문서화
-
-- [ ] `springdoc-openapi` 도입
-      → `build.gradle`에 `org.springdoc:springdoc-openapi-starter-webmvc-ui` 의존성 추가.
-        Spring Boot 3.5 / Jakarta 기준이라 `springfox`(구 Swagger)는 쓰지 않는다 — 유지보수 중단됨.
-      → 어노테이션을 하나도 안 붙여도 `@RestController`/DTO를 읽어 스펙이 자동 생성된다.
-        먼저 붙여서 `/swagger-ui.html`을 열어보고, 부족한 설명만 `@Operation`/`@Schema`로 보강.
-      → 확인할 것: 세션 쿠키 인증이라 Swagger UI에서 `POST /api/users/login`을 먼저 실행하면
-        이후 요청에 쿠키가 붙는지. 안 붙으면 `@SecurityScheme`(apiKey, in=COOKIE) 선언 필요.
-      → 확인할 것: `@LoginUser Long userId` 파라미터가 문서에 "요청 파라미터"로 잘못 노출되는지.
-        노출되면 `@Parameter(hidden = true)` 또는 `@ParameterObject` 제외 설정으로 숨긴다.
-- [ ] 응답 예시 점검 — `PageResponse<T>`가 제네릭이라 스펙에 `items: [{}]`로 뭉개지지 않는지 확인
+Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항목뿐이다.
 
 ### 1-B. 보류 (조건이 갖춰지면 재검토)
 

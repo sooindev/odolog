@@ -8,6 +8,7 @@ import com.odolog.app.vehicle.service.VehicleService;
 import com.odolog.app.common.auth.LoginUser;
 import com.odolog.app.common.dto.PageResponse;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -42,6 +43,7 @@ public class VehicleController {
     @GetMapping
     public ResponseEntity<PageResponse<VehicleResponse>> findMyVehicles(
             @LoginUser Long ownerId,
+            @ParameterObject
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         PageResponse<VehicleResponse> vehicles = PageResponse.from(

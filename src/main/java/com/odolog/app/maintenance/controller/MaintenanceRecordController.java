@@ -10,6 +10,7 @@ import com.odolog.app.maintenance.service.MaintenanceRecordService;
 import com.odolog.app.common.auth.LoginUser;
 import com.odolog.app.common.dto.PageResponse;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -47,6 +48,7 @@ public class MaintenanceRecordController {
     public ResponseEntity<PageResponse<MaintenanceRecordResponse>> findByVehicle(
             @PathVariable Long vehicleId,
             @LoginUser Long requesterId,
+            @ParameterObject
             @PageableDefault(size = 20, sort = "serviceDate", direction = Sort.Direction.DESC) Pageable pageable) {
 
         PageResponse<MaintenanceRecordResponse> records = PageResponse.from(
