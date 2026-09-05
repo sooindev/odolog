@@ -179,9 +179,20 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
             └── ErrorResponse.java              (record, message)
 
     src/test/java/com/cartree/app/
-    ├── user/repository/UserRepositoryTest.java       (save, findByEmail, existsByEmail)
-    └── vehicle/repository/VehicleRepositoryTest.java (save, findByOwner, findByOwnerId,
-                                                        findByPlateNumber, ownerIsLazy, updateOdometer)
+    ├── user/
+    │   ├── repository/UserRepositoryTest.java (@DataJpaTest — save, findByEmail, existsByEmail)
+    │   └── service/UserServiceTest.java       (Mockito — signUp 중복/암호화, login 성공·실패,
+    │                                            findById, updateProfile 부분 수정)
+    ├── vehicle/
+    │   ├── repository/VehicleRepositoryTest.java (@DataJpaTest — save, findByOwner, findByOwnerId,
+    │   │                                          findByPlateNumber, ownerIsLazy, updateOdometer)
+    │   └── service/VehicleServiceTest.java       (Mockito — register 중복/성공, findOwnedVehicle
+    │                                              404·403, updateOdometer 감소 방지,
+    │                                              delete 순서(InOrder) 검증)
+    └── maintenance/
+        └── service/MaintenanceRecordServiceTest.java (Mockito — register, calculateNextService
+                                                        3가지 케이스, update 부분 수정,
+                                                        타 차량 소속 id 접근 404)
 
 **의존 방향**: `maintenance` → `vehicle` → `user`, 그리고 셋 다 필요하면 `common`을 본다.
 반대 방향 의존(`user`가 `vehicle`을 알아야 하는 것 등)이 생기면 설계가 잘못된 신호로 보고 재검토한다.
@@ -253,6 +264,15 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
       → 요청 DTO의 `cost`/`serviceOdometer`는 엔티티와 달리 `Integer` — "안 보냄(null)"과
         "0으로 변경"을 구분하기 위함(엔티티의 "없음" 상태와는 무관, DTO 자체의 필요).
       → `findByIdAndVehicleId()`로 다른 차량 소속 레코드 id 접근을 404로 차단.
+- [x] Service 계층 단위 테스트 (Mockito) — `UserServiceTest`/`VehicleServiceTest`/
+      `MaintenanceRecordServiceTest`, 총 18개
+      → `@ExtendWith(MockitoExtension.class)` + `@Mock`/`@InjectMocks`로 Repository(또는
+        `MaintenanceRecordService`가 의존하는 `VehicleService`)를 가짜로 만들어 DB 없이 로직만 검증.
+      → `ReflectionTestUtils.setField()`로 `@GeneratedValue` id를 테스트에서만 강제로 채움.
+      → `VehicleServiceTest.delete()` 테스트는 `InOrder`로 "이력 먼저, 차량 나중" 삭제 순서까지 검증.
+      → 각 서비스는 자신이 직접 의존하는 대상만 mock — `MaintenanceRecordService`는
+        `VehicleRepository`가 아니라 `VehicleService`를 mock (소유권 검증 로직 자체는
+        `VehicleServiceTest`가 이미 검증했다고 신뢰).
 
 ## 다음 단계 (예정) — 상세 체크리스트
 
@@ -273,10 +293,6 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 
 ### 3. 테스트 보강
 
-- [ ] Service 계층 단위 테스트 (Mockito로 Repository를 mock)
-      → 지금 테스트는 `@DataJpaTest` 기반 Repository 테스트뿐이라, `UserService`/
-        `VehicleService`/`MaintenanceRecordService`의 비즈니스 로직(중복 체크, 소유권
-        검증, 다음 정비 시점 계산, 차량 삭제 시 이력 함께 삭제)은 자동 검증이 안 되고 있음.
 - [ ] Controller 계층 테스트 (`@WebMvcTest` + `MockMvc`, 또는 `@SpringBootTest` 통합 테스트)
       → 세션 인증이 걸린 API를 테스트할 때 `MockHttpSession`을 어떻게 다루는지도 같이 다룰 예정.
 
