@@ -224,13 +224,26 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     ├── components.json                 (shadcn 설정. style=base-nova, 별칭 매핑)
     ├── .env.development                (VITE_API_BASE_URL=http://localhost:8080)
     └── src/
-        ├── main.tsx
-        ├── App.tsx                     (Phase 2 연동 확인용 임시 화면 — Phase 3에서 교체 예정)
+        ├── main.tsx                    (BrowserRouter > AuthProvider > App)
+        ├── App.tsx                     (라우트 정의 + Header)
         ├── index.css                   (@import "tailwindcss" + shadcn 테마 변수)
         ├── env.d.ts                    (import.meta.env 타입)
         ├── types/api.ts                (백엔드 DTO 대응 타입 + ServiceType 한글 라벨)
-        ├── lib/api.ts                  (fetch 래퍼 — credentials:'include', ApiError, 204 처리)
-        └── components/ui/              (shadcn이 복사해 넣은 컴포넌트: button/input/label/card)
+        ├── lib/api.ts                  (fetch 래퍼 — credentials:'include', ApiError, 204 처리,
+        │                                401 전역 핸들러)
+        ├── auth/
+        │   ├── AuthContext.ts          (Context + useAuth 훅 — 컴포넌트 아닌 것만)
+        │   ├── AuthProvider.tsx        (세션 복구/login/logout 상태 관리)
+        │   └── ProtectedRoute.tsx      (로그인 안 했으면 /login으로)
+        ├── pages/
+        │   ├── LoginPage.tsx
+        │   ├── SignUpPage.tsx          (가입 성공 시 바로 로그인까지)
+        │   ├── ProfilePage.tsx         (바뀐 필드만 PATCH)
+        │   └── VehicleListPage.tsx     (Phase 4에서 채울 자리)
+        ├── components/
+        │   ├── Header.tsx
+        │   └── ui/                     (shadcn: button/input/label/card)
+        └── ...
 
     src/test/java/com/odolog/app/
     ├── user/
@@ -362,6 +375,23 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         같은 설정을 반복하지 않기 위해. `LoginUserArgumentResolver` 등록과 같은 자리.
       → 프론트 착수 시 `fetch(url, { credentials: 'include' })`가 짝으로 필요함. 실제 Vite 포트가
         5173이 아니면 `allowedOrigins`를 그때 갱신.
+- [x] Phase 3 — 인증 화면 (라우팅 + 로그인 상태 전역 관리)
+      → `react-router` 8. v7부터 패키지 이름이 `react-router-dom`이 아니라 `react-router`다.
+      → `AuthContext.ts`(Context + `useAuth`)와 `AuthProvider.tsx`(컴포넌트)를 **파일로 분리**.
+        한 파일에서 컴포넌트와 함수를 같이 내보내면 Vite 핫 리로드가 전체 새로고침으로 떨어진다
+        (oxlint `react(only-export-components)` 경고).
+      → Context 기본값을 `null`로 두고 `useAuth()`에서 던진다. 그럴듯한 가짜 기본값을 주면
+        `<AuthProvider>`를 빠뜨렸을 때 에러 없이 "로그아웃 상태"로 조용히 동작해 원인 추적이 어렵다.
+      → 로그인 유지의 정체는 앱 시작 시 `GET /api/users/me` 1회 호출. 쿠키는 남아 있으므로
+        서버에 "누구냐"를 되묻는 것. 이 응답 전까지는 `loading`이라 로그인 화면이 깜빡이지 않는다.
+      → 세션 만료(401) 전역 처리: `api.ts`가 `setUnauthorizedHandler()`로 콜백을 받아 두고 401에서 호출,
+        `AuthProvider`가 사용자 정보를 비우면 `ProtectedRoute`가 `/login`으로 보낸다.
+        단 `/api/users/login`(비밀번호 오류)과 `/api/users/me`(로그인 여부 확인)의 401은 제외.
+      → `ProfilePage`는 `ProfilePage`(null 걸러냄) + `ProfileForm`(확정된 user를 props로)로 나눴다.
+        TypeScript는 `function` 선언 안에서는 바깥 변수의 좁혀진 타입을 믿지 않아 `user!`가 필요해지는데,
+        컴포넌트를 나누면 단언 없이 해결된다.
+      → 회원가입 성공 후 이어서 로그인까지 호출한다(가입 API는 세션을 만들지 않음).
+
 - [x] Phase 2 — 프론트엔드 프로젝트 셋업 (`frontend/`)
       → Node 26을 Homebrew로 설치(미설치 상태였음). `npm create vite@latest frontend -- --template react-ts`.
       → Tailwind v4는 `@tailwindcss/vite` 플러그인 + `src/index.css`의 `@import "tailwindcss";` 한 줄.
@@ -429,9 +459,9 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
   프론트가 호출할 API 표면 완성. 단건 조회, 날짜 기준 다음 정비, 페이지네이션, CORS, API 문서화.
 - **Phase 2 — 프론트엔드 프로젝트 셋업** (완료)
   `frontend/`에 Vite+React+TypeScript, Tailwind/shadcn, API 클라이언트, 세션 쿠키 연동 확인.
-- **Phase 3 — 인증 화면** (지금 여기)
+- **Phase 3 — 인증 화면** (완료)
   회원가입/로그인/로그아웃, 로그인 상태 전역 관리, 보호 라우트.
-- **Phase 4 — 차량 관리 화면**
+- **Phase 4 — 차량 관리 화면** (지금 여기)
   차량 목록/등록/상세/주행거리 갱신/삭제.
 - **Phase 5 — 정비 이력 관리 화면**
   이력 목록/등록/수정/삭제, 다음 정비 시점(주행거리+날짜) 표시.
@@ -468,41 +498,10 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ---
 
-## Phase 3 — 인증 화면
+## Phase 3 — 인증 화면 (완료)
 
-### 3-A. 라우팅
-
-- [ ] `react-router` 설치 및 라우트 정의
-      → `/login`, `/signup`, `/vehicles`, `/vehicles/:vehicleId`, `/me`
-      → 패키지 이름이 버전에 따라 `react-router-dom` / `react-router`로 갈린다. 설치 시점 문서 확인.
-- [ ] `<ProtectedRoute>` — 로그인 안 했으면 `/login`으로 `<Navigate replace>`
-      → `replace`를 쓰는 이유: 뒤로가기 눌렀을 때 보호 페이지로 되돌아가 무한 반복되는 걸 막는다.
-
-### 3-B. 로그인 상태 전역 관리
-
-- [ ] `AuthContext` — `{ user, loading, login(), logout(), refresh() }`
-      → 세션 방식이라 **토큰을 프론트에 저장할 게 없다.** localStorage에 사용자 정보를 넣고 싶어지지만
-        넣지 않는다. 서버 세션이 만료돼도 프론트만 로그인 상태로 남는 불일치가 생기기 때문.
-- [ ] 앱 최초 마운트 시 `GET /api/users/me` 1회 호출로 세션 복구
-      → 새로고침하면 React 상태는 날아가지만 쿠키는 남아 있다. 이 호출이 "로그인 유지"의 정체다.
-      → 이 요청이 끝나기 전에는 `loading` 상태여야 한다. 안 그러면 로그인돼 있는데도
-        로그인 페이지가 한 번 깜빡이고 지나간다.
-- [ ] 401 전역 처리 — `api.ts`에서 401을 만나면 컨텍스트를 로그아웃 상태로 만들고 `/login`으로
-      → 단, 로그인 요청 자체의 401(비밀번호 틀림)은 폼 에러로 보여야 하므로 예외 처리.
-
-### 3-C. 화면
-
-- [ ] 회원가입 페이지 — email/password/nickname/phone
-      → 백엔드 검증 규칙(`@Email`, `@Size`)과 프론트 검증을 **맞춰 둔다.** 프론트 검증은 사용자 편의고,
-        진짜 방어는 백엔드다. 프론트만 고쳐서 우회할 수 있다는 걸 이해할 것.
-      → 409(이메일 중복) 응답을 email 필드 아래 에러 메시지로 연결.
-- [ ] 로그인 페이지 — 401이면 "이메일 또는 비밀번호가 올바르지 않습니다" (백엔드가 이미
-      사유를 통일해서 내려주므로 그 메시지를 그대로 표시)
-- [ ] 로그아웃 버튼 — `POST /api/users/logout` 후 컨텍스트 초기화 + `/login`으로 이동
-- [ ] 헤더/네비게이션 — 로그인 상태면 닉네임과 로그아웃, 아니면 로그인/회원가입
-- [ ] 프로필 페이지 `/me` — `PATCH /api/users/me`로 닉네임/전화번호 부분 수정
-      → 백엔드가 "보낸 필드만 변경"이므로, **바뀐 필드만 골라서** 보내는 게 맞다.
-        전부 보내면 의도치 않은 덮어쓰기가 생길 수 있다.
+- [ ] 브라우저에서 확인: 회원가입 → 자동 로그인 → 새로고침해도 유지 → 로그아웃 →
+      `/vehicles` 직접 접근 시 `/login`으로 튕기는지
 
 ---
 

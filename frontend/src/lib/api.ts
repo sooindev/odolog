@@ -15,6 +15,21 @@ export class ApiError extends Error {
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
+/**
+ * 세션이 끊겨 401이 돌아왔을 때 호출할 함수. AuthProvider가 등록한다.
+ * api.ts는 React 밖의 평범한 모듈이라 컨텍스트를 직접 읽을 수 없어서, 이렇게 함수를 건네받는다.
+ */
+let onUnauthorized: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler
+}
+
+// 이 두 경로의 401은 "세션 만료"가 아니다.
+// - 로그인: 비밀번호가 틀린 것 → 폼 에러로 보여줘야 한다
+// - /me: 앱 시작 시 "로그인했나?"를 물어보는 요청 → 401이 정상적인 답이다
+const SKIP_UNAUTHORIZED_HANDLER = ['/api/users/login', '/api/users/me']
+
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const hasBody = body !== undefined
 
@@ -27,6 +42,9 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
   })
 
   if (!response.ok) {
+    if (response.status === 401 && !SKIP_UNAUTHORIZED_HANDLER.includes(path)) {
+      onUnauthorized?.()
+    }
     throw new ApiError(response.status, await readErrorMessage(response))
   }
 
