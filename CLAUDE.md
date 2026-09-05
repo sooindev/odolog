@@ -12,10 +12,28 @@
 1. 코드는 최소 단위로만 (파일 1~2개)
 2. 새로 등장한 어노테이션·문법을 초보자 관점에서 한 줄씩 설명
 3. 왜 그렇게 썼는지를 **대안과 비교해서** 설명 (예: EAGER 대신 LAZY를 쓰는 이유)
+4. 작업이 하나 끝날 때마다 **커밋 메시지를 한 줄로 알려준다**
 
 이해 확인 질문은 던지지 않는다. 설명 후 바로 다음 단계로 진행한다.
 
 설명은 한국어로 한다.
+
+**커밋과 푸시는 사용자가 직접 한다.** `git commit` / `git push` 를 대신 실행하지 않고,
+쓸 커밋 메시지만 알려준다. "커밋할까요?" 라고 묻지도 않는다.
+
+## 문서 작성 규칙
+
+`README.md`의 **트러블슈팅** 섹션에는 **사용자가 실제로 겪은 문제만** 적는다.
+
+- 사실 그대로 쓴다. 꾸미거나 과장하지 않고, 극적으로 만들지 않는다.
+- 형식: **증상 → 원인 → 해결**. 재현할 수 있는 명령어나 에러 메시지를 그대로 남긴다.
+- 겪지 않은 문제, 겪을 법한 문제, 일반적인 팁은 적지 않는다. 실제로 막혔던 것만 남긴다.
+- 문제를 겪은 시점에 바로 후보로 올리고, 무엇을 적을지는 사용자와 함께 정한다.
+
+문서 역할 구분:
+
+- `README.md` — 남이 이 저장소를 봤을 때 필요한 것. 기술 스택, 실행 방법, 구조, API 개요, 트러블슈팅.
+- `CLAUDE.md` — 작업용 기록. 설계 결정과 그 이유, 대안 비교, 진행 상황, 체크리스트.
 
 ## 기술 스택
 
@@ -25,12 +43,12 @@
 - **MariaDB 12.3.2** (MySQL 아님 — 아래 주의사항 참고)
 - 패키지 루트: `com.odolog.app`
 
-### 프론트엔드 (예정, 아직 착수 전)
-- React + Vite + TypeScript
-- Tailwind CSS + shadcn/ui
-- 저장소 루트에 `frontend/` 디렉토리를 새로 만들어 백엔드(Gradle 프로젝트)와 분리해서 관리
-- 세션 쿠키 기반 인증이라 CORS에 `allowCredentials(true)`가 필수 — 상세는 아래 로드맵 Phase 1 참고
-- TypeScript는 실무 표준이라 골랐지만, 막상 시작할 때 부담이 크면 순수 JS로 시작하는 것도 그때 재논의 가능
+### 프론트엔드 (`frontend/`)
+- Node 26 (Homebrew) / React 19 / Vite 8 / TypeScript 6
+- Tailwind CSS v4 (`@tailwindcss/vite` 플러그인) + shadcn/ui
+- 린터는 ESLint가 아니라 **oxlint** (Vite 템플릿 기본값, Rust 기반)
+- 개발 서버 `http://localhost:5173` — 백엔드 `WebConfig`의 CORS `allowedOrigins`와 짝이다
+- 저장소 루트의 `frontend/`. 백엔드(Gradle)와 완전히 분리되어 있고 서로 빌드에 관여하지 않는다
 
 ## 개발 환경
 
@@ -198,6 +216,22 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
             └── PageResponse.java               (record<T>, items/page/size/totalElements/
                                                  totalPages/hasNext, Page<T>.from() 팩토리)
 
+    frontend/
+    ├── index.html
+    ├── vite.config.ts                  (react + tailwindcss 플러그인, '@' → ./src 별칭)
+    ├── tsconfig.json                   (references + paths — shadcn CLI가 이 파일을 읽는다)
+    ├── tsconfig.app.json               (src/ 코드용. paths 여기에도 필요)
+    ├── components.json                 (shadcn 설정. style=base-nova, 별칭 매핑)
+    ├── .env.development                (VITE_API_BASE_URL=http://localhost:8080)
+    └── src/
+        ├── main.tsx
+        ├── App.tsx                     (Phase 2 연동 확인용 임시 화면 — Phase 3에서 교체 예정)
+        ├── index.css                   (@import "tailwindcss" + shadcn 테마 변수)
+        ├── env.d.ts                    (import.meta.env 타입)
+        ├── types/api.ts                (백엔드 DTO 대응 타입 + ServiceType 한글 라벨)
+        ├── lib/api.ts                  (fetch 래퍼 — credentials:'include', ApiError, 204 처리)
+        └── components/ui/              (shadcn이 복사해 넣은 컴포넌트: button/input/label/card)
+
     src/test/java/com/odolog/app/
     ├── user/
     │   ├── repository/UserRepositoryTest.java (@DataJpaTest — save, findByEmail, existsByEmail)
@@ -328,6 +362,25 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         같은 설정을 반복하지 않기 위해. `LoginUserArgumentResolver` 등록과 같은 자리.
       → 프론트 착수 시 `fetch(url, { credentials: 'include' })`가 짝으로 필요함. 실제 Vite 포트가
         5173이 아니면 `allowedOrigins`를 그때 갱신.
+- [x] Phase 2 — 프론트엔드 프로젝트 셋업 (`frontend/`)
+      → Node 26을 Homebrew로 설치(미설치 상태였음). `npm create vite@latest frontend -- --template react-ts`.
+      → Tailwind v4는 `@tailwindcss/vite` 플러그인 + `src/index.css`의 `@import "tailwindcss";` 한 줄.
+        v3의 `tailwind.config.js`/PostCSS 방식과 섞으면 스타일이 아예 안 먹으니 주의.
+      → **함정 1**: 경로 별칭 `@/*`를 `tsconfig.app.json`에만 넣으면 shadcn CLI가 별칭을 못 풀고
+        프로젝트 루트에 `@/` 라는 **디렉토리를 실제로 만들어 버린다**. shadcn은 루트 `tsconfig.json`을
+        읽으므로 거기에도 `paths`를 넣어야 한다.
+      → **함정 2**: TypeScript 6부터 `baseUrl`이 폐기 경고(TS5101)를 낸다. `paths`만 두면 tsconfig
+        위치 기준으로 해석되므로 `baseUrl` 없이 쓴다.
+      → shadcn v4는 예전과 달리 Radix가 아니라 `@base-ui/react`를 쓰고, `cn` 유틸도
+        `@/lib/utils`가 아니라 `cn` npm 패키지에서 가져온다. 구버전 예제와 다르니 주의.
+      → `src/lib/api.ts` — 모든 요청에 `credentials: 'include'`(세션 쿠키), 실패 시 백엔드
+        `ErrorResponse.message`를 꺼내 `ApiError(status, message)`로 던짐, 204는 본문 없이 반환.
+      → `src/types/api.ts` — `/v3/api-docs` 스펙을 보고 백엔드 DTO 13개를 수기로 옮김.
+        `ServiceType`은 문자열 리터럴 유니온 + 한글 라벨 맵(`SERVICE_TYPE_LABELS`)을 같이 둠.
+      → **연동 검증 완료**: Origin 헤더를 붙인 요청으로 CORS preflight(`Access-Control-Allow-Credentials: true`),
+        로그인 시 `Set-Cookie: JSESSIONID`, 그 쿠키로 `GET /api/users/me` 200까지 확인.
+        Vite dev proxy는 필요 없었다.
+
 - [x] API 문서화 — `springdoc-openapi` 도입 (`/swagger-ui.html`, `/v3/api-docs`)
       → `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6`. 서드파티라 스프링 부트가
         버전을 관리해 주지 않으므로 버전을 직접 명시해야 함. `springfox`는 Jakarta 미지원이라 제외.
@@ -374,9 +427,9 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 
 - **Phase 1 — 백엔드 마무리** (완료)
   프론트가 호출할 API 표면 완성. 단건 조회, 날짜 기준 다음 정비, 페이지네이션, CORS, API 문서화.
-- **Phase 2 — 프론트엔드 프로젝트 셋업** (지금 여기)
+- **Phase 2 — 프론트엔드 프로젝트 셋업** (완료)
   `frontend/`에 Vite+React+TypeScript, Tailwind/shadcn, API 클라이언트, 세션 쿠키 연동 확인.
-- **Phase 3 — 인증 화면**
+- **Phase 3 — 인증 화면** (지금 여기)
   회원가입/로그인/로그아웃, 로그인 상태 전역 관리, 보호 라우트.
 - **Phase 4 — 차량 관리 화면**
   차량 목록/등록/상세/주행거리 갱신/삭제.
@@ -405,69 +458,13 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ---
 
-## Phase 2 — 프론트엔드 프로젝트 셋업
+## Phase 2 — 프론트엔드 프로젝트 셋업 (완료)
 
-**이 Phase의 성공 기준**: 브라우저에서 로그인 버튼을 눌렀을 때 백엔드 세션이 실제로 만들어지고,
-새로고침해도 로그인 상태가 유지되는 것. 화면 디자인은 아직 신경 쓰지 않는다.
+셋업 자체는 끝났고 CORS·세션 쿠키도 커맨드라인으로 검증했다. 남은 것은 사용자의 눈 확인 하나뿐:
 
-### 2-A. 프로젝트 생성
-
-- [ ] `npm create vite@latest frontend -- --template react-ts` 로 저장소 루트에 `frontend/` 생성
-      → 백엔드(Gradle)와 완전히 분리. Gradle이 `frontend/`를 빌드에 끌어들이지 않는지 확인만 한다
-        (`settings.gradle`에 등록 안 했으므로 기본적으로 무관).
-- [ ] `frontend/.gitignore` 확인 — `node_modules/`, `dist/`가 들어 있는지. 루트 `.gitignore`는
-      Gradle용이라 별개다.
-- [ ] `npm run dev` 로 뜨는 **실제 포트 확인** — 5173이 아니면 백엔드 `WebConfig`의
-      `allowedOrigins`를 그 포트로 갱신해야 한다.
-- [ ] Node 버전 확인 (Vite 최신은 Node 20+ 요구). `frontend/.nvmrc`에 버전 고정 고려.
-
-### 2-B. 스타일 도구
-
-- [ ] Tailwind CSS 설치
-      → **설치 시점의 공식 문서를 따를 것.** v4는 `@tailwindcss/vite` 플러그인 + CSS에
-        `@import "tailwindcss";` 한 줄이고 `tailwind.config.js`가 없다. v3는 PostCSS +
-        `tailwind.config.js`의 `content` 경로 설정이 필요하다. 두 방식이 섞이면 스타일이 아예 안 먹는다.
-- [ ] 경로 별칭 `@/*` 설정 — `tsconfig.json`의 `paths` **와** `vite.config.ts`의 `resolve.alias`
-      **양쪽 모두**. 하나만 하면 타입은 통과하는데 런타임에 모듈을 못 찾거나 그 반대가 된다.
-- [ ] shadcn/ui 초기화 (`npx shadcn@latest init`) — `components.json` 생성 확인
-      → shadcn은 라이브러리가 아니라 **코드를 내 프로젝트로 복사해 넣는 방식**이다.
-        `npx shadcn@latest add button` 하면 `src/components/ui/button.tsx` 파일이 생긴다.
-        그래서 마음대로 고쳐도 되고, 업데이트는 자동으로 안 온다.
-- [ ] 최소 컴포넌트만 먼저 추가: `button`, `input`, `label`, `card`. 나머지는 필요할 때.
-
-### 2-C. API 통신 기반
-
-- [ ] `src/lib/api.ts` — `fetch` 얇은 래퍼 하나
-      → **모든 요청에 `credentials: 'include'`가 반드시 들어가야 한다.** 이게 빠지면 브라우저가
-        세션 쿠키를 안 보내서 전부 401이 난다. 래퍼로 감싸는 첫 번째 이유가 이것 —
-        호출부마다 손으로 적으면 언젠가 하나를 빠뜨린다.
-      → 응답이 실패면 백엔드 `ErrorResponse`의 `message`를 꺼내 `Error`로 던진다.
-        화면에서는 `try/catch`의 `err.message`를 그대로 보여주면 되도록.
-      → 204 No Content(로그아웃/삭제)는 body가 없으므로 `res.json()`을 호출하면 터진다.
-        상태 코드로 분기해서 `undefined`를 반환.
-- [ ] `VITE_API_BASE_URL` 환경변수 (`frontend/.env.development` = `http://localhost:8080`)
-      → Vite는 `VITE_` 접두사가 붙은 것만 클라이언트로 노출한다. `import.meta.env`로 읽는다.
-      → **비밀값을 넣지 말 것.** 프론트 환경변수는 빌드 결과물에 그대로 박혀 누구나 볼 수 있다.
-- [ ] `src/types/api.ts` — 백엔드 DTO에 대응하는 TypeScript 타입 수기 작성
-      → `UserResponse`, `VehicleResponse`, `MaintenanceRecordResponse`, `NextServiceResponse`,
-        `PageResponse<T>`, `ErrorResponse`.
-      → `ServiceType`은 `'ENGINE_OIL' | 'TIRE' | 'BRAKE_PAD' | 'BATTERY' | 'OTHER'` 유니온 타입으로.
-        문자열 리터럴 유니온을 쓰면 오타를 컴파일 타임에 잡는다.
-      → 백엔드에서 `null`이 올 수 있는 필드(`nextServiceOdometer`, `nextServiceDate`, `phone`,
-        `cost`)는 반드시 `| null`을 붙인다. 안 붙이면 TypeScript가 거짓 안심을 준다.
-
-### 2-D. 연동 첫 관문 (여기가 Phase 2의 핵심)
-
-- [ ] 로그인 API를 프론트에서 호출 → DevTools > Application > Cookies에 `JSESSIONID` 확인
-- [ ] 이어서 `GET /api/users/me` 호출 → 200이 오면 쿠키가 실제로 재전송된 것
-      → 여기서 401이 나면 십중팔구 `credentials: 'include'` 누락이거나 백엔드
-        `allowCredentials(true)`/`allowedOrigins` 불일치다.
-      → 참고: `localhost:5173`과 `localhost:8080`은 **origin은 다르지만 site는 같다**(포트는
-        site 구분에 안 들어감). 그래서 쿠키의 기본값 `SameSite=Lax`로도 전송된다.
-        나중에 실제 도메인이 갈리면 그때는 `SameSite=None; Secure`(=HTTPS)가 필요해진다.
-- [ ] 대안 검토: Vite dev 서버의 `server.proxy`로 `/api`를 백엔드에 넘기면 브라우저 입장에선
-      동일 출처가 되어 CORS 자체가 사라진다. 지금은 CORS 설정이 이미 있으니 그대로 가되,
-      쿠키 문제가 계속 꼬이면 프록시로 전환한다.
+- [ ] 브라우저에서 `http://localhost:5173` 을 열고 회원가입 → 로그인 → "내 정보" 순서로 눌러
+      200 응답과 DevTools > Application > Cookies의 `JSESSIONID`를 직접 확인
+      → 백엔드를 IntelliJ에서 띄우면 스키마가 `odolog`라 사용자가 없다. "회원가입"부터 누를 것.
 
 ---
 
