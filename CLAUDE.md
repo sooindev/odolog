@@ -1,4 +1,4 @@
-# Cartree (차트리)
+# 오도로그 (OdoLog)
 
 차량 관리 앱. 사용자가 자기 차량을 등록하고 정비 이력을 관리한다.
 
@@ -19,18 +19,26 @@
 
 ## 기술 스택
 
+### 백엔드
 - Spring Boot 3.5.6 / Java 17 / Gradle
 - Spring Data JPA (Hibernate 6.6.x)
 - **MariaDB 12.3.2** (MySQL 아님 — 아래 주의사항 참고)
-- 패키지 루트: `com.cartree.app`
+- 패키지 루트: `com.odolog.app`
+
+### 프론트엔드 (예정, 아직 착수 전)
+- React + Vite + TypeScript
+- Tailwind CSS + shadcn/ui
+- 저장소 루트에 `frontend/` 디렉토리를 새로 만들어 백엔드(Gradle 프로젝트)와 분리해서 관리
+- 세션 쿠키 기반 인증이라 CORS에 `allowCredentials(true)`가 필수 — 상세는 아래 로드맵 Phase 1 참고
+- TypeScript는 실무 표준이라 골랐지만, 막상 시작할 때 부담이 크면 순수 JS로 시작하는 것도 그때 재논의 가능
 
 ## 개발 환경
 
 세팅은 이미 끝났다. 매번 재확인하지 말 것.
 
-- DB: MariaDB, `localhost:3306`, 스키마 `cartree` (utf8mb4 / utf8mb4_unicode_ci)
+- DB: MariaDB, `localhost:3306`, 스키마 `odolog` (utf8mb4 / utf8mb4_unicode_ci)
 - 드라이버: `org.mariadb.jdbc:mariadb-java-client`, URL은 `jdbc:mariadb://`
-- 실행: **IntelliJ IDEA**에서 `CartreeApplication` 을 직접 실행한다.
+- 실행: **IntelliJ IDEA**에서 `OdoLogApplication` 을 직접 실행한다.
   Gradle 래퍼(`./gradlew`)는 프로젝트에 있으므로 빌드 확인은 터미널에서도 가능하다.
 - DB 자격증명은 IntelliJ 실행 구성의 **환경변수** `DB_USERNAME` / `DB_PASSWORD` 로 주입한다.
   `application.yml` 에는 `${DB_USERNAME:root}` / `${DB_PASSWORD:}` 형태로만 존재하며
@@ -41,7 +49,7 @@
 터미널의 `mysql` 명령어는 **MariaDB 클라이언트**이고, `~/.my.cnf` 에 오래된 비밀번호가
 남아 있어 자동으로 전송된다. 그래서 `--no-defaults` 없이 접속하면 `Access denied` 가 난다.
 
-    /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE cartree; SHOW TABLES;"
+    /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SHOW TABLES;"
 
 이 계정(`user@localhost`)은 `unix_socket` 인증이라 비밀번호 없이 붙는다. 진단용으로만 쓴다.
 
@@ -86,8 +94,8 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 경계를 넘는 import가 생긴다** (예: `vehicle.domain.Vehicle`이 `user.domain.User`를 import).
 이건 자연스러운 트레이드오프이고, 숨기려 하지 않는다.
 
-    src/main/java/com/cartree/app/
-    ├── CartreeApplication.java
+    src/main/java/com/odolog/app/
+    ├── OdoLogApplication.java
     │
     ├── user/                              — 회원가입·로그인·프로필
     │   ├── domain/
@@ -129,7 +137,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     │   │                                findOwnedVehicle() — 소유권 검증, maintenance 패키지도 재사용)
     │   └── controller/
     │       └── VehicleController.java  (POST /api/vehicles, GET /api/vehicles,
-    │                                    PATCH /api/vehicles/{vehicleId}/odometer,
+    │                                    GET/PATCH /api/vehicles/{vehicleId}(/odometer),
     │                                    DELETE /api/vehicles/{vehicleId} — @LoginUser로 소유자 식별)
     │
     ├── maintenance/                        — 정비 이력·다음 정비 시점 계산
@@ -178,7 +186,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         └── dto/
             └── ErrorResponse.java              (record, message)
 
-    src/test/java/com/cartree/app/
+    src/test/java/com/odolog/app/
     ├── user/
     │   ├── repository/UserRepositoryTest.java (@DataJpaTest — save, findByEmail, existsByEmail)
     │   ├── service/UserServiceTest.java       (Mockito — signUp 중복/암호화, login 성공·실패,
@@ -192,7 +200,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     │   │                                          404·403, updateOdometer 감소 방지,
     │   │                                          delete 순서(InOrder) 검증)
     │   └── controller/VehicleControllerTest.java (@WebMvcTest+MockMvc — 미인증 401, 검증 실패 400,
-    │                                              register 201, updateOdometer 403)
+    │                                              register 201, findOne 200/404, updateOdometer 403)
     └── maintenance/
         ├── service/MaintenanceRecordServiceTest.java (Mockito — register, calculateNextService
         │                                              3가지 케이스, update 부분 수정,
@@ -288,31 +296,82 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         "세션에 값이 저장됐는지, `changeSessionId()`가 동작하는지"라는 부수 효과를 검증.
       → 이전에 추가만 해두고 테스트가 없었던 `MethodArgumentTypeMismatchException`(400) 핸들러를
         `type=존재하지않는값` 요청으로 처음 실제 검증.
+- [x] 차량 단건 상세 조회 API — `GET /api/vehicles/{vehicleId}`
+      → `VehicleService.findOwnedVehicle()`을 그대로 재사용 (새 비즈니스 로직 없음).
+        `VehicleControllerTest`에 성공/404 테스트 2개 추가.
 
-## 다음 단계 (예정) — 상세 체크리스트
+## 완성까지의 로드맵
+
+**"완성"의 정의**: 회원/차량/정비 이력을 관리하는 백엔드 API + 그걸 실제로 쓸 수 있는
+프론트엔드 웹앱까지. 배포(서버 인프라, 도메인, CI/CD)는 범위 밖 — **로컬에서 완전히 동작하는 것**까지가 목표다.
+
+아래 Phase 순서로 진행한다. 각 Phase의 세부 단계는 지금 전부 확정하지 않고, 착수 시점에
+다시 쪼갠다 — 특히 프론트엔드는 아직 한 줄도 안 짜본 영역이라, 막상 시작하면 순서나 범위가
+바뀔 가능성이 크다. 아래 "다음 단계 상세 체크리스트"는 **Phase 1(백엔드 마무리)**의 세부 항목이다.
+
+- **Phase 1 — 백엔드 마무리** (지금 여기)
+  차량/정비 이력 단건 조회, 날짜 기준 다음 정비 계산, 페이지네이션, CORS 설정.
+  프론트가 호출할 API 표면을 먼저 완성한다.
+- **Phase 2 — 프론트엔드 프로젝트 셋업**
+  `frontend/`에 Vite+React+TypeScript 생성, Tailwind/shadcn 설치, 백엔드 CORS 연동 확인
+  (로그인 API를 프론트에서 호출해 세션 쿠키가 실제로 오가는지가 첫 번째 관문).
+- **Phase 3 — 인증 화면**
+  회원가입/로그인 페이지, 로그인 상태 전역 관리(React Context), 로그아웃.
+- **Phase 4 — 차량 관리 화면**
+  차량 목록, 등록 폼, 상세 페이지(주행거리 갱신·삭제).
+- **Phase 5 — 정비 이력 관리 화면**
+  차량 상세 페이지 안에 이력 목록/등록·수정 폼, 다음 정비 시점(주행거리+날짜) 표시.
+- **Phase 6 — 다듬기**
+  로딩/에러 상태 UI, 백엔드 에러 메시지와 폼 검증 연결, 반응형 레이아웃.
+
+## 다음 단계 (예정) — 상세 체크리스트 (Phase 1: 백엔드 마무리)
 
 우선순위 순서를 뜻하지 않는다. 착수하는 시점에 사용자와 다시 상의해서 순서/범위를 정한다.
 
-### 1. 정비 이력 기능 보강
+### 1. API 완성도 (프론트 연동 전에 먼저 갖춰야 함)
+
+- [ ] 정비 이력 단건 상세 조회 API — `GET /api/vehicles/{vehicleId}/maintenance-records/{recordId}`
+      → 수정 폼에 기존 값을 미리 채우려면(수정 화면 진입 시) 단건 조회가 필요함.
+        `MaintenanceRecordRepository.findByIdAndVehicleId()`가 이미 있으니 그대로 재사용 가능.
+- [ ] CORS 설정 추가
+      → 프론트(`http://localhost:5173` 등)와 백엔드(`http://localhost:8080`)는 포트가 달라
+        브라우저가 기본적으로 요청을 막음(same-origin policy). `WebMvcConfigurer.addCorsMappings()`로
+        프론트 origin을 명시적으로 허용해야 함.
+      → 세션 쿠키 기반 인증이라 `allowCredentials(true)`가 필수인데, 이 옵션을 켜면 브라우저 스펙상
+        `allowedOrigins("*")`(와일드카드)를 못 쓰고 구체적인 origin을 하나하나 적어야 함.
+      → 프론트에서도 `fetch(url, { credentials: 'include' })`를 안 쓰면 세션 쿠키가 안 실려서
+        로그인이 유지 안 됨 — 백엔드/프론트 양쪽 다 설정이 필요한 부분.
+
+### 2. 정비 이력 기능 보강
 
 - [ ] 다음 정비 시점 계산에 "날짜 기준" 추가
       → 지금은 주행거리 기준(`recommendedIntervalKm`)만 있음. "마지막 정비 후 6개월"처럼
         기간 기준으로도 계산하려면 `ServiceType`에 권장 주기(개월 수)를 추가하고,
-        `NextServiceResponse`에 날짜 필드를 더해야 함.
+        `NextServiceResponse`에 날짜 필드(`nextServiceDate`)를 더해야 함.
+      → 프론트 화면에는 "주행거리 기준 다음 정비: 45,000km / 날짜 기준: 2026-07-01" 처럼
+        두 기준을 같이 보여줄 예정.
 
-### 2. 목록 조회 확장성
+### 3. 목록 조회 확장성
 
-- [ ] 차량 목록 / 정비 이력 목록에 페이지네이션 도입 검토 (`Pageable`, `Page<T>`)
+- [ ] 차량 목록 / 정비 이력 목록에 페이지네이션 도입 (`Pageable`, `Page<T>`)
       → 지금은 차량이나 정비 이력이 몇 개 안 될 걸 가정하고 전체를 다 반환함.
-        데이터가 쌓이기 시작하면 필요해짐 — 당장 급하지 않음.
+      → `JpaRepository`는 이미 `findAll(Pageable)`을 기본 제공하지만, 우리가 쓰는 커스텀 조회
+        메서드(`findByOwnerIdOrderByCreatedAtDesc` 등)에 `Pageable` 파라미터를 추가하고
+        반환 타입을 `Page<Vehicle>`로 바꿔야 함.
+      → 컨트롤러에서 `@PageableDefault(size = 20)`로 기본값을 정하고, 응답을 그대로 `Page<T>`로
+        내려줄지 커스텀 DTO로 감쌀지는 그때 정함 (프론트에서 무한 스크롤 vs 페이지 번호 중
+        뭘 쓸지에 따라 응답 형태가 달라질 수 있음).
 
-### 3. 인프라/운영 (당장 급하지 않음)
+### 4. 인프라/운영 (당장 급하지 않음)
 
 - [ ] API 문서화 검토 (springdoc-openapi 등)
+      → 프론트를 만들 때 매번 컨트롤러 코드를 열어보지 않고 Swagger UI에서 API 스펙을
+        확인할 수 있으면 편함. 프론트 착수 직전에 붙이는 게 가장 효율적일 수 있음.
 - [ ] `@EnableJpaAuditing` 도입 검토
       → 엔티티가 늘어날수록 `@PrePersist`/`@PreUpdate` 반복 코드가 계속 늘어남. 이 부담이
         커지면 규칙 7을 재검토하고 auditing 도입을 제안할 것.
 
 ---
 
-단계를 완료할 때마다 "진행 상황 (완료)" 섹션을 갱신하고, 해당 항목을 위 "다음 단계"에서 제거한다.
+단계를 완료할 때마다 "진행 상황 (완료)" 섹션을 갱신하고, 해당 항목을 위 체크리스트에서 제거한다.
+Phase 1이 끝나면 이 문서에 "Phase 2 상세 체크리스트"를 새로 추가해서 같은 방식으로 진행한다.

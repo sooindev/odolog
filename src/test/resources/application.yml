@@ -1,11 +1,11 @@
 spring:
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/cartree_test
-    # 로컬 전용 테스트 계정. cartree_test 스키마에만 권한이 있고
+    url: jdbc:mariadb://localhost:3306/odolog_test
+    # 로컬 전용 테스트 계정. odolog_test 스키마에만 권한이 있고
     # 매 실행마다 비워지므로 실제 자격증명이 아니다.
-    username: cartree_test
-    password: cartree_test
+    username: odolog_test
+    password: odolog_test
 
   jpa:
     hibernate:
