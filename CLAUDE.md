@@ -235,11 +235,15 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         │   ├── AuthContext.ts          (Context + useAuth 훅 — 컴포넌트 아닌 것만)
         │   ├── AuthProvider.tsx        (세션 복구/login/logout 상태 관리)
         │   └── ProtectedRoute.tsx      (로그인 안 했으면 /login으로)
+        ├── lib/format.ts               (formatKm / formatWon)
+        ├── lib/vehicles.ts             (차량 엔드포인트 모음)
         ├── pages/
         │   ├── LoginPage.tsx
         │   ├── SignUpPage.tsx          (가입 성공 시 바로 로그인까지)
         │   ├── ProfilePage.tsx         (바뀐 필드만 PATCH)
-        │   └── VehicleListPage.tsx     (Phase 4에서 채울 자리)
+        │   ├── VehicleListPage.tsx     (목록 + 페이지네이션 + 빈 상태)
+        │   ├── VehicleNewPage.tsx      (등록 폼, 409 → 폼 에러)
+        │   └── VehicleDetailPage.tsx   (상세 + 주행거리 갱신 + 삭제)
         ├── components/
         │   ├── Header.tsx
         │   └── ui/                     (shadcn: button/input/label/card)
@@ -375,6 +379,24 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         같은 설정을 반복하지 않기 위해. `LoginUserArgumentResolver` 등록과 같은 자리.
       → 프론트 착수 시 `fetch(url, { credentials: 'include' })`가 짝으로 필요함. 실제 Vite 포트가
         5173이 아니면 `allowedOrigins`를 그때 갱신.
+- [x] Phase 4 — 차량 관리 화면 (목록/등록/상세/주행거리/삭제)
+      → `lib/vehicles.ts`에 엔드포인트를 모았다. 화면이 URL 문자열을 직접 들고 있으면 경로가 바뀔 때
+        여러 파일을 뒤져야 한다.
+      → **shadcn v4 버튼에는 `asChild`가 없다.** Radix의 Slot 대신 Base UI의 `render` prop을 쓴다:
+        `<Button render={<Link to="..." />}>텍스트</Button>`. 인터넷 예제 대부분이 `asChild`라 주의.
+      → 숫자 입력(`연식`, `주행거리`)의 상태는 **문자열로 둔다**. 입력 도중의 빈 문자열을 숫자로
+        표현할 방법이 없기 때문. 전송 직전에 `Number()`로 변환한다.
+      → effect 안에서 `setLoading(true)`를 **동기적으로** 호출하면 렌더가 한 번 더 돈다
+        (oxlint `react(set-state-in-effect)`). `await` 뒤에서만 setState 하도록 바꿨다.
+        덤으로 페이지 이동 시 이전 목록이 유지돼 화면이 깜빡이지 않는다.
+      → `cancelled` 플래그 + 정리 함수: 응답이 늦게 도착했을 때 이미 사라진 컴포넌트에
+        setState 하는 것을 막는다. StrictMode의 effect 두 번 실행 때문에 반드시 필요.
+      → 차량 상세는 404(없음)와 403(남의 차)을 **구분해서 보여주지 않는다.** 남의 차량이
+        존재한다는 사실 자체를 알리지 않기 위해.
+      → 주행거리 감소는 백엔드가 409 + "주행거리는 줄어들 수 없습니다."를 준다.
+        화면에서는 현재 값을 덧붙여 "(현재 50,000km)"까지 보여준다.
+      → 삭제는 `window.confirm`으로 "정비 이력도 함께 삭제됨"을 명시. Phase 6에서 다이얼로그로 교체 검토.
+
 - [x] Phase 3 — 인증 화면 (라우팅 + 로그인 상태 전역 관리)
       → `react-router` 8. v7부터 패키지 이름이 `react-router-dom`이 아니라 `react-router`다.
       → `AuthContext.ts`(Context + `useAuth`)와 `AuthProvider.tsx`(컴포넌트)를 **파일로 분리**.
@@ -461,7 +483,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
   `frontend/`에 Vite+React+TypeScript, Tailwind/shadcn, API 클라이언트, 세션 쿠키 연동 확인.
 - **Phase 3 — 인증 화면** (완료)
   회원가입/로그인/로그아웃, 로그인 상태 전역 관리, 보호 라우트.
-- **Phase 4 — 차량 관리 화면** (지금 여기)
+- **Phase 4 — 차량 관리 화면** (완료)
   차량 목록/등록/상세/주행거리 갱신/삭제.
 - **Phase 5 — 정비 이력 관리 화면**
   이력 목록/등록/수정/삭제, 다음 정비 시점(주행거리+날짜) 표시.
@@ -505,25 +527,9 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ---
 
-## Phase 4 — 차량 관리 화면
+## Phase 4 — 차량 관리 화면 (완료)
 
-- [ ] 차량 목록 페이지 (`GET /api/vehicles`)
-      → 응답이 배열이 아니라 `{ items, page, size, totalElements, totalPages, hasNext }`인 것에 주의.
-      → 페이지 이동 UI는 `totalPages`가 1이면 아예 렌더링하지 않는다.
-- [ ] 빈 상태(empty state) — 차량이 0대일 때 "첫 차량을 등록해 보세요" + 등록 버튼
-      → 신규 가입자가 처음 보는 화면이라 실제로 가장 중요한 화면 중 하나.
-- [ ] 차량 등록 폼 (`POST /api/vehicles`)
-      → 409(번호판 중복)를 번호판 필드 에러로 연결.
-      → `modelYear`는 숫자 입력. `<input type="number">`의 값은 문자열이므로 전송 전에 변환 필요.
-- [ ] 차량 상세 페이지 (`GET /api/vehicles/{id}`)
-      → 404(없음)와 403(남의 차)을 구분해서 다른 메시지를 보여줄지, 둘 다 "찾을 수 없음"으로
-        묶을지 결정. 보안상으로는 묶는 쪽이 낫다(남의 차가 존재한다는 사실 자체를 안 알림).
-- [ ] 주행거리 갱신 (`PATCH /api/vehicles/{id}/odometer`)
-      → 감소 시 백엔드가 409를 준다. "현재 주행거리(45,000km)보다 작은 값은 입력할 수 없습니다"처럼
-        현재 값을 같이 보여줘야 사용자가 뭘 잘못했는지 안다.
-- [ ] 차량 삭제 (`DELETE /api/vehicles/{id}`)
-      → 정비 이력이 함께 삭제된다는 걸 확인 다이얼로그에 명시. 되돌릴 수 없는 동작.
-      → 삭제 성공 후 목록으로 이동.
+- [ ] 브라우저에서 확인: 빈 목록 → 차량 등록 → 상세 진입 → 주행거리 갱신(감소 시 에러) → 삭제
 
 ---
 

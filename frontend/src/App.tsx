@@ -5,7 +5,9 @@ import { Header } from '@/components/Header'
 import { LoginPage } from '@/pages/LoginPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { SignUpPage } from '@/pages/SignUpPage'
+import { VehicleDetailPage } from '@/pages/VehicleDetailPage'
 import { VehicleListPage } from '@/pages/VehicleListPage'
+import { VehicleNewPage } from '@/pages/VehicleNewPage'
 
 function App() {
   return (
@@ -19,6 +21,9 @@ function App() {
           {/* element에 ProtectedRoute만 두고 path가 없는 라우트 = 자식들을 감싸는 울타리 */}
           <Route element={<ProtectedRoute />}>
             <Route path="/vehicles" element={<VehicleListPage />} />
+            {/* 'new'(리터럴)가 ':vehicleId'(변수)보다 먼저 매칭된다 — 라우터가 구체적인 경로를 우선한다 */}
+            <Route path="/vehicles/new" element={<VehicleNewPage />} />
+            <Route path="/vehicles/:vehicleId" element={<VehicleDetailPage />} />
             <Route path="/me" element={<ProfilePage />} />
           </Route>
 
