@@ -1,9 +1,12 @@
 package com.cartree.app.controller;
 
 import com.cartree.app.domain.User;
+import com.cartree.app.dto.LoginRequest;
 import com.cartree.app.dto.SignUpRequest;
 import com.cartree.app.dto.UserResponse;
 import com.cartree.app.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,5 +29,25 @@ public class UserController {
     public ResponseEntity<UserResponse> signUp(@Valid @RequestBody SignUpRequest request) {
         User user = userService.signUp(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(user));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        User user = userService.login(request);
+
+        HttpSession session = httpRequest.getSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, user.getId());
+
+        return ResponseEntity.ok(UserResponse.from(user));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest httpRequest) {
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+
+        return ResponseEntity.noContent().build();
     }
 }

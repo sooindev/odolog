@@ -84,12 +84,27 @@
     │   └── VehicleRepository.java  (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
     │                                findByPlateNumber, existsByPlateNumber)
     ├── dto/
-    │   ├── SignUpRequest.java   (record, @NotBlank/@Email/@Size 검증)
-    │   └── UserResponse.java    (record, User.from() 팩토리)
+    │   ├── SignUpRequest.java          (record, @NotBlank/@Email/@Size 검증)
+    │   ├── LoginRequest.java           (record, email/password)
+    │   ├── UserResponse.java           (record, User.from() 팩토리)
+    │   ├── VehicleRegisterRequest.java (record, owner 없음 — 세션에서 식별)
+    │   ├── VehicleResponse.java        (record, owner 없음 — LAZY 필드 미접근으로 N+1 방지)
+    │   └── ErrorResponse.java          (record, message)
+    ├── exception/
+    │   └── AuthenticationFailedException.java (RuntimeException — 로그인 실패/미인증 전용, 401)
     ├── service/
-    │   └── UserService.java     (signUp — 중복 이메일 체크, BCrypt 암호화, @Transactional)
+    │   ├── UserService.java     (signUp — 중복 이메일 체크·BCrypt 암호화·@Transactional,
+    │   │                          login — 이메일/비밀번호 검증, 실패 사유 통일 메시지)
+    │   └── VehicleService.java  (register — 번호판 중복 체크·@Transactional,
+    │                              findMyVehicles — 조회 전용, @Transactional 없음)
     └── controller/
-        └── UserController.java  (POST /api/users)
+        ├── UserController.java         (POST /api/users, POST /api/users/login — 세션에 loginUserId 저장,
+        │                                POST /api/users/logout — session.invalidate())
+        ├── VehicleController.java      (POST /api/vehicles, GET /api/vehicles —
+        │                                extractLoginUserId()로 세션에서 소유자 식별)
+        ├── SessionConst.java           (세션 키 상수 LOGIN_USER_ID)
+        └── GlobalExceptionHandler.java (@RestControllerAdvice — 중복 리소스 409, 인증 실패 401, 검증 실패 400.
+                                          IllegalStateException 등은 의도적으로 미처리 → 500)
 
     src/test/java/com/cartree/app/repository/
     ├── UserRepositoryTest.java     (save, findByEmail, existsByEmail)
@@ -106,8 +121,16 @@
 - [x] Repository 동작 확인 — `@DataJpaTest` 채택. 테스트 9개 통과
 - [x] 회원가입 API: `UserService` + `UserController` + 요청/응답 DTO
       → `POST /api/users`. BCrypt 암호화, 계층 분리, `@Transactional`, 엔티티 미노출 설명 완료.
-      → 미해결: 이메일 중복 시 `IllegalArgumentException`이 500으로 나감 (전역 예외 처리 미도입)
-- [ ] 차량 등록/조회 API: `VehicleService` + `VehicleController`
+- [x] 전역 예외 처리: `GlobalExceptionHandler` (`@RestControllerAdvice`)
+      → 이메일 중복 409, `@Valid` 검증 실패 400, `ErrorResponse`로 응답 형식 통일
+- [x] 로그인 API: `POST /api/users/login` — 세션 기반(HttpSession) 인증 채택
+      → 실패 사유(이메일 없음/비밀번호 틀림)를 401 + 동일 메시지로 통일 (user enumeration 방지)
+      → `SessionConst.LOGIN_USER_ID`로 세션에 저장. 차량 API는 이 세션값으로 소유자를 식별할 예정
+- [x] 로그아웃 API: `POST /api/users/logout` — `getSession(false)` + `invalidate()`, 204 응답
+- [x] 차량 등록/조회 API: `VehicleService` + `VehicleController`
+      → `POST /api/vehicles`, `GET /api/vehicles`. 소유자는 세션(`SessionConst.LOGIN_USER_ID`)에서 식별
+      → 번호판 중복은 기존 409 핸들러 재사용, 세션 없으면 기존 401(`AuthenticationFailedException`) 재사용
+      → 확장 지점: `extractLoginUserId()`가 컨트롤러 3개 이상에서 반복되면 `HandlerMethodArgumentResolver`로 추출 고려
 - [ ] `MaintenanceRecord`(정비 이력) 엔티티 — 이 앱의 핵심 기능
 - [ ] 정비 이력 API + 다음 정비 시점 계산 로직
 
