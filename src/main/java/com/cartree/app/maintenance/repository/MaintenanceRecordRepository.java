@@ -13,5 +13,7 @@ public interface MaintenanceRecordRepository extends JpaRepository<MaintenanceRe
 
     Optional<MaintenanceRecord> findTopByVehicleIdAndTypeOrderByServiceDateDesc(Long vehicleId, ServiceType type);
 
+    Optional<MaintenanceRecord> findByIdAndVehicleId(Long id, Long vehicleId);
+
     void deleteByVehicleId(Long vehicleId);
 }

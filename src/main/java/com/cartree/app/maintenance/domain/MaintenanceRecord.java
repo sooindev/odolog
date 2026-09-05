@@ -116,4 +116,24 @@ public class MaintenanceRecord {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
+
+    public void changeType(ServiceType type) {
+        this.type = type;
+    }
+
+    public void changeDescription(String description) {
+        this.description = description;
+    }
+
+    public void changeCost(int cost) {
+        this.cost = cost;
+    }
+
+    public void changeServiceOdometer(int serviceOdometer) {
+        this.serviceOdometer = serviceOdometer;
+    }
+
+    public void changeServiceDate(LocalDate serviceDate) {
+        this.serviceDate = serviceDate;
+    }
 }

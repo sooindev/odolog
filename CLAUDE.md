@@ -137,22 +137,27 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     │   │   ├── ServiceType.java        (enum: ENGINE_OIL/TIRE/BRAKE_PAD/BATTERY/OTHER,
     │   │   │                            recommendedIntervalKm — 다음 정비 시점 계산용, OTHER는 null)
     │   │   └── MaintenanceRecord.java  (id, vehicle→vehicle.domain.Vehicle, type, description, cost,
-    │   │                                serviceOdometer, serviceDate, createdAt, updatedAt)
+    │   │                                serviceOdometer, serviceDate, createdAt, updatedAt,
+    │   │                                changeType/changeDescription/changeCost/
+    │   │                                changeServiceOdometer/changeServiceDate)
     │   ├── repository/
     │   │   └── MaintenanceRecordRepository.java (findByVehicleIdOrderByServiceDateDesc,
     │   │                                         findTopByVehicleIdAndTypeOrderByServiceDateDesc,
+    │   │                                         findByIdAndVehicleId — 다른 차량 소속 id 접근 차단,
     │   │                                         deleteByVehicleId — 차량 삭제 시 이력 함께 삭제용)
     │   ├── dto/
     │   │   ├── MaintenanceRecordRegisterRequest.java (record, @NotNull/@PositiveOrZero/@Size 검증)
+    │   │   ├── MaintenanceRecordUpdateRequest.java   (record, 전부 nullable — cost/serviceOdometer는
+    │   │   │                                          Integer로 "안 보냄"과 "0" 구분)
     │   │   ├── MaintenanceRecordResponse.java        (record, MaintenanceRecord.from() 팩토리)
     │   │   └── NextServiceResponse.java              (record, type/lastServiceOdometer/
     │   │                                              nextServiceOdometer — 이력·주기 없으면 null)
     │   ├── service/
-    │   │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService,
+    │   │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService/update/delete,
     │   │                                      vehicle.service.VehicleService.findOwnedVehicle()을
-    │   │                                      주입받아 재사용)
+    │   │                                      주입받아 재사용, findRecordInVehicle()로 레코드 소속 검증)
     │   └── controller/
-    │       └── MaintenanceRecordController.java (POST/GET /api/vehicles/{vehicleId}/maintenance-records,
+    │       └── MaintenanceRecordController.java (POST/GET/PATCH/DELETE /api/vehicles/{vehicleId}/maintenance-records{/recordId},
     │                                             GET .../next-service?type=... — @LoginUser로 식별)
     │
     └── common/                             — 기능 어디에도 속하지 않는 공통 인프라
@@ -168,7 +173,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         │   ├── ForbiddenAccessException.java      (RuntimeException — 소유자 아님, 403)
         │   ├── ResourceNotFoundException.java     (RuntimeException — 리소스 없음, 404)
         │   └── GlobalExceptionHandler.java        (@RestControllerAdvice — 리소스 중복 409, 인증 실패 401,
-        │                                            권한 없음 403, 리소스 없음 404, 검증 실패 400.
+        │                                            권한 없음 403, 리소스 없음 404, 검증 실패/타입 변환 실패 400.
         │                                            IllegalStateException 등은 의도적으로 미처리 → 500)
         └── dto/
             └── ErrorResponse.java              (record, message)
@@ -239,33 +244,34 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
       → 파일 30여 개의 package 선언과 import 경로를 전부 이동. 기능 간 참조(예: `Vehicle`이
         `User`를 참조)는 이제 명시적인 cross-package import로 드러남.
       → 의존 방향을 `maintenance → vehicle → user`로 정리, 공용 인프라(인증/예외/설정)는 `common`으로.
+- [x] `@RequestParam` 타입 변환 실패 처리 — `MethodArgumentTypeMismatchException` → 400
+      → `ServiceType` 같은 enum뿐 아니라 타입 변환이 필요한 모든 파라미터에 공통 적용되는 범용 핸들러.
+- [x] 정비 이력 수정/삭제 API
+      → `PATCH`, `DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}`.
+      → `MaintenanceRecord`에 필드별 변경 메서드(`changeType`/`changeDescription`/`changeCost`/
+        `changeServiceOdometer`/`changeServiceDate`) 추가, `UpdateProfileRequest`와 같은 부분 수정 패턴.
+      → 요청 DTO의 `cost`/`serviceOdometer`는 엔티티와 달리 `Integer` — "안 보냄(null)"과
+        "0으로 변경"을 구분하기 위함(엔티티의 "없음" 상태와는 무관, DTO 자체의 필요).
+      → `findByIdAndVehicleId()`로 다른 차량 소속 레코드 id 접근을 404로 차단.
 
 ## 다음 단계 (예정) — 상세 체크리스트
 
 우선순위 순서를 뜻하지 않는다. 착수하는 시점에 사용자와 다시 상의해서 순서/범위를 정한다.
 
-### 1. 인증/보안 개선
+### 1. 정비 이력 기능 보강
 
-- [ ] `@RequestParam ServiceType type`에 존재하지 않는 값이 들어왔을 때 처리
-      → 현재는 `MethodArgumentTypeMismatchException`을 처리하는 핸들러가 없어서 스프링 기본
-        에러 포맷(400)이 그대로 나감. `GlobalExceptionHandler`에 핸들러 추가 검토.
-
-### 2. 정비 이력 기능 보강
-
-- [ ] `PATCH /api/vehicles/{vehicleId}/maintenance-records/{recordId}` — 정비 이력 수정
-- [ ] `DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` — 정비 이력 삭제
 - [ ] 다음 정비 시점 계산에 "날짜 기준" 추가
       → 지금은 주행거리 기준(`recommendedIntervalKm`)만 있음. "마지막 정비 후 6개월"처럼
         기간 기준으로도 계산하려면 `ServiceType`에 권장 주기(개월 수)를 추가하고,
         `NextServiceResponse`에 날짜 필드를 더해야 함.
 
-### 3. 목록 조회 확장성
+### 2. 목록 조회 확장성
 
 - [ ] 차량 목록 / 정비 이력 목록에 페이지네이션 도입 검토 (`Pageable`, `Page<T>`)
       → 지금은 차량이나 정비 이력이 몇 개 안 될 걸 가정하고 전체를 다 반환함.
         데이터가 쌓이기 시작하면 필요해짐 — 당장 급하지 않음.
 
-### 4. 테스트 보강
+### 3. 테스트 보강
 
 - [ ] Service 계층 단위 테스트 (Mockito로 Repository를 mock)
       → 지금 테스트는 `@DataJpaTest` 기반 Repository 테스트뿐이라, `UserService`/
@@ -274,7 +280,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 - [ ] Controller 계층 테스트 (`@WebMvcTest` + `MockMvc`, 또는 `@SpringBootTest` 통합 테스트)
       → 세션 인증이 걸린 API를 테스트할 때 `MockHttpSession`을 어떻게 다루는지도 같이 다룰 예정.
 
-### 5. 인프라/운영 (당장 급하지 않음)
+### 4. 인프라/운영 (당장 급하지 않음)
 
 - [ ] API 문서화 검토 (springdoc-openapi 등)
 - [ ] `@EnableJpaAuditing` 도입 검토

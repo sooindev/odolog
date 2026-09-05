@@ -4,8 +4,10 @@ import com.cartree.app.maintenance.domain.MaintenanceRecord;
 import com.cartree.app.maintenance.domain.ServiceType;
 import com.cartree.app.vehicle.domain.Vehicle;
 import com.cartree.app.maintenance.dto.MaintenanceRecordRegisterRequest;
+import com.cartree.app.maintenance.dto.MaintenanceRecordUpdateRequest;
 import com.cartree.app.maintenance.dto.NextServiceResponse;
 import com.cartree.app.maintenance.repository.MaintenanceRecordRepository;
+import com.cartree.app.common.exception.ResourceNotFoundException;
 import com.cartree.app.vehicle.service.VehicleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,5 +51,43 @@ public class MaintenanceRecordService {
                     return new NextServiceResponse(type, record.getServiceOdometer(), nextOdometer);
                 })
                 .orElse(new NextServiceResponse(type, null, null));
+    }
+
+    @Transactional
+    public MaintenanceRecord update(Long requesterId, Long vehicleId, Long recordId,
+                                     MaintenanceRecordUpdateRequest request) {
+        vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        MaintenanceRecord record = findRecordInVehicle(vehicleId, recordId);
+
+        if (request.type() != null) {
+            record.changeType(request.type());
+        }
+        if (request.description() != null) {
+            record.changeDescription(request.description());
+        }
+        if (request.cost() != null) {
+            record.changeCost(request.cost());
+        }
+        if (request.serviceOdometer() != null) {
+            record.changeServiceOdometer(request.serviceOdometer());
+        }
+        if (request.serviceDate() != null) {
+            record.changeServiceDate(request.serviceDate());
+        }
+
+        return record;
+    }
+
+    @Transactional
+    public void delete(Long requesterId, Long vehicleId, Long recordId) {
+        vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        MaintenanceRecord record = findRecordInVehicle(vehicleId, recordId);
+
+        maintenanceRecordRepository.delete(record);
+    }
+
+    private MaintenanceRecord findRecordInVehicle(Long vehicleId, Long recordId) {
+        return maintenanceRecordRepository.findByIdAndVehicleId(recordId, vehicleId)
+                .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 정비 이력입니다: " + recordId));
     }
 }

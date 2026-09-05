@@ -4,13 +4,16 @@ import com.cartree.app.maintenance.domain.MaintenanceRecord;
 import com.cartree.app.maintenance.domain.ServiceType;
 import com.cartree.app.maintenance.dto.MaintenanceRecordRegisterRequest;
 import com.cartree.app.maintenance.dto.MaintenanceRecordResponse;
+import com.cartree.app.maintenance.dto.MaintenanceRecordUpdateRequest;
 import com.cartree.app.maintenance.dto.NextServiceResponse;
 import com.cartree.app.maintenance.service.MaintenanceRecordService;
 import com.cartree.app.common.auth.LoginUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,5 +58,22 @@ public class MaintenanceRecordController {
                                                              @LoginUser Long requesterId) {
         NextServiceResponse response = maintenanceRecordService.calculateNextService(requesterId, vehicleId, type);
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{recordId}")
+    public ResponseEntity<MaintenanceRecordResponse> update(@PathVariable Long vehicleId,
+                                                              @PathVariable Long recordId,
+                                                              @Valid @RequestBody MaintenanceRecordUpdateRequest request,
+                                                              @LoginUser Long requesterId) {
+        MaintenanceRecord record = maintenanceRecordService.update(requesterId, vehicleId, recordId, request);
+        return ResponseEntity.ok(MaintenanceRecordResponse.from(record));
+    }
+
+    @DeleteMapping("/{recordId}")
+    public ResponseEntity<Void> delete(@PathVariable Long vehicleId,
+                                        @PathVariable Long recordId,
+                                        @LoginUser Long requesterId) {
+        maintenanceRecordService.delete(requesterId, vehicleId, recordId);
+        return ResponseEntity.noContent().build();
     }
 }
