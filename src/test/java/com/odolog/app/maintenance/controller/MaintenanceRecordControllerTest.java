@@ -3,6 +3,7 @@ package com.odolog.app.maintenance.controller;
 import com.odolog.app.common.auth.SessionConst;
 import com.odolog.app.common.exception.ResourceNotFoundException;
 import com.odolog.app.maintenance.domain.ServiceType;
+import com.odolog.app.maintenance.domain.MaintenanceRecord;
 import com.odolog.app.maintenance.dto.MaintenanceRecordRegisterRequest;
 import com.odolog.app.maintenance.dto.NextServiceResponse;
 import com.odolog.app.maintenance.service.MaintenanceRecordService;
@@ -65,6 +66,29 @@ class MaintenanceRecordControllerTest {
                         .param("type", "존재하지않는값")
                         .session(loginSessionOf(1L)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("정비 이력 단건 조회 성공")
+    void findOneSuccess() throws Exception {
+        MaintenanceRecord record = new MaintenanceRecord(null, ServiceType.ENGINE_OIL, "정기 교체",
+                50000, 40000, LocalDate.of(2026, 1, 1));
+
+        when(maintenanceRecordService.findOne(1L, 10L, 100L)).thenReturn(record);
+
+        mockMvc.perform(get("/api/vehicles/10/maintenance-records/100").session(loginSessionOf(1L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("ENGINE_OIL"));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 정비 이력을 조회하면 404")
+    void findOneNotFound() throws Exception {
+        when(maintenanceRecordService.findOne(1L, 10L, 999L))
+                .thenThrow(new ResourceNotFoundException("존재하지 않는 정비 이력입니다: 999"));
+
+        mockMvc.perform(get("/api/vehicles/10/maintenance-records/999").session(loginSessionOf(1L)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -107,6 +107,20 @@ class MaintenanceRecordServiceTest {
     }
 
     @Test
+    @DisplayName("정비 이력 단건 조회 성공")
+    void findOneSuccess() {
+        Vehicle vehicle = createVehicle(10L);
+        MaintenanceRecord record = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "정기 교체",
+                50000, 40000, LocalDate.of(2026, 1, 1));
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(maintenanceRecordRepository.findByIdAndVehicleId(100L, 10L)).thenReturn(Optional.of(record));
+
+        MaintenanceRecord found = maintenanceRecordService.findOne(1L, 10L, 100L);
+
+        assertThat(found).isEqualTo(record);
+    }
+
+    @Test
     @DisplayName("수정 요청에 보낸 필드만 반영된다")
     void updatePartialFields() {
         Vehicle vehicle = createVehicle(10L);

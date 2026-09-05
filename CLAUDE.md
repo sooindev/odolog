@@ -161,9 +161,10 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     │   │   └── NextServiceResponse.java              (record, type/lastServiceOdometer/
     │   │                                              nextServiceOdometer — 이력·주기 없으면 null)
     │   ├── service/
-    │   │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService/update/delete,
-    │   │                                      vehicle.service.VehicleService.findOwnedVehicle()을
-    │   │                                      주입받아 재사용, findRecordInVehicle()로 레코드 소속 검증)
+    │   │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService/
+    │   │                                      findOne/update/delete, vehicle.service.VehicleService.
+    │   │                                      findOwnedVehicle()을 주입받아 재사용,
+    │   │                                      findRecordInVehicle()로 레코드 소속 검증)
     │   └── controller/
     │       └── MaintenanceRecordController.java (POST/GET/PATCH/DELETE /api/vehicles/{vehicleId}/maintenance-records{/recordId},
     │                                             GET .../next-service?type=... — @LoginUser로 식별)
@@ -206,7 +207,8 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         │                                              3가지 케이스, update 부분 수정,
         │                                              타 차량 소속 id 접근 404)
         └── controller/MaintenanceRecordControllerTest.java (@WebMvcTest+MockMvc — next-service 200,
-                                                             잘못된 enum 값 400, 차량 없음 404, delete 204)
+                                                             잘못된 enum 값 400, 차량 없음 404,
+                                                             findOne 200/404, delete 204)
 
 **의존 방향**: `maintenance` → `vehicle` → `user`, 그리고 셋 다 필요하면 `common`을 본다.
 반대 방향 의존(`user`가 `vehicle`을 알아야 하는 것 등)이 생기면 설계가 잘못된 신호로 보고 재검토한다.
@@ -299,6 +301,17 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 - [x] 차량 단건 상세 조회 API — `GET /api/vehicles/{vehicleId}`
       → `VehicleService.findOwnedVehicle()`을 그대로 재사용 (새 비즈니스 로직 없음).
         `VehicleControllerTest`에 성공/404 테스트 2개 추가.
+- [x] 프로젝트 이름 변경: Cartree(차트리) → 오도로그(OdoLog)
+      → 패키지 `com.cartree.app` → `com.odolog.app` 전체 이동(`git mv`로 히스토리 보존),
+        메인 클래스 `CartreeApplication` → `OdoLogApplication`.
+      → `build.gradle`(group)/`settings.gradle`(rootProject.name), DB 스키마명
+        `cartree`/`cartree_test` → `odolog`/`odolog_test`까지 전부 갱신.
+      → GitHub 저장소 이름(`CarTree`)은 `gh` CLI가 없어 대신 수동 변경 방법만 안내.
+        운영 DB `cartree` 스키마는 애초에 존재하지 않아(아직 운영 전) 마이그레이션 없이 `odolog`만 새로 생성.
+- [x] 정비 이력 단건 상세 조회 API — `GET /api/vehicles/{vehicleId}/maintenance-records/{recordId}`
+      → 차량 단건 조회와 같은 패턴. `MaintenanceRecordService`의 기존 private `findRecordInVehicle()`을
+        감싸는 `findOne()` public 메서드만 추가. `/next-service`(리터럴)와 `/{recordId}`(변수 경로)는
+        스프링이 리터럴을 우선 매칭하므로 라우팅 충돌 없음.
 
 ## 완성까지의 로드맵
 
@@ -330,9 +343,6 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 
 ### 1. API 완성도 (프론트 연동 전에 먼저 갖춰야 함)
 
-- [ ] 정비 이력 단건 상세 조회 API — `GET /api/vehicles/{vehicleId}/maintenance-records/{recordId}`
-      → 수정 폼에 기존 값을 미리 채우려면(수정 화면 진입 시) 단건 조회가 필요함.
-        `MaintenanceRecordRepository.findByIdAndVehicleId()`가 이미 있으니 그대로 재사용 가능.
 - [ ] CORS 설정 추가
       → 프론트(`http://localhost:5173` 등)와 백엔드(`http://localhost:8080`)는 포트가 달라
         브라우저가 기본적으로 요청을 막음(same-origin policy). `WebMvcConfigurer.addCorsMappings()`로

@@ -60,6 +60,14 @@ public class MaintenanceRecordController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{recordId}")
+    public ResponseEntity<MaintenanceRecordResponse> findOne(@PathVariable Long vehicleId,
+                                                              @PathVariable Long recordId,
+                                                              @LoginUser Long requesterId) {
+        MaintenanceRecord record = maintenanceRecordService.findOne(requesterId, vehicleId, recordId);
+        return ResponseEntity.ok(MaintenanceRecordResponse.from(record));
+    }
+
     @PatchMapping("/{recordId}")
     public ResponseEntity<MaintenanceRecordResponse> update(@PathVariable Long vehicleId,
                                                               @PathVariable Long recordId,

@@ -53,6 +53,11 @@ public class MaintenanceRecordService {
                 .orElse(new NextServiceResponse(type, null, null));
     }
 
+    public MaintenanceRecord findOne(Long requesterId, Long vehicleId, Long recordId) {
+        vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        return findRecordInVehicle(vehicleId, recordId);
+    }
+
     @Transactional
     public MaintenanceRecord update(Long requesterId, Long vehicleId, Long recordId,
                                      MaintenanceRecordUpdateRequest request) {

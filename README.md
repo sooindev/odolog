@@ -39,7 +39,8 @@
 | 차량 상세조회 | `GET /api/vehicles/{vehicleId}` |
 | 주행거리 갱신 | `PATCH /api/vehicles/{vehicleId}/odometer` |
 | 차량 삭제 | `DELETE /api/vehicles/{vehicleId}` |
-| 정비 이력 등록/조회 | `POST`, `GET /api/vehicles/{vehicleId}/maintenance-records` |
+| 정비 이력 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/maintenance-records` |
+| 정비 이력 상세조회/수정/삭제 | `GET`/`PATCH`/`DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` |
 | 다음 정비 시점 조회 | `GET /api/vehicles/{vehicleId}/maintenance-records/next-service?type=` |
 
 ## 트러블슈팅
