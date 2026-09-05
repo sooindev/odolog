@@ -76,9 +76,12 @@
     src/main/java/com/cartree/app/
     ├── CartreeApplication.java
     ├── domain/
-    │   ├── User.java        (id, email, password, nickname, phone, createdAt, updatedAt)
-    │   └── Vehicle.java     (id, owner→User, plateNumber, manufacturer, modelName,
-    │                         modelYear, odometer, createdAt, updatedAt)
+    │   ├── User.java              (id, email, password, nickname, phone, createdAt, updatedAt)
+    │   ├── Vehicle.java           (id, owner→User, plateNumber, manufacturer, modelName,
+    │   │                           modelYear, odometer, createdAt, updatedAt)
+    │   ├── ServiceType.java       (enum: ENGINE_OIL/TIRE/BRAKE_PAD/BATTERY/OTHER)
+    │   └── MaintenanceRecord.java (id, vehicle→Vehicle, type, description, cost,
+    │                               serviceOdometer, serviceDate, createdAt, updatedAt)
     ├── repository/
     │   ├── UserRepository.java     (findByEmail, existsByEmail)
     │   └── VehicleRepository.java  (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
@@ -131,7 +134,10 @@
       → `POST /api/vehicles`, `GET /api/vehicles`. 소유자는 세션(`SessionConst.LOGIN_USER_ID`)에서 식별
       → 번호판 중복은 기존 409 핸들러 재사용, 세션 없으면 기존 401(`AuthenticationFailedException`) 재사용
       → 확장 지점: `extractLoginUserId()`가 컨트롤러 3개 이상에서 반복되면 `HandlerMethodArgumentResolver`로 추출 고려
-- [ ] `MaintenanceRecord`(정비 이력) 엔티티 — 이 앱의 핵심 기능
+- [x] `MaintenanceRecord`(정비 이력) 엔티티 — 이 앱의 핵심 기능
+      → `type`은 자유 텍스트 대신 `ServiceType` enum + `@Enumerated(EnumType.STRING)` (ORDINAL은 순서 변경 시 데이터 깨짐)
+      → `Vehicle.odometer`(현재 주행거리)와 구분하려고 필드명을 `serviceOdometer`로 지정
+      → 아직 변경 메서드 없음 (수정 요구사항 생기면 그때 추가)
 - [ ] 정비 이력 API + 다음 정비 시점 계산 로직
 
 단계를 완료할 때마다 이 체크리스트를 갱신한다.
