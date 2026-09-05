@@ -79,7 +79,8 @@
     │   ├── User.java              (id, email, password, nickname, phone, createdAt, updatedAt)
     │   ├── Vehicle.java           (id, owner→User, plateNumber, manufacturer, modelName,
     │   │                           modelYear, odometer, createdAt, updatedAt)
-    │   ├── ServiceType.java       (enum: ENGINE_OIL/TIRE/BRAKE_PAD/BATTERY/OTHER)
+    │   ├── ServiceType.java       (enum: ENGINE_OIL/TIRE/BRAKE_PAD/BATTERY/OTHER,
+    │   │                           recommendedIntervalKm — 다음 정비 시점 계산용, OTHER는 null)
     │   └── MaintenanceRecord.java (id, vehicle→Vehicle, type, description, cost,
     │                               serviceOdometer, serviceDate, createdAt, updatedAt)
     ├── repository/
@@ -92,24 +93,36 @@
     │   ├── SignUpRequest.java          (record, @NotBlank/@Email/@Size 검증)
     │   ├── LoginRequest.java           (record, email/password)
     │   ├── UserResponse.java           (record, User.from() 팩토리)
-    │   ├── VehicleRegisterRequest.java (record, owner 없음 — 세션에서 식별)
-    │   ├── VehicleResponse.java        (record, owner 없음 — LAZY 필드 미접근으로 N+1 방지)
-    │   └── ErrorResponse.java          (record, message)
+    │   ├── VehicleRegisterRequest.java           (record, owner 없음 — 세션에서 식별)
+    │   ├── VehicleResponse.java                  (record, owner 없음 — LAZY 필드 미접근으로 N+1 방지)
+    │   ├── MaintenanceRecordRegisterRequest.java (record, @NotNull/@PositiveOrZero/@Size 검증)
+    │   ├── MaintenanceRecordResponse.java        (record, MaintenanceRecord.from() 팩토리)
+    │   ├── NextServiceResponse.java              (record, type/lastServiceOdometer/nextServiceOdometer —
+    │   │                                          이력·주기 없으면 null)
+    │   └── ErrorResponse.java                    (record, message)
     ├── exception/
-    │   └── AuthenticationFailedException.java (RuntimeException — 로그인 실패/미인증 전용, 401)
+    │   ├── AuthenticationFailedException.java (RuntimeException — 로그인 실패/미인증 전용, 401)
+    │   ├── ForbiddenAccessException.java      (RuntimeException — 소유자 아님, 403)
+    │   └── ResourceNotFoundException.java     (RuntimeException — 리소스 없음, 404)
     ├── service/
-    │   ├── UserService.java     (signUp — 중복 이메일 체크·BCrypt 암호화·@Transactional,
-    │   │                          login — 이메일/비밀번호 검증, 실패 사유 통일 메시지)
-    │   └── VehicleService.java  (register — 번호판 중복 체크·@Transactional,
-    │                              findMyVehicles — 조회 전용, @Transactional 없음)
+    │   ├── UserService.java              (signUp — 중복 이메일 체크·BCrypt 암호화·@Transactional,
+    │   │                                   login — 이메일/비밀번호 검증, 실패 사유 통일 메시지)
+    │   ├── VehicleService.java           (register — 번호판 중복 체크·@Transactional,
+    │   │                                  findMyVehicles — 조회 전용, @Transactional 없음)
+    │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService,
+    │                                      findOwnedVehicle()로 소유권 검증 공통화)
     └── controller/
-        ├── UserController.java         (POST /api/users, POST /api/users/login — 세션에 loginUserId 저장,
-        │                                POST /api/users/logout — session.invalidate())
-        ├── VehicleController.java      (POST /api/vehicles, GET /api/vehicles —
-        │                                extractLoginUserId()로 세션에서 소유자 식별)
-        ├── SessionConst.java           (세션 키 상수 LOGIN_USER_ID)
-        └── GlobalExceptionHandler.java (@RestControllerAdvice — 중복 리소스 409, 인증 실패 401, 검증 실패 400.
-                                          IllegalStateException 등은 의도적으로 미처리 → 500)
+        ├── UserController.java              (POST /api/users, POST /api/users/login — 세션에 loginUserId 저장,
+        │                                     POST /api/users/logout — session.invalidate())
+        ├── VehicleController.java           (POST /api/vehicles, GET /api/vehicles —
+        │                                     extractLoginUserId()로 세션에서 소유자 식별)
+        ├── MaintenanceRecordController.java (POST/GET /api/vehicles/{vehicleId}/maintenance-records,
+        │                                     GET .../next-service?type=... — extractLoginUserId() 2번째 중복,
+        │                                     3번째 생기면 HandlerMethodArgumentResolver로 추출)
+        ├── SessionConst.java                (세션 키 상수 LOGIN_USER_ID)
+        └── GlobalExceptionHandler.java      (@RestControllerAdvice — 리소스 중복 409, 인증 실패 401,
+                                               권한 없음 403, 리소스 없음 404, 검증 실패 400.
+                                               IllegalStateException 등은 의도적으로 미처리 → 500)
 
     src/test/java/com/cartree/app/repository/
     ├── UserRepositoryTest.java     (save, findByEmail, existsByEmail)
@@ -143,6 +156,10 @@
 - [x] `MaintenanceRecordRepository` — 조회 메서드만 우선 작성
       → `findByVehicleIdOrderByServiceDateDesc`(이력 목록), `findTopByVehicleIdAndTypeOrderByServiceDateDesc`
         (같은 종류 중 최신 1건 — 다음 정비 시점 계산에 사용 예정)
-- [ ] 정비 이력 API + 다음 정비 시점 계산 로직
+- [x] 정비 이력 API + 다음 정비 시점 계산 로직
+      → `POST/GET /api/vehicles/{vehicleId}/maintenance-records`, `GET .../next-service?type=`
+      → 소유권 검증 실패를 404(리소스 없음)/403(소유자 아님)으로 구분, 로그인 안 함은 기존 401 재사용
+      → `ServiceType.recommendedIntervalKm` + 최근 이력의 `serviceOdometer`로 다음 정비 시점 계산
+      → LAZY `owner`의 `getId()`는 프록시가 FK를 이미 들고 있어 초기화 없이 조회 가능 (@Transactional 불필요)
 
 단계를 완료할 때마다 이 체크리스트를 갱신한다.

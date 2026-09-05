@@ -2,6 +2,8 @@ package com.cartree.app.controller;
 
 import com.cartree.app.dto.ErrorResponse;
 import com.cartree.app.exception.AuthenticationFailedException;
+import com.cartree.app.exception.ForbiddenAccessException;
+import com.cartree.app.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -20,6 +22,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationFailedException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationFailed(AuthenticationFailedException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler(ForbiddenAccessException.class)
+    public ResponseEntity<ErrorResponse> handleForbiddenAccess(ForbiddenAccessException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(e.getMessage()));
     }
 
