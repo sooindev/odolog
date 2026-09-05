@@ -79,77 +79,107 @@
 
 ## 현재 구조
 
+**패키지 구조를 계층별(domain/repository/dto/service/controller)에서 기능별(user/vehicle/
+maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없을 땐 괜찮지만, 기능이 늘어나면서
+"차량 관련 파일 다 모아서 보기"가 6개 폴더를 오가야 하는 문제가 생겼다. 기능별 구조는 한 기능을
+고치거나 이해할 때 그 폴더 하나만 보면 되는 대신, `Vehicle`이 `User`를 참조하는 것처럼 **기능 간
+경계를 넘는 import가 생긴다** (예: `vehicle.domain.Vehicle`이 `user.domain.User`를 import).
+이건 자연스러운 트레이드오프이고, 숨기려 하지 않는다.
+
     src/main/java/com/cartree/app/
     ├── CartreeApplication.java
-    ├── domain/
-    │   ├── User.java              (id, email, password, nickname, phone, createdAt, updatedAt)
-    │   ├── Vehicle.java           (id, owner→User, plateNumber, manufacturer, modelName,
-    │   │                           modelYear, odometer, createdAt, updatedAt)
-    │   ├── ServiceType.java       (enum: ENGINE_OIL/TIRE/BRAKE_PAD/BATTERY/OTHER,
-    │   │                           recommendedIntervalKm — 다음 정비 시점 계산용, OTHER는 null)
-    │   └── MaintenanceRecord.java (id, vehicle→Vehicle, type, description, cost,
-    │                               serviceOdometer, serviceDate, createdAt, updatedAt)
-    ├── repository/
-    │   ├── UserRepository.java              (findByEmail, existsByEmail)
-    │   ├── VehicleRepository.java           (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
-    │   │                                     findByPlateNumber, existsByPlateNumber)
-    │   └── MaintenanceRecordRepository.java (findByVehicleIdOrderByServiceDateDesc,
-    │                                         findTopByVehicleIdAndTypeOrderByServiceDateDesc,
-    │                                         deleteByVehicleId — 차량 삭제 시 이력 함께 삭제용)
-    ├── dto/
-    │   ├── SignUpRequest.java          (record, @NotBlank/@Email/@Size 검증)
-    │   ├── LoginRequest.java           (record, email/password)
-    │   ├── UpdateProfileRequest.java   (record, nickname/phone 둘 다 nullable — 보낸 필드만 변경)
-    │   ├── UserResponse.java           (record, User.from() 팩토리)
-    │   ├── VehicleRegisterRequest.java           (record, owner 없음 — 세션에서 식별)
-    │   ├── VehicleResponse.java                  (record, owner 없음 — LAZY 필드 미접근으로 N+1 방지)
-    │   ├── UpdateOdometerRequest.java             (record, @PositiveOrZero)
-    │   ├── MaintenanceRecordRegisterRequest.java (record, @NotNull/@PositiveOrZero/@Size 검증)
-    │   ├── MaintenanceRecordResponse.java        (record, MaintenanceRecord.from() 팩토리)
-    │   ├── NextServiceResponse.java              (record, type/lastServiceOdometer/nextServiceOdometer —
-    │   │                                          이력·주기 없으면 null)
-    │   └── ErrorResponse.java                    (record, message)
-    ├── exception/
-    │   ├── AuthenticationFailedException.java (RuntimeException — 로그인 실패/미인증 전용, 401)
-    │   ├── ForbiddenAccessException.java      (RuntimeException — 소유자 아님, 403)
-    │   └── ResourceNotFoundException.java     (RuntimeException — 리소스 없음, 404)
-    ├── service/
-    │   ├── UserService.java              (signUp — 중복 이메일 체크·BCrypt 암호화·@Transactional,
-    │   │                                   login — 이메일/비밀번호 검증, 실패 사유 통일 메시지,
-    │   │                                   findById — 없으면 IllegalStateException→500,
-    │   │                                   updateProfile — 널 아닌 필드만 changeNickname/changePhone 호출)
-    │   ├── VehicleService.java           (register — 번호판 중복 체크·@Transactional,
-    │   │                                  findMyVehicles — 조회 전용, @Transactional 없음,
-    │   │                                  updateOdometer — dirty checking으로 save() 불필요,
-    │   │                                  delete — MaintenanceRecordRepository로 이력 먼저 삭제 후 차량 삭제,
-    │   │                                  findOwnedVehicle() — 소유권 검증, 다른 서비스도 재사용)
-    │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService,
-    │                                      VehicleService.findOwnedVehicle()을 주입받아 재사용)
-    └── controller/
-        ├── UserController.java              (POST /api/users, POST /api/users/login — 세션 저장 +
-        │                                     changeSessionId()로 세션 고정 공격 방지,
-        │                                     POST /api/users/logout — session.invalidate(),
-        │                                     GET/PATCH /api/users/me — @LoginUser 사용)
-        ├── VehicleController.java           (POST /api/vehicles, GET /api/vehicles,
-        │                                     PATCH /api/vehicles/{vehicleId}/odometer,
-        │                                     DELETE /api/vehicles/{vehicleId} — @LoginUser로 소유자 식별)
-        ├── MaintenanceRecordController.java (POST/GET /api/vehicles/{vehicleId}/maintenance-records,
-        │                                     GET .../next-service?type=... — @LoginUser로 요청자 식별)
-        ├── LoginUser.java                   (@Target(PARAMETER) 커스텀 애노테이션 — 로그인 사용자 주입 표시)
-        ├── LoginUserArgumentResolver.java   (HandlerMethodArgumentResolver — 세션에서 LOGIN_USER_ID 추출,
-        │                                     없으면 AuthenticationFailedException. 컨트롤러 3곳 중복 제거)
-        ├── SessionConst.java                (세션 키 상수 LOGIN_USER_ID)
-        └── GlobalExceptionHandler.java      (@RestControllerAdvice — 리소스 중복 409, 인증 실패 401,
-                                               권한 없음 403, 리소스 없음 404, 검증 실패 400.
-                                               IllegalStateException 등은 의도적으로 미처리 → 500)
+    │
+    ├── user/                              — 회원가입·로그인·프로필
+    │   ├── domain/
+    │   │   └── User.java              (id, email, password, nickname, phone, createdAt, updatedAt)
+    │   ├── repository/
+    │   │   └── UserRepository.java    (findByEmail, existsByEmail)
+    │   ├── dto/
+    │   │   ├── SignUpRequest.java         (record, @NotBlank/@Email/@Size 검증)
+    │   │   ├── LoginRequest.java          (record, email/password)
+    │   │   ├── UpdateProfileRequest.java  (record, nickname/phone 둘 다 nullable — 보낸 필드만 변경)
+    │   │   └── UserResponse.java          (record, User.from() 팩토리)
+    │   ├── service/
+    │   │   └── UserService.java       (signUp — 중복 이메일 체크·BCrypt 암호화·@Transactional,
+    │   │                                login — 이메일/비밀번호 검증, 실패 사유 통일 메시지,
+    │   │                                findById — 없으면 IllegalStateException→500,
+    │   │                                updateProfile — 널 아닌 필드만 changeNickname/changePhone 호출)
+    │   └── controller/
+    │       └── UserController.java    (POST /api/users, POST /api/users/login — 세션 저장 +
+    │                                    changeSessionId()로 세션 고정 공격 방지,
+    │                                    POST /api/users/logout — session.invalidate(),
+    │                                    GET/PATCH /api/users/me — @LoginUser 사용)
+    │
+    ├── vehicle/                           — 차량 등록·조회·주행거리·삭제
+    │   ├── domain/
+    │   │   └── Vehicle.java            (id, owner→user.domain.User, plateNumber, manufacturer,
+    │   │                                modelName, modelYear, odometer, createdAt, updatedAt)
+    │   ├── repository/
+    │   │   └── VehicleRepository.java  (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
+    │   │                                findByPlateNumber, existsByPlateNumber)
+    │   ├── dto/
+    │   │   ├── VehicleRegisterRequest.java (record, owner 없음 — 세션에서 식별)
+    │   │   ├── VehicleResponse.java        (record, owner 없음 — LAZY 필드 미접근으로 N+1 방지)
+    │   │   └── UpdateOdometerRequest.java  (record, @PositiveOrZero)
+    │   ├── service/
+    │   │   └── VehicleService.java     (register — 번호판 중복 체크·@Transactional,
+    │   │                                findMyVehicles — 조회 전용, @Transactional 없음,
+    │   │                                updateOdometer — dirty checking으로 save() 불필요,
+    │   │                                delete — maintenance.repository로 이력 먼저 삭제 후 차량 삭제,
+    │   │                                findOwnedVehicle() — 소유권 검증, maintenance 패키지도 재사용)
+    │   └── controller/
+    │       └── VehicleController.java  (POST /api/vehicles, GET /api/vehicles,
+    │                                    PATCH /api/vehicles/{vehicleId}/odometer,
+    │                                    DELETE /api/vehicles/{vehicleId} — @LoginUser로 소유자 식별)
+    │
+    ├── maintenance/                        — 정비 이력·다음 정비 시점 계산
+    │   ├── domain/
+    │   │   ├── ServiceType.java        (enum: ENGINE_OIL/TIRE/BRAKE_PAD/BATTERY/OTHER,
+    │   │   │                            recommendedIntervalKm — 다음 정비 시점 계산용, OTHER는 null)
+    │   │   └── MaintenanceRecord.java  (id, vehicle→vehicle.domain.Vehicle, type, description, cost,
+    │   │                                serviceOdometer, serviceDate, createdAt, updatedAt)
+    │   ├── repository/
+    │   │   └── MaintenanceRecordRepository.java (findByVehicleIdOrderByServiceDateDesc,
+    │   │                                         findTopByVehicleIdAndTypeOrderByServiceDateDesc,
+    │   │                                         deleteByVehicleId — 차량 삭제 시 이력 함께 삭제용)
+    │   ├── dto/
+    │   │   ├── MaintenanceRecordRegisterRequest.java (record, @NotNull/@PositiveOrZero/@Size 검증)
+    │   │   ├── MaintenanceRecordResponse.java        (record, MaintenanceRecord.from() 팩토리)
+    │   │   └── NextServiceResponse.java              (record, type/lastServiceOdometer/
+    │   │                                              nextServiceOdometer — 이력·주기 없으면 null)
+    │   ├── service/
+    │   │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService,
+    │   │                                      vehicle.service.VehicleService.findOwnedVehicle()을
+    │   │                                      주입받아 재사용)
+    │   └── controller/
+    │       └── MaintenanceRecordController.java (POST/GET /api/vehicles/{vehicleId}/maintenance-records,
+    │                                             GET .../next-service?type=... — @LoginUser로 식별)
+    │
+    └── common/                             — 기능 어디에도 속하지 않는 공통 인프라
+        ├── auth/
+        │   ├── LoginUser.java                 (@Target(PARAMETER) 커스텀 애노테이션 — 로그인 사용자 주입 표시)
+        │   ├── LoginUserArgumentResolver.java (HandlerMethodArgumentResolver — 세션에서 LOGIN_USER_ID
+        │   │                                   추출, 없으면 AuthenticationFailedException)
+        │   └── SessionConst.java              (세션 키 상수 LOGIN_USER_ID)
+        ├── config/
+        │   └── WebConfig.java                 (WebMvcConfigurer — LoginUserArgumentResolver 등록)
+        ├── exception/
+        │   ├── AuthenticationFailedException.java (RuntimeException — 로그인 실패/미인증 전용, 401)
+        │   ├── ForbiddenAccessException.java      (RuntimeException — 소유자 아님, 403)
+        │   ├── ResourceNotFoundException.java     (RuntimeException — 리소스 없음, 404)
+        │   └── GlobalExceptionHandler.java        (@RestControllerAdvice — 리소스 중복 409, 인증 실패 401,
+        │                                            권한 없음 403, 리소스 없음 404, 검증 실패 400.
+        │                                            IllegalStateException 등은 의도적으로 미처리 → 500)
+        └── dto/
+            └── ErrorResponse.java              (record, message)
 
-    src/main/java/com/cartree/app/config/
-    └── WebConfig.java (WebMvcConfigurer — LoginUserArgumentResolver 등록)
+    src/test/java/com/cartree/app/
+    ├── user/repository/UserRepositoryTest.java       (save, findByEmail, existsByEmail)
+    └── vehicle/repository/VehicleRepositoryTest.java (save, findByOwner, findByOwnerId,
+                                                        findByPlateNumber, ownerIsLazy, updateOdometer)
 
-    src/test/java/com/cartree/app/repository/
-    ├── UserRepositoryTest.java     (save, findByEmail, existsByEmail)
-    └── VehicleRepositoryTest.java  (save, findByOwner, findByOwnerId, findByPlateNumber,
-                                     ownerIsLazy, updateOdometer)
+**의존 방향**: `maintenance` → `vehicle` → `user`, 그리고 셋 다 필요하면 `common`을 본다.
+반대 방향 의존(`user`가 `vehicle`을 알아야 하는 것 등)이 생기면 설계가 잘못된 신호로 보고 재검토한다.
 
 ## 진행 상황 (완료)
 
@@ -204,6 +234,11 @@
         순서로 명시적으로 삭제. 순서를 바꾸면 FK 제약 위반으로 실패함.
       → `VehicleService`는 `MaintenanceRecordService`가 아니라 `MaintenanceRecordRepository`를
         직접 주입받음 — 서비스끼리 서로 의존하면 순환 참조가 생기기 때문.
+- [x] 패키지 구조를 계층별(domain/repository/dto/service/controller)에서
+      기능별(user/vehicle/maintenance/common)로 재구성
+      → 파일 30여 개의 package 선언과 import 경로를 전부 이동. 기능 간 참조(예: `Vehicle`이
+        `User`를 참조)는 이제 명시적인 cross-package import로 드러남.
+      → 의존 방향을 `maintenance → vehicle → user`로 정리, 공용 인프라(인증/예외/설정)는 `common`으로.
 
 ## 다음 단계 (예정) — 상세 체크리스트
 
