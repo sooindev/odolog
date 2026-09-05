@@ -74,6 +74,8 @@ class MaintenanceRecordServiceTest {
 
         assertThat(response.lastServiceOdometer()).isEqualTo(40000);
         assertThat(response.nextServiceOdometer()).isEqualTo(45000);
+        assertThat(response.lastServiceDate()).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2026, 7, 1));
     }
 
     @Test
@@ -90,6 +92,7 @@ class MaintenanceRecordServiceTest {
 
         assertThat(response.lastServiceOdometer()).isEqualTo(40000);
         assertThat(response.nextServiceOdometer()).isNull();
+        assertThat(response.nextServiceDate()).isNull();
     }
 
     @Test
@@ -104,6 +107,8 @@ class MaintenanceRecordServiceTest {
 
         assertThat(response.lastServiceOdometer()).isNull();
         assertThat(response.nextServiceOdometer()).isNull();
+        assertThat(response.lastServiceDate()).isNull();
+        assertThat(response.nextServiceDate()).isNull();
     }
 
     @Test

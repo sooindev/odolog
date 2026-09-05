@@ -12,6 +12,7 @@ import com.odolog.app.vehicle.service.VehicleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -46,11 +47,17 @@ public class MaintenanceRecordService {
 
         return maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDesc(vehicleId, type)
                 .map(record -> {
-                    Integer interval = type.getRecommendedIntervalKm();
-                    Integer nextOdometer = (interval == null) ? null : record.getServiceOdometer() + interval;
-                    return new NextServiceResponse(type, record.getServiceOdometer(), nextOdometer);
+                    Integer intervalKm = type.getRecommendedIntervalKm();
+                    Integer nextOdometer = (intervalKm == null) ? null : record.getServiceOdometer() + intervalKm;
+
+                    Integer intervalMonths = type.getRecommendedIntervalMonths();
+                    LocalDate nextDate = (intervalMonths == null) ? null
+                            : record.getServiceDate().plusMonths(intervalMonths);
+
+                    return new NextServiceResponse(type, record.getServiceOdometer(), nextOdometer,
+                            record.getServiceDate(), nextDate);
                 })
-                .orElse(new NextServiceResponse(type, null, null));
+                .orElse(new NextServiceResponse(type, null, null, null, null));
     }
 
     public MaintenanceRecord findOne(Long requesterId, Long vehicleId, Long recordId) {

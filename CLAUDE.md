@@ -159,7 +159,8 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     │   │   │                                          Integer로 "안 보냄"과 "0" 구분)
     │   │   ├── MaintenanceRecordResponse.java        (record, MaintenanceRecord.from() 팩토리)
     │   │   └── NextServiceResponse.java              (record, type/lastServiceOdometer/
-    │   │                                              nextServiceOdometer — 이력·주기 없으면 null)
+    │   │                                              nextServiceOdometer/lastServiceDate/
+    │   │                                              nextServiceDate — 이력·주기 없으면 null)
     │   ├── service/
     │   │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService/
     │   │                                      findOne/update/delete, vehicle.service.VehicleService.
@@ -317,6 +318,16 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         같은 설정을 반복하지 않기 위해. `LoginUserArgumentResolver` 등록과 같은 자리.
       → 프론트 착수 시 `fetch(url, { credentials: 'include' })`가 짝으로 필요함. 실제 Vite 포트가
         5173이 아니면 `allowedOrigins`를 그때 갱신.
+- [x] 다음 정비 시점 계산에 "날짜 기준" 추가
+      → `ServiceType`에 `recommendedIntervalMonths` 추가(ENGINE_OIL 6 / TIRE·BRAKE_PAD 24 / BATTERY 36,
+        OTHER는 null). `NextServiceResponse`에 `lastServiceDate`/`nextServiceDate` 필드 추가.
+      → `LocalDate.plusMonths()`로 계산 — 달마다 길이가 다르므로 `plusDays(30 * months)`는 쓰지 않음.
+        말일 보정(1/31 + 1개월 = 2/28)도 자동 처리됨.
+      → `Integer`인 주기를 `plusMonths(long)`에 넘기면 언박싱되므로, null 검사를 삼항 연산자로 **먼저**
+        해야 NPE가 안 남.
+      → `lastServiceDate`까지 응답에 넣은 이유: 프론트가 "언제 정비했으니 언제가 다음"이라는 근거와
+        결과를 한 화면에 보여줄 때 추가 API 호출이 필요 없게 하려고.
+
 - [x] 정비 이력 단건 상세 조회 API — `GET /api/vehicles/{vehicleId}/maintenance-records/{recordId}`
       → 차량 단건 조회와 같은 패턴. `MaintenanceRecordService`의 기존 private `findRecordInVehicle()`을
         감싸는 `findOne()` public 메서드만 추가. `/next-service`(리터럴)와 `/{recordId}`(변수 경로)는
@@ -349,15 +360,6 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 ## 다음 단계 (예정) — 상세 체크리스트 (Phase 1: 백엔드 마무리)
 
 우선순위 순서를 뜻하지 않는다. 착수하는 시점에 사용자와 다시 상의해서 순서/범위를 정한다.
-
-### 2. 정비 이력 기능 보강
-
-- [ ] 다음 정비 시점 계산에 "날짜 기준" 추가
-      → 지금은 주행거리 기준(`recommendedIntervalKm`)만 있음. "마지막 정비 후 6개월"처럼
-        기간 기준으로도 계산하려면 `ServiceType`에 권장 주기(개월 수)를 추가하고,
-        `NextServiceResponse`에 날짜 필드(`nextServiceDate`)를 더해야 함.
-      → 프론트 화면에는 "주행거리 기준 다음 정비: 45,000km / 날짜 기준: 2026-07-01" 처럼
-        두 기준을 같이 보여줄 예정.
 
 ### 3. 목록 조회 확장성
 

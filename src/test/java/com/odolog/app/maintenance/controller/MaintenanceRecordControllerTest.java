@@ -50,13 +50,15 @@ class MaintenanceRecordControllerTest {
     @DisplayName("다음 정비 시점을 조회하면 200과 계산 결과를 반환한다")
     void nextServiceSuccess() throws Exception {
         when(maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.ENGINE_OIL))
-                .thenReturn(new NextServiceResponse(ServiceType.ENGINE_OIL, 40000, 45000));
+                .thenReturn(new NextServiceResponse(ServiceType.ENGINE_OIL, 40000, 45000,
+                        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 7, 1)));
 
         mockMvc.perform(get("/api/vehicles/10/maintenance-records/next-service")
                         .param("type", "ENGINE_OIL")
                         .session(loginSessionOf(1L)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nextServiceOdometer").value(45000));
+                .andExpect(jsonPath("$.nextServiceOdometer").value(45000))
+                .andExpect(jsonPath("$.nextServiceDate").value("2026-07-01"));
     }
 
     @Test
