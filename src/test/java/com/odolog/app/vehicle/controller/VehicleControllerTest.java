@@ -13,11 +13,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -44,6 +49,24 @@ class VehicleControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(SessionConst.LOGIN_USER_ID, userId);
         return session;
+    }
+
+    @Test
+    @DisplayName("차량 목록은 페이지 형태로 반환한다")
+    void findMyVehiclesPaged() throws Exception {
+        Vehicle vehicle = new Vehicle(null, "12가3456", "현대", "아반떼", 2023);
+        ReflectionTestUtils.setField(vehicle, "id", 10L);
+
+        when(vehicleService.findMyVehicles(eq(1L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(vehicle), PageRequest.of(0, 20), 1));
+
+        mockMvc.perform(get("/api/vehicles").session(loginSessionOf(1L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].plateNumber").value("12가3456"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 
     @Test

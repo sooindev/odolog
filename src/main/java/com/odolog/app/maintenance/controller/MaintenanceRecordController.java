@@ -8,7 +8,11 @@ import com.odolog.app.maintenance.dto.MaintenanceRecordUpdateRequest;
 import com.odolog.app.maintenance.dto.NextServiceResponse;
 import com.odolog.app.maintenance.service.MaintenanceRecordService;
 import com.odolog.app.common.auth.LoginUser;
+import com.odolog.app.common.dto.PageResponse;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/vehicles/{vehicleId}/maintenance-records")
@@ -42,12 +44,14 @@ public class MaintenanceRecordController {
     }
 
     @GetMapping
-    public ResponseEntity<List<MaintenanceRecordResponse>> findByVehicle(@PathVariable Long vehicleId,
-                                                                          @LoginUser Long requesterId) {
-        List<MaintenanceRecordResponse> records = maintenanceRecordService.findByVehicle(requesterId, vehicleId)
-                .stream()
-                .map(MaintenanceRecordResponse::from)
-                .toList();
+    public ResponseEntity<PageResponse<MaintenanceRecordResponse>> findByVehicle(
+            @PathVariable Long vehicleId,
+            @LoginUser Long requesterId,
+            @PageableDefault(size = 20, sort = "serviceDate", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        PageResponse<MaintenanceRecordResponse> records = PageResponse.from(
+                maintenanceRecordService.findByVehicle(requesterId, vehicleId, pageable)
+                        .map(MaintenanceRecordResponse::from));
 
         return ResponseEntity.ok(records);
     }

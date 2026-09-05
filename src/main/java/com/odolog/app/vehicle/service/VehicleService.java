@@ -9,10 +9,10 @@ import com.odolog.app.common.exception.ResourceNotFoundException;
 import com.odolog.app.maintenance.repository.MaintenanceRecordRepository;
 import com.odolog.app.user.repository.UserRepository;
 import com.odolog.app.vehicle.repository.VehicleRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class VehicleService {
@@ -43,8 +43,8 @@ public class VehicleService {
         return vehicleRepository.save(vehicle);
     }
 
-    public List<Vehicle> findMyVehicles(Long ownerId) {
-        return vehicleRepository.findByOwnerIdOrderByCreatedAtDesc(ownerId);
+    public Page<Vehicle> findMyVehicles(Long ownerId, Pageable pageable) {
+        return vehicleRepository.findByOwnerId(ownerId, pageable);
     }
 
     @Transactional

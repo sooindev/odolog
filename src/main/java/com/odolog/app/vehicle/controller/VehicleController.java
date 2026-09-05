@@ -6,7 +6,11 @@ import com.odolog.app.vehicle.dto.VehicleRegisterRequest;
 import com.odolog.app.vehicle.dto.VehicleResponse;
 import com.odolog.app.vehicle.service.VehicleService;
 import com.odolog.app.common.auth.LoginUser;
+import com.odolog.app.common.dto.PageResponse;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,8 +21,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/vehicles")
@@ -38,10 +40,12 @@ public class VehicleController {
     }
 
     @GetMapping
-    public ResponseEntity<List<VehicleResponse>> findMyVehicles(@LoginUser Long ownerId) {
-        List<VehicleResponse> vehicles = vehicleService.findMyVehicles(ownerId).stream()
-                .map(VehicleResponse::from)
-                .toList();
+    public ResponseEntity<PageResponse<VehicleResponse>> findMyVehicles(
+            @LoginUser Long ownerId,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        PageResponse<VehicleResponse> vehicles = PageResponse.from(
+                vehicleService.findMyVehicles(ownerId, pageable).map(VehicleResponse::from));
 
         return ResponseEntity.ok(vehicles);
     }

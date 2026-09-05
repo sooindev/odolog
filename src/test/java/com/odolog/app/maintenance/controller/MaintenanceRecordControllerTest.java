@@ -12,15 +12,20 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -44,6 +49,23 @@ class MaintenanceRecordControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(SessionConst.LOGIN_USER_ID, userId);
         return session;
+    }
+
+    @Test
+    @DisplayName("정비 이력 목록은 페이지 형태로 반환한다")
+    void findByVehiclePaged() throws Exception {
+        MaintenanceRecord record = new MaintenanceRecord(null, ServiceType.ENGINE_OIL, "정기 교체",
+                50000, 40000, LocalDate.of(2026, 1, 1));
+
+        when(maintenanceRecordService.findByVehicle(eq(1L), eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(record), PageRequest.of(0, 20), 1));
+
+        mockMvc.perform(get("/api/vehicles/10/maintenance-records").session(loginSessionOf(1L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].type").value("ENGINE_OIL"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 
     @Test

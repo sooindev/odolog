@@ -123,7 +123,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     │   │   └── Vehicle.java            (id, owner→user.domain.User, plateNumber, manufacturer,
     │   │                                modelName, modelYear, odometer, createdAt, updatedAt)
     │   ├── repository/
-    │   │   └── VehicleRepository.java  (findByOwner, findByOwnerIdOrderByCreatedAtDesc,
+    │   │   └── VehicleRepository.java  (findByOwner, findByOwnerId(Pageable),
     │   │                                findByPlateNumber, existsByPlateNumber)
     │   ├── dto/
     │   │   ├── VehicleRegisterRequest.java (record, owner 없음 — 세션에서 식별)
@@ -149,7 +149,7 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
     │   │                                changeType/changeDescription/changeCost/
     │   │                                changeServiceOdometer/changeServiceDate)
     │   ├── repository/
-    │   │   └── MaintenanceRecordRepository.java (findByVehicleIdOrderByServiceDateDesc,
+    │   │   └── MaintenanceRecordRepository.java (findByVehicleId(Pageable),
     │   │                                         findTopByVehicleIdAndTypeOrderByServiceDateDesc,
     │   │                                         findByIdAndVehicleId — 다른 차량 소속 id 접근 차단,
     │   │                                         deleteByVehicleId — 차량 삭제 시 이력 함께 삭제용)
@@ -186,7 +186,9 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         │                                            권한 없음 403, 리소스 없음 404, 검증 실패/타입 변환 실패 400.
         │                                            IllegalStateException 등은 의도적으로 미처리 → 500)
         └── dto/
-            └── ErrorResponse.java              (record, message)
+            ├── ErrorResponse.java              (record, message)
+            └── PageResponse.java               (record<T>, items/page/size/totalElements/
+                                                 totalPages/hasNext, Page<T>.from() 팩토리)
 
     src/test/java/com/odolog/app/
     ├── user/
@@ -318,6 +320,18 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         같은 설정을 반복하지 않기 위해. `LoginUserArgumentResolver` 등록과 같은 자리.
       → 프론트 착수 시 `fetch(url, { credentials: 'include' })`가 짝으로 필요함. 실제 Vite 포트가
         5173이 아니면 `allowedOrigins`를 그때 갱신.
+- [x] 차량 목록 / 정비 이력 목록 페이지네이션 (`Pageable`, `Page<T>`)
+      → 공용 `common/dto/PageResponse<T>` 신설(`items/page/size/totalElements/totalPages/hasNext`).
+        스프링 `Page`를 그대로 내리면 필드가 20개 가까이 쏟아지고 부트 3.x가 직렬화 경고를 남기며
+        버전에 따라 형태가 바뀔 수 있어 응답 형태를 우리가 고정함.
+      → 리포지토리 메서드명에서 `OrderBy...`를 제거(`findByOwnerId`, `findByVehicleId`) —
+        메서드 이름 정렬과 `Pageable`의 `sort`가 공존하면 우선순위가 코드에서 안 보임.
+        정렬은 컨트롤러의 `@PageableDefault(sort=...)` 한 곳에서만 정한다.
+      → 차량은 `createdAt DESC`, 정비 이력은 `serviceDate DESC`가 기본. 클라이언트가
+        `?page=&size=&sort=` 로 덮어쓸 수 있음.
+      → `Page.map(Response::from)`으로 엔티티→DTO 변환 — 페이지 메타데이터를 다시 조립할 필요 없음.
+      → 응답 형태가 배열에서 객체로 바뀌었으므로 프론트는 `res.items`를 봐야 함.
+
 - [x] 다음 정비 시점 계산에 "날짜 기준" 추가
       → `ServiceType`에 `recommendedIntervalMonths` 추가(ENGINE_OIL 6 / TIRE·BRAKE_PAD 24 / BATTERY 36,
         OTHER는 null). `NextServiceResponse`에 `lastServiceDate`/`nextServiceDate` 필드 추가.
@@ -360,17 +374,6 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
 ## 다음 단계 (예정) — 상세 체크리스트 (Phase 1: 백엔드 마무리)
 
 우선순위 순서를 뜻하지 않는다. 착수하는 시점에 사용자와 다시 상의해서 순서/범위를 정한다.
-
-### 3. 목록 조회 확장성
-
-- [ ] 차량 목록 / 정비 이력 목록에 페이지네이션 도입 (`Pageable`, `Page<T>`)
-      → 지금은 차량이나 정비 이력이 몇 개 안 될 걸 가정하고 전체를 다 반환함.
-      → `JpaRepository`는 이미 `findAll(Pageable)`을 기본 제공하지만, 우리가 쓰는 커스텀 조회
-        메서드(`findByOwnerIdOrderByCreatedAtDesc` 등)에 `Pageable` 파라미터를 추가하고
-        반환 타입을 `Page<Vehicle>`로 바꿔야 함.
-      → 컨트롤러에서 `@PageableDefault(size = 20)`로 기본값을 정하고, 응답을 그대로 `Page<T>`로
-        내려줄지 커스텀 DTO로 감쌀지는 그때 정함 (프론트에서 무한 스크롤 vs 페이지 번호 중
-        뭘 쓸지에 따라 응답 형태가 달라질 수 있음).
 
 ### 4. 인프라/운영 (당장 급하지 않음)
 

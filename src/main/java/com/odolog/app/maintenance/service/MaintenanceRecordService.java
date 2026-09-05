@@ -9,11 +9,12 @@ import com.odolog.app.maintenance.dto.NextServiceResponse;
 import com.odolog.app.maintenance.repository.MaintenanceRecordRepository;
 import com.odolog.app.common.exception.ResourceNotFoundException;
 import com.odolog.app.vehicle.service.VehicleService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Service
 public class MaintenanceRecordService {
@@ -37,9 +38,9 @@ public class MaintenanceRecordService {
         return maintenanceRecordRepository.save(record);
     }
 
-    public List<MaintenanceRecord> findByVehicle(Long requesterId, Long vehicleId) {
+    public Page<MaintenanceRecord> findByVehicle(Long requesterId, Long vehicleId, Pageable pageable) {
         vehicleService.findOwnedVehicle(requesterId, vehicleId);
-        return maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDesc(vehicleId);
+        return maintenanceRecordRepository.findByVehicleId(vehicleId, pageable);
     }
 
     public NextServiceResponse calculateNextService(Long requesterId, Long vehicleId, ServiceType type) {

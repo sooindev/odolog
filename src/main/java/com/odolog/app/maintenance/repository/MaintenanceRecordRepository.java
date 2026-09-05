@@ -2,14 +2,15 @@ package com.odolog.app.maintenance.repository;
 
 import com.odolog.app.maintenance.domain.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.ServiceType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface MaintenanceRecordRepository extends JpaRepository<MaintenanceRecord, Long> {
 
-    List<MaintenanceRecord> findByVehicleIdOrderByServiceDateDesc(Long vehicleId);
+    Page<MaintenanceRecord> findByVehicleId(Long vehicleId, Pageable pageable);
 
     Optional<MaintenanceRecord> findTopByVehicleIdAndTypeOrderByServiceDateDesc(Long vehicleId, ServiceType type);
 

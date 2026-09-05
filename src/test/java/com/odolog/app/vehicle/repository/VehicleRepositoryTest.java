@@ -7,6 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
@@ -67,16 +70,20 @@ class VehicleRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByOwnerIdOrderByCreatedAtDesc 는 owner 의 id 로도 조회할 수 있다")
+    @DisplayName("findByOwnerId 는 owner 의 id 로 페이지 단위 조회를 한다")
     void findByOwnerId() {
         em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
         em.persist(new Vehicle(owner, "34나5678", "기아", "K5", 2022));
         em.flush();
         em.clear();
 
-        List<Vehicle> found = vehicleRepository.findByOwnerIdOrderByCreatedAtDesc(owner.getId());
+        Page<Vehicle> firstPage = vehicleRepository.findByOwnerId(owner.getId(),
+                PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "createdAt")));
 
-        assertThat(found).hasSize(2);
+        assertThat(firstPage.getContent()).hasSize(1);
+        assertThat(firstPage.getTotalElements()).isEqualTo(2);
+        assertThat(firstPage.getTotalPages()).isEqualTo(2);
+        assertThat(firstPage.hasNext()).isTrue();
     }
 
     @Test
