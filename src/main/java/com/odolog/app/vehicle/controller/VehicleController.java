@@ -1,12 +1,12 @@
 package com.odolog.app.vehicle.controller;
 
 import com.odolog.app.vehicle.domain.Vehicle;
-import com.odolog.app.vehicle.dto.UpdateOdometerRequest;
-import com.odolog.app.vehicle.dto.VehicleRegisterRequest;
-import com.odolog.app.vehicle.dto.VehicleResponse;
+import com.odolog.app.vehicle.dto.request.UpdateOdometerRequest;
+import com.odolog.app.vehicle.dto.request.VehicleRegisterRequest;
+import com.odolog.app.vehicle.dto.response.VehicleResponse;
 import com.odolog.app.vehicle.service.VehicleService;
 import com.odolog.app.common.auth.LoginUser;
-import com.odolog.app.common.dto.PageResponse;
+import com.odolog.app.common.dto.response.PageResponse;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;

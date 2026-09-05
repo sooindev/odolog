@@ -113,167 +113,220 @@
 
 ## 현재 구조
 
-**패키지 구조를 계층별(domain/repository/dto/service/controller)에서 기능별(user/vehicle/
-maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없을 땐 괜찮지만, 기능이 늘어나면서
-"차량 관련 파일 다 모아서 보기"가 6개 폴더를 오가야 하는 문제가 생겼다. 기능별 구조는 한 기능을
-고치거나 이해할 때 그 폴더 하나만 보면 되는 대신, `Vehicle`이 `User`를 참조하는 것처럼 **기능 간
-경계를 넘는 import가 생긴다** (예: `vehicle.domain.Vehicle`이 `user.domain.User`를 import).
-이건 자연스러운 트레이드오프이고, 숨기려 하지 않는다.
+**백엔드·프론트엔드 모두 "기능별(package-by-feature)"로 나눈다.** 계층별 구조는 파일이 몇 개
+없을 땐 괜찮지만, 기능이 늘어나면 "차량 관련 파일 다 모아서 보기"가 여러 폴더를 오가야 한다.
+기능별은 한 기능을 고칠 때 그 폴더 하나만 보면 되는 대신, **기능 간 경계를 넘는 import가 드러난다**
+(`Vehicle`이 `User`를 참조하듯). 이건 자연스러운 트레이드오프이고 숨기려 하지 않는다.
 
-    src/main/java/com/odolog/app/
-    ├── OdoLogApplication.java
+DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘지만, "클라이언트가 보내는 것"과
+"서버가 돌려주는 것"이 섞이지 않아 검증 애노테이션을 어디에 붙일지 헷갈리지 않는다.
+
+### 저장소 루트
+
+    odolog/
+    ├── build.gradle                    의존성 (web/jpa/validation/crypto/springdoc/mariadb)
+    │                                   springdoc은 서드파티라 버전을 직접 명시해야 함
+    ├── settings.gradle                 rootProject.name = 'odolog'
+    ├── gradlew / gradlew.bat           Gradle 래퍼 실행 스크립트
+    ├── gradle/wrapper/
+    │   ├── gradle-wrapper.jar
+    │   └── gradle-wrapper.properties   받아올 Gradle 배포판 정보
+    ├── .gitignore                      Gradle·IntelliJ·macOS 산출물 + .env
+    ├── CLAUDE.md                       설계 결정·이유·진행 상황·체크리스트 (작업용)
+    ├── README.md                       소개·실행법·API 개요·트러블슈팅 (공개용)
+    ├── src/                            백엔드 (Spring Boot)
+    └── frontend/                       프론트엔드 (Vite + React)
+
+    읽지 않는 경로: build/  .gradle/  .idea/  frontend/node_modules/  frontend/dist/
+
+### 백엔드 — `src/main/java/com/odolog/app/`
+
+    com/odolog/app/
+    ├── OdoLogApplication.java                @SpringBootApplication. IntelliJ에서 실행하는 진입점
     │
-    ├── user/                              — 회원가입·로그인·프로필
+    ├── user/  ────────────────────────────── 회원가입·로그인·프로필
     │   ├── domain/
-    │   │   └── User.java              (id, email, password, nickname, phone, createdAt, updatedAt)
+    │   │   └── User.java                     @Entity(users). uk_users_email 유니크 제약.
+    │   │                                     changeNickname()/changePhone() — setter 없음
     │   ├── repository/
-    │   │   └── UserRepository.java    (findByEmail, existsByEmail)
+    │   │   └── UserRepository.java           findByEmail, existsByEmail
     │   ├── dto/
-    │   │   ├── SignUpRequest.java         (record, @NotBlank/@Email/@Size 검증)
-    │   │   ├── LoginRequest.java          (record, email/password)
-    │   │   ├── UpdateProfileRequest.java  (record, nickname/phone 둘 다 nullable — 보낸 필드만 변경)
-    │   │   └── UserResponse.java          (record, User.from() 팩토리)
+    │   │   ├── request/
+    │   │   │   ├── SignUpRequest.java        @NotBlank/@Email/@Size(min=8,max=100)
+    │   │   │   ├── LoginRequest.java         email, password
+    │   │   │   └── UpdateProfileRequest.java 둘 다 nullable — 보낸 필드만 변경
+    │   │   └── response/
+    │   │       └── UserResponse.java         from() 팩토리. password는 절대 담지 않음
     │   ├── service/
-    │   │   └── UserService.java       (signUp — 중복 이메일 체크·BCrypt 암호화·@Transactional,
-    │   │                                login — 이메일/비밀번호 검증, 실패 사유 통일 메시지,
-    │   │                                findById — 없으면 IllegalStateException→500,
-    │   │                                updateProfile — 널 아닌 필드만 changeNickname/changePhone 호출)
+    │   │   └── UserService.java              signUp(중복 체크·BCrypt), login(사유 통일),
+    │   │                                     findById, updateProfile(널 아닌 필드만)
     │   └── controller/
-    │       └── UserController.java    (POST /api/users, POST /api/users/login — 세션 저장 +
-    │                                    changeSessionId()로 세션 고정 공격 방지,
-    │                                    POST /api/users/logout — session.invalidate(),
-    │                                    GET/PATCH /api/users/me — @LoginUser 사용)
+    │       └── UserController.java           POST /api/users, /login(+changeSessionId),
+    │                                         /logout(204), GET·PATCH /api/users/me
     │
-    ├── vehicle/                           — 차량 등록·조회·주행거리·삭제
+    ├── vehicle/  ─────────────────────────── 차량 등록·조회·주행거리·삭제
     │   ├── domain/
-    │   │   └── Vehicle.java            (id, owner→user.domain.User, plateNumber, manufacturer,
-    │   │                                modelName, modelYear, odometer, createdAt, updatedAt)
+    │   │   └── Vehicle.java                  @Entity(vehicles). owner→User(@ManyToOne LAZY).
+    │   │                                     updateOdometer()는 감소 시 예외
     │   ├── repository/
-    │   │   └── VehicleRepository.java  (findByOwner, findByOwnerId(Pageable),
-    │   │                                findByPlateNumber, existsByPlateNumber)
+    │   │   └── VehicleRepository.java        findByOwnerId(Pageable), findByPlateNumber,
+    │   │                                     existsByPlateNumber
     │   ├── dto/
-    │   │   ├── VehicleRegisterRequest.java (record, owner 없음 — 세션에서 식별)
-    │   │   ├── VehicleResponse.java        (record, owner 없음 — LAZY 필드 미접근으로 N+1 방지)
-    │   │   └── UpdateOdometerRequest.java  (record, @PositiveOrZero)
+    │   │   ├── request/
+    │   │   │   ├── VehicleRegisterRequest.java  owner 없음 — 세션에서 식별
+    │   │   │   └── UpdateOdometerRequest.java   @PositiveOrZero
+    │   │   └── response/
+    │   │       └── VehicleResponse.java         owner 없음 — LAZY 미접근으로 N+1 방지
     │   ├── service/
-    │   │   └── VehicleService.java     (register — 번호판 중복 체크·@Transactional,
-    │   │                                findMyVehicles — 조회 전용, @Transactional 없음,
-    │   │                                updateOdometer — dirty checking으로 save() 불필요,
-    │   │                                delete — maintenance.repository로 이력 먼저 삭제 후 차량 삭제,
-    │   │                                findOwnedVehicle() — 소유권 검증, maintenance 패키지도 재사용)
+    │   │   └── VehicleService.java           register, findMyVehicles(Pageable),
+    │   │                                     updateOdometer(dirty checking),
+    │   │                                     delete(이력 먼저 → 차량),
+    │   │                                     findOwnedVehicle(404/403 — maintenance도 재사용)
     │   └── controller/
-    │       └── VehicleController.java  (POST /api/vehicles, GET /api/vehicles,
-    │                                    GET/PATCH /api/vehicles/{vehicleId}(/odometer),
-    │                                    DELETE /api/vehicles/{vehicleId} — @LoginUser로 소유자 식별)
+    │       └── VehicleController.java        POST·GET /api/vehicles,
+    │                                         GET·DELETE /api/vehicles/{id},
+    │                                         PATCH /api/vehicles/{id}/odometer
     │
-    ├── maintenance/                        — 정비 이력·다음 정비 시점 계산
+    ├── maintenance/  ─────────────────────── 정비 이력·다음 정비 시점
     │   ├── domain/
-    │   │   ├── ServiceType.java        (enum: ENGINE_OIL/TIRE/BRAKE_PAD/BATTERY/OTHER,
-    │   │   │                            recommendedIntervalKm — 다음 정비 시점 계산용, OTHER는 null)
-    │   │   └── MaintenanceRecord.java  (id, vehicle→vehicle.domain.Vehicle, type, description, cost,
-    │   │                                serviceOdometer, serviceDate, createdAt, updatedAt,
-    │   │                                changeType/changeDescription/changeCost/
-    │   │                                changeServiceOdometer/changeServiceDate)
+    │   │   ├── ServiceType.java              enum 5종. recommendedIntervalKm +
+    │   │   │                                 recommendedIntervalMonths (OTHER는 둘 다 null)
+    │   │   └── MaintenanceRecord.java        @Entity. type은 @Enumerated(STRING).
+    │   │                                     필드별 change 메서드 5개
     │   ├── repository/
-    │   │   └── MaintenanceRecordRepository.java (findByVehicleId(Pageable),
-    │   │                                         findTopByVehicleIdAndTypeOrderByServiceDateDesc,
-    │   │                                         findByIdAndVehicleId — 다른 차량 소속 id 접근 차단,
-    │   │                                         deleteByVehicleId — 차량 삭제 시 이력 함께 삭제용)
+    │   │   └── MaintenanceRecordRepository.java
+    │   │                                     findByVehicleId(Pageable),
+    │   │                                     findTopByVehicleIdAndTypeOrderByServiceDateDesc,
+    │   │                                     findByIdAndVehicleId(타 차량 소속 차단),
+    │   │                                     deleteByVehicleId
     │   ├── dto/
-    │   │   ├── MaintenanceRecordRegisterRequest.java (record, @NotNull/@PositiveOrZero/@Size 검증)
-    │   │   ├── MaintenanceRecordUpdateRequest.java   (record, 전부 nullable — cost/serviceOdometer는
-    │   │   │                                          Integer로 "안 보냄"과 "0" 구분)
-    │   │   ├── MaintenanceRecordResponse.java        (record, MaintenanceRecord.from() 팩토리)
-    │   │   └── NextServiceResponse.java              (record, type/lastServiceOdometer/
-    │   │                                              nextServiceOdometer/lastServiceDate/
-    │   │                                              nextServiceDate — 이력·주기 없으면 null)
+    │   │   ├── request/
+    │   │   │   ├── MaintenanceRecordRegisterRequest.java  @NotNull/@PositiveOrZero/@Size
+    │   │   │   └── MaintenanceRecordUpdateRequest.java    전부 nullable. cost/serviceOdometer는
+    │   │   │                                              Integer로 "안 보냄"과 "0"을 구분
+    │   │   └── response/
+    │   │       ├── MaintenanceRecordResponse.java         from() 팩토리
+    │   │       └── NextServiceResponse.java               주행거리·날짜 두 기준
     │   ├── service/
-    │   │   └── MaintenanceRecordService.java (register/findByVehicle/calculateNextService/
-    │   │                                      findOne/update/delete, vehicle.service.VehicleService.
-    │   │                                      findOwnedVehicle()을 주입받아 재사용,
-    │   │                                      findRecordInVehicle()로 레코드 소속 검증)
+    │   │   └── MaintenanceRecordService.java register, findByVehicle(Pageable),
+    │   │                                     calculateNextService(km·개월),
+    │   │                                     findOne, update(부분), delete.
+    │   │                                     VehicleService.findOwnedVehicle()를 주입받아 재사용
     │   └── controller/
-    │       └── MaintenanceRecordController.java (POST/GET/PATCH/DELETE /api/vehicles/{vehicleId}/maintenance-records{/recordId},
-    │                                             GET .../next-service?type=... — @LoginUser로 식별)
+    │       └── MaintenanceRecordController.java
+    │                                         POST·GET  .../maintenance-records,
+    │                                         GET·PATCH·DELETE  .../{recordId},
+    │                                         GET  .../next-service?type=
     │
-    └── common/                             — 기능 어디에도 속하지 않는 공통 인프라
+    └── common/  ──────────────────────────── 기능 어디에도 속하지 않는 공통 인프라
         ├── auth/
-        │   ├── LoginUser.java                 (@Target(PARAMETER) 커스텀 애노테이션 — 로그인 사용자 주입 표시)
-        │   ├── LoginUserArgumentResolver.java (HandlerMethodArgumentResolver — 세션에서 LOGIN_USER_ID
-        │   │                                   추출, 없으면 AuthenticationFailedException)
-        │   └── SessionConst.java              (세션 키 상수 LOGIN_USER_ID)
+        │   ├── LoginUser.java                @Target(PARAMETER) 커스텀 애노테이션
+        │   ├── LoginUserArgumentResolver.java 세션 LOGIN_USER_ID → Long 주입. 없으면 401
+        │   └── SessionConst.java             세션 키 상수
         ├── config/
-        │   └── WebConfig.java                 (WebMvcConfigurer — LoginUserArgumentResolver 등록)
-        ├── exception/
-        │   ├── AuthenticationFailedException.java (RuntimeException — 로그인 실패/미인증 전용, 401)
-        │   ├── ForbiddenAccessException.java      (RuntimeException — 소유자 아님, 403)
-        │   ├── ResourceNotFoundException.java     (RuntimeException — 리소스 없음, 404)
-        │   └── GlobalExceptionHandler.java        (@RestControllerAdvice — 리소스 중복 409, 인증 실패 401,
-        │                                            권한 없음 403, 리소스 없음 404, 검증 실패/타입 변환 실패 400.
-        │                                            IllegalStateException 등은 의도적으로 미처리 → 500)
+        │   ├── WebConfig.java                ArgumentResolver 등록 + CORS(5173, credentials)
+        │   └── OpenApiConfig.java            문서 제목/설명 + @LoginUser를 스펙에서 제외
+        ├── exception/                        ※ 기능별로 나누지 않는다. 세 기능이 모두 쓰는
+        │   │                                   것이라 어느 한 기능으로 옮기면 잘못된 방향의
+        │   │                                   의존이 생긴다
+        │   ├── AuthenticationFailedException.java  401 전용
+        │   ├── ForbiddenAccessException.java       403 전용
+        │   ├── ResourceNotFoundException.java      404 전용
+        │   └── GlobalExceptionHandler.java         409/401/403/404/400 매핑.
+        │                                           IllegalStateException은 미처리 → 500
         └── dto/
-            ├── ErrorResponse.java              (record, message)
-            └── PageResponse.java               (record<T>, items/page/size/totalElements/
-                                                 totalPages/hasNext, Page<T>.from() 팩토리)
+            └── response/                     요청 DTO가 없어 response만 있다
+                ├── ErrorResponse.java        record(message)
+                └── PageResponse.java         record<T>(items/page/size/totalElements/
+                                              totalPages/hasNext) + Page<T>.from()
+
+### 백엔드 — 리소스와 테스트
+
+    src/main/resources/application.yml   MariaDB 접속(${DB_USERNAME}/${DB_PASSWORD}),
+                                         ddl-auto=update, open-in-view=false, SQL 로깅
+    src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
+                                         계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
+
+    src/test/java/com/odolog/app/        총 47개 테스트 (기능별 구조를 그대로 따라감)
+    ├── user/
+    │   ├── repository/UserRepositoryTest.java     @DataJpaTest — save/findByEmail/existsByEmail
+    │   ├── service/UserServiceTest.java           Mockito — 중복·암호화·로그인·부분수정
+    │   └── controller/UserControllerTest.java     @WebMvcTest — 201/409, 세션 저장, /me
+    ├── vehicle/
+    │   ├── repository/VehicleRepositoryTest.java  @DataJpaTest — 페이징·LAZY·주행거리
+    │   ├── service/VehicleServiceTest.java        Mockito — 404·403·감소방지·삭제순서(InOrder)
+    │   └── controller/VehicleControllerTest.java  @WebMvcTest — 401/400/201/404/403, 페이지 응답
+    └── maintenance/
+        ├── service/MaintenanceRecordServiceTest.java  Mockito — 다음정비 3케이스, 부분수정
+        └── controller/MaintenanceRecordControllerTest.java
+                                                       @WebMvcTest — next-service, enum 400,
+                                                       목록 페이지 응답, delete 204
+
+### 프론트엔드 — `frontend/`
 
     frontend/
-    ├── index.html
-    ├── vite.config.ts                  (react + tailwindcss 플러그인, '@' → ./src 별칭)
-    ├── tsconfig.json                   (references + paths — shadcn CLI가 이 파일을 읽는다)
-    ├── tsconfig.app.json               (src/ 코드용. paths 여기에도 필요)
-    ├── components.json                 (shadcn 설정. style=base-nova, 별칭 매핑)
-    ├── .env.development                (VITE_API_BASE_URL=http://localhost:8080)
+    ├── package.json                  스크립트: dev / build / lint / preview
+    ├── package-lock.json             설치된 정확한 버전 고정 — 반드시 커밋
+    ├── vite.config.ts                react + tailwindcss 플러그인, '@' → ./src 별칭
+    ├── tsconfig.json                 references + paths ← shadcn CLI가 읽는 파일 (지우면 안 됨)
+    ├── tsconfig.app.json             src/ 코드용 (브라우저). paths 여기에도
+    ├── tsconfig.node.json            vite.config.ts용 (Node 환경)
+    ├── components.json               shadcn 설정. aliases가 @/shared/ui 를 가리킨다
+    ├── .oxlintrc.json                린터 설정 (ESLint 아님)
+    ├── .env.development              VITE_API_BASE_URL=http://localhost:8080
+    ├── .gitignore                    node_modules/, dist/
+    ├── index.html                    <div id="root"> + main.tsx 로드
+    ├── README.md                     프론트 실행법 (백엔드가 먼저 떠 있어야 함)
+    ├── public/favicon.svg            빌드 시 그대로 복사되는 정적 파일
     └── src/
-        ├── main.tsx                    (BrowserRouter > AuthProvider > App)
-        ├── App.tsx                     (라우트 정의 + Header)
-        ├── index.css                   (@import "tailwindcss" + shadcn 테마 변수)
-        ├── env.d.ts                    (import.meta.env 타입)
-        ├── types/api.ts                (백엔드 DTO 대응 타입 + ServiceType 한글 라벨)
-        ├── lib/api.ts                  (fetch 래퍼 — credentials:'include', ApiError, 204 처리,
-        │                                401 전역 핸들러)
-        ├── auth/
-        │   ├── AuthContext.ts          (Context + useAuth 훅 — 컴포넌트 아닌 것만)
-        │   ├── AuthProvider.tsx        (세션 복구/login/logout 상태 관리)
-        │   └── ProtectedRoute.tsx      (로그인 안 했으면 /login으로)
-        ├── lib/format.ts               (formatKm / formatWon)
-        ├── lib/vehicles.ts             (차량 엔드포인트 모음)
-        ├── pages/
-        │   ├── LoginPage.tsx
-        │   ├── SignUpPage.tsx          (가입 성공 시 바로 로그인까지)
-        │   ├── ProfilePage.tsx         (바뀐 필드만 PATCH)
-        │   ├── VehicleListPage.tsx     (목록 + 페이지네이션 + 빈 상태)
-        │   ├── VehicleNewPage.tsx      (등록 폼, 409 → 폼 에러)
-        │   └── VehicleDetailPage.tsx   (상세 + 주행거리 갱신 + 삭제)
-        ├── components/
-        │   ├── Header.tsx
-        │   └── ui/                     (shadcn: button/input/label/card)
-        └── ...
+        ├── main.tsx                  BrowserRouter > AuthProvider > App 순서로 감쌈
+        ├── App.tsx                   라우트 7개 정의 + Header 배치
+        ├── index.css                 @import "tailwindcss" + shadcn 테마 변수
+        ├── env.d.ts                  import.meta.env 타입 선언
+        │
+        ├── features/  ─────────────── 기능별. 백엔드의 user/vehicle/maintenance와 짝을 이룬다
+        │   ├── auth/
+        │   │   ├── AuthContext.ts        Context 정의 + useAuth 훅 (컴포넌트 아닌 것만)
+        │   │   ├── AuthProvider.tsx      세션 복구(/me 1회)·login·logout·401 핸들러 등록
+        │   │   ├── ProtectedRoute.tsx    로그인 안 했으면 /login으로. loading 중엔 대기
+        │   │   ├── LoginPage.tsx         401 → 폼 에러. 원래 가려던 곳으로 복귀
+        │   │   ├── SignUpPage.tsx        가입 후 이어서 로그인까지. 409 → 폼 에러
+        │   │   └── ProfilePage.tsx       바뀐 필드만 PATCH. null 걸러내는 겉 + 폼 2단 구조
+        │   ├── vehicles/
+        │   │   ├── api.ts                차량 엔드포인트 5개
+        │   │   ├── VehicleListPage.tsx   목록 + 페이지네이션 + 빈 상태
+        │   │   ├── VehicleNewPage.tsx    등록 폼. 409(번호판 중복) → 폼 에러
+        │   │   └── VehicleDetailPage.tsx 차량정보 → 주행거리 → 다음정비 → 이력 → 삭제
+        │   └── maintenance/
+        │       ├── api.ts                정비 이력 엔드포인트 5개
+        │       ├── NextServiceCard.tsx   종류 5개 다음 정비 시점 (Promise.all 동시 요청)
+        │       ├── MaintenanceSection.tsx 목록 + 페이지네이션 + 삭제 + 폼 토글
+        │       └── MaintenanceForm.tsx   등록·수정 겸용 (record가 null이면 등록)
+        │
+        └── shared/  ───────────────── 어느 기능에도 속하지 않는 것. 백엔드의 common과 같은 자리
+            ├── api/
+            │   ├── client.ts             fetch 래퍼. credentials:'include' / ApiError /
+            │   │                         204 처리 / 401 전역 핸들러 등록 창구
+            │   └── types.ts              백엔드 DTO 대응 타입 + PageResponse<T> +
+            │                             ServiceType 유니온 + SERVICE_TYPE_LABELS
+            ├── lib/
+            │   └── format.ts             formatKm / formatWon / todayString(UTC 함정 회피)
+            ├── layout/
+            │   └── Header.tsx            로고 · 닉네임(→/me) · 로그아웃
+            └── ui/                       shadcn이 복사해 넣은 코드. 직접 고쳐도 된다
+                ├── button.tsx            asChild 없음. Base UI의 render prop 사용
+                ├── card.tsx
+                ├── input.tsx
+                ├── label.tsx
+                └── textarea.tsx
 
-    src/test/java/com/odolog/app/
-    ├── user/
-    │   ├── repository/UserRepositoryTest.java (@DataJpaTest — save, findByEmail, existsByEmail)
-    │   ├── service/UserServiceTest.java       (Mockito — signUp 중복/암호화, login 성공·실패,
-    │   │                                        findById, updateProfile 부분 수정)
-    │   └── controller/UserControllerTest.java (@WebMvcTest+MockMvc — signUp 201/409,
-    │                                            login 200(세션 저장 확인)/401, /me 401/200)
-    ├── vehicle/
-    │   ├── repository/VehicleRepositoryTest.java (@DataJpaTest — save, findByOwner, findByOwnerId,
-    │   │                                          findByPlateNumber, ownerIsLazy, updateOdometer)
-    │   ├── service/VehicleServiceTest.java       (Mockito — register 중복/성공, findOwnedVehicle
-    │   │                                          404·403, updateOdometer 감소 방지,
-    │   │                                          delete 순서(InOrder) 검증)
-    │   └── controller/VehicleControllerTest.java (@WebMvcTest+MockMvc — 미인증 401, 검증 실패 400,
-    │                                              register 201, findOne 200/404, updateOdometer 403)
-    └── maintenance/
-        ├── service/MaintenanceRecordServiceTest.java (Mockito — register, calculateNextService
-        │                                              3가지 케이스, update 부분 수정,
-        │                                              타 차량 소속 id 접근 404)
-        └── controller/MaintenanceRecordControllerTest.java (@WebMvcTest+MockMvc — next-service 200,
-                                                             잘못된 enum 값 400, 차량 없음 404,
-                                                             findOne 200/404, delete 204)
+### 의존 방향
 
-**의존 방향**: `maintenance` → `vehicle` → `user`, 그리고 셋 다 필요하면 `common`을 본다.
-반대 방향 의존(`user`가 `vehicle`을 알아야 하는 것 등)이 생기면 설계가 잘못된 신호로 보고 재검토한다.
+    백엔드:  maintenance → vehicle → user,  셋 다 필요하면 common
+    프론트:  features/maintenance → features/vehicles → features/auth,  셋 다 shared를 본다
+
+반대 방향 의존(`user`가 `vehicle`을 알거나, `shared`가 `features`를 아는 것)이 생기면
+설계가 잘못된 신호로 보고 재검토한다.
 
 ## 진행 상황 (완료)
 
@@ -379,6 +432,40 @@ maintenance/common)로 전환했다.** 계층별 구조는 파일이 몇 개 없
         같은 설정을 반복하지 않기 위해. `LoginUserArgumentResolver` 등록과 같은 자리.
       → 프론트 착수 시 `fetch(url, { credentials: 'include' })`가 짝으로 필요함. 실제 Vite 포트가
         5173이 아니면 `allowedOrigins`를 그때 갱신.
+- [x] 미사용 정리 + 디렉토리 세분화 (프론트 기능별 재구성, 백엔드 DTO request/response 분리)
+      → 정리: `frontend/src/assets/`(템플릿 잔재 2개), `public/icons.svg`(참조 없음),
+        `frontend/README.md`(Vite 템플릿 → 실제 실행법), `VehicleRepository.findByOwner`
+        (테스트에서만 쓰이고 프로덕션 미사용) + 그 테스트. 테스트 48 → 47개.
+      → 백엔드: 모든 `dto/`를 `dto/request/`와 `dto/response/`로 분리(13개 이동).
+        `common/dto`는 요청 DTO가 없어 `response/`만 생겼다.
+      → 백엔드 `common/exception`은 **일부러 기능별로 나누지 않았다.** 세 기능이 모두 쓰는 것이라
+        어느 한 기능으로 옮기면 잘못된 방향의 의존이 생긴다.
+      → 프론트: `pages/lib/components`(역할별) → `features/{auth,vehicles,maintenance}` +
+        `shared/{api,lib,layout,ui}`(기능별)로 재구성. 백엔드와 같은 원칙이 되었다.
+      → `components.json`의 aliases를 `@/shared/ui`로 갱신. 안 하면 다음 `shadcn add`가
+        예전 위치(`src/components/ui`)에 파일을 다시 만든다.
+      → 이미 커밋된 파일은 `git mv`로 히스토리를 보존했고, 아직 커밋 전인 Phase 5 파일만 `mv`.
+      → 검증: 백엔드 47개 테스트 통과, 프론트 타입 검사·린트 통과, **빌드 결과 JS 해시가
+        재구성 전과 동일**(`index-BfMQAYcH.js`) — 순수 구조 변경이고 동작은 안 바뀌었다는 증거.
+
+- [x] Phase 5 — 정비 이력 관리 화면 (목록/등록/수정/삭제 + 다음 정비 시점)
+      → 차량 상세 페이지 안에 `NextServiceCard` + `MaintenanceSection`을 배치.
+      → 등록 폼과 수정 폼을 **한 컴포넌트로 겸용**한다(`record === null`이면 등록).
+        필드 구성이 같은데 파일을 둘로 나누면 한쪽만 고치는 실수가 생긴다.
+      → 수정은 `record`의 값과 비교해 **바뀐 필드만** PATCH. 비용을 0으로 바꾸는 것과
+        안 보내는 것은 다르므로 값 비교로 판단한다.
+      → 정비 종류 선택은 shadcn Select 대신 **브라우저 기본 `<select>`**. 선택지가 5개뿐이라
+        커스텀 드롭다운의 복잡한 구조가 필요 없고, 모바일에서 OS 기본 UI가 뜨는 게 더 편하다.
+      → `<input type="date">`의 값이 곧 `YYYY-MM-DD` 문자열이라 백엔드 `LocalDate`와 그대로 맞는다.
+      → **`new Date().toISOString().slice(0,10)`을 쓰지 않는다.** UTC 기준이라 한국 시간
+        오전 9시 이전에는 하루 전 날짜가 나온다. `todayString()`이 로컬 기준으로 만든다.
+      → 이력이 바뀌면 부모(`VehicleDetailPage`)의 `maintenanceVersion`을 1 올리고, 그 값을
+        `NextServiceCard`의 `reloadKey`로 내려 다음 정비 시점을 다시 계산시킨다.
+      → `NextServiceCard`는 종류 5개를 `Promise.all`로 동시에 요청한다(순차로 기다리면 5배 느림).
+        요청 수 자체를 줄이려면 백로그의 "전체 종류 한 번에" API가 필요하다.
+      → 검증: 등록/목록/부분수정(cost만)/삭제(204)와 next-service 3케이스
+        (계산됨 45,000km+2026-07-15 / OTHER null / 이력 없음 null) 모두 확인.
+
 - [x] Phase 4 — 차량 관리 화면 (목록/등록/상세/주행거리/삭제)
       → `lib/vehicles.ts`에 엔드포인트를 모았다. 화면이 URL 문자열을 직접 들고 있으면 경로가 바뀔 때
         여러 파일을 뒤져야 한다.
@@ -533,30 +620,9 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ---
 
-## Phase 5 — 정비 이력 관리 화면
+## Phase 5 — 정비 이력 관리 화면 (완료)
 
-- [ ] `ServiceType` 한글 라벨 매핑 테이블 (`ENGINE_OIL` → "엔진오일")
-      → 백엔드 enum 값(통신용)과 화면 표시 문자열을 분리한다. 한 곳에 상수로 모아두면
-        셀렉트 박스/목록/카드에서 전부 재사용된다.
-- [ ] 차량 상세 안에 정비 이력 목록 (`GET .../maintenance-records`)
-      → 여기도 `PageResponse`. 기본 정렬은 `serviceDate DESC`(최신순).
-- [ ] 이력 등록 폼 (`POST .../maintenance-records`)
-      → 종류(셀렉트) / 설명 / 비용 / 정비 시점 주행거리 / 정비 날짜.
-      → 날짜는 `YYYY-MM-DD` 문자열로 보낸다(백엔드 `LocalDate`). `Date` 객체를 그대로 JSON에
-        넣으면 UTC 변환 때문에 하루가 밀리는 사고가 잦다.
-      → `serviceOdometer` 기본값을 차량의 현재 `odometer`로 채워 주면 입력이 편하다.
-- [ ] 이력 수정 (`PATCH .../maintenance-records/{recordId}`)
-      → 백엔드가 부분 수정이므로 **바뀐 필드만** 보낸다.
-      → 비용을 0으로 바꾸는 것과 안 보내는 것은 다르다(백엔드가 `Integer`로 구분). 폼에서 빈 값을
-        `0`으로 만들지 않도록 주의.
-- [ ] 이력 삭제 (`DELETE .../maintenance-records/{recordId}`) — 확인 후 204 처리
-- [ ] 다음 정비 시점 카드 (`GET .../next-service?type=`)
-      → 주행거리 기준과 날짜 기준을 나란히 표시. 둘 다 `null`일 수 있다
-        (이력 없음 / `OTHER`처럼 권장 주기 없음) — "이력이 없어 계산할 수 없습니다"로 분기.
-      → 현재 주행거리와 비교해 "곧 교체 필요"/"지남" 같은 상태 배지를 붙일지 결정.
-        이 판단 로직을 프론트에 둘지 백엔드에 둘지는 그때 상의(백엔드에 두면 기준이 한 곳).
-      → **주의**: 지금 API는 `type` 하나씩만 계산한다. 화면에서 5종류를 다 보여주려면 요청이
-        5번 나간다. 실제로 불편하면 아래 백로그의 "전체 종류 한 번에" API를 추가한다.
+- [ ] 브라우저에서 확인: 이력 등록 → 목록에 표시 → 다음 정비 시점 갱신 → 수정 → 삭제
 
 ---
 

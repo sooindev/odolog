@@ -1,10 +1,10 @@
 package com.odolog.app.user.controller;
 
 import com.odolog.app.user.domain.User;
-import com.odolog.app.user.dto.LoginRequest;
-import com.odolog.app.user.dto.SignUpRequest;
-import com.odolog.app.user.dto.UpdateProfileRequest;
-import com.odolog.app.user.dto.UserResponse;
+import com.odolog.app.user.dto.request.LoginRequest;
+import com.odolog.app.user.dto.request.SignUpRequest;
+import com.odolog.app.user.dto.request.UpdateProfileRequest;
+import com.odolog.app.user.dto.response.UserResponse;
 import com.odolog.app.user.service.UserService;
 import com.odolog.app.common.auth.LoginUser;
 import com.odolog.app.common.auth.SessionConst;

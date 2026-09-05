@@ -7,25 +7,36 @@
 - Spring Boot 3.5.6 / Java 17 / Gradle
 - Spring Data JPA (Hibernate 6.6.x)
 - MariaDB 12.3.2
+- 프론트엔드: React 19 / Vite 8 / TypeScript 6 / Tailwind CSS v4 / shadcn-ui
 
 ## 실행 방법
 
 - IntelliJ IDEA에서 `OdoLogApplication`을 실행한다.
 - 실행 구성의 환경변수로 `DB_USERNAME`, `DB_PASSWORD`를 설정해야 한다 (평문 비밀번호를 파일에 적지 않음).
 - 빌드/컴파일만 확인할 때는 터미널에서 `./gradlew build`.
+- API 문서: 실행 후 `http://localhost:8080/swagger-ui.html`
 
-## 패키지 구조
+## 프로젝트 구조
 
-기능별(package-by-feature)로 구성되어 있다.
+백엔드와 프론트엔드 모두 기능별(package-by-feature)로 구성되어 있다.
 
-    src/main/java/com/odolog/app/
-    ├── user/          회원가입, 로그인/로그아웃, 프로필
-    ├── vehicle/        차량 등록·조회·주행거리 갱신·삭제
-    ├── maintenance/    정비 이력, 다음 정비 시점 계산
-    └── common/         인증(세션), 전역 예외 처리, 설정 등 공통 인프라
+    odolog/
+    ├── src/                       백엔드 (Spring Boot)
+    │   └── main/java/com/odolog/app/
+    │       ├── user/              회원가입, 로그인/로그아웃, 프로필
+    │       ├── vehicle/           차량 등록·조회·주행거리 갱신·삭제
+    │       ├── maintenance/       정비 이력, 다음 정비 시점 계산
+    │       └── common/            인증(세션), 전역 예외 처리, 설정 등 공통 인프라
+    └── frontend/                  프론트엔드 (Vite + React + TypeScript)
+        └── src/
+            ├── features/          auth / vehicles / maintenance
+            └── shared/            api 클라이언트, 포맷 함수, 레이아웃, UI 컴포넌트
 
-각 기능 패키지는 `domain / repository / dto / service / controller`로 나뉜다.
+각 기능 패키지는 `domain / repository / dto / service / controller`로 나뉘고,
+`dto`는 다시 `request / response`로 나뉜다.
 설계 결정과 진행 상황은 `CLAUDE.md`에 상세히 기록되어 있다.
+
+프론트엔드 실행 방법은 `frontend/README.md` 참고.
 
 ## API 개요
 

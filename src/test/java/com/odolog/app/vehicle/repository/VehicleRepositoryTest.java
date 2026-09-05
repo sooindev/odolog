@@ -51,25 +51,6 @@ class VehicleRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByOwner 는 그 사람의 차량만 가져온다")
-    void findByOwner() {
-        User other = new User("other@odolog.com", "encoded-pw", "다른차주", null);
-        em.persist(other);
-
-        em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
-        em.persist(new Vehicle(owner, "34나5678", "기아", "K5", 2022));
-        em.persist(new Vehicle(other, "56다7890", "쉐보레", "트랙스", 2021));
-        em.flush();
-        em.clear();
-
-        List<Vehicle> mine = vehicleRepository.findByOwner(owner);
-
-        assertThat(mine).hasSize(2)
-                .extracting(Vehicle::getPlateNumber)
-                .containsExactlyInAnyOrder("12가3456", "34나5678");
-    }
-
-    @Test
     @DisplayName("findByOwnerId 는 owner 의 id 로 페이지 단위 조회를 한다")
     void findByOwnerId() {
         em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));

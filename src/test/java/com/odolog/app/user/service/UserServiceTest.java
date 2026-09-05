@@ -2,9 +2,9 @@ package com.odolog.app.user.service;
 
 import com.odolog.app.common.exception.AuthenticationFailedException;
 import com.odolog.app.user.domain.User;
-import com.odolog.app.user.dto.LoginRequest;
-import com.odolog.app.user.dto.SignUpRequest;
-import com.odolog.app.user.dto.UpdateProfileRequest;
+import com.odolog.app.user.dto.request.LoginRequest;
+import com.odolog.app.user.dto.request.SignUpRequest;
+import com.odolog.app.user.dto.request.UpdateProfileRequest;
 import com.odolog.app.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

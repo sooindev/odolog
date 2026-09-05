@@ -2,8 +2,8 @@ package com.odolog.app.vehicle.service;
 
 import com.odolog.app.user.domain.User;
 import com.odolog.app.vehicle.domain.Vehicle;
-import com.odolog.app.vehicle.dto.UpdateOdometerRequest;
-import com.odolog.app.vehicle.dto.VehicleRegisterRequest;
+import com.odolog.app.vehicle.dto.request.UpdateOdometerRequest;
+import com.odolog.app.vehicle.dto.request.VehicleRegisterRequest;
 import com.odolog.app.common.exception.ForbiddenAccessException;
 import com.odolog.app.common.exception.ResourceNotFoundException;
 import com.odolog.app.maintenance.repository.MaintenanceRecordRepository;

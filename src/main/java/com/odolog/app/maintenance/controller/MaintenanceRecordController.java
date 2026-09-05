@@ -2,13 +2,13 @@ package com.odolog.app.maintenance.controller;
 
 import com.odolog.app.maintenance.domain.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.ServiceType;
-import com.odolog.app.maintenance.dto.MaintenanceRecordRegisterRequest;
-import com.odolog.app.maintenance.dto.MaintenanceRecordResponse;
-import com.odolog.app.maintenance.dto.MaintenanceRecordUpdateRequest;
-import com.odolog.app.maintenance.dto.NextServiceResponse;
+import com.odolog.app.maintenance.dto.request.MaintenanceRecordRegisterRequest;
+import com.odolog.app.maintenance.dto.response.MaintenanceRecordResponse;
+import com.odolog.app.maintenance.dto.request.MaintenanceRecordUpdateRequest;
+import com.odolog.app.maintenance.dto.response.NextServiceResponse;
 import com.odolog.app.maintenance.service.MaintenanceRecordService;
 import com.odolog.app.common.auth.LoginUser;
-import com.odolog.app.common.dto.PageResponse;
+import com.odolog.app.common.dto.response.PageResponse;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
