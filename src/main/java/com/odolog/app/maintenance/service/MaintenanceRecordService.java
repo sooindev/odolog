@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 @Service
+@Transactional(readOnly = true)
 public class MaintenanceRecordService {
 
     private final MaintenanceRecordRepository maintenanceRecordRepository;
