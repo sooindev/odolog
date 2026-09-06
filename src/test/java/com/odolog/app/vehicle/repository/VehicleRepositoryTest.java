@@ -69,19 +69,33 @@ class VehicleRepositoryTest {
     }
 
     @Test
-    @DisplayName("번호판으로 중복 여부를 확인할 수 있다")
-    void findByPlateNumber() {
+    @DisplayName("번호판 중복은 소유자 안에서만 따진다 — 다른 사람이 같은 번호판을 써도 막지 않는다")
+    void existsByOwnerIdAndPlateNumber() {
+        User another = new User("another@odolog.com", "encoded-pw", "다른차주", "010-3333-4444");
+        em.persist(another);
         em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
         em.flush();
         em.clear();
 
-        assertThat(vehicleRepository.existsByPlateNumber("12가3456")).isTrue();
-        assertThat(vehicleRepository.existsByPlateNumber("99하9999")).isFalse();
-        assertThat(vehicleRepository.findByPlateNumber("12가3456"))
-                .isPresent()
-                .get()
-                .extracting(Vehicle::getModelName)
-                .isEqualTo("아반떼");
+        assertThat(vehicleRepository.existsByOwnerIdAndPlateNumber(owner.getId(), "12가3456")).isTrue();
+        assertThat(vehicleRepository.existsByOwnerIdAndPlateNumber(owner.getId(), "99하9999")).isFalse();
+        // 같은 번호판이라도 주인이 다르면 중복이 아니다 (중고차 이전 / 가족 공유 차량)
+        assertThat(vehicleRepository.existsByOwnerIdAndPlateNumber(another.getId(), "12가3456")).isFalse();
+    }
+
+    @Test
+    @DisplayName("다른 사용자는 같은 번호판을 등록할 수 있다 (복합 유니크 제약 확인)")
+    void samePlateNumberForDifferentOwners() {
+        User another = new User("another@odolog.com", "encoded-pw", "다른차주", "010-3333-4444");
+        em.persist(another);
+
+        em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
+        em.persist(new Vehicle(another, "12가3456", "현대", "아반떼", 2020));
+
+        // 전역 유니크였다면 여기서 제약 위반으로 터진다
+        em.flush();
+
+        assertThat(vehicleRepository.count()).isEqualTo(2);
     }
 
     @Test

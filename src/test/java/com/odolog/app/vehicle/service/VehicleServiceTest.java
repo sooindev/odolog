@@ -57,10 +57,10 @@ class VehicleServiceTest {
     }
 
     @Test
-    @DisplayName("이미 등록된 번호판이면 예외가 발생하고 저장하지 않는다")
+    @DisplayName("같은 사용자가 이미 등록한 번호판이면 예외가 발생하고 저장하지 않는다")
     void registerDuplicatePlateNumber() {
         VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023);
-        when(vehicleRepository.existsByPlateNumber("12가3456")).thenReturn(true);
+        when(vehicleRepository.existsByOwnerIdAndPlateNumber(1L, "12가3456")).thenReturn(true);
 
         assertThatThrownBy(() -> vehicleService.register(1L, request))
                 .isInstanceOf(ConflictException.class);
@@ -73,7 +73,7 @@ class VehicleServiceTest {
     void registerSuccess() {
         User owner = createOwner(1L);
         VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023);
-        when(vehicleRepository.existsByPlateNumber("12가3456")).thenReturn(false);
+        when(vehicleRepository.existsByOwnerIdAndPlateNumber(1L, "12가3456")).thenReturn(false);
         when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
         when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

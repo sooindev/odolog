@@ -31,8 +31,8 @@ public class VehicleService {
 
     @Transactional
     public Vehicle register(Long ownerId, VehicleRegisterRequest request) {
-        if (vehicleRepository.existsByPlateNumber(request.plateNumber())) {
-            throw new ConflictException("이미 등록된 차량 번호입니다: " + request.plateNumber());
+        if (vehicleRepository.existsByOwnerIdAndPlateNumber(ownerId, request.plateNumber())) {
+            throw new ConflictException("이미 등록하신 차량 번호입니다: " + request.plateNumber());
         }
 
         User owner = userRepository.findById(ownerId)

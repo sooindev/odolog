@@ -22,8 +22,8 @@ import java.time.LocalDateTime;
 @Table(
         name = "vehicles",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_vehicles_plate_number",
-                columnNames = "plate_number"
+                name = "uk_vehicles_user_plate_number",
+                columnNames = {"user_id", "plate_number"}
         )
 )
 public class Vehicle {
