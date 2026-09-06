@@ -25,6 +25,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
   const [editing, setEditing] = useState<'closed' | 'new' | MaintenanceRecordResponse>('closed')
   // 조회 실패와 달리 "삭제 버튼을 눌렀는데 실패"는 사용자의 행동에 대한 답이라 따로 둔다.
   const [actionError, setActionError] = useState<string | null>(null)
+  // 삭제 중인 이력의 id. boolean 하나로 두면 목록 전체가 잠겨서 어느 줄을 지우는 중인지 안 보인다.
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const load = useCallback(() => fetchRecords(vehicleId, page), [vehicleId, page])
   const { data, loading, error, reload } = useAsyncData(load, '정비 이력을 불러오지 못했습니다.')
@@ -45,11 +47,15 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
       return
     }
 
+    setDeletingId(recordId)
+
     try {
       await deleteRecord(vehicleId, recordId)
       refresh()
     } catch (caught) {
       setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -101,11 +107,21 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                 </div>
 
                 <div className="flex shrink-0 gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(record)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={deletingId === record.id}
+                    onClick={() => setEditing(record)}
+                  >
                     수정
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleDelete(record.id)}>
-                    삭제
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={deletingId === record.id}
+                    onClick={() => handleDelete(record.id)}
+                  >
+                    {deletingId === record.id ? '삭제 중…' : '삭제'}
                   </Button>
                 </div>
               </li>

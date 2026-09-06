@@ -35,6 +35,7 @@ export function VehicleDetailPage() {
   // 정비 이력이 바뀌면 이 값을 올려 "다음 정비 시점"을 다시 계산하게 한다.
   const [maintenanceVersion, setMaintenanceVersion] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   if (loading) {
     return <LoadingText />
@@ -50,11 +51,15 @@ export function VehicleDetailPage() {
       return
     }
 
+    setDeleting(true)
+
     try {
       await deleteVehicle(id)
       navigate('/vehicles', { replace: true })
     } catch (caught) {
       setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
+      // 성공하면 이 화면을 떠나므로 실패했을 때만 되돌린다.
+      setDeleting(false)
     }
   }
 
@@ -92,8 +97,8 @@ export function VehicleDetailPage() {
       {actionError !== null && <ErrorText message={actionError} />}
 
       <div className="flex justify-end">
-        <Button variant="destructive" onClick={handleDelete}>
-          차량 삭제
+        <Button variant="destructive" disabled={deleting} onClick={handleDelete}>
+          {deleting ? '삭제 중…' : '차량 삭제'}
         </Button>
       </div>
     </div>
