@@ -70,8 +70,9 @@
 /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SHOW TABLES;"
 ```
 
-참고로 `user@localhost` 계정은 `unix_socket` 인증이라 비밀번호 없이 붙는다. 애플리케이션이
-쓰는 계정이 아니라 진단(테이블 확인 등) 용도로만 사용한다.
+참고로 `user@localhost` 계정은 비밀번호 해시가 문자 그대로 `'invalid'` 라서 비밀번호로는
+접속되지 않고, 유닉스 소켓으로만 붙는다. 그래서 TCP로 접속하는 애플리케이션(JDBC)에는 쓸 수 없고
+진단(테이블 확인 등) 용도로만 사용한다. 자세한 경위는 아래 항목에 있다.
 
 ### IntelliJ에서 실행 시 `Access denied for user 'root'@'localhost'`
 

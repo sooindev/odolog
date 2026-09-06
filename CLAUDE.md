@@ -56,6 +56,18 @@
 (아래 "DB 접속 시 주의" 참고 — 한 번 크게 막혔던 지점이다).
 
 - DB: MariaDB, `localhost:3306`, 스키마 `odolog` (utf8mb4 / utf8mb4_unicode_ci)
+- ⚠️ **미완료 — 운영 스키마에 손으로 한 번 실행해야 한다** (2026-09-06 번호판 유니크 범위 변경):
+
+      /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults \
+        -e "USE odolog; ALTER TABLE vehicles DROP INDEX uk_vehicles_plate_number;"
+
+  `ddl-auto: update` 는 제약을 **추가만 하고 절대 지우지 않는다.** 그래서 새 복합 유니크
+  `uk_vehicles_user_plate_number` 가 생겨도 옛 전역 유니크가 그대로 남아 더 엄격한 쪽이 이긴다.
+  즉 **코드만 고치면 아무것도 안 바뀌고, 조용히 예전대로 동작한다.**
+  `odolog_test` 는 매번 `create-drop` 이라 손댈 필요가 없다 — 그래서 테스트는 통과하는데
+  운영만 안 바뀌는 상황이 생긴다. 실행 여부는 아래로 확인한다:
+
+      /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SHOW INDEX FROM vehicles;"
 - **앱이 쓰는 계정은 `odolog`@localhost** (2026-09-06 생성). `odolog.*` 에만 권한이 있다.
   비밀번호는 어떤 파일에도 적지 않는다 — IntelliJ 실행 구성의 환경변수에만 있다.
 - 드라이버: `org.mariadb.jdbc:mariadb-java-client`, URL은 `jdbc:mariadb://`
@@ -115,7 +127,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
    DB 구조가 동일하고 양방향은 동기화 부담이 크기 때문. 필요해지면 그때 검토한다.
 5. **`@ManyToOne` 에는 항상 `fetch = FetchType.LAZY`** 를 명시한다 (기본값이 EAGER라 N+1 유발).
    `optional = false` 와 `@JoinColumn(nullable = false)` 를 짝으로 쓴다.
-6. **제약조건에는 이름을 직접 붙인다.** (`uk_vehicles_plate_number`, `fk_vehicles_user`)
+6. **제약조건에는 이름을 직접 붙인다.** (`uk_vehicles_user_plate_number`, `fk_vehicles_user`)
    Hibernate가 짓는 해시 이름(`UK6dotkott2kjsp8vw4d0m25fb7`)은 로그 추적이 불가능하다.
 7. **시간 필드는 `@PrePersist` / `@PreUpdate`** 로 채운다. `@EnableJpaAuditing` 은 아직 미도입.
    `createdAt` 에는 `updatable = false` 를 준다.
@@ -128,6 +140,13 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     403(권한 없음) / 404(리소스 없음) / 409(리소스 중복). 서버 쪽 불변식이 깨진 경우
     (예: 세션엔 있는데 DB엔 없는 사용자)는 일부러 핸들러를 만들지 않고 500으로 흘려보내
     로그에 남긴다 — 모든 예외를 친절한 응답으로 감쌀 필요는 없다.
+12. **예외는 전용 타입으로 던진다.** `IllegalArgumentException` 같은 JDK 범용 예외를 핸들러에
+    매핑하지 않는다. 우리가 안 던진 예외까지 잡혀서 500이어야 할 것이 조용히 4xx로 나간다.
+    상태 코드 하나당 예외 클래스 하나(`ConflictException`/`AuthenticationFailedException`/
+    `ForbiddenAccessException`/`ResourceNotFoundException`).
+13. **서비스는 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드에만 `@Transactional`.**
+    메서드 쪽이 클래스 쪽을 덮어쓴다. 새 메서드를 깜빡했을 때 기본이 안전한 쪽(읽기 전용)이라
+    쓰기가 실패해서 바로 드러난다. 반대로 하면 아무 일도 안 일어나 영영 모른다.
 
 ## 현재 구조
 
@@ -185,10 +204,11 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     ├── vehicle/  ─────────────────────────── 차량 등록·조회·주행거리·삭제
     │   ├── domain/
     │   │   └── Vehicle.java                  @Entity(vehicles). owner→User(@ManyToOne LAZY).
-    │   │                                     updateOdometer()는 감소 시 예외
+    │   │                                     uk_vehicles_user_plate_number(소유자+번호판 복합).
+    │   │                                     updateOdometer()는 감소 시 ConflictException
     │   ├── repository/
-    │   │   └── VehicleRepository.java        findByOwnerId(Pageable), findByPlateNumber,
-    │   │                                     existsByPlateNumber
+    │   │   └── VehicleRepository.java        findByOwnerId(Pageable),
+    │   │                                     existsByOwnerIdAndPlateNumber(소유자별 중복 검사)
     │   ├── dto/
     │   │   ├── request/
     │   │   │   ├── VehicleRegisterRequest.java  owner 없음 — 세션에서 식별
@@ -214,7 +234,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   ├── repository/
     │   │   └── MaintenanceRecordRepository.java
     │   │                                     findByVehicleId(Pageable),
-    │   │                                     findTopByVehicleIdAndTypeOrderByServiceDateDesc,
+    │   │                                     findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc,
     │   │                                     findByIdAndVehicleId(타 차량 소속 차단),
     │   │                                     deleteByVehicleId
     │   ├── dto/
@@ -247,10 +267,13 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         ├── exception/                        ※ 기능별로 나누지 않는다. 세 기능이 모두 쓰는
         │   │                                   것이라 어느 한 기능으로 옮기면 잘못된 방향의
         │   │                                   의존이 생긴다
+        │   ├── ConflictException.java              409 전용
         │   ├── AuthenticationFailedException.java  401 전용
         │   ├── ForbiddenAccessException.java       403 전용
         │   ├── ResourceNotFoundException.java      404 전용
-        │   └── GlobalExceptionHandler.java         409/401/403/404/400 매핑.
+        │   └── GlobalExceptionHandler.java         409/401/403/404/400 매핑. 전용 예외만
+        │                                           잡는다 — IllegalArgumentException 같은
+        │                                           JDK 범용 예외는 매핑하지 않음(규칙 12).
         │                                           IllegalStateException은 미처리 → 500
         └── dto/
             └── response/                     요청 DTO가 없어 response만 있다
@@ -265,20 +288,31 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
 
-    src/test/java/com/odolog/app/        총 47개 테스트 (기능별 구조를 그대로 따라감)
+    src/test/java/com/odolog/app/        총 53개 테스트 (기능별 구조를 그대로 따라감)
     ├── user/
     │   ├── repository/UserRepositoryTest.java     @DataJpaTest — save/findByEmail/existsByEmail
     │   ├── service/UserServiceTest.java           Mockito — 중복·암호화·로그인·부분수정
     │   └── controller/UserControllerTest.java     @WebMvcTest — 201/409, 세션 저장, /me
     ├── vehicle/
-    │   ├── repository/VehicleRepositoryTest.java  @DataJpaTest — 페이징·LAZY·주행거리
+    │   ├── repository/VehicleRepositoryTest.java  @DataJpaTest — 페이징·LAZY·주행거리·
+    │   │                                          소유자별 번호판 중복
     │   ├── service/VehicleServiceTest.java        Mockito — 404·403·감소방지·삭제순서(InOrder)
+    │   ├── service/VehicleServiceTransactionTest.java
+    │   │                                          @SpringBootTest — 유일하게 진짜 컨테이너를
+    │   │                                          띄운다. dirty checking이 DB까지 가는지 검증
     │   └── controller/VehicleControllerTest.java  @WebMvcTest — 401/400/201/404/403, 페이지 응답
     └── maintenance/
+        ├── repository/MaintenanceRecordRepositoryTest.java
+        │                                              @DataJpaTest — 같은 날짜 동점 처리,
+        │                                              페이징, 타 차량 차단, 이력 일괄 삭제
         ├── service/MaintenanceRecordServiceTest.java  Mockito — 다음정비 3케이스, 부분수정
         └── controller/MaintenanceRecordControllerTest.java
                                                        @WebMvcTest — next-service, enum 400,
                                                        목록 페이지 응답, delete 204
+
+    ※ Mockito 테스트는 스프링 프록시를 안 거치므로 `@Transactional` 이 아예 적용되지 않고,
+      `@WebMvcTest` 는 서비스가 `@MockitoBean` 이라 진짜 코드가 돌지 않는다. 즉 트랜잭션 설정
+      실수는 이 둘로는 절대 못 잡는다 — 그래서 `VehicleServiceTransactionTest` 하나를 둔다.
 
 ### 프론트엔드 — `frontend/`
 
@@ -347,6 +381,32 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 설계가 잘못된 신호로 보고 재검토한다.
 
 ## 진행 상황 (완료)
+
+- [x] 전체 점검 후속 정리 (2026-09-06) — 코드 6건 + 문서 2건
+      → **정비 이력 "최신 1건" 조회가 비결정적이던 버그.** 정렬 기준이 `serviceDate` 하나뿐이라
+        같은 날 같은 종류를 두 번 등록하면 어느 쪽이 뽑힐지 DB가 정했다. 고치기 전에 테스트로
+        재현했고(`expected: 20000 but was: 10000`) `...OrderByServiceDateDescIdDesc` 로 해결.
+        `createdAt` 대신 `id` 를 동점 기준으로 쓴 이유는 `LocalDateTime.now()` 가 같은 밀리초에
+        또 동점이 될 수 있는 반면 IDENTITY 는 절대 중복되지 않기 때문.
+      → **`MaintenanceRecordRepositoryTest` 신설.** 파생 쿼리는 메서드 이름 오타가 컴파일에
+        안 걸리고 앱 기동 때야 터지는데, maintenance 만 `@DataJpaTest` 가 없었다.
+      → **`ConflictException` 도입(규칙 12).** `IllegalArgumentException` → 409 매핑이 너무 넓어
+        JDK/스프링 내부에서 난 예외까지 409로 포장돼 나갔다. 프로덕션 3곳(이메일 중복·번호판
+        중복·주행거리 감소)만 전용 예외로 바꾸고 범용 예외 핸들러를 제거.
+      → **번호판 유니크를 전역 → 소유자별로 변경.** `uk_vehicles_plate_number` →
+        `uk_vehicles_user_plate_number(user_id, plate_number)`. 전역 유니크는 중고차 이전과
+        가족 공유 차량을 막고, 409 메시지가 "남이 이미 등록했다"를 알려줬다(로그인 실패 사유를
+        일부러 통일해 둔 방침과 모순). 이제 내 차량만 검사하므로 메시지에 번호판을 그대로
+        보여줘도 안전하다.
+        `findByPlateNumber`(`Optional<Vehicle>`)는 **지워야만 했다** — 같은 번호판이 여러
+        사용자에게 존재할 수 있게 되어 결과가 2건 이상 나올 수 있고, 그러면 Spring Data가
+        `IncorrectResultSizeDataAccessException` 을 던진다. 반환 타입 자체가 거짓말이 된 것.
+      → **`NextServiceCard` 의 로딩/에러 분리.** `results === null` 하나에 "요청 중"과 "실패"가
+        겹쳐 있어서, 실패하면 카드가 통째로 사라지고 사용자는 영영 이유를 몰랐다.
+        재조회 때는 `setLoading(true)` 를 하지 않는다 — 이미 보이던 목록이 깜빡인다.
+      → **서비스 3개에 `@Transactional(readOnly = true)` 클래스 기본값(규칙 13).**
+      → 문서: `README.md` 의 `user@localhost` 설명이 아래 트러블슈팅과 어긋나 있어 정정,
+        로드맵의 Phase 5 `(완료)` 표기 누락 보완.
 
 - [x] build.gradle / 실행 진입점
 - [x] application.yml (MariaDB 연결)
@@ -590,7 +650,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
   회원가입/로그인/로그아웃, 로그인 상태 전역 관리, 보호 라우트.
 - **Phase 4 — 차량 관리 화면** (완료)
   차량 목록/등록/상세/주행거리 갱신/삭제.
-- **Phase 5 — 정비 이력 관리 화면**
+- **Phase 5 — 정비 이력 관리 화면** (완료)
   이력 목록/등록/수정/삭제, 다음 정비 시점(주행거리+날짜) 표시.
 - **Phase 6 — 다듬기**
   로딩/에러/빈 상태, 폼 검증 연결, 반응형, 포맷팅.
