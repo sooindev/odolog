@@ -1,5 +1,6 @@
 package com.odolog.app.user.service;
 
+import com.odolog.app.common.exception.ConflictException;
 import com.odolog.app.user.domain.User;
 import com.odolog.app.user.dto.request.LoginRequest;
 import com.odolog.app.user.dto.request.SignUpRequest;
@@ -24,7 +25,7 @@ public class UserService {
     @Transactional
     public User signUp(SignUpRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다: " + request.email());
+            throw new ConflictException("이미 가입된 이메일입니다: " + request.email());
         }
 
         String encodedPassword = passwordEncoder.encode(request.password());

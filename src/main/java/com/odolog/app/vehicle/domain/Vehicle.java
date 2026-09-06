@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.domain;
 
+import com.odolog.app.common.exception.ConflictException;
 import com.odolog.app.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -85,7 +86,7 @@ public class Vehicle {
 
     public void updateOdometer(int odometer) {
         if (odometer < this.odometer) {
-            throw new IllegalArgumentException("주행거리는 줄어들 수 없습니다.");
+            throw new ConflictException("주행거리는 줄어들 수 없습니다.");
         }
         this.odometer = odometer;
     }

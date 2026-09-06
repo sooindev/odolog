@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.repository;
 
+import com.odolog.app.common.exception.ConflictException;
 import com.odolog.app.user.domain.User;
 import com.odolog.app.vehicle.domain.Vehicle;
 import org.hibernate.Hibernate;
@@ -111,6 +112,6 @@ class VehicleRepositoryTest {
         assertThat(vehicle.getOdometer()).isEqualTo(15000);
 
         assertThatThrownBy(() -> vehicle.updateOdometer(14999))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ConflictException.class);
     }
 }

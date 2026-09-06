@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.service;
 
+import com.odolog.app.common.exception.ConflictException;
 import com.odolog.app.user.domain.User;
 import com.odolog.app.vehicle.domain.Vehicle;
 import com.odolog.app.vehicle.dto.request.UpdateOdometerRequest;
@@ -31,7 +32,7 @@ public class VehicleService {
     @Transactional
     public Vehicle register(Long ownerId, VehicleRegisterRequest request) {
         if (vehicleRepository.existsByPlateNumber(request.plateNumber())) {
-            throw new IllegalArgumentException("이미 등록된 차량 번호입니다: " + request.plateNumber());
+            throw new ConflictException("이미 등록된 차량 번호입니다: " + request.plateNumber());
         }
 
         User owner = userRepository.findById(ownerId)

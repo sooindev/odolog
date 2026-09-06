@@ -1,5 +1,6 @@
 package com.odolog.app.user.service;
 
+import com.odolog.app.common.exception.ConflictException;
 import com.odolog.app.common.exception.AuthenticationFailedException;
 import com.odolog.app.user.domain.User;
 import com.odolog.app.user.dto.request.LoginRequest;
@@ -52,7 +53,7 @@ class UserServiceTest {
         when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
         assertThatThrownBy(() -> userService.signUp(request))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ConflictException.class);
 
         verify(userRepository, never()).save(any());
     }

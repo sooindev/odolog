@@ -1,5 +1,6 @@
 package com.odolog.app.user.controller;
 
+import com.odolog.app.common.exception.ConflictException;
 import com.odolog.app.common.auth.SessionConst;
 import com.odolog.app.common.exception.AuthenticationFailedException;
 import com.odolog.app.user.domain.User;
@@ -58,7 +59,7 @@ class UserControllerTest {
     @Test
     @DisplayName("이미 가입된 이메일이면 409")
     void signUpDuplicateEmail() throws Exception {
-        when(userService.signUp(any())).thenThrow(new IllegalArgumentException("이미 가입된 이메일입니다."));
+        when(userService.signUp(any())).thenThrow(new ConflictException("이미 가입된 이메일입니다."));
 
         SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000");
 

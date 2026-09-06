@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.service;
 
+import com.odolog.app.common.exception.ConflictException;
 import com.odolog.app.common.exception.ForbiddenAccessException;
 import com.odolog.app.common.exception.ResourceNotFoundException;
 import com.odolog.app.maintenance.repository.MaintenanceRecordRepository;
@@ -62,7 +63,7 @@ class VehicleServiceTest {
         when(vehicleRepository.existsByPlateNumber("12가3456")).thenReturn(true);
 
         assertThatThrownBy(() -> vehicleService.register(1L, request))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ConflictException.class);
 
         verify(vehicleRepository, never()).save(any());
     }
@@ -109,7 +110,7 @@ class VehicleServiceTest {
         when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
 
         assertThatThrownBy(() -> vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(40000)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ConflictException.class);
     }
 
     @Test
