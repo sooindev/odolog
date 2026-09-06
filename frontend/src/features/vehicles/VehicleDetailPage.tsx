@@ -8,6 +8,7 @@ import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { LoadingText, ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { formatKm } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
@@ -36,11 +37,11 @@ export function VehicleDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   if (loading) {
-    return <p className="text-muted-foreground text-sm">불러오는 중…</p>
+    return <LoadingText />
   }
 
   if (error !== null || vehicle === null) {
-    return <p className="text-destructive text-sm">{error ?? '차량을 찾을 수 없습니다.'}</p>
+    return <ErrorText message={error ?? '차량을 찾을 수 없습니다.'} />
   }
 
   async function handleDelete() {
@@ -88,7 +89,7 @@ export function VehicleDetailPage() {
         onChanged={() => setMaintenanceVersion((current) => current + 1)}
       />
 
-      {actionError !== null && <p className="text-destructive text-sm">{actionError}</p>}
+      {actionError !== null && <ErrorText message={actionError} />}
 
       <div className="flex justify-end">
         <Button variant="destructive" onClick={handleDelete}>
@@ -148,7 +149,7 @@ function OdometerForm({
             />
           </div>
 
-          {error !== null && <p className="text-destructive text-sm">{error}</p>}
+          {error !== null && <ErrorText message={error} />}
 
           <Button type="submit" disabled={pending} className="self-start">
             {pending ? '저장 중…' : '갱신'}

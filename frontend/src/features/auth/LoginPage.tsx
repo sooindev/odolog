@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 
 export function LoginPage() {
@@ -74,7 +75,7 @@ export function LoginPage() {
             />
           </div>
 
-          {error !== null && <p className="text-destructive text-sm">{error}</p>}
+          {error !== null && <ErrorText message={error} />}
 
           <Button type="submit" disabled={pending}>
             {pending ? '로그인 중…' : '로그인'}

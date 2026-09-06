@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import { MaintenanceForm } from '@/features/maintenance/MaintenanceForm'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { LoadingText, ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { formatKm, formatWon } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
@@ -27,6 +28,10 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
   const load = useCallback(() => fetchRecords(vehicleId, page), [vehicleId, page])
   const { data, loading, error, reload } = useAsyncData(load, '정비 이력을 불러오지 못했습니다.')
+
+  // 변수로 한 번 받아 두면 TypeScript 가 아래에서 null 이 아님을 알아준다.
+  // JSX 안에서 (error ?? actionError) 를 두 번 쓰면 매번 새 식이라 좁혀지지 않아 단언이 필요해진다.
+  const errorMessage = error ?? actionError
 
   function refresh() {
     setEditing('closed')
@@ -70,12 +75,10 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
           />
         )}
 
-        {(error ?? actionError) !== null && (
-          <p className="text-destructive text-sm">{error ?? actionError}</p>
-        )}
+        {errorMessage !== null && <ErrorText message={errorMessage} />}
 
         {loading ? (
-          <p className="text-muted-foreground text-sm">불러오는 중…</p>
+          <LoadingText />
         ) : data === null || data.totalElements === 0 ? (
           <p className="text-muted-foreground text-sm">아직 등록된 정비 이력이 없습니다.</p>
         ) : (

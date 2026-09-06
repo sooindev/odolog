@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { LoadingText, ErrorText } from '@/shared/ui/state'
 import { formatKm } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { fetchNextService } from '@/features/maintenance/api'
@@ -34,9 +35,9 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
         <CardTitle className="text-base">다음 정비 시점</CardTitle>
       </CardHeader>
       <CardContent>
-        {loading && <p className="text-muted-foreground text-sm">불러오는 중…</p>}
+        {loading && <LoadingText />}
 
-        {!loading && error !== null && <p className="text-destructive text-sm">{error}</p>}
+        {!loading && error !== null && <ErrorText message={error} />}
 
         {!loading && error === null && results !== null && (
           <ul className="flex flex-col gap-2 text-sm">

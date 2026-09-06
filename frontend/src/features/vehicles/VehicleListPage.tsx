@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent } from '@/shared/ui/card'
+import { LoadingText, ErrorText } from '@/shared/ui/state'
 import { formatKm } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { fetchVehicles } from '@/features/vehicles/api'
@@ -15,11 +16,11 @@ export function VehicleListPage() {
   const { data, loading, error } = useAsyncData(load, '차량 목록을 불러오지 못했습니다.')
 
   if (loading) {
-    return <p className="text-muted-foreground text-sm">불러오는 중…</p>
+    return <LoadingText />
   }
 
   if (error !== null) {
-    return <p className="text-destructive text-sm">{error}</p>
+    return <ErrorText message={error} />
   }
 
   if (data === null || data.totalElements === 0) {

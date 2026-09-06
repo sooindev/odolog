@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { registerVehicle } from '@/features/vehicles/api'
 
@@ -96,7 +97,7 @@ export function VehicleNewPage() {
             />
           </div>
 
-          {error !== null && <p className="text-destructive text-sm">{error}</p>}
+          {error !== null && <ErrorText message={error} />}
 
           <div className="flex gap-2">
             <Button type="submit" disabled={pending} className="flex-1">

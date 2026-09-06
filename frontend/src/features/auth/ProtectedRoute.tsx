@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 
+import { LoadingText } from '@/shared/ui/state'
 import { useAuth } from '@/features/auth/AuthContext'
 
 /** 로그인한 사용자만 통과시키는 라우트. 아니면 /login 으로 보낸다. */
@@ -9,7 +10,7 @@ export function ProtectedRoute() {
 
   // 세션 복구가 끝나기 전에 판단하면, 로그인돼 있는데도 로그인 화면이 한 번 깜빡인다.
   if (loading) {
-    return <div className="text-muted-foreground p-8 text-sm">불러오는 중…</div>
+    return <LoadingText className="p-8" />
   }
 
   if (user === null) {
