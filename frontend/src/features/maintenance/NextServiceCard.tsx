@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { ApiError } from '@/shared/api/client'
 import { formatKm } from '@/shared/lib/format'
 import { fetchNextService } from '@/features/maintenance/api'
 import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/shared/api/types'
@@ -13,6 +14,8 @@ import type { NextServiceResponse } from '@/shared/api/types'
  */
 export function NextServiceCard({ vehicleId, reloadKey }: { vehicleId: number; reloadKey: number }) {
   const [results, setResults] = useState<NextServiceResponse[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -23,9 +26,16 @@ export function NextServiceCard({ vehicleId, reloadKey }: { vehicleId: number; r
         const all = await Promise.all(
           SERVICE_TYPES.map((type) => fetchNextService(vehicleId, type)),
         )
-        if (!cancelled) setResults(all)
-      } catch {
-        if (!cancelled) setResults(null)
+        if (cancelled) return
+        setResults(all)
+        setError(null)
+      } catch (caught) {
+        if (cancelled) return
+        // Promise.all 은 하나만 실패해도 전체가 실패한다. 종류별로 부분 성공을 보여줄
+        // 수도 있지만, 5개 중 3개만 뜨는 화면이 더 헷갈린다.
+        setError(caught instanceof ApiError ? caught.message : '다음 정비 시점을 불러오지 못했습니다.')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
 
@@ -36,26 +46,27 @@ export function NextServiceCard({ vehicleId, reloadKey }: { vehicleId: number; r
     }
   }, [vehicleId, reloadKey])
 
-  if (results === null) {
-    return null
-  }
-
+  // 카드 껍데기는 항상 그린다. 상태에 따라 카드가 통째로 사라지면 아래 내용이 위로 튄다.
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">다음 정비 시점</CardTitle>
       </CardHeader>
       <CardContent>
-        <ul className="flex flex-col gap-2 text-sm">
-          {results.map((result) => (
-            <li key={result.type} className="flex items-baseline justify-between gap-4">
-              <span className="font-medium">{SERVICE_TYPE_LABELS[result.type]}</span>
-              <span className="text-muted-foreground text-right">
-                {describe(result)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {loading && <p className="text-muted-foreground text-sm">불러오는 중…</p>}
+
+        {!loading && error !== null && <p className="text-destructive text-sm">{error}</p>}
+
+        {!loading && error === null && results !== null && (
+          <ul className="flex flex-col gap-2 text-sm">
+            {results.map((result) => (
+              <li key={result.type} className="flex items-baseline justify-between gap-4">
+                <span className="font-medium">{SERVICE_TYPE_LABELS[result.type]}</span>
+                <span className="text-muted-foreground text-right">{describe(result)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   )
