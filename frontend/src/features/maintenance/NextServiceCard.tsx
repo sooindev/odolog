@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
-import { ApiError } from '@/shared/api/client'
 import { formatKm } from '@/shared/lib/format'
+import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { fetchNextService } from '@/features/maintenance/api'
 import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/shared/api/types'
 import type { NextServiceResponse } from '@/shared/api/types'
@@ -11,40 +11,21 @@ import type { NextServiceResponse } from '@/shared/api/types'
  * 다음 정비 시점을 종류별로 보여준다.
  * 백엔드 API가 종류 하나씩만 계산하므로 요청이 종류 수만큼 나간다.
  * 실제로 느려지면 "전체 종류 한 번에" API 추가를 검토한다 (CLAUDE.md 백로그).
+ *
+ * 이력이 바뀌면 부모가 key 를 바꿔 이 컴포넌트를 새로 만든다. 그래서 여기엔 재조회 장치가 없다.
  */
-export function NextServiceCard({ vehicleId, reloadKey }: { vehicleId: number; reloadKey: number }) {
-  const [results, setResults] = useState<NextServiceResponse[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      try {
-        // Promise.all: 5개 요청을 순서대로 기다리지 않고 동시에 보낸다.
-        const all = await Promise.all(
-          SERVICE_TYPES.map((type) => fetchNextService(vehicleId, type)),
-        )
-        if (cancelled) return
-        setResults(all)
-        setError(null)
-      } catch (caught) {
-        if (cancelled) return
-        // Promise.all 은 하나만 실패해도 전체가 실패한다. 종류별로 부분 성공을 보여줄
-        // 수도 있지만, 5개 중 3개만 뜨는 화면이 더 헷갈린다.
-        setError(caught instanceof ApiError ? caught.message : '다음 정비 시점을 불러오지 못했습니다.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-
-    return () => {
-      cancelled = true
-    }
-  }, [vehicleId, reloadKey])
+export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
+  // Promise.all: 5개 요청을 순서대로 기다리지 않고 동시에 보낸다.
+  // 하나만 실패해도 전체가 실패한다. 부분 성공을 보여줄 수도 있지만,
+  // 5개 중 3개만 뜨는 화면이 더 헷갈려서 통째로 에러로 처리한다.
+  const load = useCallback(
+    () => Promise.all(SERVICE_TYPES.map((type) => fetchNextService(vehicleId, type))),
+    [vehicleId],
+  )
+  const { data: results, loading, error } = useAsyncData(
+    load,
+    '다음 정비 시점을 불러오지 못했습니다.',
+  )
 
   // 카드 껍데기는 항상 그린다. 상태에 따라 카드가 통째로 사라지면 아래 내용이 위로 튄다.
   return (

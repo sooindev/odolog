@@ -351,7 +351,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │   └── VehicleDetailPage.tsx 차량정보 → 주행거리 → 다음정비 → 이력 → 삭제
         │   └── maintenance/
         │       ├── api.ts                정비 이력 엔드포인트 5개
-        │       ├── NextServiceCard.tsx   종류 5개 다음 정비 시점 (Promise.all 동시 요청)
+        │       ├── NextServiceCard.tsx   종류 5개 다음 정비 시점 (Promise.all 동시 요청).
+        │       │                         재조회는 부모가 key 를 바꿔 재생성
         │       ├── MaintenanceSection.tsx 목록 + 페이지네이션 + 삭제 + 폼 토글
         │       └── MaintenanceForm.tsx   등록·수정 겸용 (record가 null이면 등록)
         │
@@ -362,7 +363,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
             │   └── types.ts              백엔드 DTO 대응 타입 + PageResponse<T> +
             │                             ServiceType 유니온 + SERVICE_TYPE_LABELS
             ├── lib/
-            │   └── format.ts             formatKm / formatWon / todayString(UTC 함정 회피)
+            │   ├── format.ts             formatKm / formatWon / todayString(UTC 함정 회피)
+            │   └── useAsyncData.ts       조회 4곳의 공통 훅. data/loading/error +
+            │                             reload()/setData. cancelled 플래그가 여기 한 곳에만
             ├── layout/
             │   └── Header.tsx            로고 · 닉네임(→/me) · 로그아웃
             └── ui/                       shadcn이 복사해 넣은 코드. 직접 고쳐도 된다
@@ -381,6 +384,23 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 설계가 잘못된 신호로 보고 재검토한다.
 
 ## 진행 상황 (완료)
+
+- [x] Phase 6 (1) — 조회 로직 공용 훅 `useAsyncData` 추출
+      → 화면 4곳(차량 목록·차량 상세·정비 이력·다음 정비 시점)이 `data/loading/error` 3개 상태와
+        `cancelled` 플래그 + try/catch/finally를 **각자 복사해서** 들고 있었다. 131줄 → 53줄.
+      → `load` 는 `useCallback` 으로 감싸서 넘긴다. 무엇이 바뀌면 다시 부를지를 그 의존성 배열이
+        정하므로, 훅이 deps 배열을 받아 그대로 넘기는 설계(린터가 검사를 못 함)를 피할 수 있다.
+      → **`reloadKey` 를 가짜 의존성으로 넣는 방식을 버렸다.** 처음엔 `useCallback(..., [id, page,
+        reloadKey])` 로 썼는데 oxlint 가 `exhaustive-deps: unnecessary dependency` 로 잡았다.
+        규칙을 끄는 대신 훅이 `reload()` 를 돌려주도록 바꿨다 — `MaintenanceSection` 에서
+        `reloadKey` 상태가 통째로 사라졌다.
+      → `NextServiceCard` 는 `reloadKey` prop 자체를 없애고 부모가 `key={maintenanceVersion}` 로
+        **재생성**한다. React 가 컴포넌트를 버리고 새로 만드는 게 상태 초기화의 정석이다.
+        재조회 시 "불러오는 중…"이 잠깐 보이지만, 값이 실제로 다시 계산되는 것이라 오히려 정직하다.
+      → `setData` 도 함께 돌려준다. `VehicleDetailPage` 는 주행거리 갱신 응답을 그대로 갈아끼워야
+        해서(다시 조회하면 낭비) 쓰기가 필요하다.
+      → 조회 실패(`error`)와 행동 실패(`actionError`)를 분리했다. "목록을 못 불러옴"과
+        "삭제 버튼을 눌렀는데 실패"는 사라져야 하는 시점이 다르다.
 
 - [x] 전체 점검 후속 정리 (2026-09-06) — 코드 6건 + 문서 2건
       → **정비 이력 "최신 1건" 조회가 비결정적이던 버그.** 정렬 기준이 `serviceDate` 하나뿐이라
@@ -706,8 +726,13 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ## Phase 6 — 다듬기
 
-- [ ] 3상태(로딩 / 에러 / 빈 목록) 처리를 모든 목록·상세 화면에 일관되게 적용
-      → 이 3가지를 매번 손으로 쓰면 화면마다 모양이 달라진다. 공용 컴포넌트로 뽑는다.
+- [ ] 3상태(로딩 / 에러 / 빈 목록) **렌더링**을 공용으로 뽑기 — 절반 남음
+      → 요청 쪽(`useAsyncData`)은 뽑았고, 표시 쪽이 아직 4곳에 흩어져 있다.
+        `<p className="text-muted-foreground text-sm">불러오는 중…</p>` 같은 마크업이
+        글자까지 똑같이 복사돼 있다. 스켈레톤으로 바꿀 때 4곳을 고쳐야 하므로 그 전에 뽑는다.
+      → 다만 쓰는 모양이 제각각이다(전체를 대체하는 early return / 카드 안쪽 인라인).
+        한 컴포넌트로 다 덮으려 하지 말고 작은 조각 2개(`LoadingText`/`ErrorText`)가 맞는지
+        먼저 따져본다.
 - [ ] 로딩 표시 — 목록은 스켈레톤, 버튼은 비활성화 + 스피너
       → 폼 제출 버튼은 반드시 비활성화. 안 하면 더블 클릭으로 차량이 2대 등록된다.
 - [ ] 에러 토스트 / 인라인 에러 구분 기준 정리

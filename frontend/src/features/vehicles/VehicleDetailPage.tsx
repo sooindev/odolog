@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
@@ -10,6 +10,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { ApiError } from '@/shared/api/client'
 import { formatKm } from '@/shared/lib/format'
+import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { deleteVehicle, fetchVehicle, updateOdometer } from '@/features/vehicles/api'
 import type { VehicleResponse } from '@/shared/api/types'
 
@@ -18,39 +19,21 @@ export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate = useNavigate()
 
-  const [vehicle, setVehicle] = useState<VehicleResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  // 정비 이력이 바뀌면 이 값을 올려 "다음 정비 시점"을 다시 계산하게 한다.
-  const [maintenanceVersion, setMaintenanceVersion] = useState(0)
-
   const id = Number(vehicleId)
 
-  useEffect(() => {
-    let cancelled = false
+  // 404(없음)와 403(남의 차)을 구분해 보여주지 않는다.
+  // 남의 차량이 "존재한다"는 사실 자체를 알리지 않기 위해서다.
+  const load = useCallback(() => fetchVehicle(id), [id])
+  const {
+    data: vehicle,
+    loading,
+    error,
+    setData: setVehicle,
+  } = useAsyncData(load, '차량을 불러오지 못했습니다.')
 
-    async function load() {
-      try {
-        const result = await fetchVehicle(id)
-        if (cancelled) return
-        setVehicle(result)
-        setError(null)
-      } catch (caught) {
-        if (cancelled) return
-        // 404(없음)와 403(남의 차)을 구분해 보여주지 않는다.
-        // 남의 차량이 "존재한다"는 사실 자체를 알리지 않기 위해서다.
-        setError(caught instanceof ApiError ? caught.message : '차량을 불러오지 못했습니다.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-
-    return () => {
-      cancelled = true
-    }
-  }, [id])
+  // 정비 이력이 바뀌면 이 값을 올려 "다음 정비 시점"을 다시 계산하게 한다.
+  const [maintenanceVersion, setMaintenanceVersion] = useState(0)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   if (loading) {
     return <p className="text-muted-foreground text-sm">불러오는 중…</p>
@@ -70,7 +53,7 @@ export function VehicleDetailPage() {
       await deleteVehicle(id)
       navigate('/vehicles', { replace: true })
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
+      setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
     }
   }
 
@@ -96,13 +79,16 @@ export function VehicleDetailPage() {
 
       <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
 
-      <NextServiceCard vehicleId={vehicle.id} reloadKey={maintenanceVersion} />
+      {/* key 가 바뀌면 React 가 이 컴포넌트를 버리고 새로 만든다 → 자동으로 다시 계산된다. */}
+      <NextServiceCard key={maintenanceVersion} vehicleId={vehicle.id} />
 
       <MaintenanceSection
         vehicleId={vehicle.id}
         currentOdometer={vehicle.odometer}
         onChanged={() => setMaintenanceVersion((current) => current + 1)}
       />
+
+      {actionError !== null && <p className="text-destructive text-sm">{actionError}</p>}
 
       <div className="flex justify-end">
         <Button variant="destructive" onClick={handleDelete}>

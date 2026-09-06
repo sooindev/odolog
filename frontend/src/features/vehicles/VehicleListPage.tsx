@@ -1,43 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link } from 'react-router'
 
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent } from '@/shared/ui/card'
-import { ApiError } from '@/shared/api/client'
 import { formatKm } from '@/shared/lib/format'
+import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { fetchVehicles } from '@/features/vehicles/api'
-import type { PageResponse, VehicleResponse } from '@/shared/api/types'
 
 export function VehicleListPage() {
   const [page, setPage] = useState(0)
-  const [data, setData] = useState<PageResponse<VehicleResponse> | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  // page가 바뀔 때마다 다시 불러온다. 의존성 배열에 page를 넣는 것이 그 뜻이다.
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      try {
-        const result = await fetchVehicles(page)
-        if (cancelled) return
-        setData(result)
-        setError(null)
-      } catch (caught) {
-        if (cancelled) return
-        setError(caught instanceof ApiError ? caught.message : '차량 목록을 불러오지 못했습니다.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-
-    return () => {
-      cancelled = true
-    }
-  }, [page])
+  // page가 바뀔 때마다 새 함수가 만들어지고, 그걸 본 useAsyncData가 다시 불러온다.
+  const load = useCallback(() => fetchVehicles(page), [page])
+  const { data, loading, error } = useAsyncData(load, '차량 목록을 불러오지 못했습니다.')
 
   if (loading) {
     return <p className="text-muted-foreground text-sm">불러오는 중…</p>

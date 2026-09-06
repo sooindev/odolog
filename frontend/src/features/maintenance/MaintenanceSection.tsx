@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import { MaintenanceForm } from '@/features/maintenance/MaintenanceForm'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { ApiError } from '@/shared/api/client'
 import { formatKm, formatWon } from '@/shared/lib/format'
+import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { deleteRecord, fetchRecords } from '@/features/maintenance/api'
 import { SERVICE_TYPE_LABELS } from '@/shared/api/types'
-import type { MaintenanceRecordResponse, PageResponse } from '@/shared/api/types'
+import type { MaintenanceRecordResponse } from '@/shared/api/types'
 
 interface Props {
   vehicleId: number
@@ -18,42 +19,19 @@ interface Props {
 
 export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Props) {
   const [page, setPage] = useState(0)
-  const [data, setData] = useState<PageResponse<MaintenanceRecordResponse> | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
 
   // 폼 상태: 'closed' | 'new' | 수정할 이력
   const [editing, setEditing] = useState<'closed' | 'new' | MaintenanceRecordResponse>('closed')
-  // 값이 바뀌면 목록을 다시 불러온다. 저장·삭제 후 1 증가시킨다.
-  const [reloadKey, setReloadKey] = useState(0)
+  // 조회 실패와 달리 "삭제 버튼을 눌렀는데 실패"는 사용자의 행동에 대한 답이라 따로 둔다.
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      try {
-        const result = await fetchRecords(vehicleId, page)
-        if (cancelled) return
-        setData(result)
-        setError(null)
-      } catch (caught) {
-        if (cancelled) return
-        setError(caught instanceof ApiError ? caught.message : '정비 이력을 불러오지 못했습니다.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-
-    return () => {
-      cancelled = true
-    }
-  }, [vehicleId, page, reloadKey])
+  const load = useCallback(() => fetchRecords(vehicleId, page), [vehicleId, page])
+  const { data, loading, error, reload } = useAsyncData(load, '정비 이력을 불러오지 못했습니다.')
 
   function refresh() {
     setEditing('closed')
-    setReloadKey((current) => current + 1)
+    setActionError(null)
+    reload()
     onChanged()
   }
 
@@ -66,7 +44,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
       await deleteRecord(vehicleId, recordId)
       refresh()
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
+      setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
     }
   }
 
@@ -92,7 +70,9 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
           />
         )}
 
-        {error !== null && <p className="text-destructive text-sm">{error}</p>}
+        {(error ?? actionError) !== null && (
+          <p className="text-destructive text-sm">{error ?? actionError}</p>
+        )}
 
         {loading ? (
           <p className="text-muted-foreground text-sm">불러오는 중…</p>
