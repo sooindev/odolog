@@ -67,7 +67,7 @@ class MaintenanceRecordServiceTest {
         MaintenanceRecord lastRecord = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, null,
                 50000, 40000, LocalDate.of(2026, 1, 1));
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDesc(10L, ServiceType.ENGINE_OIL))
+        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(10L, ServiceType.ENGINE_OIL))
                 .thenReturn(Optional.of(lastRecord));
 
         NextServiceResponse response = maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.ENGINE_OIL);
@@ -85,7 +85,7 @@ class MaintenanceRecordServiceTest {
         MaintenanceRecord lastRecord = new MaintenanceRecord(vehicle, ServiceType.OTHER, null,
                 10000, 40000, LocalDate.of(2026, 1, 1));
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDesc(10L, ServiceType.OTHER))
+        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(10L, ServiceType.OTHER))
                 .thenReturn(Optional.of(lastRecord));
 
         NextServiceResponse response = maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.OTHER);
@@ -100,7 +100,7 @@ class MaintenanceRecordServiceTest {
     void calculateNextServiceWithoutHistory() {
         Vehicle vehicle = createVehicle(10L);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDesc(10L, ServiceType.TIRE))
+        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(10L, ServiceType.TIRE))
                 .thenReturn(Optional.empty());
 
         NextServiceResponse response = maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.TIRE);

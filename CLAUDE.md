@@ -52,9 +52,12 @@
 
 ## 개발 환경
 
-세팅은 이미 끝났다. 매번 재확인하지 말 것.
+세팅은 끝났다. 매번 재확인하지 말 것. 단, **DB 접속이 실패하면 계정 문제부터 의심한다**
+(아래 "DB 접속 시 주의" 참고 — 한 번 크게 막혔던 지점이다).
 
 - DB: MariaDB, `localhost:3306`, 스키마 `odolog` (utf8mb4 / utf8mb4_unicode_ci)
+- **앱이 쓰는 계정은 `odolog`@localhost** (2026-09-06 생성). `odolog.*` 에만 권한이 있다.
+  비밀번호는 어떤 파일에도 적지 않는다 — IntelliJ 실행 구성의 환경변수에만 있다.
 - 드라이버: `org.mariadb.jdbc:mariadb-java-client`, URL은 `jdbc:mariadb://`
 - 실행: **IntelliJ IDEA**에서 `OdoLogApplication` 을 직접 실행한다.
   Gradle 래퍼(`./gradlew`)는 프로젝트에 있으므로 빌드 확인은 터미널에서도 가능하다.
@@ -77,7 +80,22 @@
 
     /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SHOW TABLES;"
 
-이 계정(`user@localhost`)은 `unix_socket` 인증이라 비밀번호 없이 붙는다. 진단용으로만 쓴다.
+이 계정(`user@localhost`)은 **진단용으로만** 쓴다. 권한은 이렇게 되어 있다:
+
+    GRANT ALL PRIVILEGES ON *.* TO `user`@`localhost`
+      IDENTIFIED VIA mysql_native_password USING 'invalid' OR unix_socket
+
+비밀번호 해시가 문자 그대로 `'invalid'` 라서 **비밀번호로는 절대 접속되지 않고**, 유닉스 소켓으로만
+붙는다. JDBC는 TCP로 접속하므로 이 계정을 애플리케이션에 쓸 수 없다.
+JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
+
+그래서 앱 전용으로 `odolog`@localhost 계정을 따로 만들었다:
+
+    CREATE USER 'odolog'@'localhost' IDENTIFIED BY '<비밀번호>';
+    GRANT ALL PRIVILEGES ON odolog.* TO 'odolog'@'localhost';
+
+`*.*` 가 아니라 `odolog.*` 로 제한한 이유: 이 계정이 새어 나가도 다른 스키마(`for_125` 등)는
+건드릴 수 없게 하기 위해서다.
 
 ### 탐색 시 무시할 경로
 

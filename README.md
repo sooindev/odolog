@@ -72,3 +72,34 @@
 
 참고로 `user@localhost` 계정은 `unix_socket` 인증이라 비밀번호 없이 붙는다. 애플리케이션이
 쓰는 계정이 아니라 진단(테이블 확인 등) 용도로만 사용한다.
+
+### IntelliJ에서 실행 시 `Access denied for user 'root'@'localhost'`
+
+애플리케이션 시작이 실패하고 아래 로그가 남았다.
+
+```
+SQL Error: 1698, SQLState: 28000
+(conn=300) Access denied for user 'root'@'localhost'
+...
+Unable to determine Dialect without JDBC metadata
+```
+
+**원인**: 두 가지가 겹쳐 있었다.
+
+1. IntelliJ 실행 구성에 환경변수 `DB_USERNAME` / `DB_PASSWORD` 가 설정되지 않아
+   `application.yml` 의 기본값 `${DB_USERNAME:root}` 가 그대로 쓰였다.
+2. 애초에 `odolog` 스키마에 접근할 수 있는 계정이 없었다. 평소 터미널에서 쓰던
+   `user@localhost` 는 `unix_socket` 인증(비밀번호 해시가 `'invalid'`)이라
+   TCP로 접속하는 JDBC로는 쓸 수 없다.
+
+**해결**: 앱 전용 계정을 만들고 `odolog` 스키마 권한만 부여한 뒤,
+IntelliJ 실행 구성(Run/Debug Configurations → Environment variables)에 넣었다.
+
+```sql
+CREATE USER 'odolog'@'localhost' IDENTIFIED BY '<비밀번호>';
+GRANT ALL PRIVILEGES ON odolog.* TO 'odolog'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+`Unable to determine Dialect without JDBC metadata` 는 별개의 원인이 아니라,
+연결에 실패해 Hibernate가 DB 종류를 알아낼 수 없어서 따라온 2차 에러다.

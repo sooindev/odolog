@@ -46,7 +46,7 @@ public class MaintenanceRecordService {
     public NextServiceResponse calculateNextService(Long requesterId, Long vehicleId, ServiceType type) {
         vehicleService.findOwnedVehicle(requesterId, vehicleId);
 
-        return maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDesc(vehicleId, type)
+        return maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(vehicleId, type)
                 .map(record -> {
                     Integer intervalKm = type.getRecommendedIntervalKm();
                     Integer nextOdometer = (intervalKm == null) ? null : record.getServiceOdometer() + intervalKm;
