@@ -57,6 +57,18 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("전화번호가 20자를 넘으면 400 (DB까지 가서 500이 나면 안 된다)")
+    void signUpWithTooLongPhone() throws Exception {
+        SignUpRequest request = new SignUpRequest(
+                "test@odolog.com", "password1234", "닉네임", "0".repeat(21));
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("이미 가입된 이메일이면 409")
     void signUpDuplicateEmail() throws Exception {
         when(userService.signUp(any())).thenThrow(new ConflictException("이미 가입된 이메일입니다."));

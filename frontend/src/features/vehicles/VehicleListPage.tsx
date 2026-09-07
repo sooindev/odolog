@@ -55,7 +55,8 @@ export function VehicleListPage() {
                       {vehicle.manufacturer} {vehicle.modelName}
                     </p>
                     <p className="text-muted-foreground text-sm">
-                      {vehicle.plateNumber} · {vehicle.modelYear}년식
+                      {vehicle.plateNumber}
+                      {vehicle.modelYear !== null && ` · ${vehicle.modelYear}년식`}
                     </p>
                   </div>
                   <p className="text-sm">{formatKm(vehicle.odometer)}</p>

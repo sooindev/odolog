@@ -19,6 +19,9 @@ public record SignUpRequest(
         @Size(max = 30)
         String nickname,
 
+        // User.phone 컬럼이 length = 20 이라 여기서 안 막으면 DB까지 가서 500이 난다.
+        // UpdateProfileRequest.phone 과 같은 제한이어야 한다.
+        @Size(max = 20)
         String phone
 ) {
 }

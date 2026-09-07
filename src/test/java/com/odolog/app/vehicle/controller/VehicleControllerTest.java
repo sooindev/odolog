@@ -95,6 +95,34 @@ class VehicleControllerTest {
     }
 
     @Test
+    @DisplayName("연식을 안 보내면 400")
+    void registerWithoutModelYear() throws Exception {
+        String noModelYear = """
+                {"plateNumber": "12가3456", "manufacturer": "현대", "modelName": "아반떼"}
+                """;
+
+        mockMvc.perform(post("/api/vehicles")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(noModelYear))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("연식이 범위를 벗어나면 400")
+    void registerWithModelYearOutOfRange() throws Exception {
+        String outOfRange = """
+                {"plateNumber": "12가3456", "manufacturer": "현대", "modelName": "아반떼", "modelYear": 999999}
+                """;
+
+        mockMvc.perform(post("/api/vehicles")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(outOfRange))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("로그인한 사용자가 차량을 등록하면 201과 응답 바디를 반환한다")
     void registerSuccess() throws Exception {
         User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");

@@ -194,7 +194,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   └── UserRepository.java           findByEmail, existsByEmail
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── SignUpRequest.java        @NotBlank/@Email/@Size(min=8,max=100)
+    │   │   │   ├── SignUpRequest.java        @NotBlank/@Email/@Size(min=8,max=100).
+    │   │   │   │                             phone은 선택이지만 @Size(max=20) 필수
     │   │   │   ├── LoginRequest.java         email, password
     │   │   │   └── UpdateProfileRequest.java 둘 다 nullable — 보낸 필드만 변경
     │   │   └── response/
@@ -216,7 +217,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     existsByOwnerIdAndPlateNumber(소유자별 중복 검사)
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── VehicleRegisterRequest.java  owner 없음 — 세션에서 식별
+    │   │   │   ├── VehicleRegisterRequest.java  owner 없음 — 세션에서 식별.
+    │   │   │   │                                modelYear @NotNull/@Min(1900)/@Max(2100)
     │   │   │   └── UpdateOdometerRequest.java   @PositiveOrZero
     │   │   └── response/
     │   │       └── VehicleResponse.java         owner 없음 — LAZY 미접근으로 N+1 방지
@@ -293,7 +295,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
 
-    src/test/java/com/odolog/app/        총 53개 테스트 (기능별 구조를 그대로 따라감)
+    src/test/java/com/odolog/app/        총 56개 테스트 (기능별 구조를 그대로 따라감)
     ├── user/
     │   ├── repository/UserRepositoryTest.java     @DataJpaTest — save/findByEmail/existsByEmail
     │   ├── service/UserServiceTest.java           Mockito — 중복·암호화·로그인·부분수정
@@ -391,6 +393,19 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 설계가 잘못된 신호로 보고 재검토한다.
 
 ## 진행 상황 (완료)
+
+- [x] 요청 DTO 검증 구멍 2건 (2026-09-07 점검)
+      → **`SignUpRequest.phone` 에 `@Size(max = 20)` 이 없었다.** `User.phone` 컬럼이 `length = 20`
+        이고 MariaDB `sql_mode` 가 `STRICT_TRANS_TABLES` 라, 21자를 보내면 잘리는 게 아니라 DB에서
+        에러가 나고 `DataIntegrityViolationException` → 핸들러 없음 → **500**이 됐다. 400이어야 한다.
+        같은 필드인데 `UpdateProfileRequest.phone` 에는 이미 `@Size(max = 20)` 이 있었다.
+      → **`VehicleRegisterRequest.modelYear` 는 검증이 전혀 없었다.** 화면이 `required min max` 로
+        막고 있어서 정상 경로로는 안 터졌지만, **검증을 프론트에만 두면 API는 무방비다.**
+        `@NotNull @Min(1900) @Max(2100)` 추가.
+      → 프론트 `types.ts` 의 거짓말 2개도 함께: `VehicleResponse.modelYear` 는 `number` 라고 단언했지만
+        백엔드는 `Integer`(nullable) — 검증이 붙기 전 데이터는 null 일 수 있어 `number | null` 로 고치고
+        화면 2곳에 "연식 미상" 처리를 넣었다. `SignUpRequest.phone` 도 `string` → `string?`.
+      → 테스트 3개 추가(53 → 56). 애노테이션을 다시 빼고 돌려서 **셋 다 실패하는 것을 확인**했다.
 
 - [x] Phase 6 (3) — 삭제 버튼 중복 클릭 방지
       → 점검하다 "폼 제출 버튼 비활성화"가 **이미 6곳 모두 되어 있음**을 확인했다(로그인·회원가입·

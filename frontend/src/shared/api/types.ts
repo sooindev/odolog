@@ -42,7 +42,8 @@ export interface SignUpRequest {
   email: string
   password: string
   nickname: string
-  phone: string
+  /** 백엔드에 @NotBlank 가 없다 — 선택 항목이다. */
+  phone?: string
 }
 
 export interface LoginRequest {
@@ -79,7 +80,11 @@ export interface VehicleResponse {
   plateNumber: string
   manufacturer: string
   modelName: string
-  modelYear: number
+  /**
+   * 등록 API는 @NotNull 이지만 DB 컬럼은 여전히 nullable 이라,
+   * 검증이 붙기 전에 만들어진 차량은 null 일 수 있다.
+   */
+  modelYear: number | null
   odometer: number
 }
 

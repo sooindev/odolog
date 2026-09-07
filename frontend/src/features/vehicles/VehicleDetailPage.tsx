@@ -76,7 +76,7 @@ export function VehicleDetailPage() {
             <dt className="text-muted-foreground">차량 번호</dt>
             <dd>{vehicle.plateNumber}</dd>
             <dt className="text-muted-foreground">연식</dt>
-            <dd>{vehicle.modelYear}년식</dd>
+            <dd>{vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}</dd>
             <dt className="text-muted-foreground">주행거리</dt>
             <dd>{formatKm(vehicle.odometer)}</dd>
           </dl>
