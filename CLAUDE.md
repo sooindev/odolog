@@ -56,18 +56,23 @@
 (아래 "DB 접속 시 주의" 참고 — 한 번 크게 막혔던 지점이다).
 
 - DB: MariaDB, `localhost:3306`, 스키마 `odolog` (utf8mb4 / utf8mb4_unicode_ci)
-- ⚠️ **미완료 — 운영 스키마에 손으로 한 번 실행해야 한다** (2026-09-06 번호판 유니크 범위 변경):
+- **`ddl-auto: update` 는 제약을 추가는 해도 절대 지우지 않는다.** 2026-09-07에 실제로 겪었다:
+  번호판 유니크를 전역 → 소유자별로 바꿨을 때, 앱을 띄우면 새 복합 유니크
+  `uk_vehicles_user_plate_number` 는 Hibernate 가 만들어 줬지만 옛
+  `uk_vehicles_plate_number` 는 그대로 남았다. 둘 다 있으면 더 엄격한 옛것이 이겨서
+  **코드만 고치면 아무것도 안 바뀌고 조용히 예전대로 동작한다.** 옛 제약은 손으로 지웠다:
 
       /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults \
         -e "USE odolog; ALTER TABLE vehicles DROP INDEX uk_vehicles_plate_number;"
 
-  `ddl-auto: update` 는 제약을 **추가만 하고 절대 지우지 않는다.** 그래서 새 복합 유니크
-  `uk_vehicles_user_plate_number` 가 생겨도 옛 전역 유니크가 그대로 남아 더 엄격한 쪽이 이긴다.
-  즉 **코드만 고치면 아무것도 안 바뀌고, 조용히 예전대로 동작한다.**
-  `odolog_test` 는 매번 `create-drop` 이라 손댈 필요가 없다 — 그래서 테스트는 통과하는데
-  운영만 안 바뀌는 상황이 생긴다. 실행 여부는 아래로 확인한다:
+  `odolog_test` 는 매번 `create-drop` 이라 이 문제가 안 생긴다 — 그래서 **테스트는 통과하는데
+  운영만 안 바뀌는** 상황이 된다. 앞으로 제약을 바꿀 때마다 아래로 실제 상태를 확인할 것:
 
-      /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SHOW INDEX FROM vehicles;"
+      /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SHOW CREATE TABLE vehicles\G"
+
+  (`SHOW INDEX` 보다 `SHOW CREATE TABLE` 이 낫다. 복합 유니크가 `user_id` 로 시작하면 외래키용
+  인덱스 `fk_vehicles_user` 가 그 역할을 대신해 `SHOW INDEX` 목록에서 사라지는데, FK 제약 자체는
+  멀쩡히 살아 있다. `SHOW CREATE TABLE` 은 그걸 그대로 보여준다.)
 - **앱이 쓰는 계정은 `odolog`@localhost** (2026-09-06 생성). `odolog.*` 에만 권한이 있다.
   비밀번호는 어떤 파일에도 적지 않는다 — IntelliJ 실행 구성의 환경변수에만 있다.
 - 드라이버: `org.mariadb.jdbc:mariadb-java-client`, URL은 `jdbc:mariadb://`
