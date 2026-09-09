@@ -1,10 +1,10 @@
 import { api } from '@/shared/api/client'
+import type { PageResponse } from '@/shared/api/types'
 import type {
-  PageResponse,
   UpdateOdometerRequest,
   VehicleRegisterRequest,
   VehicleResponse,
-} from '@/shared/api/types'
+} from '@/features/vehicles/api/types'
 
 /**
  * 차량 관련 엔드포인트를 한곳에 모은다.

@@ -1,13 +1,13 @@
 import { Navigate, Route, Routes } from 'react-router'
 
-import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
-import { Header } from '@/shared/layout/Header'
-import { LoginPage } from '@/features/auth/LoginPage'
-import { ProfilePage } from '@/features/auth/ProfilePage'
-import { SignUpPage } from '@/features/auth/SignUpPage'
-import { VehicleDetailPage } from '@/features/vehicles/VehicleDetailPage'
-import { VehicleListPage } from '@/features/vehicles/VehicleListPage'
-import { VehicleNewPage } from '@/features/vehicles/VehicleNewPage'
+import { ProtectedRoute } from '@/app/ProtectedRoute'
+import { Header } from '@/app/Header'
+import { LoginPage } from '@/features/auth/pages/LoginPage'
+import { ProfilePage } from '@/features/auth/pages/ProfilePage'
+import { SignUpPage } from '@/features/auth/pages/SignUpPage'
+import { VehicleDetailPage } from '@/features/vehicles/pages/VehicleDetailPage'
+import { VehicleListPage } from '@/features/vehicles/pages/VehicleListPage'
+import { VehicleNewPage } from '@/features/vehicles/pages/VehicleNewPage'
 
 function App() {
   return (

@@ -2,8 +2,8 @@ import { useCallback, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
-import { MaintenanceSection } from '@/features/maintenance/MaintenanceSection'
-import { NextServiceCard } from '@/features/maintenance/NextServiceCard'
+import { MaintenanceSection } from '@/features/maintenance/components/MaintenanceSection'
+import { NextServiceCard } from '@/features/maintenance/components/NextServiceCard'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
@@ -12,8 +12,8 @@ import { LoadingText, ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { formatKm } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
-import { deleteVehicle, fetchVehicle, updateOdometer } from '@/features/vehicles/api'
-import type { VehicleResponse } from '@/shared/api/types'
+import { deleteVehicle, fetchVehicle, updateOdometer } from '@/features/vehicles/api/endpoints'
+import type { VehicleResponse } from '@/features/vehicles/api/types'
 
 export function VehicleDetailPage() {
   // URL의 :vehicleId 는 항상 문자열로 들어온다.

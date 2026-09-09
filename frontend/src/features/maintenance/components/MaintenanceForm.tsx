@@ -8,13 +8,13 @@ import { Textarea } from '@/shared/ui/textarea'
 import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { todayString } from '@/shared/lib/format'
-import { registerRecord, updateRecord } from '@/features/maintenance/api'
-import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/shared/api/types'
+import { registerRecord, updateRecord } from '@/features/maintenance/api/endpoints'
+import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types'
 import type {
   MaintenanceRecordResponse,
   MaintenanceRecordUpdateRequest,
   ServiceType,
-} from '@/shared/api/types'
+} from '@/features/maintenance/api/types'
 
 interface Props {
   vehicleId: number

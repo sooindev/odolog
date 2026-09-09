@@ -336,45 +336,59 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     ├── .gitignore                    node_modules/, dist/
     ├── index.html                    <div id="root"> + main.tsx 로드
     ├── README.md                     프론트 실행법 (백엔드가 먼저 떠 있어야 함)
-    ├── public/favicon.svg            빌드 시 그대로 복사되는 정적 파일
+    ├── public/favicon.svg            빌드 시 그대로 복사되는 정적 파일 (아직 Vite 기본 로고)
     └── src/
-        ├── main.tsx                  BrowserRouter > AuthProvider > App 순서로 감쌈
-        ├── App.tsx                   라우트 7개 정의 + Header 배치
+        ├── main.tsx                  Vite 진입점. index.html이 이 경로를 직접 가리키므로
+        │                             위치를 옮기지 않는다. BrowserRouter > AuthProvider > App
         ├── index.css                 @import "tailwindcss" + shadcn 테마 변수
         ├── env.d.ts                  import.meta.env 타입 선언
         │
+        ├── app/  ──────────────────── 조립층. **여러 기능을 동시에 알아도 되는 유일한 자리**
+        │   ├── App.tsx               라우트 7개 정의 + Header 배치
+        │   ├── Header.tsx            로고 · 닉네임(→/me) · 로그아웃. useAuth 를 쓴다
+        │   └── ProtectedRoute.tsx    로그인 안 했으면 /login으로. loading 중엔 대기
+        │
         ├── features/  ─────────────── 기능별. 백엔드의 user/vehicle/maintenance와 짝을 이룬다
+        │   │                         각 기능은 api / (context) / pages·components 로 나뉜다
         │   ├── auth/
-        │   │   ├── AuthContext.ts        Context 정의 + useAuth 훅 (컴포넌트 아닌 것만)
-        │   │   ├── AuthProvider.tsx      세션 복구(/me 1회)·login·logout·401 핸들러 등록
-        │   │   ├── ProtectedRoute.tsx    로그인 안 했으면 /login으로. loading 중엔 대기
-        │   │   ├── LoginPage.tsx         401 → 폼 에러. 원래 가려던 곳으로 복귀
-        │   │   ├── SignUpPage.tsx        가입 후 이어서 로그인까지. 409 → 폼 에러
-        │   │   └── ProfilePage.tsx       바뀐 필드만 PATCH. null 걸러내는 겉 + 폼 2단 구조
+        │   │   ├── api/
+        │   │   │   ├── endpoints.ts      fetchMe·signUp·login·logout·updateProfile
+        │   │   │   └── types.ts          백엔드 user.dto 대응
+        │   │   ├── context/
+        │   │   │   ├── AuthContext.ts    Context 정의 + useAuth 훅 (컴포넌트 아닌 것만)
+        │   │   │   └── AuthProvider.tsx  세션 복구(/me 1회)·login·logout·401 핸들러 등록
+        │   │   └── pages/
+        │   │       ├── LoginPage.tsx     401 → 폼 에러. 원래 가려던 곳으로 복귀
+        │   │       ├── SignUpPage.tsx    가입 후 이어서 로그인까지. 409 → 폼 에러
+        │   │       └── ProfilePage.tsx   바뀐 필드만 PATCH. null 걸러내는 겉 + 폼 2단 구조
         │   ├── vehicles/
-        │   │   ├── api.ts                차량 엔드포인트 5개
-        │   │   ├── VehicleListPage.tsx   목록 + 페이지네이션 + 빈 상태
-        │   │   ├── VehicleNewPage.tsx    등록 폼. 409(번호판 중복) → 폼 에러
-        │   │   └── VehicleDetailPage.tsx 차량정보 → 주행거리 → 다음정비 → 이력 → 삭제
+        │   │   ├── api/
+        │   │   │   ├── endpoints.ts      차량 엔드포인트 5개
+        │   │   │   └── types.ts          백엔드 vehicle.dto 대응
+        │   │   └── pages/
+        │   │       ├── VehicleListPage.tsx   목록 + 페이지네이션 + 빈 상태
+        │   │       ├── VehicleNewPage.tsx    등록 폼. 409(번호판 중복) → 폼 에러
+        │   │       └── VehicleDetailPage.tsx 차량정보 → 주행거리 → 다음정비 → 이력 → 삭제
         │   └── maintenance/
-        │       ├── api.ts                정비 이력 엔드포인트 5개
-        │       ├── NextServiceCard.tsx   종류 5개 다음 정비 시점 (Promise.all 동시 요청).
-        │       │                         재조회는 부모가 key 를 바꿔 재생성
-        │       ├── MaintenanceSection.tsx 목록 + 페이지네이션 + 삭제 + 폼 토글
-        │       └── MaintenanceForm.tsx   등록·수정 겸용 (record가 null이면 등록)
+        │       ├── api/
+        │       │   ├── endpoints.ts      정비 이력 엔드포인트 5개
+        │       │   └── types.ts          ServiceType 유니온 + SERVICE_TYPE_LABELS + DTO
+        │       └── components/           pages/ 가 없다 — 자기 라우트 없이 차량 상세에 얹힌다
+        │           ├── NextServiceCard.tsx    종류 5개 다음 정비 시점 (Promise.all 동시 요청).
+        │           │                          재조회는 부모가 key 를 바꿔 재생성
+        │           ├── MaintenanceSection.tsx 목록 + 페이지네이션 + 삭제 + 폼 토글
+        │           └── MaintenanceForm.tsx    등록·수정 겸용 (record가 null이면 등록)
         │
         └── shared/  ───────────────── 어느 기능에도 속하지 않는 것. 백엔드의 common과 같은 자리
             ├── api/
             │   ├── client.ts             fetch 래퍼. credentials:'include' / ApiError /
             │   │                         204 처리 / 401 전역 핸들러 등록 창구
-            │   └── types.ts              백엔드 DTO 대응 타입 + PageResponse<T> +
-            │                             ServiceType 유니온 + SERVICE_TYPE_LABELS
+            │   └── types.ts              PageResponse<T> / ErrorResponse 둘뿐.
+            │                             기능별 DTO는 features/*/api/types.ts 로 옮겼다
             ├── lib/
             │   ├── format.ts             formatKm / formatWon / todayString(UTC 함정 회피)
             │   └── useAsyncData.ts       조회 4곳의 공통 훅. data/loading/error +
             │                             reload()/setData. cancelled 플래그가 여기 한 곳에만
-            ├── layout/
-            │   └── Header.tsx            로고 · 닉네임(→/me) · 로그아웃
             └── ui/                       대부분 shadcn이 복사해 넣은 코드(직접 고쳐도 된다).
                 │                         state.tsx 만 우리가 직접 쓴 것
                 ├── state.tsx             LoadingText / ErrorText — 로딩·에러 문구 한 곳
@@ -384,15 +398,72 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                 ├── label.tsx
                 └── textarea.tsx
 
+**폴더는 파일이 2개가 될 때 만든다.** 파일 1개짜리 폴더는 경로만 길어지고 아무것도 안 알려준다.
+`shared/lib/` 을 `hooks/` 와 `lib/` 로 더 쪼개지 않은 이유, `maintenance/` 에 `pages/` 를
+만들지 않은 이유가 이것이다. 백엔드도 같은 기준으로 보면 더 쪼갤 곳이 없다 (아래 참고).
+
 ### 의존 방향
 
     백엔드:  maintenance → vehicle → user,  셋 다 필요하면 common
-    프론트:  features/maintenance → features/vehicles → features/auth,  셋 다 shared를 본다
+    프론트:  app → features → shared
+
+`app` 은 **여러 기능을 동시에 알아도 되는 유일한 층**이다. `Header`(내부에서 `useAuth` 사용)와
+`ProtectedRoute` 가 이 층에 있는 이유다. 전에는 `shared/layout/Header.tsx` 가
+`features/auth` 를 import 해서 "shared가 features를 아는" 역방향 의존이 있었는데 이것으로 없앴다.
+같은 이유로 모든 기능의 DTO를 담고 있던 `shared/api/types.ts` 도 기능별로 나눴다.
+
+기능 간 참조는 현재 **`vehicles → maintenance` 한 방향뿐**이다 (차량 상세 화면이
+`MaintenanceSection`·`NextServiceCard` 를 얹는다). 이 문서에 한동안 반대로(`maintenance →
+vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
 
 반대 방향 의존(`user`가 `vehicle`을 알거나, `shared`가 `features`를 아는 것)이 생기면
 설계가 잘못된 신호로 보고 재검토한다.
 
+**백엔드에는 알려진 예외가 하나 있다.** 패키지 수준으로 보면 `vehicle` 과 `maintenance` 는
+서로를 안다:
+
+    vehicle/service/VehicleService              → maintenance/repository/MaintenanceRecordRepository
+    maintenance/service/MaintenanceRecordService → vehicle/service/VehicleService
+
+차량 삭제 시 "이력 먼저, 차량 나중" 순서를 서비스가 직접 제어하려고 `VehicleService` 가
+`MaintenanceRecordRepository` 를 주입받기 때문이다. 서비스끼리 주입하면 스프링이 잡아내는
+진짜 순환 참조가 되므로 리포지토리를 골랐고, 그래서 **클래스 수준에서는 순환이 아니다.**
+위의 한 줄 요약(`maintenance → vehicle`)이 이 사실을 가리고 있어 여기 적어 둔다.
+
+### 백엔드 디렉토리를 더 쪼개지 않는 이유
+
+백엔드는 파일 37개가 디렉토리 23개에 들어 있고, **그중 13개는 파일이 1개뿐이다**
+(`user/domain/`, `user/service/`, `vehicle/repository/` …). 기능별 × 계층별 × request/response
+까지 이미 3중으로 나뉘어 있어서, 여기서 더 나누면 폴더당 파일 1개인 구조가 될 뿐이다.
+프론트엔드와 달리 백엔드의 세분화는 **이미 끝나 있다.**
+
 ## 진행 상황 (완료)
+
+- [x] 전체 점검 + 프론트엔드 디렉토리 세분화 (2026-09-09)
+      → **점검 결과 세분화가 필요한 쪽은 프론트엔드뿐이었다.** 백엔드는 파일 37개가 디렉토리
+        23개에 있고 그중 13개가 파일 1개짜리라, 더 쪼개면 경로만 길어진다. 반면 프론트는
+        `features/*` 가 평평했다(auth 6·vehicles 4·maintenance 4개 파일이 한 폴더에).
+      → **`app/` 층 신설.** `shared/layout/Header.tsx` 가 `@/features/auth/AuthContext` 를
+        import 하고 있었다 — 문서가 금지한 "shared가 features를 아는" 역방향 의존이 실제로
+        있었던 것. `Header`·`ProtectedRoute`·`App` 을 `app/` 으로 올려 해결했다.
+        의존 방향이 `app → features → shared` 3층으로 정리됐다.
+      → **`shared/api/types.ts` 를 기능별로 분해.** 한 파일이 user·vehicle·maintenance의 DTO를
+        전부 알고 있었다(127줄). import 화살표는 없었지만 지식의 방향이 역방향이다.
+        지금 `shared/api/types.ts` 에는 `PageResponse`/`ErrorResponse` 둘만 남았다.
+      → **`auth/api/endpoints.ts` 신설.** vehicles·maintenance 에는 있는데 auth 만 없어서
+        `'/api/users/login'` 같은 URL 문자열이 `AuthProvider`·`SignUpPage`·`ProfilePage`
+        세 곳에 흩어져 있었다. 이제 화면 파일(`*.tsx`)에 URL 문자열이 하나도 없다.
+        `AuthProvider` 는 지역 변수 `login`/`logout` 과 이름이 겹쳐 `requestLogin`/
+        `requestLogout` 별칭으로 가져온다.
+      → **문서의 의존 방향이 틀려 있었다.** 프론트는 `maintenance → vehicles` 라고 적혀 있었지만
+        실제 import 는 `vehicles → maintenance` 하나뿐이다(차량 상세가 정비 컴포넌트를 얹는다).
+        백엔드도 `vehicle ↔ maintenance` 가 패키지 수준에서 서로를 아는데(삭제 순서 제어용
+        `MaintenanceRecordRepository` 주입) 한 줄 요약이 그걸 가리고 있었다. 둘 다 바로잡았다.
+      → 기준: **폴더는 파일 2개부터 만든다.** 그래서 `shared/lib` 을 `hooks`/`lib` 로 쪼개지 않았고
+        `maintenance` 에 `pages/` 를 만들지 않았다.
+      → 검증: 이동은 전부 `git mv`(히스토리 보존), 타입 검사·린트 통과, **빌드 CSS 해시가
+        재구성 전과 동일**(`index-SCKbKCcF.css`). JS 만 296.49 → 296.62 kB 로 늘었는데
+        새로 만든 `auth/api/endpoints.ts` 모듈 하나에 해당한다.
 
 - [x] 요청 DTO 검증 구멍 2건 (2026-09-07 점검)
       → **`SignUpRequest.phone` 에 `@Size(max = 20)` 이 없었다.** `User.phone` 컬럼이 `length = 20`

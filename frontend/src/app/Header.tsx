@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router'
 
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/context/AuthContext'
 import { Button } from '@/shared/ui/button'
 
 export function Header() {

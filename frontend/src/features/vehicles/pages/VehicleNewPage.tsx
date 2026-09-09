@@ -8,7 +8,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
-import { registerVehicle } from '@/features/vehicles/api'
+import { registerVehicle } from '@/features/vehicles/api/endpoints'
 
 export function VehicleNewPage() {
   const navigate = useNavigate()

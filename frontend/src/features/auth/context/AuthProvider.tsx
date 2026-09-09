@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
-import { AuthContext } from '@/features/auth/AuthContext'
-import { api, setUnauthorizedHandler } from '@/shared/api/client'
-import type { LoginRequest, UserResponse } from '@/shared/api/types'
+import { AuthContext } from '@/features/auth/context/AuthContext'
+import { setUnauthorizedHandler } from '@/shared/api/client'
+import {
+  fetchMe,
+  login as requestLogin,
+  logout as requestLogout,
+} from '@/features/auth/api/endpoints'
+import type { LoginRequest, UserResponse } from '@/features/auth/api/types'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserResponse | null>(null)
@@ -16,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function restoreSession() {
       try {
-        const me = await api.get<UserResponse>('/api/users/me')
+        const me = await fetchMe()
         if (!cancelled) setUser(me)
       } catch {
         // 401이면 로그인 안 한 상태다. 서버가 꺼져 있는 경우도 로그아웃 상태로 시작한다.
@@ -39,11 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (request: LoginRequest) => {
-    setUser(await api.post<UserResponse>('/api/users/login', request))
+    setUser(await requestLogin(request))
   }, [])
 
   const logout = useCallback(async () => {
-    await api.post('/api/users/logout')
+    await requestLogout()
     setUser(null)
   }, [])
 

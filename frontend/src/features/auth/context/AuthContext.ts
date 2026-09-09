@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-import type { LoginRequest, UserResponse } from '@/shared/api/types'
+import type { LoginRequest, UserResponse } from '@/features/auth/api/types'
 
 export interface AuthContextValue {
   /** 로그인하지 않았으면 null */

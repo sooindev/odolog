@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { LoadingText, ErrorText } from '@/shared/ui/state'
 import { formatKm } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
-import { fetchNextService } from '@/features/maintenance/api'
-import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/shared/api/types'
-import type { NextServiceResponse } from '@/shared/api/types'
+import { fetchNextService } from '@/features/maintenance/api/endpoints'
+import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types'
+import type { NextServiceResponse } from '@/features/maintenance/api/types'
 
 /**
  * 다음 정비 시점을 종류별로 보여준다.

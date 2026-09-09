@@ -1,15 +1,15 @@
 import { useCallback, useState } from 'react'
 
-import { MaintenanceForm } from '@/features/maintenance/MaintenanceForm'
+import { MaintenanceForm } from '@/features/maintenance/components/MaintenanceForm'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { LoadingText, ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { formatKm, formatWon } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
-import { deleteRecord, fetchRecords } from '@/features/maintenance/api'
-import { SERVICE_TYPE_LABELS } from '@/shared/api/types'
-import type { MaintenanceRecordResponse } from '@/shared/api/types'
+import { deleteRecord, fetchRecords } from '@/features/maintenance/api/endpoints'
+import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types'
+import type { MaintenanceRecordResponse } from '@/features/maintenance/api/types'
 
 interface Props {
   vehicleId: number

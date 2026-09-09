@@ -1,12 +1,12 @@
 import { api } from '@/shared/api/client'
+import type { PageResponse } from '@/shared/api/types'
 import type {
   MaintenanceRecordRegisterRequest,
   MaintenanceRecordResponse,
   MaintenanceRecordUpdateRequest,
   NextServiceResponse,
-  PageResponse,
   ServiceType,
-} from '@/shared/api/types'
+} from '@/features/maintenance/api/types'
 
 /** 정비 이력은 항상 특정 차량에 속하므로 모든 경로가 /api/vehicles/{vehicleId} 아래에 있다. */
 function basePath(vehicleId: number) {

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/shared/ui/card'
 import { LoadingText, ErrorText } from '@/shared/ui/state'
 import { formatKm } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
-import { fetchVehicles } from '@/features/vehicles/api'
+import { fetchVehicles } from '@/features/vehicles/api/endpoints'
 
 export function VehicleListPage() {
   const [page, setPage] = useState(0)

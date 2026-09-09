@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/context/AuthContext'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { ErrorText } from '@/shared/ui/state'
-import { ApiError, api } from '@/shared/api/client'
-import type { UpdateProfileRequest, UserResponse } from '@/shared/api/types'
+import { ApiError } from '@/shared/api/client'
+import { updateProfile } from '@/features/auth/api/endpoints'
+import type { UpdateProfileRequest, UserResponse } from '@/features/auth/api/types'
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -48,7 +49,7 @@ function ProfileForm({ user }: { user: UserResponse }) {
 
     setPending(true)
     try {
-      replaceUser(await api.patch<UserResponse>('/api/users/me', request))
+      replaceUser(await updateProfile(request))
       setMessage('저장했습니다.')
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : '저장에 실패했습니다.')

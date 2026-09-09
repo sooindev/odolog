@@ -29,11 +29,20 @@
     │       └── common/            인증(세션), 전역 예외 처리, 설정 등 공통 인프라
     └── frontend/                  프론트엔드 (Vite + React + TypeScript)
         └── src/
+            ├── app/               라우트 정의, Header, ProtectedRoute
             ├── features/          auth / vehicles / maintenance
-            └── shared/            api 클라이언트, 포맷 함수, 레이아웃, UI 컴포넌트
+            └── shared/            api 클라이언트, 포맷 함수, 공용 훅, UI 컴포넌트
 
-각 기능 패키지는 `domain / repository / dto / service / controller`로 나뉘고,
+백엔드의 각 기능 패키지는 `domain / repository / dto / service / controller`로 나뉘고,
 `dto`는 다시 `request / response`로 나뉜다.
+
+프론트엔드의 각 기능 폴더는 `api`(엔드포인트 + 그 기능의 DTO 타입)와
+`pages`(라우트가 있는 화면) 또는 `components`(다른 화면에 얹히는 조각)로 나뉜다.
+`auth`에는 로그인 상태를 들고 있는 `context`가 추가로 있다.
+
+의존 방향은 `app → features → shared` 한 방향이다. `app`은 여러 기능을 동시에 알아도 되는
+유일한 층이라, `useAuth`를 쓰는 `Header`와 `ProtectedRoute`가 여기에 있다.
+
 설계 결정과 진행 상황은 `CLAUDE.md`에 상세히 기록되어 있다.
 
 프론트엔드 실행 방법은 `frontend/README.md` 참고.

@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 
 import { LoadingText } from '@/shared/ui/state'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/context/AuthContext'
 
 /** 로그인한 사용자만 통과시키는 라우트. 아니면 /login 으로 보낸다. */
 export function ProtectedRoute() {

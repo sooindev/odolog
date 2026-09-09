@@ -2,14 +2,15 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/context/AuthContext'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { ErrorText } from '@/shared/ui/state'
-import { ApiError, api } from '@/shared/api/client'
-import type { SignUpRequest, UserResponse } from '@/shared/api/types'
+import { ApiError } from '@/shared/api/client'
+import { signUp } from '@/features/auth/api/endpoints'
+import type { SignUpRequest } from '@/features/auth/api/types'
 
 export function SignUpPage() {
   const { login } = useAuth()
@@ -35,7 +36,7 @@ export function SignUpPage() {
     setPending(true)
 
     try {
-      await api.post<UserResponse>('/api/users', form)
+      await signUp(form)
       // 가입만으로는 세션이 만들어지지 않는다. 바로 로그인까지 해 주면 사용자가 두 번 입력하지 않는다.
       await login({ email: form.email, password: form.password })
       navigate('/vehicles', { replace: true })

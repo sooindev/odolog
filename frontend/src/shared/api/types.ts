@@ -1,28 +1,12 @@
 /**
- * 백엔드(com.odolog.app.*.dto)의 DTO에 대응하는 타입.
- * 스펙은 http://localhost:8080/v3/api-docs 에서 확인할 수 있다.
- * 백엔드 DTO를 고치면 이 파일도 같이 고쳐야 한다 (자동 동기화되지 않음).
+ * 어느 기능에도 속하지 않는, 백엔드 com.odolog.app.common.dto 에 대응하는 타입.
+ *
+ * 기능별 DTO(user/vehicle/maintenance)는 여기 두지 않는다.
+ * shared 가 features 를 알면 의존 방향이 뒤집히기 때문이다.
+ * 각각 features/<기능>/api/types.ts 에 있다.
  */
 
-export const SERVICE_TYPES = [
-  'ENGINE_OIL',
-  'TIRE',
-  'BRAKE_PAD',
-  'BATTERY',
-  'OTHER',
-] as const
-
-export type ServiceType = (typeof SERVICE_TYPES)[number]
-
-export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
-  ENGINE_OIL: '엔진오일',
-  TIRE: '타이어',
-  BRAKE_PAD: '브레이크 패드',
-  BATTERY: '배터리',
-  OTHER: '기타',
-}
-
-/** 백엔드 common.dto.PageResponse */
+/** 백엔드 common.dto.response.PageResponse */
 export interface PageResponse<T> {
   items: T[]
   page: number
@@ -32,96 +16,7 @@ export interface PageResponse<T> {
   hasNext: boolean
 }
 
-/** 백엔드 common.dto.ErrorResponse */
+/** 백엔드 common.dto.response.ErrorResponse */
 export interface ErrorResponse {
   message: string
-}
-
-// ── user ─────────────────────────────────────────────
-export interface SignUpRequest {
-  email: string
-  password: string
-  nickname: string
-  /** 백엔드에 @NotBlank 가 없다 — 선택 항목이다. */
-  phone?: string
-}
-
-export interface LoginRequest {
-  email: string
-  password: string
-}
-
-export interface UpdateProfileRequest {
-  nickname?: string
-  phone?: string
-}
-
-export interface UserResponse {
-  id: number
-  email: string
-  nickname: string
-  phone: string | null
-}
-
-// ── vehicle ──────────────────────────────────────────
-export interface VehicleRegisterRequest {
-  plateNumber: string
-  manufacturer: string
-  modelName: string
-  modelYear: number
-}
-
-export interface UpdateOdometerRequest {
-  odometer: number
-}
-
-export interface VehicleResponse {
-  id: number
-  plateNumber: string
-  manufacturer: string
-  modelName: string
-  /**
-   * 등록 API는 @NotNull 이지만 DB 컬럼은 여전히 nullable 이라,
-   * 검증이 붙기 전에 만들어진 차량은 null 일 수 있다.
-   */
-  modelYear: number | null
-  odometer: number
-}
-
-// ── maintenance ──────────────────────────────────────
-export interface MaintenanceRecordRegisterRequest {
-  type: ServiceType
-  description?: string
-  cost: number
-  serviceOdometer: number
-  /** YYYY-MM-DD */
-  serviceDate: string
-}
-
-export interface MaintenanceRecordUpdateRequest {
-  type?: ServiceType
-  description?: string
-  cost?: number
-  serviceOdometer?: number
-  serviceDate?: string
-}
-
-export interface MaintenanceRecordResponse {
-  id: number
-  type: ServiceType
-  description: string | null
-  cost: number
-  serviceOdometer: number
-  /** YYYY-MM-DD */
-  serviceDate: string
-}
-
-export interface NextServiceResponse {
-  type: ServiceType
-  /** 해당 종류의 이력이 없으면 null */
-  lastServiceOdometer: number | null
-  /** 이력이 없거나 권장 주기가 없는 종류(OTHER)면 null */
-  nextServiceOdometer: number | null
-  lastServiceDate: string | null
-  nextServiceDate: string | null
 }
