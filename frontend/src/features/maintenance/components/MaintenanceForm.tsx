@@ -6,6 +6,7 @@ import { cn } from 'cn'
 import { Button } from '@/shared/ui/button'
 import { controlClassName } from '@/shared/ui/control'
 import { Field } from '@/shared/ui/field'
+import { FormActions } from '@/shared/ui/page'
 import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
 import { ErrorText } from '@/shared/ui/state'
@@ -172,14 +173,14 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
 
       {error !== null && <ErrorText message={error} />}
 
-      <div className="flex gap-2">
+      <FormActions>
         <Button type="submit" disabled={pending}>
           {pending ? '저장 중…' : record === null ? '등록' : '수정'}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           취소
         </Button>
-      </div>
+      </FormActions>
     </form>
   )
 }

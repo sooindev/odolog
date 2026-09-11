@@ -6,7 +6,7 @@ import { Button } from '@/shared/ui/button'
 import { Card, CardContent } from '@/shared/ui/card'
 import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
-import { PageHeader } from '@/shared/ui/page-header'
+import { FormActions, Page } from '@/shared/ui/page'
 import { Section } from '@/shared/ui/section'
 import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
@@ -46,9 +46,9 @@ export function VehicleNewPage() {
   }
 
   return (
-    <div className="flex flex-col gap-12">
-      <PageHeader eyebrow="Garage" title="차량 등록" />
-
+    // back: 목록에서 파고 들어온 화면이므로 되돌아갈 길을 머리에 둔다.
+    // 폼 아래 "취소" 버튼과 역할이 다르다 — 취소는 입력을 버리는 것이고, 이건 그냥 이동이다.
+    <Page back={{ to: '/vehicles', label: '내 차량' }} eyebrow="Garage" title="차량 등록">
       {/* 넓은 화면에서 폼만 가운데 좁게 두면 양옆이 비어 허전하다.
           설명을 왼쪽 열로 빼면 남는 폭이 여백이 아니라 정보로 채워진다. */}
       <Section
@@ -108,19 +108,18 @@ export function VehicleNewPage() {
 
               {error !== null && <ErrorText message={error} />}
 
-              {/* 주 동작(등록)만 채워진 버튼이다. 취소까지 채우면 둘 중 무엇이 기본인지 사라진다. */}
-              <div className="mt-1 flex gap-2">
+              <FormActions>
                 <Button type="submit" disabled={pending}>
                   {pending ? '등록 중…' : '등록'}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
                   취소
                 </Button>
-              </div>
+              </FormActions>
             </form>
           </CardContent>
         </Card>
       </Section>
-    </div>
+    </Page>
   )
 }

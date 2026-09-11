@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ChevronLeft } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 
 import { MaintenanceSection } from '@/features/maintenance/components/MaintenanceSection'
 import { NextServiceCard } from '@/features/maintenance/components/NextServiceCard'
@@ -9,6 +8,7 @@ import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
+import { Page } from '@/shared/ui/page'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { formatKm, formatNumber } from '@/shared/lib/format'
@@ -65,44 +65,32 @@ export function VehicleDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <Link
-        to="/vehicles"
-        className="-ml-1 inline-flex w-fit items-center gap-1 text-[0.8125rem] text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70"
-      >
-        <ChevronLeft className="size-3.5" aria-hidden="true" />내 차량
-      </Link>
-
+    // 머리말(번호판·모델명·연식)을 사이드바 안에서 꺼내 다른 화면들과 같은 자리에 뒀다.
+    // 예전에는 여기만 머리말을 손으로 그려서 sm:text-[2rem] 이 빠져 있었다.
+    <Page
+      back={{ to: '/vehicles', label: '내 차량' }}
+      // 차량을 식별하는 건 모델명이 아니라 번호판이다. 그래서 eyebrow 자리에 올린다.
+      eyebrow={vehicle.plateNumber}
+      title={`${vehicle.manufacturer} ${vehicle.modelName}`}
+      description={vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
+    >
       {/*
-        넓은 화면에서 2단으로 나눈다. 왼쪽은 "이 차가 무엇인가"(바뀌지 않는 정보 + 주행거리),
+        넓은 화면에서 2단으로 나눈다. 왼쪽은 "이 차가 지금 어떤 상태인가"(주행거리),
         오른쪽은 "무엇을 했고 무엇을 할 것인가"(이력과 다음 정비).
-        한 줄로 쌓으면 정비 이력을 보려고 스크롤할 때마다 차량 정보가 화면 밖으로 사라진다.
+        한 줄로 쌓으면 정비 이력을 보려고 스크롤할 때마다 주행거리가 화면 밖으로 사라진다.
 
         minmax(0,1fr): 오른쪽 열이 내용보다 작아질 수 있게 한다. 이게 없으면 긴 메모 한 줄이
         열을 밀어내 격자 전체가 넘친다(grid 자식의 기본 min-width는 auto라서).
       */}
       <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-14">
         {/*
-          lg:sticky + self-start: 오른쪽 이력을 길게 스크롤해도 차량 정보가 따라온다.
+          lg:sticky + self-start: 오른쪽 이력을 길게 스크롤해도 주행거리가 따라온다.
           self-start 가 없으면 격자 칸이 오른쪽 높이만큼 늘어나 sticky 가 걸리지 않는다.
           top-24 = 헤더 높이(64px) + 32px 숨통.
         */}
         <div className="flex flex-col gap-8 lg:sticky lg:top-24 lg:self-start">
-          <div className="flex flex-col gap-2">
-            {/* 번호판을 eyebrow 자리에 올린다. 차량을 식별하는 건 모델명이 아니라 번호판이다. */}
-            <p className="text-[0.6875rem] font-medium tracking-[0.16em] text-muted-foreground uppercase">
-              {vehicle.plateNumber}
-            </p>
-            <h1 className="text-[1.75rem] leading-[1.15] font-semibold tracking-[-0.03em] text-strong">
-              {vehicle.manufacturer} {vehicle.modelName}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
-            </p>
-          </div>
-
           {/*
-            주행거리를 표(dl) 한 줄이 아니라 화면의 주인공으로 올렸다.
+            주행거리를 표(dl) 한 줄이 아니라 이 열의 주인공으로 올렸다.
             이 앱에서 사용자가 가장 자주 확인하는 숫자 하나이고, 앱 이름도 여기서 왔다.
             숫자만 크게 두고 단위(km)는 작게 붙여 "값"과 "단위"의 위계를 나눈다.
           */}
@@ -151,21 +139,25 @@ export function VehicleDetailPage() {
           />
         </div>
       </div>
-    </div>
+    </Page>
   )
 }
 
 function VehicleDetailSkeleton() {
   return (
-    <div className="flex flex-col gap-8">
-      <Skeleton className="h-4 w-20" />
+    <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-4 w-20" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+      </div>
+
       <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-14">
         <div className="flex flex-col gap-8">
-          <div className="flex flex-col gap-3">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-9 w-52" />
-          </div>
-          <Skeleton className="h-14 w-56" />
+          <Skeleton className="h-13 w-48" />
           <Skeleton className="h-40 rounded-2xl" />
         </div>
         <div className="flex flex-col gap-6">

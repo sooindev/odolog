@@ -8,7 +8,7 @@ import { Button } from '@/shared/ui/button'
 import { Card, CardContent } from '@/shared/ui/card'
 import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
-import { PageHeader } from '@/shared/ui/page-header'
+import { FormActions, Page } from '@/shared/ui/page'
 import { Section } from '@/shared/ui/section'
 import { ErrorText, NoticeText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
@@ -25,9 +25,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col gap-12">
-      <PageHeader eyebrow="Account" title="내 정보" />
-
+    <Page eyebrow="Account" title="내 정보">
       <Section title="계정" description="닉네임과 전화번호를 바꿀 수 있습니다. 이메일은 변경할 수 없습니다.">
         <ProfileForm user={user} />
       </Section>
@@ -40,7 +38,7 @@ export function ProfilePage() {
       <Section title="화면" description="라이트·다크 중 하나를 고르거나, 기기 설정을 그대로 따를 수 있습니다.">
         <AppearanceCard />
       </Section>
-    </div>
+    </Page>
   )
 }
 
@@ -138,9 +136,11 @@ function ProfileForm({ user }: { user: UserResponse }) {
           {message !== null && <NoticeText message={message} />}
           {error !== null && <ErrorText message={error} />}
 
-          <Button type="submit" className="mt-1 self-start" disabled={pending}>
-            {pending ? '저장 중…' : '저장'}
-          </Button>
+          <FormActions>
+            <Button type="submit" disabled={pending}>
+              {pending ? '저장 중…' : '저장'}
+            </Button>
+          </FormActions>
         </form>
       </CardContent>
     </Card>
