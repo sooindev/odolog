@@ -31,10 +31,11 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/60 backdrop-blur-[20px] backdrop-saturate-150">
       <div className="mx-auto flex h-16 max-w-[76rem] items-center justify-between gap-3 px-6 sm:px-8 lg:px-10">
-        {/* 로고가 가리키는 곳이 로그인 여부에 따라 다르다. 로그인한 사람에게 홈은 소개 화면이
-            아니라 자기 차량 목록이다. */}
+        {/* 로그인 여부와 상관없이 항상 홈(소개 화면)으로 간다.
+            로그인했다고 목적지가 달라지면, 같은 버튼이 어디로 갈지 매번 예측해야 한다.
+            로그인한 사람이 차량 목록으로 가는 길은 홈의 "내 차량 보기" 버튼이다. */}
         <Link
-          to={user === null ? '/' : '/vehicles'}
+          to="/"
           className="flex shrink-0 items-center gap-2.5 transition-opacity duration-200 ease-apple hover:opacity-70"
         >
           <GaugeMark />

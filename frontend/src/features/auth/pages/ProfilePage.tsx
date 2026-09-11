@@ -51,7 +51,7 @@ function AppearanceCard() {
   // 지금 라이트인지 다크인지 화면을 봐야만 알 수 있다.
   const detail =
     theme === 'system'
-      ? `기기 설정을 따릅니다 — 지금은 ${resolved === 'dark' ? '다크' : '라이트'}`
+      ? `기기 설정을 따릅니다 — 현재 ${resolved === 'dark' ? '다크모드입니다' : '라이트모드입니다'}`
       : `${theme === 'dark' ? '다크' : '라이트'}로 고정되어 있습니다`
 
   return (
