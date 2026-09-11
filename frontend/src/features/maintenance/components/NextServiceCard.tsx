@@ -1,8 +1,8 @@
 import { useCallback } from 'react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
-import { LoadingText, ErrorText } from '@/shared/ui/state'
-import { formatKm } from '@/shared/lib/format'
+import { ErrorText, Skeleton } from '@/shared/ui/state'
+import { formatDate, formatKm } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { fetchNextService } from '@/features/maintenance/api/endpoints'
 import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types'
@@ -23,28 +23,44 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
     () => Promise.all(SERVICE_TYPES.map((type) => fetchNextService(vehicleId, type))),
     [vehicleId],
   )
-  const { data: results, loading, error } = useAsyncData(
-    load,
-    '다음 정비 시점을 불러오지 못했습니다.',
-  )
+  const {
+    data: results,
+    loading,
+    error,
+  } = useAsyncData(load, '다음 정비 시점을 불러오지 못했습니다.')
 
   // 카드 껍데기는 항상 그린다. 상태에 따라 카드가 통째로 사라지면 아래 내용이 위로 튄다.
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">다음 정비 시점</CardTitle>
+        <CardTitle>다음 정비 시점</CardTitle>
       </CardHeader>
       <CardContent>
-        {loading && <LoadingText />}
+        {loading && (
+          <div className="flex flex-col gap-4">
+            {SERVICE_TYPES.map((type) => (
+              <Skeleton key={type} className="h-4" />
+            ))}
+          </div>
+        )}
 
         {!loading && error !== null && <ErrorText message={error} />}
 
         {!loading && error === null && results !== null && (
-          <ul className="flex flex-col gap-2 text-sm">
+          // divide-y: 항목마다 테두리를 직접 붙이지 않고 "사이"에만 선을 넣는다.
+          // 첫 줄 위와 마지막 줄 아래에 선이 생기지 않아 카드 안쪽이 깔끔하다.
+          <ul className="divide-y divide-border">
             {results.map((result) => (
-              <li key={result.type} className="flex items-baseline justify-between gap-4">
-                <span className="font-medium">{SERVICE_TYPE_LABELS[result.type]}</span>
-                <span className="text-muted-foreground text-right">{describe(result)}</span>
+              <li
+                key={result.type}
+                className="flex items-baseline justify-between gap-4 py-3 first:pt-0 last:pb-0"
+              >
+                <span className="text-[0.9375rem] tracking-[-0.01em] text-strong">
+                  {SERVICE_TYPE_LABELS[result.type]}
+                </span>
+                <span className="text-right text-[0.8125rem] tabular-nums text-muted-foreground">
+                  {describe(result)}
+                </span>
               </li>
             ))}
           </ul>
@@ -65,11 +81,11 @@ function describe(result: NextServiceResponse) {
     parts.push(formatKm(result.nextServiceOdometer))
   }
   if (result.nextServiceDate !== null) {
-    parts.push(result.nextServiceDate)
+    parts.push(formatDate(result.nextServiceDate))
   }
 
   if (parts.length === 0) {
-    return `${result.lastServiceDate} 정비 · 권장 주기 없음`
+    return `${formatDate(result.lastServiceDate)} 정비 · 권장 주기 없음`
   }
 
   return parts.join(' 또는 ')

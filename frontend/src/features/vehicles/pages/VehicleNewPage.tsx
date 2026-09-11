@@ -3,9 +3,9 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
-import { Label } from '@/shared/ui/label'
+import { PageHeader } from '@/shared/ui/page-header'
 import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { registerVehicle } from '@/features/vehicles/api/endpoints'
@@ -44,25 +44,23 @@ export function VehicleNewPage() {
   }
 
   return (
-    <Card className="mx-auto max-w-sm">
-      <CardHeader>
-        <CardTitle>차량 등록</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="plateNumber">차량 번호</Label>
-            <Input
-              id="plateNumber"
-              required
-              placeholder="12가3456"
-              value={plateNumber}
-              onChange={(event) => setPlateNumber(event.target.value)}
-            />
-          </div>
+    <div className="mx-auto flex max-w-[24rem] flex-col gap-10">
+      <PageHeader eyebrow="Garage" title="차량 등록" />
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="manufacturer">제조사</Label>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <Field label="차량 번호" htmlFor="plateNumber">
+          <Input
+            id="plateNumber"
+            required
+            placeholder="12가3456"
+            value={plateNumber}
+            onChange={(event) => setPlateNumber(event.target.value)}
+          />
+        </Field>
+
+        {/* 제조사와 모델명은 함께 읽히는 한 쌍이라 좁은 화면에서만 위아래로 쌓는다. */}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="제조사" htmlFor="manufacturer">
             <Input
               id="manufacturer"
               required
@@ -70,10 +68,9 @@ export function VehicleNewPage() {
               value={manufacturer}
               onChange={(event) => setManufacturer(event.target.value)}
             />
-          </div>
+          </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="modelName">모델명</Label>
+          <Field label="모델명" htmlFor="modelName">
             <Input
               id="modelName"
               required
@@ -81,34 +78,36 @@ export function VehicleNewPage() {
               value={modelName}
               onChange={(event) => setModelName(event.target.value)}
             />
-          </div>
+          </Field>
+        </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="modelYear">연식</Label>
-            <Input
-              id="modelYear"
-              type="number"
-              required
-              min={1900}
-              max={2100}
-              placeholder="2023"
-              value={modelYear}
-              onChange={(event) => setModelYear(event.target.value)}
-            />
-          </div>
+        <Field label="연식" htmlFor="modelYear">
+          <Input
+            id="modelYear"
+            type="number"
+            required
+            min={1900}
+            max={2100}
+            placeholder="2023"
+            // tabular-nums: 숫자 폭을 고정해 입력 중에 글자가 흔들리지 않게 한다.
+            className="tabular-nums"
+            value={modelYear}
+            onChange={(event) => setModelYear(event.target.value)}
+          />
+        </Field>
 
-          {error !== null && <ErrorText message={error} />}
+        {error !== null && <ErrorText message={error} />}
 
-          <div className="flex gap-2">
-            <Button type="submit" disabled={pending} className="flex-1">
-              {pending ? '등록 중…' : '등록'}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-              취소
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        {/* 주 동작(등록)만 흰 버튼이다. 취소까지 채워 넣으면 둘 중 무엇이 기본인지 사라진다. */}
+        <div className="mt-1 flex gap-2">
+          <Button type="submit" size="lg" className="flex-1" disabled={pending}>
+            {pending ? '등록 중…' : '등록'}
+          </Button>
+          <Button type="button" size="lg" variant="ghost" onClick={() => navigate(-1)}>
+            취소
+          </Button>
+        </div>
+      </form>
+    </div>
   )
 }

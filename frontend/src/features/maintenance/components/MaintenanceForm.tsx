@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { cn } from 'cn'
 
 import { Button } from '@/shared/ui/button'
+import { controlClassName } from '@/shared/ui/control'
+import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
-import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
@@ -75,75 +78,93 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   }
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="type">정비 종류</Label>
+    // 폼은 목록과 같은 평면에 두지 않고 한 겹 안쪽 면으로 내린다.
+    // 카드 안에 또 카드를 넣는 대신 배경 농도만 낮춰, 선을 늘리지 않고 층을 만든다.
+    <form
+      className="flex flex-col gap-5 rounded-2xl border border-border bg-sunken p-5"
+      onSubmit={handleSubmit}
+    >
+      <Field label="정비 종류" htmlFor="type">
         {/*
           shadcn Select 대신 브라우저 기본 <select>를 쓴다.
           선택지가 5개뿐이라 커스텀 드롭다운의 복잡한 구조가 필요 없고,
           모바일에서는 OS 기본 선택 UI가 뜨는 게 오히려 편하다.
-        */}
-        <select
-          id="type"
-          className="border-input h-8 w-full rounded-lg border bg-transparent px-2.5 text-sm"
-          value={type}
-          onChange={(event) => setType(event.target.value as ServiceType)}
-        >
-          {SERVICE_TYPES.map((serviceType) => (
-            <option key={serviceType} value={serviceType}>
-              {SERVICE_TYPE_LABELS[serviceType]}
-            </option>
-          ))}
-        </select>
-      </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="serviceDate">정비 날짜</Label>
+          <input>과 같은 controlClassName 을 씌워 높이·곡률·포커스 반응을 맞춘다.
+          펼쳐지는 목록의 색은 CSS로 못 건드리지만, index.css 의 color-scheme: dark 가
+          브라우저에게 다크 UI로 그리라고 알려 주므로 자동으로 검은 목록이 뜬다.
+        */}
+        <div className="relative">
+          <select
+            id="type"
+            // appearance-none: OS가 그려 주는 기본 화살표를 지운다. 그 화살표는 색을 바꿀 수 없어
+            // 다크 배경에서 혼자 튄다. 대신 아래에 같은 톤의 화살표를 직접 얹는다.
+            className={cn(controlClassName, 'appearance-none pr-10')}
+            value={type}
+            onChange={(event) => setType(event.target.value as ServiceType)}
+          >
+            {SERVICE_TYPES.map((serviceType) => (
+              <option key={serviceType} value={serviceType}>
+                {SERVICE_TYPE_LABELS[serviceType]}
+              </option>
+            ))}
+          </select>
+
+          {/* pointer-events-none: 아이콘이 클릭을 가로채면 select가 열리지 않는다. */}
+          <ChevronDown
+            className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+        </div>
+      </Field>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="정비 날짜" htmlFor="serviceDate">
           {/* type="date"는 값을 YYYY-MM-DD 문자열로 준다. 백엔드 LocalDate와 그대로 맞는다. */}
           <Input
             id="serviceDate"
             type="date"
             required
+            className="tabular-nums"
             value={serviceDate}
             onChange={(event) => setServiceDate(event.target.value)}
           />
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="serviceOdometer">정비 시 주행거리 (km)</Label>
+        <Field label="정비 시 주행거리 (km)" htmlFor="serviceOdometer">
           <Input
             id="serviceOdometer"
             type="number"
             required
             min={0}
+            className="tabular-nums"
             value={serviceOdometer}
             onChange={(event) => setServiceOdometer(event.target.value)}
           />
-        </div>
+        </Field>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="cost">비용 (원)</Label>
+      <Field label="비용 (원)" htmlFor="cost">
         <Input
           id="cost"
           type="number"
           min={0}
+          className="tabular-nums"
           value={cost}
           onChange={(event) => setCost(event.target.value)}
         />
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="description">메모</Label>
+      <Field label="메모" htmlFor="description" hint="최대 200자">
         <Textarea
           id="description"
           rows={2}
           maxLength={200}
+          placeholder="교체한 부품, 정비소 이름 등"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
-      </div>
+      </Field>
 
       {error !== null && <ErrorText message={error} />}
 
@@ -151,7 +172,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         <Button type="submit" disabled={pending}>
           {pending ? '저장 중…' : record === null ? '등록' : '수정'}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           취소
         </Button>
       </div>

@@ -3,9 +3,10 @@ import { useCallback, useState } from 'react'
 import { MaintenanceForm } from '@/features/maintenance/components/MaintenanceForm'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
-import { LoadingText, ErrorText } from '@/shared/ui/state'
+import { Pagination } from '@/shared/ui/pagination'
+import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
-import { formatKm, formatWon } from '@/shared/lib/format'
+import { formatDate, formatKm, formatWon } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { deleteRecord, fetchRecords } from '@/features/maintenance/api/endpoints'
 import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types'
@@ -62,15 +63,15 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">정비 이력</CardTitle>
+        <CardTitle>정비 이력</CardTitle>
         {editing === 'closed' && (
-          <Button size="sm" onClick={() => setEditing('new')}>
+          <Button size="sm" variant="secondary" onClick={() => setEditing('new')}>
             이력 추가
           </Button>
         )}
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-4">
+      <CardContent className="flex flex-col gap-5">
         {editing !== 'closed' && (
           <MaintenanceForm
             vehicleId={vehicleId}
@@ -84,31 +85,46 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
         {errorMessage !== null && <ErrorText message={errorMessage} />}
 
         {loading ? (
-          <LoadingText />
+          <div className="flex flex-col gap-5">
+            {[0, 1].map((row) => (
+              <Skeleton key={row} className="h-12" />
+            ))}
+          </div>
         ) : data === null || data.totalElements === 0 ? (
-          <p className="text-muted-foreground text-sm">아직 등록된 정비 이력이 없습니다.</p>
+          <p className="py-4 text-sm text-muted-foreground">아직 등록된 정비 이력이 없습니다.</p>
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y divide-border">
             {data.items.map((record) => (
-              <li key={record.id} className="flex items-start justify-between gap-4 py-3">
-                <div className="text-sm">
-                  <p className="font-medium">
-                    {SERVICE_TYPE_LABELS[record.type]}
-                    <span className="text-muted-foreground ml-2 font-normal">
-                      {record.serviceDate}
+              // group: 줄 전체에 마우스가 올라갔을 때 오른쪽 버튼들의 투명도를 함께 올린다.
+              // 버튼을 완전히 숨기지는 않는다 — 터치 기기에는 호버가 없어서 영영 못 찾게 된다.
+              <li
+                key={record.id}
+                className="group flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
+              >
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="text-[0.9375rem] font-medium tracking-[-0.01em] text-strong">
+                      {SERVICE_TYPE_LABELS[record.type]}
                     </span>
-                  </p>
-                  <p className="text-muted-foreground">
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {formatDate(record.serviceDate)}
+                    </span>
+                  </div>
+
+                  <p className="text-[0.8125rem] tabular-nums text-muted-foreground">
                     {formatKm(record.serviceOdometer)} · {formatWon(record.cost)}
                   </p>
+
                   {record.description !== null && record.description !== '' && (
-                    <p className="text-muted-foreground mt-1">{record.description}</p>
+                    <p className="mt-1 text-[0.8125rem] leading-relaxed text-muted-foreground">
+                      {record.description}
+                    </p>
                   )}
                 </div>
 
-                <div className="flex shrink-0 gap-1">
+                <div className="flex shrink-0 gap-0.5 opacity-70 transition-opacity duration-200 ease-apple group-hover:opacity-100">
                   <Button
-                    size="sm"
+                    size="xs"
                     variant="ghost"
                     disabled={deletingId === record.id}
                     onClick={() => setEditing(record)}
@@ -116,7 +132,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                     수정
                   </Button>
                   <Button
-                    size="sm"
+                    size="xs"
                     variant="ghost"
                     disabled={deletingId === record.id}
                     onClick={() => handleDelete(record.id)}
@@ -129,28 +145,13 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
           </ul>
         )}
 
-        {data !== null && data.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.page === 0}
-              onClick={() => setPage((current) => current - 1)}
-            >
-              이전
-            </Button>
-            <span className="text-muted-foreground text-sm">
-              {data.page + 1} / {data.totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!data.hasNext}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              다음
-            </Button>
-          </div>
+        {data !== null && (
+          <Pagination
+            page={data.page}
+            totalPages={data.totalPages}
+            hasNext={data.hasNext}
+            onChange={setPage}
+          />
         )}
       </CardContent>
     </Card>

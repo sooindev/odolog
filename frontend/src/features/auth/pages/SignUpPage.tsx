@@ -4,9 +4,9 @@ import { Link, useNavigate } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
-import { Label } from '@/shared/ui/label'
+import { PageHeader } from '@/shared/ui/page-header'
 import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { signUp } from '@/features/auth/api/endpoints'
@@ -49,76 +49,73 @@ export function SignUpPage() {
   }
 
   return (
-    <Card className="mx-auto max-w-sm">
-      <CardHeader>
-        <CardTitle>회원가입</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">이메일</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              maxLength={100}
-              autoComplete="email"
-              value={form.email}
-              onChange={(event) => change('email', event.target.value)}
-            />
-          </div>
+    <div className="mx-auto flex max-w-[22rem] flex-col gap-10">
+      <PageHeader eyebrow="Odolog" title="회원가입" description="차량 한 대만 있으면 바로 시작할 수 있습니다." />
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">비밀번호</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              minLength={8}
-              maxLength={100}
-              autoComplete="new-password"
-              value={form.password}
-              onChange={(event) => change('password', event.target.value)}
-            />
-            <p className="text-muted-foreground text-xs">8자 이상</p>
-          </div>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <Field label="이메일" htmlFor="email">
+          <Input
+            id="email"
+            type="email"
+            required
+            maxLength={100}
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={(event) => change('email', event.target.value)}
+          />
+        </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="nickname">닉네임</Label>
-            <Input
-              id="nickname"
-              required
-              maxLength={30}
-              value={form.nickname}
-              onChange={(event) => change('nickname', event.target.value)}
-            />
-          </div>
+        {/* hint: 규칙을 에러로 알려주기 전에 미리 말해 준다. 틀린 뒤에 알려주는 건 늦다. */}
+        <Field label="비밀번호" htmlFor="password" hint="8자 이상">
+          <Input
+            id="password"
+            type="password"
+            required
+            minLength={8}
+            maxLength={100}
+            autoComplete="new-password"
+            value={form.password}
+            onChange={(event) => change('password', event.target.value)}
+          />
+        </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="phone">전화번호</Label>
-            <Input
-              id="phone"
-              maxLength={20}
-              placeholder="010-0000-0000"
-              value={form.phone}
-              onChange={(event) => change('phone', event.target.value)}
-            />
-          </div>
+        <Field label="닉네임" htmlFor="nickname">
+          <Input
+            id="nickname"
+            required
+            maxLength={30}
+            value={form.nickname}
+            onChange={(event) => change('nickname', event.target.value)}
+          />
+        </Field>
 
-          {error !== null && <ErrorText message={error} />}
+        <Field label="전화번호" htmlFor="phone" hint="선택 입력">
+          <Input
+            id="phone"
+            maxLength={20}
+            placeholder="010-0000-0000"
+            value={form.phone}
+            onChange={(event) => change('phone', event.target.value)}
+          />
+        </Field>
 
-          <Button type="submit" disabled={pending}>
-            {pending ? '가입 중…' : '회원가입'}
-          </Button>
+        {error !== null && <ErrorText message={error} />}
 
-          <p className="text-muted-foreground text-center text-sm">
-            이미 계정이 있으신가요?{' '}
-            <Link to="/login" className="underline">
-              로그인
-            </Link>
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+        <Button type="submit" size="lg" className="mt-1 w-full" disabled={pending}>
+          {pending ? '가입 중…' : '회원가입'}
+        </Button>
+      </form>
+
+      <p className="text-center text-sm text-muted-foreground">
+        이미 계정이 있으신가요?{' '}
+        <Link
+          to="/login"
+          className="text-strong transition-opacity duration-200 ease-apple hover:opacity-70"
+        >
+          로그인
+        </Link>
+      </p>
+    </div>
   )
 }

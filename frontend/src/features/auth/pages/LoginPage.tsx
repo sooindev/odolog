@@ -4,9 +4,9 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
-import { Label } from '@/shared/ui/label'
+import { PageHeader } from '@/shared/ui/page-header'
 import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 
@@ -45,50 +45,52 @@ export function LoginPage() {
   }
 
   return (
-    <Card className="mx-auto max-w-sm">
-      <CardHeader>
-        <CardTitle>로그인</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">이메일</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </div>
+    // 폼을 카드에 넣지 않는다. 검은 바탕 위에 입력창만 떠 있는 편이 훨씬 조용하고,
+    // 카드 테두리가 없어지면 화면의 선이 입력창 네 개로 줄어든다.
+    // 폭을 22rem 으로 좁힌 것은 "한 번에 하나만 입력하는 화면"이라는 신호다.
+    <div className="mx-auto flex max-w-[22rem] flex-col gap-10">
+      <PageHeader eyebrow="Odolog" title="로그인" description="기록해 둔 차량을 이어서 관리합니다." />
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">비밀번호</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </div>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <Field label="이메일" htmlFor="email">
+          <Input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </Field>
 
-          {error !== null && <ErrorText message={error} />}
+        <Field label="비밀번호" htmlFor="password">
+          <Input
+            id="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </Field>
 
-          <Button type="submit" disabled={pending}>
-            {pending ? '로그인 중…' : '로그인'}
-          </Button>
+        {error !== null && <ErrorText message={error} />}
 
-          <p className="text-muted-foreground text-center text-sm">
-            계정이 없으신가요?{' '}
-            <Link to="/signup" className="underline">
-              회원가입
-            </Link>
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+        <Button type="submit" size="lg" className="mt-1 w-full" disabled={pending}>
+          {pending ? '로그인 중…' : '로그인'}
+        </Button>
+      </form>
+
+      <p className="text-center text-sm text-muted-foreground">
+        계정이 없으신가요?{' '}
+        <Link
+          to="/signup"
+          className="text-strong transition-opacity duration-200 ease-apple hover:opacity-70"
+        >
+          회원가입
+        </Link>
+      </p>
+    </div>
   )
 }

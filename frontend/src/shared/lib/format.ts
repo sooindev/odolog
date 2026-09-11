@@ -1,11 +1,23 @@
+/** 45000 → "45,000" — 단위 없이 숫자만. 큰 글씨로 값과 단위를 따로 배치할 때 쓴다. */
+export function formatNumber(value: number) {
+  return value.toLocaleString('ko-KR')
+}
+
 /** 45000 → "45,000km" */
 export function formatKm(value: number) {
-  return `${value.toLocaleString('ko-KR')}km`
+  return `${formatNumber(value)}km`
 }
 
 /** 50000 → "50,000원" */
 export function formatWon(value: number) {
-  return `${value.toLocaleString('ko-KR')}원`
+  return `${formatNumber(value)}원`
+}
+
+/** "2026-07-15" → "2026. 7. 15." — 목록에서 날짜를 읽기 쉽게. */
+export function formatDate(value: string) {
+  const [year, month, day] = value.split('-')
+
+  return `${year}. ${Number(month)}. ${Number(day)}.`
 }
 
 /**

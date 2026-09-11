@@ -10,7 +10,7 @@ export function ProtectedRoute() {
 
   // 세션 복구가 끝나기 전에 판단하면, 로그인돼 있는데도 로그인 화면이 한 번 깜빡인다.
   if (loading) {
-    return <LoadingText className="p-8" />
+    return <LoadingText className="justify-center py-24" />
   }
 
   if (user === null) {

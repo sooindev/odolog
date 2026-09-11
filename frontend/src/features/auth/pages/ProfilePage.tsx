@@ -3,10 +3,10 @@ import type { FormEvent } from 'react'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
-import { Label } from '@/shared/ui/label'
-import { ErrorText } from '@/shared/ui/state'
+import { PageHeader } from '@/shared/ui/page-header'
+import { ErrorText, NoticeText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { updateProfile } from '@/features/auth/api/endpoints'
 import type { UpdateProfileRequest, UserResponse } from '@/features/auth/api/types'
@@ -59,47 +59,42 @@ function ProfileForm({ user }: { user: UserResponse }) {
   }
 
   return (
-    <Card className="mx-auto max-w-sm">
-      <CardHeader>
-        <CardTitle>내 정보</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">이메일</Label>
-            {/* 이메일은 수정 API가 없다. 보여주기만 한다. */}
-            <Input id="email" value={user.email} disabled />
-          </div>
+    <div className="mx-auto flex max-w-[22rem] flex-col gap-10">
+      <PageHeader eyebrow="Account" title="내 정보" />
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="nickname">닉네임</Label>
-            <Input
-              id="nickname"
-              required
-              maxLength={30}
-              value={nickname}
-              onChange={(event) => setNickname(event.target.value)}
-            />
-          </div>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        {/* 이메일은 수정 API가 없다. 보여주기만 한다. */}
+        <Field label="이메일" htmlFor="email" hint="이메일은 변경할 수 없습니다.">
+          <Input id="email" value={user.email} disabled />
+        </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="phone">전화번호</Label>
-            <Input
-              id="phone"
-              maxLength={20}
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-            />
-          </div>
+        <Field label="닉네임" htmlFor="nickname">
+          <Input
+            id="nickname"
+            required
+            maxLength={30}
+            value={nickname}
+            onChange={(event) => setNickname(event.target.value)}
+          />
+        </Field>
 
-          {message !== null && <p className="text-muted-foreground text-sm">{message}</p>}
-          {error !== null && <ErrorText message={error} />}
+        <Field label="전화번호" htmlFor="phone">
+          <Input
+            id="phone"
+            maxLength={20}
+            placeholder="010-0000-0000"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+          />
+        </Field>
 
-          <Button type="submit" disabled={pending}>
-            {pending ? '저장 중…' : '저장'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        {message !== null && <NoticeText message={message} />}
+        {error !== null && <ErrorText message={error} />}
+
+        <Button type="submit" size="lg" className="mt-1 w-full" disabled={pending}>
+          {pending ? '저장 중…' : '저장'}
+        </Button>
+      </form>
+    </div>
   )
 }

@@ -153,6 +153,54 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     메서드 쪽이 클래스 쪽을 덮어쓴다. 새 메서드를 깜빡했을 때 기본이 안전한 쪽(읽기 전용)이라
     쓰기가 실패해서 바로 드러난다. 반대로 하면 아무 일도 안 일어나 영영 모른다.
 
+## 디자인 시스템 (프론트엔드)
+
+**라이트/다크 모노톤.** 토큰 이름은 한 벌이고 값만 두 벌이다. 값은 전부 `src/index.css`
+한 파일의 `:root`(라이트)와 `:root.dark`(다크) 두 블록에만 있다.
+
+0. **컴포넌트에는 색 값을 적지 않는다.** `bg-card`, `bg-fill`, `hover:bg-wash` 처럼 **역할**만
+   말한다. `bg-white/[0.04]` 같은 값이 한 곳이라도 남아 있으면 **그 요소만 반대 테마에서
+   안 보인다** — 실제로 재설계 직후 8곳이 그랬다. 새 색이 필요하면 토큰을 먼저 만든다.
+1. **색은 α(불투명도)만 조절한다.** 다크는 검정 위에 흰색을, 라이트는 흰 위에 검정을
+   몇 % 얹느냐로 모든 단계를 만든다. 숫자가 곧 의도를 말해 준다.
+   oklch 는 읽어서 밝기를 가늠할 수 없어 쓰지 않는다.
+2. **글자 4단계, 면 5종, 선 2단계.**
+   글자 `strong`(제목) → `foreground`(본문) → `muted-foreground`(보조) → `faint`.
+   **앞의 세 단계는 두 테마 모두 WCAG AA(4.5:1)를 넘긴다** (라이트 15.30 / 8.16 / 4.82,
+   다크 19.23 / 10.54 / 5.28). `faint` 만 그 아래(2.8~3.0)라서 **placeholder와 장식용
+   아이콘에만** 쓴다 — 날짜·번호판처럼 읽어야 하는 값에 쓰면 그 값만 안 보인다.
+   면은 `card`(카드) / `card-hover` / `fill`(입력) / `wash`(호버 워시) / `sunken`(한 겹 안쪽).
+   **본문이 순수 흰색/검정이 아닌 게 핵심이다.** 검정 위의 `#FFF` 는 대비가 너무 세서
+   글자가 번져 보이고(halation), 흰 위의 `#000` 은 반대로 너무 딱딱하다.
+   라이트 배경도 `#FFFFFF` 가 아니라 `#F4F4F6` 이다 — 순백 위에 흰 카드를 올리면
+   카드가 배경과 구분되지 않아 레이아웃이 평평해진다.
+3. **Accent 는 흰색 하나.** 브랜드 색을 두지 않는다. 강조는 "흰색을 얼마나 얹느냐"로만 한다.
+   한 화면에 채워진 흰 버튼은 **하나만** 둔다. 두 개면 무엇이 기본 동작인지 사라진다.
+   빨강(`--destructive`)은 유일한 예외 — 장식이 아니라 "실패"라는 뜻을 나르는 기능색이다.
+4. **경계선은 `rgba(255,255,255,0.08)` 한 값뿐.** 그보다 진하면 선 자체가 요소로 보이기 시작한다.
+   **그림자는 쓰지 않는다** — 검정 위의 그림자는 보이지도 않으면서 가장자리만 탁하게 만든다.
+   높이 차이는 경계선과 배경 농도로만 표현한다.
+5. **면은 유리로 만든다.** 카드·헤더는 불투명한 회색 대신 `흰색 3% + backdrop-blur(20px)`.
+   뒤에 깔린 상단 그라데이션이 유리를 통과해 비쳐서 깊이가 생긴다. 불투명하면 그 깊이가 사라진다.
+6. **폰트는 시스템 폰트만.** `-apple-system` → `SF Pro` → `Apple SD Gothic Neo`(한글).
+   웹폰트를 받지 않으므로 글꼴이 바뀌며 깜빡이는 현상(FOUT)이 없다.
+   자간은 본문 `-0.011em`, 제목 `-0.03em` 으로 당긴다. eyebrow 만 반대로 `+0.16em` 까지 벌려
+   **크기가 아니라 질감으로** 제목과 구분한다.
+7. **숫자에는 `tabular-nums`.** 시스템 폰트의 기본 숫자는 글자마다 폭이 달라서, 값이 바뀔 때
+   주변 레이아웃이 미세하게 떨린다. 주행거리·비용·날짜·페이지 번호에 전부 붙인다.
+8. **모션은 `0.2s cubic-bezier(0.16, 1, 0.3, 1)`(`ease-apple`) 하나로 통일.**
+   호버에서 **크기나 색을 바꾸지 않는다** — 배경 농도와 투명도만 움직인다.
+   누를 때만 `scale(0.97)`. `prefers-reduced-motion` 이 켜져 있으면 전부 꺼진다.
+9. **`color-scheme` 를 테마마다 둔다.** 이게 없으면 `<input type="date">` 의 달력 아이콘,
+   `<select>` 펼침 목록, 스크롤바만 반대 테마로 남는다. CSS로는 못 고치는 영역이다.
+10. **테마는 `light` / `dark` / `system` 세 값이다.** `system` 은 세 번째 색이 아니라
+   "정하지 않음"이고, 저장된 값이 없을 때의 기본값이다. 이게 없으면 낮에 라이트를 고른
+   사용자가 밤에 OS가 다크로 바뀌어도 계속 라이트를 본다.
+11. **첫 프레임 깜빡임(FOUC)은 React로 못 막는다.** 브라우저는 번들을 받기 훨씬 전에 화면을
+   한 번 그린다. `index.html` 의 인라인 스크립트가 `<html>` 에 클래스를 미리 붙이는 이유이고,
+   그래서 `'odolog-theme'` 문자열이 HTML과 `ThemeContext.ts` 양쪽에 중복으로 존재한다.
+   **한쪽만 고치면 안 된다.**
+
 ## 현재 구조
 
 **백엔드·프론트엔드 모두 "기능별(package-by-feature)"로 나눈다.** 계층별 구조는 파일이 몇 개
@@ -339,8 +387,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     ├── public/favicon.svg            빌드 시 그대로 복사되는 정적 파일 (아직 Vite 기본 로고)
     └── src/
         ├── main.tsx                  Vite 진입점. index.html이 이 경로를 직접 가리키므로
-        │                             위치를 옮기지 않는다. BrowserRouter > AuthProvider > App
-        ├── index.css                 @import "tailwindcss" + shadcn 테마 변수
+        │                             위치를 옮기지 않는다.
+        │                             ThemeProvider > BrowserRouter > AuthProvider > App
+        ├── index.css                 디자인 토큰 전부가 여기 한 파일에 있다 (아래 "디자인 시스템").
+        │                             :root = 라이트, :root.dark = 다크. 값은 여기에만 있다
         ├── env.d.ts                  import.meta.env 타입 선언
         │
         ├── app/  ──────────────────── 조립층. **여러 기능을 동시에 알아도 되는 유일한 자리**
@@ -385,13 +435,25 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
             │   │                         204 처리 / 401 전역 핸들러 등록 창구
             │   └── types.ts              PageResponse<T> / ErrorResponse 둘뿐.
             │                             기능별 DTO는 features/*/api/types.ts 로 옮겼다
+            ├── theme/                    라이트/다크. AuthContext와 똑같이 3파일로 나뉜다
+            │   ├── ThemeContext.ts       Theme 타입 + localStorage 키 + useTheme 훅
+            │   ├── ThemeProvider.tsx     저장·복원, OS 설정 추적, View Transition 전환
+            │   └── ThemeToggle.tsx       해/모니터/달 3칸 세그먼트 컨트롤 (헤더에 배치)
             ├── lib/
-            │   ├── format.ts             formatKm / formatWon / todayString(UTC 함정 회피)
+            │   ├── format.ts             formatNumber / formatKm / formatWon / formatDate /
+            │   │                         todayString(UTC 함정 회피)
             │   └── useAsyncData.ts       조회 4곳의 공통 훅. data/loading/error +
             │                             reload()/setData. cancelled 플래그가 여기 한 곳에만
-            └── ui/                       대부분 shadcn이 복사해 넣은 코드(직접 고쳐도 된다).
-                │                         state.tsx 만 우리가 직접 쓴 것
-                ├── state.tsx             LoadingText / ErrorText — 로딩·에러 문구 한 곳
+            └── ui/                       shadcn이 복사해 넣은 파일과 우리가 쓴 파일이 섞여 있다.
+                │                         ※ 우리 것: state / field / page-header / pagination / control
+                ├── state.tsx             LoadingText / ErrorText / NoticeText / Skeleton
+                ├── field.tsx             라벨+입력+도움말 한 벌. htmlFor 필수(접근성)
+                ├── page-header.tsx       eyebrow + 제목 + 설명 + 우측 액션
+                ├── pagination.tsx        목록 2곳이 복사해 쓰던 페이지 이동 UI
+                ├── control.ts            입력 요소 공통 클래스 문자열.
+                │                         input·textarea·네이티브 select 셋이 공유한다.
+                │                         .tsx 가 아닌 이유는 AuthContext 와 같다 —
+                │                         컴포넌트와 값을 한 파일에서 내보내면 핫 리로드가 깨진다
                 ├── button.tsx            asChild 없음. Base UI의 render prop 사용
                 ├── card.tsx
                 ├── input.tsx
@@ -406,6 +468,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 
     백엔드:  maintenance → vehicle → user,  셋 다 필요하면 common
     프론트:  app → features → shared
+
+`shared/theme` 는 `shared/ui` 와 같은 층이다. `ThemeToggle` 이 `Button` 대신 평범한 `<button>` 을
+쓰는 이유가 이것 — 같은 층끼리 얽히는 것보다 20줄짜리 버튼을 직접 쓰는 편이 싸다.
 
 `app` 은 **여러 기능을 동시에 알아도 되는 유일한 층**이다. `Header`(내부에서 `useAuth` 사용)와
 `ProtectedRoute` 가 이 층에 있는 이유다. 전에는 `shared/layout/Header.tsx` 가
@@ -438,6 +503,65 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
 프론트엔드와 달리 백엔드의 세분화는 **이미 끝나 있다.**
 
 ## 진행 상황 (완료)
+
+- [x] 라이트/다크 모드 (2026-09-11)
+      → 다크 전용으로 만든 걸 하루 만에 되돌린 게 아니라, **토큰 이름은 그대로 두고 값만 두 벌로**
+        늘렸다. 컴포넌트 코드는 `bg-card` / `bg-fill` / `hover:bg-wash` 를 그대로 쓴다.
+      → **선행 작업이 있었다: 컴포넌트에 박혀 있던 `white/[0.04]` 류 8곳을 먼저 의미 토큰으로
+        바꿔야 했다.** 그대로 두면 라이트에서 그 8개 요소만 안 보인다. 새로 만든 토큰은
+        `fill`/`fill-hover`/`wash`/`sunken`/`card-hover`/`border-strong`/`shimmer`/`selection`.
+        재설계 때 "역할 이름"이 아니라 값으로 적어 둔 대가를 바로 치른 셈이다.
+      → **대비 검사에서 버그 2건.** 라이트 `muted` 가 3.2:1 로 AA 미달이었고,
+        **이미 커밋한 다크의 `faint`(2.16:1)에 번호판·정비 날짜가 들어가 있었다.**
+        네 단계를 다시 잡고(라이트 15.30/8.16/4.82, 다크 19.23/10.54/5.28),
+        `faint` 는 placeholder·장식 아이콘 전용으로 못박은 뒤 본문 용도 7곳을 `muted` 로 올렸다.
+        수치는 알파 합성 후 실제 픽셀 색으로 계산해 확인했다(눈대중 금지).
+      → **전환은 View Transitions API 로 한다.** 누른 버튼 좌표에서 새 화면이 원형으로 번진다.
+        `::view-transition-old/new(root)` 의 기본 교차 페이드를 끄고(`animation: none`)
+        새 화면에만 `clip-path: circle()` 애니메이션을 건다. 반지름은 버튼 중심에서 화면
+        가장 먼 모서리까지의 거리 — `150vmax` 같은 큰 수를 넣으면 원이 화면을 벗어난 뒤에도
+        애니메이션이 계속 돌아 끝부분이 멈춘 것처럼 보인다.
+      → **`flushSync` 가 반드시 필요하다.** View Transition 은 콜백이 끝난 직후의 화면을 찍는데,
+        React의 평소 비동기 렌더로는 그 시점에 DOM이 아직 안 바뀌어 있어 **옛 화면을 두 번 찍는다.**
+      → 이 API가 없는 브라우저에서는 연출만 빠지고 즉시 바뀐다(점진적 향상).
+        `prefers-reduced-motion` 이 켜져 있어도 연출을 건너뛴다.
+      → **FOUC는 React 안에서 못 막는다.** 브라우저는 번들을 받기 훨씬 전에 첫 화면을 그린다.
+        `index.html` 인라인 스크립트로 `<html>` 에 클래스를 미리 붙인다. 그래서 `'odolog-theme'`
+        문자열이 HTML과 `ThemeContext.ts` 양쪽에 중복이다 — import 를 쓸 수 없는 자리다.
+      → **노이즈 텍스처는 다크에만 남겼다.** 검정 면의 색 띠(banding)를 깨려고 넣은 것이라
+        밝은 바탕에서는 깰 띠가 없고 얼룩으로만 보인다. "다크에 있으니 라이트에도" 로 옮기지 않는다.
+      → 세그먼트 컨트롤은 macOS 시스템 설정의 '외관' 과 같은 형태(해/모니터/달 + 미끄러지는 알약).
+        아이콘 하나짜리 토글을 쓰지 않은 이유: `system` 을 표현할 자리가 없고,
+        "지금이 다크라는 뜻인지 누르면 다크가 된다는 뜻인지"가 늘 헷갈린다.
+      → 헤더에 칸이 하나 늘어 닉네임 버튼에 `max-w-24 truncate` 를 붙였다.
+        닉네임은 30자까지 가능해서, 안 막으면 긴 닉네임 하나가 로그아웃 버튼을 화면 밖으로 민다.
+      → 검증: `tsc -b` / `oxlint` / `vite build` 통과 + 빌드된 CSS에서 `:root` / `:root.dark` /
+        `theme-reveal` / hover 유틸 생성까지 직접 확인. **브라우저 눈 확인은 아직 안 했다.**
+
+- [x] UI/UX 전면 재설계 — 다크 모노톤 디자인 시스템 (2026-09-11)
+      → 이때는 **다크 전용**으로 만들었다. (2026-09-11 같은 날 라이트/다크 양쪽으로 확장 — 위 항목)
+        규칙은 위 "디자인 시스템" 섹션에.
+      → shadcn 기본 oklch 팔레트(라이트/다크 두 벌, sidebar·chart 토큰 포함 60여 개)를
+        `rgba(255,255,255,α)` 모노톤 한 벌로 교체. **사용처가 없는 sidebar·chart 토큰은 지웠다** —
+        나중에 `shadcn add sidebar` 를 하면 CLI가 다시 넣어 준다.
+      → **웹폰트 제거.** `@fontsource-variable/geist` import 를 빼고 시스템 폰트 스택으로 갔다.
+        패키지는 `package.json` 에 남아 있으므로 `npm uninstall @fontsource-variable/geist` 필요.
+      → **중복 3건을 컴포넌트로 뽑았다**: `Field`(라벨+입력 묶음이 15번 복사돼 있었다),
+        `Pagination`(차량 목록·정비 이력이 같은 마크업을 각자 보유), `PageHeader`.
+        `controlClassName` 은 input·textarea·네이티브 select 세 곳이 공유한다.
+      → **인증 화면에서 Card 를 걷어냈다.** 검은 바탕 위에 입력창만 떠 있는 편이 조용하고,
+        카드 테두리가 없어지면 화면의 선이 입력창 개수만큼으로 줄어든다.
+      → **차량 상세의 주행거리를 화면 주인공으로 올렸다.** 표(`<dl>`) 한 줄이었는데, 이 앱에서
+        가장 자주 확인하는 숫자이고 앱 이름도 여기서 왔다. 64px 숫자 + 작은 단위(km).
+      → **`<select>` 에 `appearance-none` 을 주면 화살표가 사라진다.** OS 기본 화살표는 색을
+        바꿀 수 없어 다크 배경에서 혼자 튀는데, 지우고 나서 대체 아이콘을 얹는 걸 처음에 빠뜨렸다.
+        `pointer-events-none` 을 안 주면 아이콘이 클릭을 가로채 목록이 안 열린다.
+      → **Tailwind v4 함정**: `@theme inline` 안에서 정의한 변수를 같은 블록의 다른 변수 값에서
+        `var()` 로 참조하면 런타임에 해석되지 않는다. `--ease-out-apple` 을 `:root` 에 따로 두고
+        `@theme` 이 그걸 가리키게 했다 (색 토큰이 쓰던 것과 같은 방식).
+      → 검증: `tsc -b` / `oxlint` / `vite build` 통과. 린트 경고 1건(`button.tsx` 의
+        `buttonVariants` export)은 shadcn 원본에 원래 있던 것이라 그대로 뒀다.
+        **브라우저 눈 확인은 아직 안 했다** — 아래 각 Phase의 "브라우저에서 확인" 항목이 그대로 남아 있다.
 
 - [x] 전체 점검 + 프론트엔드 디렉토리 세분화 (2026-09-09)
       → **점검 결과 세분화가 필요한 쪽은 프론트엔드뿐이었다.** 백엔드는 파일 37개가 디렉토리
@@ -843,20 +967,25 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ## Phase 6 — 다듬기
 
-- [ ] 목록 로딩을 스켈레톤으로
-      → `LoadingText` 를 쓰는 곳만 바꾸면 된다(이미 한 곳으로 모임).
 - [ ] 에러 토스트 / 인라인 에러 구분 기준 정리
       → 폼 검증 실패(400/409)는 해당 필드 아래 인라인, 그 외(500 등)는 토스트.
 - [ ] 백엔드 400 검증 응답과 폼 필드 연결
       → 현재 `ErrorResponse`는 `message` 하나뿐이라 **어느 필드가 틀렸는지 모른다.**
         필드별 표시가 꼭 필요하면 백엔드 `ErrorResponse`에 `fieldErrors`를 추가해야 한다
         (백로그 항목으로 이관).
-- [ ] 숫자·날짜 포맷 — 주행거리 `45,000km`, 비용 `50,000원`, 날짜 `2026-07-01`
-      → `toLocaleString('ko-KR')` 사용. 포맷 함수를 `src/lib/format.ts`에 모은다.
-- [ ] 반응형 — 모바일 우선. 차량 목록은 모바일에서 카드, 데스크톱에서 그리드.
-      → 차량 관리 앱은 실제로 정비소나 주차장에서 폰으로 볼 가능성이 높다.
-- [ ] 접근성 기본 — 모든 `input`에 `label` 연결, 버튼에 접근 가능한 이름, 포커스 링 유지
-- [ ] 페이지 타이틀(`document.title`)과 파비콘
+- [ ] 브라우저에서 재설계 결과 확인 — 7개 화면 전부, 모바일 폭(375px)까지
+      → 지금까지 타입 검사·빌드만 통과했고 실제 화면은 아직 아무도 안 봤다.
+      → 테마는 3가지를 다 봐야 한다: 라이트 / 다크 / 시스템(OS 설정을 바꿔 따라오는지).
+        그리고 **다크로 두고 새로고침했을 때 흰 화면이 번쩍이지 않는지**(FOUC).
+
+**재설계에서 함께 끝난 것** (2026-09-11):
+`목록 스켈레톤` / `숫자·날짜 포맷`(tabular-nums 포함) / `접근성 기본`(Field가 label-htmlFor를
+강제, 페이지 이동 버튼에 aria-label, focus-visible 링 유지, prefers-reduced-motion 대응) /
+`document.title`·`파비콘`.
+
+`반응형`은 **차량 목록을 데스크톱에서 그리드로 바꾸지 않는 쪽으로 결론 냈다.** 본문 폭을
+44rem(704px)에서 끊었기 때문에, 그 안에 2열을 넣으면 한 칸이 340px가 되어 모바일보다 좁아진다.
+넓은 화면에서 본문을 늘리는 것과 정보를 2열로 쪼개는 것 중 어느 쪽도 이 화면에는 이득이 없다.
 
 ---
 

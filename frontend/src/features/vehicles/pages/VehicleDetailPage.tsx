@@ -1,16 +1,17 @@
 import { useCallback, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { ChevronLeft } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router'
 
 import { MaintenanceSection } from '@/features/maintenance/components/MaintenanceSection'
 import { NextServiceCard } from '@/features/maintenance/components/NextServiceCard'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
-import { Label } from '@/shared/ui/label'
-import { LoadingText, ErrorText } from '@/shared/ui/state'
+import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
-import { formatKm } from '@/shared/lib/format'
+import { formatKm, formatNumber } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { deleteVehicle, fetchVehicle, updateOdometer } from '@/features/vehicles/api/endpoints'
 import type { VehicleResponse } from '@/features/vehicles/api/types'
@@ -38,7 +39,17 @@ export function VehicleDetailPage() {
   const [deleting, setDeleting] = useState(false)
 
   if (loading) {
-    return <LoadingText />
+    return (
+      <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="mt-3 h-14 w-64" />
+        </div>
+        <Skeleton className="h-40 rounded-2xl" />
+        <Skeleton className="h-56 rounded-2xl" />
+      </div>
+    )
   }
 
   if (error !== null || vehicle === null) {
@@ -64,24 +75,40 @@ export function VehicleDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>
+    <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-7">
+        <Link
+          to="/vehicles"
+          className="-ml-1 inline-flex w-fit items-center gap-1 text-[0.8125rem] text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70"
+        >
+          <ChevronLeft className="size-3.5" aria-hidden="true" />내 차량
+        </Link>
+
+        <div className="flex flex-col gap-2">
+          {/* 번호판을 eyebrow 자리에 올린다. 차량을 식별하는 건 모델명이 아니라 번호판이다. */}
+          <p className="text-[0.6875rem] font-medium tracking-[0.16em] text-muted-foreground uppercase">
+            {vehicle.plateNumber}
+          </p>
+          <h1 className="text-[1.75rem] leading-[1.15] font-semibold tracking-[-0.03em] text-strong sm:text-[2rem]">
             {vehicle.manufacturer} {vehicle.modelName}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm">
-          <dl className="grid grid-cols-[6rem_1fr] gap-y-2">
-            <dt className="text-muted-foreground">차량 번호</dt>
-            <dd>{vehicle.plateNumber}</dd>
-            <dt className="text-muted-foreground">연식</dt>
-            <dd>{vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}</dd>
-            <dt className="text-muted-foreground">주행거리</dt>
-            <dd>{formatKm(vehicle.odometer)}</dd>
-          </dl>
-        </CardContent>
-      </Card>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
+          </p>
+        </div>
+
+        {/*
+          주행거리를 표(dl) 한 줄이 아니라 화면의 주인공으로 올렸다.
+          이 앱에서 사용자가 가장 자주 확인하는 숫자 하나이고, 앱 이름도 여기서 왔다.
+          숫자만 크게 두고 단위(km)는 작게 붙여 "값"과 "단위"의 위계를 나눈다.
+        */}
+        <div className="flex items-baseline gap-2.5">
+          <span className="text-[3.25rem] leading-none font-semibold tracking-[-0.045em] tabular-nums text-strong sm:text-[4rem]">
+            {formatNumber(vehicle.odometer)}
+          </span>
+          <span className="text-base text-muted-foreground">km</span>
+        </div>
+      </div>
 
       <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
 
@@ -94,12 +121,28 @@ export function VehicleDetailPage() {
         onChanged={() => setMaintenanceVersion((current) => current + 1)}
       />
 
-      {actionError !== null && <ErrorText message={actionError} />}
+      {/*
+        파괴적인 동작은 본문과 선 하나로 끊어 맨 아래에 둔다. 버튼을 빨갛게 채우지 않고
+        글자만 빨갛게 두는 이유: 채운 빨강은 화면에서 가장 강한 요소가 되어,
+        가장 하면 안 되는 일이 가장 먼저 눈에 들어온다.
+      */}
+      <div className="flex flex-col gap-4 border-t border-border pt-8">
+        {actionError !== null && <ErrorText message={actionError} />}
 
-      <div className="flex justify-end">
-        <Button variant="destructive" disabled={deleting} onClick={handleDelete}>
-          {deleting ? '삭제 중…' : '차량 삭제'}
-        </Button>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-[0.8125rem] text-muted-foreground">
+            차량을 삭제하면 정비 이력도 함께 사라집니다.
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="shrink-0"
+            disabled={deleting}
+            onClick={handleDelete}
+          >
+            {deleting ? '삭제 중…' : '차량 삭제'}
+          </Button>
+        </div>
       </div>
     </div>
   )
@@ -138,27 +181,30 @@ function OdometerForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">주행거리 갱신</CardTitle>
+        <CardTitle>주행거리 갱신</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="odometer">현재 주행거리 (km)</Label>
-            <Input
-              id="odometer"
-              type="number"
-              required
-              min={0}
-              value={odometer}
-              onChange={(event) => setOdometer(event.target.value)}
-            />
-          </div>
+          {/* 입력과 버튼을 한 줄에 둔다. 값 하나만 고치는 폼에서 버튼을 아래로 내리면
+              폼이 실제 하는 일보다 커 보인다. */}
+          <Field label="현재 주행거리 (km)" htmlFor="odometer">
+            <div className="flex gap-2">
+              <Input
+                id="odometer"
+                type="number"
+                required
+                min={0}
+                className="flex-1 tabular-nums"
+                value={odometer}
+                onChange={(event) => setOdometer(event.target.value)}
+              />
+              <Button type="submit" variant="secondary" disabled={pending}>
+                {pending ? '저장 중…' : '갱신'}
+              </Button>
+            </div>
+          </Field>
 
           {error !== null && <ErrorText message={error} />}
-
-          <Button type="submit" disabled={pending} className="self-start">
-            {pending ? '저장 중…' : '갱신'}
-          </Button>
         </form>
       </CardContent>
     </Card>
