@@ -49,7 +49,10 @@ export function SignUpPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[22rem] flex-col gap-10">
+    // 폼을 카드에 넣지 않는다. 바탕 위에 입력창만 떠 있는 편이 훨씬 조용하고,
+    // 카드 테두리가 없어지면 화면의 선이 입력창 개수만큼으로 줄어든다.
+    // 가로 폭(22rem)은 AuthLayout이 정한다 — 두 화면이 같은 폭이어야 하기 때문.
+    <div className="flex flex-col gap-10">
       <PageHeader eyebrow="Odolog" title="회원가입" description="차량 한 대만 있으면 바로 시작할 수 있습니다." />
 
       <form className="flex flex-col gap-5" onSubmit={handleSubmit}>

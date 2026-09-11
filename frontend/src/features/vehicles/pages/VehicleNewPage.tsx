@@ -3,9 +3,11 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 
 import { Button } from '@/shared/ui/button'
+import { Card, CardContent } from '@/shared/ui/card'
 import { Field } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
 import { PageHeader } from '@/shared/ui/page-header'
+import { Section } from '@/shared/ui/section'
 import { ErrorText } from '@/shared/ui/state'
 import { ApiError } from '@/shared/api/client'
 import { registerVehicle } from '@/features/vehicles/api/endpoints'
@@ -44,70 +46,81 @@ export function VehicleNewPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[24rem] flex-col gap-10">
+    <div className="flex flex-col gap-12">
       <PageHeader eyebrow="Garage" title="차량 등록" />
 
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-        <Field label="차량 번호" htmlFor="plateNumber">
-          <Input
-            id="plateNumber"
-            required
-            placeholder="12가3456"
-            value={plateNumber}
-            onChange={(event) => setPlateNumber(event.target.value)}
-          />
-        </Field>
+      {/* 넓은 화면에서 폼만 가운데 좁게 두면 양옆이 비어 허전하다.
+          설명을 왼쪽 열로 빼면 남는 폭이 여백이 아니라 정보로 채워진다. */}
+      <Section
+        title="차량 정보"
+        description="번호판은 내 차량 안에서만 중복되지 않으면 됩니다. 다른 사람이 같은 번호판을 등록해 두었더라도 상관없습니다."
+      >
+        <Card>
+          <CardContent>
+            <form className="flex max-w-lg flex-col gap-5" onSubmit={handleSubmit}>
+              <Field label="차량 번호" htmlFor="plateNumber">
+                <Input
+                  id="plateNumber"
+                  required
+                  placeholder="12가3456"
+                  value={plateNumber}
+                  onChange={(event) => setPlateNumber(event.target.value)}
+                />
+              </Field>
 
-        {/* 제조사와 모델명은 함께 읽히는 한 쌍이라 좁은 화면에서만 위아래로 쌓는다. */}
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="제조사" htmlFor="manufacturer">
-            <Input
-              id="manufacturer"
-              required
-              placeholder="현대"
-              value={manufacturer}
-              onChange={(event) => setManufacturer(event.target.value)}
-            />
-          </Field>
+              {/* 제조사와 모델명은 함께 읽히는 한 쌍이라 좁은 화면에서만 위아래로 쌓는다. */}
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="제조사" htmlFor="manufacturer">
+                  <Input
+                    id="manufacturer"
+                    required
+                    placeholder="현대"
+                    value={manufacturer}
+                    onChange={(event) => setManufacturer(event.target.value)}
+                  />
+                </Field>
 
-          <Field label="모델명" htmlFor="modelName">
-            <Input
-              id="modelName"
-              required
-              placeholder="아반떼"
-              value={modelName}
-              onChange={(event) => setModelName(event.target.value)}
-            />
-          </Field>
-        </div>
+                <Field label="모델명" htmlFor="modelName">
+                  <Input
+                    id="modelName"
+                    required
+                    placeholder="아반떼"
+                    value={modelName}
+                    onChange={(event) => setModelName(event.target.value)}
+                  />
+                </Field>
+              </div>
 
-        <Field label="연식" htmlFor="modelYear">
-          <Input
-            id="modelYear"
-            type="number"
-            required
-            min={1900}
-            max={2100}
-            placeholder="2023"
-            // tabular-nums: 숫자 폭을 고정해 입력 중에 글자가 흔들리지 않게 한다.
-            className="tabular-nums"
-            value={modelYear}
-            onChange={(event) => setModelYear(event.target.value)}
-          />
-        </Field>
+              <Field label="연식" htmlFor="modelYear">
+                <Input
+                  id="modelYear"
+                  type="number"
+                  required
+                  min={1900}
+                  max={2100}
+                  placeholder="2023"
+                  // tabular-nums: 숫자 폭을 고정해 입력 중에 글자가 흔들리지 않게 한다.
+                  className="tabular-nums"
+                  value={modelYear}
+                  onChange={(event) => setModelYear(event.target.value)}
+                />
+              </Field>
 
-        {error !== null && <ErrorText message={error} />}
+              {error !== null && <ErrorText message={error} />}
 
-        {/* 주 동작(등록)만 흰 버튼이다. 취소까지 채워 넣으면 둘 중 무엇이 기본인지 사라진다. */}
-        <div className="mt-1 flex gap-2">
-          <Button type="submit" size="lg" className="flex-1" disabled={pending}>
-            {pending ? '등록 중…' : '등록'}
-          </Button>
-          <Button type="button" size="lg" variant="ghost" onClick={() => navigate(-1)}>
-            취소
-          </Button>
-        </div>
-      </form>
+              {/* 주 동작(등록)만 채워진 버튼이다. 취소까지 채우면 둘 중 무엇이 기본인지 사라진다. */}
+              <div className="mt-1 flex gap-2">
+                <Button type="submit" disabled={pending}>
+                  {pending ? '등록 중…' : '등록'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
+                  취소
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </Section>
     </div>
   )
 }

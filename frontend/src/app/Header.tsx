@@ -1,8 +1,9 @@
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { ThemeToggle } from '@/shared/theme/ThemeToggle'
 import { Button } from '@/shared/ui/button'
+import { GaugeMark } from '@/shared/ui/mark'
 
 /**
  * 화면 맨 위에 붙어 따라다니는 유리 바.
@@ -17,6 +18,10 @@ import { Button } from '@/shared/ui/button'
 export function Header() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // 로그인 화면에서 "로그인" 버튼을 또 보여주면 지금 있는 곳을 가리키는 버튼이 된다.
+  const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'
 
   async function handleLogout() {
     await logout()
@@ -25,29 +30,14 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/60 backdrop-blur-[20px] backdrop-saturate-150">
-      <div className="mx-auto flex h-16 max-w-[44rem] items-center justify-between gap-3 px-6 sm:px-8">
+      <div className="mx-auto flex h-16 max-w-[76rem] items-center justify-between gap-3 px-6 sm:px-8 lg:px-10">
+        {/* 로고가 가리키는 곳이 로그인 여부에 따라 다르다. 로그인한 사람에게 홈은 소개 화면이
+            아니라 자기 차량 목록이다. */}
         <Link
-          to="/vehicles"
+          to={user === null ? '/' : '/vehicles'}
           className="flex shrink-0 items-center gap-2.5 transition-opacity duration-200 ease-apple hover:opacity-70"
         >
-          {/* 파비콘과 같은 계기판 바늘 도형. 로고 옆 작은 마크 하나가 워드마크만 있는 것보다 훨씬 오래 기억된다. */}
-          <svg viewBox="0 0 32 32" className="size-[18px]" aria-hidden="true">
-            <path
-              d="M8 20a8 8 0 1 1 16 0"
-              fill="none"
-              stroke="currentColor"
-              strokeOpacity="0.3"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-            <path
-              d="M16 20 21 13"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
+          <GaugeMark />
           <span className="text-[0.9375rem] font-semibold tracking-[-0.03em] text-strong">
             오도로그
           </span>
@@ -56,6 +46,12 @@ export function Header() {
         <div className="flex min-w-0 items-center gap-1.5">
           {/* 로그인 전에도 보여준다. 로그인 화면을 눈부신 흰 화면으로 마주해야 할 이유가 없다. */}
           <ThemeToggle className="shrink-0" />
+
+          {user === null && !onAuthPage && (
+            <Button variant="ghost" size="sm" className="shrink-0" render={<Link to="/login" />}>
+              로그인
+            </Button>
+          )}
 
           {user !== null && (
             <>

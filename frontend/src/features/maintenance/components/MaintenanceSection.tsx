@@ -99,9 +99,11 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
               // 버튼을 완전히 숨기지는 않는다 — 터치 기기에는 호버가 없어서 영영 못 찾게 된다.
               <li
                 key={record.id}
-                className="group flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                className="group flex items-start gap-4 py-4 first:pt-0 last:pb-0"
               >
-                <div className="flex min-w-0 flex-col gap-1">
+                {/* flex-1 + min-w-0: 남는 폭을 전부 가져가되, 긴 메모가 오른쪽 숫자 열을
+                    밀어내지는 못하게 한다. */}
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex items-baseline gap-2.5">
                     <span className="text-[0.9375rem] font-medium tracking-[-0.01em] text-strong">
                       {SERVICE_TYPE_LABELS[record.type]}
@@ -111,15 +113,22 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                     </span>
                   </div>
 
-                  <p className="text-[0.8125rem] tabular-nums text-muted-foreground">
-                    {formatKm(record.serviceOdometer)} · {formatWon(record.cost)}
-                  </p>
-
                   {record.description !== null && record.description !== '' && (
-                    <p className="mt-1 text-[0.8125rem] leading-relaxed text-muted-foreground">
+                    <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
                       {record.description}
                     </p>
                   )}
+                </div>
+
+                {/* 수치를 별도 열로 빼 오른쪽 정렬한다. 줄마다 왼쪽에서 시작하면 자릿수가
+                    다른 값들이 들쭉날쭉해서 세로로 훑어 읽을 수가 없다. */}
+                <div className="shrink-0 text-right">
+                  <p className="text-[0.9375rem] tabular-nums text-strong">
+                    {formatKm(record.serviceOdometer)}
+                  </p>
+                  <p className="text-[0.8125rem] tabular-nums text-muted-foreground">
+                    {formatWon(record.cost)}
+                  </p>
                 </div>
 
                 <div className="flex shrink-0 gap-0.5 opacity-70 transition-opacity duration-200 ease-apple group-hover:opacity-100">

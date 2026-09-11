@@ -45,10 +45,10 @@ export function LoginPage() {
   }
 
   return (
-    // 폼을 카드에 넣지 않는다. 검은 바탕 위에 입력창만 떠 있는 편이 훨씬 조용하고,
-    // 카드 테두리가 없어지면 화면의 선이 입력창 네 개로 줄어든다.
-    // 폭을 22rem 으로 좁힌 것은 "한 번에 하나만 입력하는 화면"이라는 신호다.
-    <div className="mx-auto flex max-w-[22rem] flex-col gap-10">
+    // 폼을 카드에 넣지 않는다. 바탕 위에 입력창만 떠 있는 편이 훨씬 조용하고,
+    // 카드 테두리가 없어지면 화면의 선이 입력창 개수만큼으로 줄어든다.
+    // 가로 폭(22rem)은 AuthLayout이 정한다 — 두 화면이 같은 폭이어야 하기 때문.
+    <div className="flex flex-col gap-10">
       <PageHeader eyebrow="Odolog" title="로그인" description="기록해 둔 차량을 이어서 관리합니다." />
 
       <form className="flex flex-col gap-5" onSubmit={handleSubmit}>

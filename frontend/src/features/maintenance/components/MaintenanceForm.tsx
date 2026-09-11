@@ -84,41 +84,43 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
       className="flex flex-col gap-5 rounded-2xl border border-border bg-sunken p-5"
       onSubmit={handleSubmit}
     >
-      <Field label="정비 종류" htmlFor="type">
-        {/*
-          shadcn Select 대신 브라우저 기본 <select>를 쓴다.
-          선택지가 5개뿐이라 커스텀 드롭다운의 복잡한 구조가 필요 없고,
-          모바일에서는 OS 기본 선택 UI가 뜨는 게 오히려 편하다.
-
-          <input>과 같은 controlClassName 을 씌워 높이·곡률·포커스 반응을 맞춘다.
-          펼쳐지는 목록의 색은 CSS로 못 건드리지만, index.css 의 color-scheme: dark 가
-          브라우저에게 다크 UI로 그리라고 알려 주므로 자동으로 검은 목록이 뜬다.
-        */}
-        <div className="relative">
-          <select
-            id="type"
-            // appearance-none: OS가 그려 주는 기본 화살표를 지운다. 그 화살표는 색을 바꿀 수 없어
-            // 다크 배경에서 혼자 튄다. 대신 아래에 같은 톤의 화살표를 직접 얹는다.
-            className={cn(controlClassName, 'appearance-none pr-10')}
-            value={type}
-            onChange={(event) => setType(event.target.value as ServiceType)}
-          >
-            {SERVICE_TYPES.map((serviceType) => (
-              <option key={serviceType} value={serviceType}>
-                {SERVICE_TYPE_LABELS[serviceType]}
-              </option>
-            ))}
-          </select>
-
-          {/* pointer-events-none: 아이콘이 클릭을 가로채면 select가 열리지 않는다. */}
-          <ChevronDown
-            className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-        </div>
-      </Field>
-
+      {/* 넓은 열에서 필드를 한 줄에 하나씩 쌓으면 폼이 실제보다 길어 보이고 오른쪽이 빈다.
+          짝이 되는 값끼리 2열로 묶는다. sm 미만에서는 자동으로 한 줄씩 풀린다. */}
       <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="정비 종류" htmlFor="type">
+          {/*
+            shadcn Select 대신 브라우저 기본 <select>를 쓴다.
+            선택지가 5개뿐이라 커스텀 드롭다운의 복잡한 구조가 필요 없고,
+            모바일에서는 OS 기본 선택 UI가 뜨는 게 오히려 편하다.
+
+            <input>과 같은 controlClassName 을 씌워 높이·곡률·포커스 반응을 맞춘다.
+            펼쳐지는 목록의 색은 CSS로 못 건드리지만, index.css 가 테마마다 color-scheme 을
+            지정해 두어서 브라우저가 알아서 라이트/다크 목록을 그려 준다.
+          */}
+          <div className="relative">
+            <select
+              id="type"
+              // appearance-none: OS가 그려 주는 기본 화살표를 지운다. 그 화살표는 색을 바꿀 수
+              // 없어서 테마와 따로 논다. 대신 아래에 같은 톤의 화살표를 직접 얹는다.
+              className={cn(controlClassName, 'appearance-none pr-10')}
+              value={type}
+              onChange={(event) => setType(event.target.value as ServiceType)}
+            >
+              {SERVICE_TYPES.map((serviceType) => (
+                <option key={serviceType} value={serviceType}>
+                  {SERVICE_TYPE_LABELS[serviceType]}
+                </option>
+              ))}
+            </select>
+
+            {/* pointer-events-none: 아이콘이 클릭을 가로채면 select가 열리지 않는다. */}
+            <ChevronDown
+              className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </div>
+        </Field>
+
         <Field label="정비 날짜" htmlFor="serviceDate">
           {/* type="date"는 값을 YYYY-MM-DD 문자열로 준다. 백엔드 LocalDate와 그대로 맞는다. */}
           <Input
@@ -130,7 +132,9 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
             onChange={(event) => setServiceDate(event.target.value)}
           />
         </Field>
+      </div>
 
+      <div className="grid gap-5 sm:grid-cols-2">
         <Field label="정비 시 주행거리 (km)" htmlFor="serviceOdometer">
           <Input
             id="serviceOdometer"
@@ -142,18 +146,18 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
             onChange={(event) => setServiceOdometer(event.target.value)}
           />
         </Field>
-      </div>
 
-      <Field label="비용 (원)" htmlFor="cost">
-        <Input
-          id="cost"
-          type="number"
-          min={0}
-          className="tabular-nums"
-          value={cost}
-          onChange={(event) => setCost(event.target.value)}
-        />
-      </Field>
+        <Field label="비용 (원)" htmlFor="cost">
+          <Input
+            id="cost"
+            type="number"
+            min={0}
+            className="tabular-nums"
+            value={cost}
+            onChange={(event) => setCost(event.target.value)}
+          />
+        </Field>
+      </div>
 
       <Field label="메모" htmlFor="description" hint="최대 200자">
         <Textarea

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { formatDate, formatKm } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
@@ -34,10 +34,11 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
     <Card>
       <CardHeader>
         <CardTitle>다음 정비 시점</CardTitle>
+        <CardDescription>종류별 권장 주기와 마지막 정비 기록으로 계산합니다.</CardDescription>
       </CardHeader>
       <CardContent>
         {loading && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5">
             {SERVICE_TYPES.map((type) => (
               <Skeleton key={type} className="h-4" />
             ))}
@@ -51,15 +52,28 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
           // 첫 줄 위와 마지막 줄 아래에 선이 생기지 않아 카드 안쪽이 깔끔하다.
           <ul className="divide-y divide-border">
             {results.map((result) => (
+              /*
+                넓은 화면에서는 3열(종류 / 마지막 정비 / 다음 정비), 좁으면 2열로 접힌다.
+                가운데 "마지막 정비"는 sm 미만에서 숨긴다 — 근거 없이 결과만 보여주는 게
+                아니라, 좁은 화면에서는 결론만 남기는 것이다.
+
+                `lastServiceOdometer` 는 백엔드가 계속 내려주고 있었는데 화면이 한 번도
+                쓰지 않던 값이다. 열이 하나 늘면서 비로소 자리를 찾았다.
+              */
               <li
                 key={result.type}
-                className="flex items-baseline justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-1 py-3.5 first:pt-0 last:pb-0 sm:grid-cols-[7.5rem_minmax(0,1fr)_auto]"
               >
                 <span className="text-[0.9375rem] tracking-[-0.01em] text-strong">
                   {SERVICE_TYPE_LABELS[result.type]}
                 </span>
-                <span className="text-right text-[0.8125rem] tabular-nums text-muted-foreground">
-                  {describe(result)}
+
+                <span className="order-3 text-xs tabular-nums text-muted-foreground sm:order-none">
+                  {describeLast(result)}
+                </span>
+
+                <span className="text-right text-[0.8125rem] tabular-nums text-foreground">
+                  {describeNext(result)}
                 </span>
               </li>
             ))}
@@ -70,8 +84,22 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
   )
 }
 
-/** 이력 없음 / 권장 주기 없음(OTHER) / 정상 계산됨 세 경우를 문장으로 만든다. */
-function describe(result: NextServiceResponse) {
+/** 근거: 마지막으로 이 정비를 한 시점. */
+function describeLast(result: NextServiceResponse) {
+  if (result.lastServiceDate === null) {
+    return ''
+  }
+
+  const parts = [formatDate(result.lastServiceDate)]
+  if (result.lastServiceOdometer !== null) {
+    parts.push(formatKm(result.lastServiceOdometer))
+  }
+
+  return `마지막 ${parts.join(' · ')}`
+}
+
+/** 결론: 이력 없음 / 권장 주기 없음(OTHER) / 정상 계산됨 세 경우. */
+function describeNext(result: NextServiceResponse) {
   if (result.lastServiceDate === null) {
     return '이력 없음'
   }
@@ -85,7 +113,7 @@ function describe(result: NextServiceResponse) {
   }
 
   if (parts.length === 0) {
-    return `${formatDate(result.lastServiceDate)} 정비 · 권장 주기 없음`
+    return '권장 주기 없음'
   }
 
   return parts.join(' 또는 ')

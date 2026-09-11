@@ -184,6 +184,39 @@
   }
 }
 
+/*
+ * 스크롤로 들어올 때 떠오르는 연출. 랜딩 페이지의 섹션들이 쓴다.
+ *
+ * IntersectionObserver 없이 CSS만으로 한다. `animation-timeline: view()` 는
+ * "시간" 대신 "요소가 화면에 들어온 정도"를 애니메이션 진행도로 쓰겠다는 뜻이다.
+ * 스크롤을 되돌리면 애니메이션도 그대로 되감긴다 — JS로 흉내 내려면 꽤 번거롭다.
+ *
+ * @supports 로 감싼 이유가 중요하다: 미지원 브라우저에서 opacity:0 인 채로 굳으면
+ * **내용이 영영 안 보인다.** 지원하는 브라우저에서만 opacity를 건드리게 막아 둔다.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal 1s var(--ease-out-apple) both;
+      animation-timeline: view();
+      /* entry 8% ~ cover 32%: 요소가 화면 아래에서 8% 들어온 시점에 시작해
+         32% 지점에서 끝난다. 화면 한가운데까지 끌고 오면 너무 늦게 나타난다. */
+      animation-range: entry 8% cover 32%;
+    }
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: 200% 0;

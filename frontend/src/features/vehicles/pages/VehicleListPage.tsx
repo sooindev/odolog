@@ -3,10 +3,11 @@ import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { Button } from '@/shared/ui/button'
+import { GaugeMark } from '@/shared/ui/mark'
 import { Pagination } from '@/shared/ui/pagination'
 import { PageHeader } from '@/shared/ui/page-header'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
-import { formatKm } from '@/shared/lib/format'
+import { formatNumber } from '@/shared/lib/format'
 import { useAsyncData } from '@/shared/lib/useAsyncData'
 import { fetchVehicles } from '@/features/vehicles/api/endpoints'
 
@@ -45,34 +46,48 @@ export function VehicleListPage() {
         }
       />
 
-      <ul className="flex flex-col gap-2.5">
+      {/*
+        한 줄짜리 가로 행이 아니라 격자로 깐다. 넓은 화면에서 행은 오른쪽 60%가 통째로
+        비어 버리는데, 격자는 같은 공간에 차량을 3배로 담으면서 카드 하나의 폭은
+        오히려 적당해진다. lg에서 2열, xl에서 3열 — lg부터 3열로 가면 카드가 315px까지
+        좁아져 "현대 아반떼" 같은 짧은 이름도 줄바꿈된다.
+      */}
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {data.items.map((vehicle) => (
           <li key={vehicle.id}>
             <Link
               to={`/vehicles/${vehicle.id}`}
+              // h-full: 격자에서 카드 높이를 줄에 맞춰 늘린다. 없으면 메모가 긴 카드만 키가 커서
+              // 줄이 들쭉날쭉해진다.
               // group: 이 링크에 마우스가 올라갔을 때 안쪽 화살표(group-hover)도 같이 반응시킨다.
-              // 호버에서 커지거나 색이 변하지 않는다. 배경 농도 3% → 5.5%, 테두리 8% → 14%.
-              className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-6 py-5 backdrop-blur-[20px] transition-all duration-200 ease-apple hover:border-border-strong hover:bg-card-hover active:scale-[0.995]"
+              className="group flex h-full flex-col justify-between gap-8 rounded-2xl border border-border bg-card p-6 backdrop-blur-[20px] transition-all duration-200 ease-apple hover:border-border-strong hover:bg-card-hover active:scale-[0.995]"
             >
-              <div className="flex min-w-0 flex-col gap-1">
-                <p className="truncate text-[0.9375rem] font-medium tracking-[-0.01em] text-strong">
+              <div className="flex flex-col gap-1.5">
+                <p className="truncate text-[0.6875rem] font-medium tracking-[0.16em] text-muted-foreground uppercase">
+                  {vehicle.plateNumber}
+                </p>
+                <p className="truncate text-[1.0625rem] font-semibold tracking-[-0.02em] text-strong">
                   {vehicle.manufacturer} {vehicle.modelName}
                 </p>
-                <p className="truncate text-[0.8125rem] text-muted-foreground">
-                  {vehicle.plateNumber}
-                  {vehicle.modelYear !== null && ` · ${vehicle.modelYear}년식`}
+                <p className="text-[0.8125rem] text-muted-foreground">
+                  {vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
                 </p>
               </div>
 
-              <div className="flex shrink-0 items-center gap-3.5">
-                <div className="text-right">
-                  <p className="text-[0.9375rem] tracking-[-0.01em] tabular-nums text-strong">
-                    {formatKm(vehicle.odometer)}
+              <div className="flex items-end justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[1.75rem] leading-none font-semibold tracking-[-0.035em] tabular-nums text-strong">
+                    {formatNumber(vehicle.odometer)}
+                    <span className="ml-1 text-sm font-normal tracking-normal text-muted-foreground">
+                      km
+                    </span>
                   </p>
-                  <p className="text-[0.625rem] tracking-[0.14em] text-muted-foreground uppercase">Odometer</p>
+                  <p className="text-[0.625rem] tracking-[0.14em] text-muted-foreground uppercase">
+                    Odometer
+                  </p>
                 </div>
                 {/* 2px만 움직인다. 화살표가 크게 미끄러지면 장난스러워진다. */}
-                <ChevronRight className="size-4 text-faint transition-transform duration-200 ease-apple group-hover:translate-x-0.5" />
+                <ChevronRight className="size-4 shrink-0 text-faint transition-transform duration-200 ease-apple group-hover:translate-x-0.5" />
               </div>
             </Link>
           </li>
@@ -90,7 +105,7 @@ export function VehicleListPage() {
 }
 
 /**
- * 로딩 중에도 실제 목록과 같은 높이·간격의 덩어리를 깔아 둔다.
+ * 로딩 중에도 실제 목록과 같은 격자·높이의 덩어리를 깔아 둔다.
  * "불러오는 중…" 한 줄만 보여주면 데이터가 도착하는 순간 화면이 통째로 튀어 오른다.
  */
 function VehicleListSkeleton() {
@@ -100,9 +115,9 @@ function VehicleListSkeleton() {
         <Skeleton className="h-3 w-16" />
         <Skeleton className="h-9 w-40" />
       </div>
-      <div className="flex flex-col gap-2.5">
-        {[0, 1, 2].map((row) => (
-          <Skeleton key={row} className="h-[5.75rem] rounded-2xl" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {[0, 1, 2, 3, 4, 5].map((row) => (
+          <Skeleton key={row} className="h-[11.5rem] rounded-2xl" />
         ))}
       </div>
     </div>
@@ -110,35 +125,19 @@ function VehicleListSkeleton() {
 }
 
 /**
- * 빈 상태. 여백을 아주 크게(py-20) 잡는다. 할 일이 하나뿐인 화면에서는
+ * 빈 상태. 여백을 아주 크게 잡는다. 할 일이 하나뿐인 화면에서는
  * 공백 자체가 "여기를 누르라"는 안내가 된다.
  */
 function EmptyGarage() {
   return (
-    <div className="flex flex-col items-center gap-7 rounded-3xl border border-border bg-card px-8 py-20 text-center backdrop-blur-[20px]">
-      <svg viewBox="0 0 32 32" className="size-10 text-faint" aria-hidden="true">
-        <path
-          d="M8 20a8 8 0 1 1 16 0"
-          fill="none"
-          stroke="currentColor"
-          strokeOpacity="0.5"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M16 20 21 13"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
+    <div className="flex flex-col items-center gap-7 rounded-3xl border border-border bg-card px-8 py-24 text-center backdrop-blur-[20px]">
+      <GaugeMark className="size-10 text-muted-foreground" />
 
-      <div className="flex flex-col gap-2">
+      <div className="flex max-w-sm flex-col gap-2">
         <p className="text-[1.0625rem] font-semibold tracking-[-0.02em] text-strong">
           아직 등록된 차량이 없습니다
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           차량을 등록하면 정비 이력과 다음 정비 시점을 함께 관리할 수 있습니다.
         </p>
       </div>
