@@ -82,7 +82,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
     // 폼은 목록과 같은 평면에 두지 않고 한 겹 안쪽 면으로 내린다.
     // 카드 안에 또 카드를 넣는 대신 배경 농도만 낮춰, 선을 늘리지 않고 층을 만든다.
     <form
-      className="flex flex-col gap-6 border border-border bg-sunken p-6"
+      className="flex flex-col gap-5 border border-border bg-sunken p-4 sm:gap-6 sm:p-6"
       onSubmit={handleSubmit}
     >
       {/* 넓은 열에서 필드를 한 줄에 하나씩 쌓으면 폼이 실제보다 길어 보이고 오른쪽이 빈다.

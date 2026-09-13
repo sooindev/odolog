@@ -12,7 +12,7 @@ import { GaugeMark } from '@/shared/ui/brand/mark'
  */
 export function LandingPage() {
   return (
-    <div className="flex flex-col gap-28 sm:gap-36">
+    <div className="flex flex-col gap-20 sm:gap-36">
       <Hero />
       <Highlights />
       <Preview />
@@ -25,7 +25,7 @@ function Hero() {
   return (
     // 가운데 정렬은 랜딩에서만 쓴다. 앱 화면은 전부 왼쪽 정렬인데, 이 대비 자체가
     // "여기는 아직 앱 바깥"이라는 신호가 된다.
-    <section className="flex flex-col items-center gap-10 pt-8 text-center sm:pt-20">
+    <section className="flex flex-col items-center gap-8 pt-2 text-center sm:gap-10 sm:pt-20">
       <GaugeMark className="size-11 text-strong" />
 
       {/* 줄바꿈을 브라우저에 맡기지 않는다(<br/>). 큰 글씨일수록 창 너비에 따라

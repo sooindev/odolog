@@ -79,9 +79,9 @@ export function VehicleDetailPage() {
         minmax(0,1fr) 이 없으면 긴 메모 한 줄이 열을 밀어내 격자가 넘친다
         (grid 자식의 기본 min-width 가 auto 라서).
       */}
-      <div className="grid gap-12 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
+      <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
         {/* self-start 가 없으면 칸이 옆 열 높이만큼 늘어나 sticky 가 걸리지 않는다. */}
-        <div className="flex flex-col gap-10 lg:sticky lg:top-28 lg:self-start">
+        <div className="flex flex-col gap-8 lg:sticky lg:top-28 lg:self-start lg:gap-10">
           <OdometerHero odometer={vehicle.odometer} />
 
           <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
@@ -135,7 +135,7 @@ function VehicleDetailSkeleton() {
         </div>
       </div>
 
-      <div className="grid gap-12 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
+      <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
         <div className="flex flex-col gap-8">
           <Skeleton className="h-13 w-48" />
           <Skeleton className="h-40" />

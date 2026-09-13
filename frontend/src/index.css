@@ -34,7 +34,7 @@
   --text-title--font-weight: 600;
 
   /* 히어로 숫자. 굵기를 낮춘다. 크기가 이미 강조라 굵기까지 올리면 숫자가 뭉쳐 보인다. */
-  --text-display: clamp(3.25rem, 2rem + 5vw, 5rem);
+  --text-display: clamp(2.5rem, 1.4rem + 4.6vw, 5rem);
   --text-display--line-height: 0.92;
   --text-display--letter-spacing: -0.045em;
   --text-display--font-weight: 300;
@@ -388,6 +388,22 @@
     min-height: 0;
     overflow: hidden;
     animation: fade 0.3s var(--ease-out-apple) 0.12s both;
+  }
+
+  /*
+   * 터치 기기에서는 작은 버튼도 최소 44px 높이로 누를 수 있게 한다.
+   * 보이는 크기는 그대로 두고 ::after 로 판정 영역만 위아래로 넓힌다. 버튼 자체를 키우면
+   * 목록 행의 리듬이 무너진다. 마우스에서는 이 규칙이 아예 적용되지 않는다.
+   */
+  @media (pointer: coarse) {
+    [data-slot="button"]::after {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      top: 50%;
+      translate: 0 -50%;
+      block-size: max(100%, 2.75rem);
+    }
   }
 
   /* 괘선 그리기. 왼쪽을 축으로 고정해야 '그어진다'로 보인다.

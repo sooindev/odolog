@@ -117,11 +117,13 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
               // 완전히 숨기지는 않는다. 터치 기기에는 호버가 없어서 영영 못 찾는다.
               <li
                 key={record.id}
-                className="group flex items-start gap-6 py-5 first:pt-0 last:pb-0"
+                className="group flex flex-wrap items-start gap-x-4 gap-y-3 py-5 first:pt-0 last:pb-0 sm:flex-nowrap sm:gap-6"
               >
                 {/* flex-1 + min-w-0: 남는 폭을 전부 가져가되, 긴 메모가 오른쪽 숫자 열을
                     밀어내지는 못하게 한다. */}
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                {/* basis-full: 좁은 화면에서 첫 줄을 통째로 쓴다. 한 줄에 다 넣으면
+                    종류와 날짜가 들어갈 폭이 100px 남짓밖에 안 된다. */}
+                <div className="flex min-w-0 flex-1 basis-full flex-col gap-1 sm:basis-auto">
                   <div className="flex items-baseline gap-2.5">
                     <span className="text-[0.9375rem] font-medium tracking-[-0.01em] text-strong">
                       {SERVICE_TYPE_LABELS[record.type]}
@@ -140,7 +142,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
                 {/* 수치를 별도 열로 빼 오른쪽 정렬한다. 줄마다 왼쪽에서 시작하면 자릿수가
                     다른 값들이 들쭉날쭉해서 세로로 훑어 읽을 수가 없다. */}
-                <div className="shrink-0 text-right">
+                <div className="shrink-0 sm:text-right">
                   <p className="text-[0.9375rem] tabular-nums text-strong">
                     {formatKm(record.serviceOdometer)}
                   </p>
@@ -149,7 +151,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                   </p>
                 </div>
 
-                <div className="flex shrink-0 gap-0.5 opacity-70 transition-opacity duration-200 ease-apple group-hover:opacity-100">
+                {/* 터치 기기에는 호버가 없어서 흐린 채로 남는다. 거기서는 항상 진하게. */}
+                <div className="ml-auto flex shrink-0 gap-0.5 opacity-70 transition-opacity duration-200 ease-apple group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100">
                   <Button
                     size="xs"
                     variant="ghost"

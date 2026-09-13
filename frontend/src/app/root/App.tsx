@@ -16,7 +16,9 @@ function App() {
 
   return (
     // dvh: 모바일 주소창이 접히고 펴질 때 같이 변한다. 100vh 는 그걸 무시해서 아래가 잘린다.
-    <div className="min-h-dvh">
+    // padding-inline: 노치가 있는 기기의 가로 모드에서 내용이 깎이지 않게 한다.
+    // index.html 이 viewport-fit=cover 라 이걸 안 주면 화면 끝까지 그려진다.
+    <div className="min-h-dvh [padding-inline:env(safe-area-inset-left)_env(safe-area-inset-right)]">
       <Header />
 
       {/*
@@ -24,7 +26,7 @@ function App() {
         글이 담기는 열은 어디서도 700px 를 넘지 않는다.
         아래 여백을 넉넉히 둔다. 마지막 요소가 바닥에 붙으면 "끝"이 아니라 "잘렸다"로 읽힌다.
       */}
-      <main className="mx-auto w-full max-w-[76rem] px-6 pt-16 pb-40 sm:px-8 sm:pt-20 lg:px-10">
+      <main className="mx-auto w-full max-w-[76rem] px-5 pt-10 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-8 sm:pt-20 sm:pb-40 lg:px-10">
         {/*
           key 가 바뀌면 React 가 이 div 를 새로 만들어서 전환 연출이 다시 실행된다.
           라우터에 전환 기능이 없어 이게 가장 단순하다.

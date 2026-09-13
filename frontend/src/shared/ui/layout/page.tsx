@@ -29,7 +29,7 @@ export function Page({
   children?: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-12 sm:gap-14">
+    <div className="flex flex-col gap-10 sm:gap-14">
       <div className="flex flex-col gap-6">
         {back !== undefined && (
           <Link
@@ -41,9 +41,9 @@ export function Page({
           </Link>
         )}
 
-        <header className="flex flex-col gap-7">
-          <div className="flex items-end justify-between gap-8">
-            <div className="flex min-w-0 flex-col gap-4">
+        <header className="flex flex-col gap-5 sm:gap-7">
+          <div className="flex items-end justify-between gap-4 sm:gap-8">
+            <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
               {eyebrow !== undefined && (
                 <p className="text-eyebrow text-muted-foreground uppercase">{eyebrow}</p>
               )}

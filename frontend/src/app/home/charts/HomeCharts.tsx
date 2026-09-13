@@ -52,7 +52,7 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
             <div className="absolute inset-0 flex flex-col justify-between">
               {[max, max / 2, 0].map((tick) => (
                 <div key={tick} className="flex h-0 items-center gap-3">
-                  <span className="w-10 shrink-0 text-right text-[0.625rem] tabular-nums text-muted-foreground">
+                  <span className="w-8 shrink-0 text-right text-[0.625rem] tabular-nums text-muted-foreground sm:w-10">
                     {formatCompact(tick)}
                   </span>
                   <div className="h-px flex-1 bg-border" />
@@ -61,7 +61,7 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
             </div>
 
             {/* z-10: 막대가 눈금선 위로 올라와야 한다. */}
-            <div className="relative z-10 ml-[3.25rem] flex h-44 items-end gap-1">
+            <div className="relative z-10 ml-10 flex h-40 items-end gap-0.5 sm:ml-[3.25rem] sm:h-44 sm:gap-1">
               {monthly.map((entry, index) => (
                 <MonthColumn
                   key={entry.month}
@@ -76,17 +76,21 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
           </div>
 
           {/* 가로축은 차트 칸 '안'에 둔다. 높이를 고정한 칸 밖으로 밀어내면 축만 잘린다. */}
-          <div className="ml-[3.25rem] flex gap-1">
-            {monthly.map((entry) => (
+          <div className="ml-10 flex gap-0.5 sm:ml-[3.25rem] sm:gap-1">
+            {monthly.map((entry, index) => (
+              // 좁은 화면에서는 칸 하나가 20px 남짓이라 12개를 다 적으면 숫자가 서로 붙는다.
+              // 홀수 칸만 남겨 간격을 두 배로 벌린다. 막대는 12개 그대로다.
               <span
                 key={entry.month}
-                className="flex-1 text-center text-[0.625rem] tabular-nums text-muted-foreground"
+                className={`flex-1 text-center text-[0.625rem] tabular-nums text-muted-foreground ${
+                  index % 2 === 1 ? 'invisible sm:visible' : ''
+                }`}
               >
                 {Number(entry.month.slice(5))}
               </span>
             ))}
           </div>
-          <figcaption className="ml-[3.25rem] text-[0.625rem] text-muted-foreground">월</figcaption>
+          <figcaption className="ml-10 text-[0.625rem] text-muted-foreground sm:ml-[3.25rem]">월</figcaption>
         </figure>
 
         {/* 마우스를 올려야만 보이는 값은 키보드·스크린리더 사용자에게 없는 것이나 같다.

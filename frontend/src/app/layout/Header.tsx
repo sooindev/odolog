@@ -26,7 +26,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
-      <div className="mx-auto flex h-[4.5rem] max-w-[76rem] items-center justify-between gap-3 px-6 sm:px-8 lg:px-10">
+      <div className="mx-auto flex h-14 max-w-[76rem] items-center justify-between gap-3 px-5 sm:h-[4.5rem] sm:px-8 lg:px-10">
         {/* 로그인 여부와 상관없이 항상 홈으로. 같은 버튼이 상황에 따라 다른 곳으로 가면
             누를 때마다 어디로 갈지 예측해야 한다. */}
         <Link
@@ -38,8 +38,13 @@ export function Header() {
         </Link>
 
         <div className="flex min-w-0 items-center gap-1.5">
-          {/* 로그인 전에도 보여준다. 로그인 화면을 흰 화면으로 마주할 이유가 없다. */}
-          <ThemeToggle className="shrink-0" />
+          {/*
+            좁은 화면에서는 숨긴다. 375px 에서 로고·토글·닉네임·로그아웃을 모두 넣으면
+            폭이 60px 모자라 닉네임이 말줄임만 남는다. 화면 모드는 프로필의 '화면' 구역에도
+            있으므로 기능이 사라지는 것은 아니다.
+            로그인 전에도 보여준다. 로그인 화면을 흰 화면으로 마주할 이유가 없다.
+          */}
+          <ThemeToggle className="hidden shrink-0 sm:flex" />
 
           {user === null && !onAuthPage && (
             <Button variant="ghost" size="sm" className="shrink-0" render={<Link to="/login" />}>

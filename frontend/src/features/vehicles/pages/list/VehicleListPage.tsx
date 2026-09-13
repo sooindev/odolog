@@ -60,7 +60,7 @@ export function VehicleListPage() {
                 // before: 호버하면 행 왼쪽 끝에 1px 표식이 위에서 아래로 그어진다.
                 // 배경만 옅게 바뀌면 어느 행에 있는지 훑어봐야 안다.
                 // 가로로 늘리면 글자를 밀어내는 것처럼 보여서 세로로 자라게 했다.
-                className="group relative -mx-4 flex items-center gap-6 px-4 py-7 transition-colors duration-200 ease-apple before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:origin-top before:scale-y-0 before:bg-strong before:transition-transform before:duration-300 before:ease-apple hover:bg-wash hover:before:scale-y-100 focus-visible:before:scale-y-100 sm:gap-10"
+                className="group relative -mx-3 flex items-center gap-4 px-3 py-5 transition-colors duration-200 ease-apple sm:-mx-4 sm:gap-10 sm:px-4 sm:py-7 before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:origin-top before:scale-y-0 before:bg-strong before:transition-transform before:duration-300 before:ease-apple hover:bg-wash hover:before:scale-y-100 focus-visible:before:scale-y-100"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <p className="truncate text-eyebrow text-muted-foreground uppercase">
@@ -76,7 +76,9 @@ export function VehicleListPage() {
 
                 {/* 수치는 오른쪽 끝에. tabular-nums 라야 자릿수가 달라도 줄이 안 떨린다. */}
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  <p className="text-eyebrow text-faint uppercase">Odometer</p>
+                  {/* 좁은 화면에서는 숨긴다. 아래 'km' 이 이미 같은 말을 하고 있고,
+                      이 라벨의 넓은 자간이 오른쪽 열을 75px 넘게 잡아먹는다. */}
+                  <p className="hidden text-eyebrow text-faint uppercase sm:block">Odometer</p>
                   <p className="text-figure tabular-nums text-strong">
                     {formatNumber(vehicle.odometer)}
                     <span className="ml-1.5 text-[0.8125rem] tracking-normal text-muted-foreground">
@@ -125,7 +127,7 @@ function VehicleListSkeleton() {
 /** 빈 상태. 할 일이 하나뿐인 화면이라 여백을 크게 잡는다. */
 function EmptyGarage() {
   return (
-    <div className="flex flex-col items-center gap-8 border-y border-border px-8 py-32 text-center">
+    <div className="flex flex-col items-center gap-7 border-y border-border px-5 py-20 text-center sm:gap-8 sm:px-8 sm:py-32">
       <GaugeMark className="size-10 text-muted-foreground" />
 
       <div className="flex max-w-sm flex-col gap-2">

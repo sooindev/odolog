@@ -16,7 +16,7 @@ export function Section({
   children: ReactNode
 }) {
   return (
-    <section className="grid gap-6 border-t border-border pt-10 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-16">
+    <section className="grid gap-5 border-t border-border pt-8 sm:gap-6 sm:pt-10 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-16">
       {/* 구역마다 위에 괘선을 긋는다. 스크롤하지 않고도 몇 개의 구역이 있는지 보인다.
           제목에 eyebrow 를 쓰지 않는 이유: 한글은 대문자가 없어서 자간만 벌어진
           2글자("계정")가 흩어져 보인다. */}

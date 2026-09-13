@@ -97,11 +97,11 @@ function StatTiles({ data }: { data: HomeData }) {
     */
     <dl className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {tiles.map(({ label, value, unit, exact }) => (
-        <div key={label} className="flex flex-col gap-5 bg-background p-7 sm:p-8">
+        <div key={label} className="flex flex-col gap-4 bg-background p-5 sm:gap-5 sm:p-8">
           <dt className="text-eyebrow text-muted-foreground uppercase">{label}</dt>
           {/* 큰 숫자에는 tabular-nums 를 쓰지 않는다. 세로로 맞출 상대가 있는 아래 목록에만 쓴다.
               굵기는 낮춘다. 굵게 키우면 숫자가 뭉쳐 보인다. */}
-          <dd className="flex items-baseline gap-1.5 text-[2.75rem] leading-[0.95] font-light tracking-[-0.045em] text-strong">
+          <dd className="flex items-baseline gap-1.5 text-[clamp(2rem,1.2rem+3.2vw,2.75rem)] leading-[0.95] font-light tracking-[-0.045em] text-strong">
             {value}
             <span className="text-[0.8125rem] font-normal tracking-normal text-muted-foreground">
               {unit}
@@ -209,7 +209,7 @@ function RecentServices({ recent }: { recent: HomeData['recent'] }) {
 function EmptyGarage() {
   return (
     <Page eyebrow="Garage" title="내 차고" description="차량을 등록하면 여기에 통계가 모입니다.">
-      <div className="flex flex-col items-center gap-8 border-y border-border px-8 py-32 text-center">
+      <div className="flex flex-col items-center gap-7 border-y border-border px-5 py-20 text-center sm:gap-8 sm:px-8 sm:py-32">
         <GaugeMark className="size-10 text-muted-foreground" />
 
         <div className="flex max-w-sm flex-col gap-2">
