@@ -47,17 +47,22 @@ function AppearanceCard() {
   // 'system' 일 때 지금 실제로 어느 쪽인지. 없으면 "시스템 설정" 이라고만 적힌다.
   const detail =
     theme === 'system'
-      ? `기기 설정을 따릅니다 — 현재 ${resolved === 'dark' ? '다크모드입니다' : '라이트모드입니다'}`
-      : `${theme === 'dark' ? '다크' : '라이트'}로 고정되어 있습니다`
+      ? `기기 설정을 따릅니다. 지금은 ${resolved === 'dark' ? '다크' : '라이트'}입니다.`
+      : `${theme === 'dark' ? '다크' : '라이트'}로 고정되어 있습니다.`
 
   return (
     <Card>
-      <CardContent className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
+      {/*
+        좁은 화면에서는 세로로 쌓는다. 한 줄에 두면 남는 폭이 설명 문구 길이에 좌우되는데,
+        'system' 일 때 문구가 가장 길어서 그때만 토글이 아래로 밀려 내려갔다.
+        min-w-0: 글 덩어리가 줄어들 수 있어야 토글을 밀어내지 않는다.
+      */}
+      <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
           <p className="text-[0.9375rem] tracking-[-0.01em] text-strong">화면 모드</p>
           <p className="text-[0.8125rem] text-muted-foreground">{detail}</p>
         </div>
-        <ThemeToggle />
+        <ThemeToggle className="shrink-0" />
       </CardContent>
     </Card>
   )
