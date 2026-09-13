@@ -4,19 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { formatCompact, formatMonth, formatNumber, formatWon } from '@/shared/lib/format/format'
 
 /*
- * 홈 화면의 두 차트.
+ * 홈 화면의 두 차트. 라이브러리 없이 HTML·CSS 로만 그린다.
  *
- * **색으로 화려하게 만들지 않는다.** 이 앱의 규칙이 "Accent 하나, 쨍한 색 금지"이고,
- * 차트에서 색을 늘리는 건 보통 정보를 늘리는 게 아니라 노이즈를 늘리는 일이다.
- * 두 차트 모두 **계열이 하나**라 색이 구분할 것이 애초에 없다 — 그래서 범례도 없다
- * (계열이 하나면 제목이 이미 무엇을 그린 것인지 말해 준다).
- * 화려함은 크기(히어로 숫자)·밀도·자라나는 움직임이 만든다.
- *
- * 막대 규격: 두께 24px 이하, 데이터 끝만 4px 둥글게(바닥은 각지게), 눈금선은 1px 실선.
- * 굵은 막대와 점선 눈금은 차트를 시끄럽게 만든다 — 데이터만 소리를 내야 한다.
+ * 색을 늘리지 않는다. 두 차트 모두 계열이 하나라 색이 구분할 것이 없고, 그래서 범례도 없다.
+ * 막대는 얇게, 눈금선은 1px 실선. 점선 눈금은 "예측"이나 "임계선"으로 읽힌다.
  */
 
-/** 축 눈금이 1,873 같은 숫자로 끝나지 않도록 1·2·5 × 10ⁿ 중 가장 가까운 위쪽 값으로 올린다. */
+/** 축 눈금을 1·2·5 × 10ⁿ 에 맞춘다. 1,873 같은 수로 끝나는 축은 읽을 수 없다. */
 function niceMax(value: number) {
   if (value <= 0) return 1
 
@@ -32,8 +26,8 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
   const total = monthly.reduce((acc, entry) => acc + entry.cost, 0)
   const peak = Math.max(...monthly.map((entry) => entry.cost))
   const max = niceMax(peak)
-  // 값을 직접 적는 막대는 하나뿐이다. 비용이 같은 달이 둘이면 '가장 높은 것 하나만'
-  // 이라는 규칙이 깨지므로, 최고값을 가진 첫 번째 달의 위치를 정해 그 칸에만 라벨을 준다.
+  // 값을 직접 적는 막대는 하나뿐. 비용이 같은 달이 둘이면 라벨이 두 개가 되므로
+  // 최고값을 가진 첫 칸만 고른다.
   const peakIndex = peak > 0 ? monthly.findIndex((entry) => entry.cost === peak) : -1
 
   return (
@@ -44,12 +38,8 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-8">
-        {/*
-          히어로 숫자. 한 화면에 하나만 둔다.
-          tabular-nums 를 쓰지 않는다 — 모든 숫자를 0 너비로 맞추는 설정이라,
-          큰 글씨에서는 1 같은 좁은 글자 주변이 휑하게 벌어져 보인다.
-          자릿수를 세로로 맞춰야 하는 '표의 열'에서만 쓸 것.
-        */}
+        {/* 히어로 숫자. tabular-nums 를 쓰지 않는다. 큰 글씨에서는 좁은 글자 주변이
+            휑하게 벌어진다. 세로로 자릿수를 맞출 상대가 있을 때만 쓴다. */}
         <div className="flex items-baseline gap-3">
           <span className="text-display text-strong">{formatNumber(total)}</span>
           <span className="text-eyebrow text-muted-foreground uppercase">원</span>
@@ -57,10 +47,8 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
 
         <figure className="flex flex-col gap-2">
           <div className="relative">
-            {/*
-              눈금선. h-0 + items-center 라서 각 줄의 선이 정확히 0% / 50% / 100% 위치에 온다.
-              (높이가 있으면 글자 높이만큼 선이 밀린다.)
-            */}
+            {/* 눈금선. h-0 + items-center 라야 선이 정확히 0/50/100% 에 온다.
+                높이가 있으면 글자 높이만큼 밀린다. */}
             <div className="absolute inset-0 flex flex-col justify-between">
               {[max, max / 2, 0].map((tick) => (
                 <div key={tick} className="flex h-0 items-center gap-3">
@@ -101,10 +89,8 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
           <figcaption className="ml-[3.25rem] text-[0.625rem] text-muted-foreground">월</figcaption>
         </figure>
 
-        {/*
-          표로도 볼 수 있게 한다. 마우스를 올려야만 보이는 값은 키보드·스크린리더 사용자에게
-          없는 것이나 마찬가지다. <details> 는 브라우저가 접기/펴기와 키보드 조작을 다 해 준다.
-        */}
+        {/* 마우스를 올려야만 보이는 값은 키보드·스크린리더 사용자에게 없는 것이나 같다.
+            <details> 는 접기/펴기와 키보드 조작을 브라우저가 해 준다. */}
         <details className="group">
           <summary className="w-fit cursor-pointer list-none text-[0.8125rem] text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70">
             표로 보기
@@ -163,8 +149,8 @@ function MonthColumn({
     index < 2 ? 'left-0' : index > total - 3 ? 'right-0' : 'left-1/2 -translate-x-1/2'
 
   return (
-    // tabIndex=0: 마우스 없이 Tab 으로도 같은 값을 볼 수 있어야 한다.
-    // 칸 전체가 판정 영역이라 막대보다 훨씬 넓다 — 24px 막대를 정확히 겨냥할 필요가 없다.
+    // tabIndex: Tab 으로도 같은 값을 볼 수 있어야 한다.
+    // 판정 영역은 막대가 아니라 칸 전체다. 얇은 막대를 정확히 겨냥할 필요가 없다.
     <div
       tabIndex={0}
       className="group relative flex h-full flex-1 items-end justify-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -187,7 +173,7 @@ function MonthColumn({
         </span>
       )}
 
-      {/* 말풍선은 값이 먼저, 이름이 나중. 읽는 사람은 이미 어느 달인지 알고 숫자를 보러 온다. */}
+      {/* 값이 먼저, 이름이 나중. 어느 달인지는 이미 알고 숫자를 보러 온다. */}
       <div
         className={`pointer-events-none absolute bottom-full z-20 mb-2 hidden border border-border bg-background px-2.5 py-1.5 whitespace-nowrap group-hover:block group-focus-visible:block ${align}`}
       >
@@ -205,11 +191,9 @@ function MonthColumn({
 /**
  * 정비 종류별 비용.
  *
- * 막대마다 다른 색을 주지 않는다. 정비 종류에는 타고난 순서가 없어서 "큰 것일수록 진하게"는
- * 막대 길이가 이미 말한 것을 색으로 한 번 더 말하는 꼴이고, 색이라는 채널 하나를 그냥 태운다.
- *
- * 값과 건수를 모든 줄에 적었다. 다섯 줄짜리 표에 가까운 형태라 가려진 정보가 없고,
- * 그래서 말풍선도 두지 않았다 — 말풍선은 정보를 보태는 것이지 감췄다 보여주는 장치가 아니다.
+ * 막대마다 다른 색을 주지 않는다. 정비 종류에는 순서가 없어서 "클수록 진하게"는
+ * 막대 길이가 이미 말한 것을 한 번 더 말하는 꼴이다.
+ * 다섯 줄짜리 표에 가까워서 값과 건수를 모두 적었고, 그래서 말풍선도 없다.
  */
 export function TypeCostChart({ byType }: { byType: TypeCost[] }) {
   const max = Math.max(...byType.map((entry) => entry.cost), 1)
@@ -242,7 +226,6 @@ export function TypeCostChart({ byType }: { byType: TypeCost[] }) {
 
                 {/* 트랙(옅은 바탕)을 깔아야 "얼마나 찼는지"가 끝 위치만으로도 읽힌다. */}
                 <div className="h-2 w-full overflow-hidden bg-sunken">
-                  {/* 오른쪽(데이터가 끝나는 쪽)만 둥글다. 왼쪽은 기준선이라 각지게 둔다. */}
                   <div
                     className="h-full animate-grow-right bg-primary"
                     style={{

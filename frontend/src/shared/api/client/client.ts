@@ -16,8 +16,8 @@ export class ApiError extends Error {
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
 /**
- * 세션이 끊겨 401이 돌아왔을 때 호출할 함수. AuthProvider가 등록한다.
- * api.ts는 React 밖의 평범한 모듈이라 컨텍스트를 직접 읽을 수 없어서, 이렇게 함수를 건네받는다.
+ * 401 이 돌아왔을 때 호출할 함수. AuthProvider 가 등록한다.
+ * 이 파일은 React 밖이라 컨텍스트를 직접 읽을 수 없어서 함수를 건네받는다.
  */
 let onUnauthorized: (() => void) | null = null
 
@@ -25,9 +25,8 @@ export function setUnauthorizedHandler(handler: () => void) {
   onUnauthorized = handler
 }
 
-// 이 두 경로의 401은 "세션 만료"가 아니다.
-// - 로그인: 비밀번호가 틀린 것 → 폼 에러로 보여줘야 한다
-// - /me: 앱 시작 시 "로그인했나?"를 물어보는 요청 → 401이 정상적인 답이다
+// 이 두 경로의 401 은 세션 만료가 아니다.
+// 로그인은 비밀번호가 틀린 것이고, /me 는 "로그인했나"를 묻는 요청이라 401 이 정상적인 답이다.
 const SKIP_UNAUTHORIZED_HANDLER = ['/api/users/login', '/api/users/me']
 
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
@@ -35,7 +34,7 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
 
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
-    // 세션 쿠키(JSESSIONID)를 보내고 받기 위해 필수. 빠지면 전부 401이 난다.
+    // 세션 쿠키를 주고받으려면 필수. 빠지면 전부 401 이 난다.
     credentials: 'include',
     headers: hasBody ? { 'Content-Type': 'application/json' } : undefined,
     body: hasBody ? JSON.stringify(body) : undefined,
@@ -48,7 +47,7 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
     throw new ApiError(response.status, await readErrorMessage(response))
   }
 
-  // 204 No Content(로그아웃·삭제)는 본문이 없어 json() 호출이 실패한다.
+  // 204 는 본문이 없어 json() 이 실패한다.
   if (response.status === 204) {
     return undefined as T
   }
@@ -64,7 +63,7 @@ async function readErrorMessage(response: Response): Promise<string> {
       return body.message
     }
   } catch {
-    // 핸들러가 없는 500 등은 JSON이 아닐 수 있다. 아래 기본 메시지로 넘어간다.
+    // 핸들러가 없는 500 은 JSON 이 아닐 수 있다. 기본 메시지로 넘어간다.
   }
 
   return `요청에 실패했습니다 (HTTP ${response.status})`

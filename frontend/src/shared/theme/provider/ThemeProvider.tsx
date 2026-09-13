@@ -30,10 +30,8 @@ function resolveTheme(theme: Theme): 'light' | 'dark' {
 }
 
 /**
- * <html> 에 클래스를 붙이거나 뗀다. 색은 전부 CSS 변수라 이 한 줄이면 화면 전체가 바뀐다.
- *
- * theme-color 메타 태그도 같이 갱신한다. 모바일 브라우저가 주소창을 이 색으로 칠하는데,
- * 안 바꾸면 화면은 다크인데 주소창만 밝은 회색으로 남아 위쪽이 잘려 보인다.
+ * <html> 에 클래스를 붙이거나 뗀다. 색은 전부 CSS 변수라 이것만으로 화면 전체가 바뀐다.
+ * theme-color 는 모바일 주소창 색이다. 안 바꾸면 주소창만 반대 테마로 남는다.
  */
 function applyTheme(resolved: 'light' | 'dark') {
   document.documentElement.classList.toggle('dark', resolved === 'dark')
@@ -43,9 +41,8 @@ function applyTheme(resolved: 'light' | 'dark') {
 }
 
 /**
- * 누른 버튼의 중심에서 화면의 가장 먼 모서리까지의 거리.
- * 이 값을 원의 최종 반지름으로 써야 화면 구석까지 빠짐없이 덮인다.
- * 대충 큰 수(예: 150vmax)를 넣으면 원이 화면을 벗어난 뒤에도 애니메이션이 계속 돌아서
+ * 누른 버튼 중심에서 화면의 가장 먼 모서리까지의 거리. 이걸 원의 반지름으로 쓴다.
+ * 150vmax 같은 큰 수를 넣으면 원이 화면을 벗어난 뒤에도 애니메이션이 계속 돌아
  * 끝부분이 멈춘 것처럼 보인다.
  */
 function setRevealOrigin(origin: HTMLElement | null | undefined) {
@@ -69,12 +66,12 @@ function setRevealOrigin(origin: HTMLElement | null | undefined) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // 초기값을 useState의 인자로 직접 계산한다. useEffect에서 맞추면 첫 렌더가 틀린 값으로
-  // 한 번 돌아서, 세그먼트 컨트롤의 표시가 잠깐 엉뚱한 칸에 있다가 튄다.
+  // 초기값을 useState 인자로 직접 계산한다. useEffect 에서 맞추면 첫 렌더가 틀린 값으로
+  // 돌아서 세그먼트 컨트롤 표시가 잠깐 엉뚱한 칸에 있다가 튄다.
   const [theme, setThemeState] = useState<Theme>(readStoredTheme)
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveTheme(readStoredTheme()))
 
-  // 'system' 일 때 OS 설정이 바뀌면 즉시 따라간다. 앱을 껐다 켜야 반영되면 위임한 의미가 없다.
+  // 'system' 일 때 OS 설정이 바뀌면 즉시 따라간다.
   useEffect(() => {
     if (theme !== 'system') {
       return
@@ -105,9 +102,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     function commit() {
       applyTheme(nextResolved)
-      // flushSync: React 상태 변경을 지금 이 자리에서 DOM에 반영한다.
-      // View Transition은 콜백이 끝난 직후의 화면을 찍기 때문에, 평소처럼 나중에 반영되면
-      // 새 화면이 아니라 옛 화면을 두 번 찍게 된다.
+      // View Transition 은 콜백이 끝난 직후의 화면을 찍는다. React 의 평소 비동기 렌더로는
+      // 그 시점에 DOM 이 아직 안 바뀌어 있어서 옛 화면을 두 번 찍는다.
       flushSync(() => {
         setThemeState(next)
         setResolved(nextResolved)
@@ -117,7 +113,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     // 이 API가 없는 브라우저(파이어폭스 일부 버전 등)에서는 그냥 즉시 바뀐다.
-    // 기능이 사라지는 게 아니라 연출만 빠진다 — 이런 게 점진적 향상(progressive enhancement)이다.
+    // 기능이 사라지는 게 아니라 연출만 빠진다. 점진적 향상.
     if (reduceMotion || typeof document.startViewTransition !== 'function') {
       commit()
       return

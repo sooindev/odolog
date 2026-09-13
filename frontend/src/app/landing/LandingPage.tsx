@@ -5,15 +5,10 @@ import { Button } from '@/shared/ui/base/button'
 import { GaugeMark } from '@/shared/ui/brand/mark'
 
 /*
- * 로그인 전에 처음 만나는 화면. **비로그인 상태에서만 렌더된다** — 갈림은 HomePage 가 한다.
- * 그래서 여기엔 로그인 여부를 따지는 코드가 없다.
+ * 로그인 전에 처음 만나는 화면. 비로그인일 때만 렌더되므로 여기엔 로그인 여부를
+ * 따지는 코드가 없다. 갈림은 HomePage 가 한다.
  *
- * `app/` 에 두는 이유: API 호출도, 자기만의 상태도 없다. shared/ui 조각들과 라우트 링크를
- * 엮어 놓은 순수한 조립이라 features/ 안에 들어갈 알맹이가 없다.
- * features/landing/pages/LandingPage.tsx 로 만들면 폴더 두 겹에 파일 하나가 된다.
- *
- * 글은 광고 문구가 아니라 이 앱이 실제로 하는 일 그대로 쓴다. 지키지 못할 말을 적으면
- * 화면에 들어온 순간 바로 들통난다.
+ * API 도 상태도 없이 shared/ui 조각을 엮기만 해서 features/ 가 아니라 app/ 에 둔다.
  */
 export function LandingPage() {
   return (

@@ -5,13 +5,10 @@ import { useTheme } from '@/shared/theme/context/ThemeContext'
 import type { Theme } from '@/shared/theme/context/ThemeContext'
 
 /*
- * macOS 시스템 설정의 '외관' 과 같은 형태다. 해/모니터/달 세 칸이 나란히 있고
- * 선택된 칸 아래로 블록 하나가 미끄러진다.
+ * macOS 시스템 설정의 '외관' 과 같은 형태. 해/모니터/달 세 칸에 블록 하나가 미끄러진다.
  *
- * 해/달 아이콘 하나만 두고 누를 때마다 뒤집는 방식을 쓰지 않은 이유:
- * 'system'(OS를 따름)이라는 선택지를 표현할 자리가 없어진다. 그리고 아이콘 하나짜리
- * 토글은 "지금이 다크라는 뜻인지, 누르면 다크가 된다는 뜻인지"가 늘 헷갈린다.
- * 세 칸이 다 보이면 현재 상태와 가능한 선택지를 동시에 알 수 있다.
+ * 아이콘 하나짜리 토글을 쓰지 않은 이유는 둘이다. 'system' 을 표현할 자리가 없고,
+ * "지금이 다크라는 뜻인지 누르면 다크가 된다는 뜻인지"가 늘 헷갈린다.
  */
 const OPTIONS = [
   { value: 'light', label: '라이트 모드', Icon: Sun },
@@ -28,7 +25,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   const index = OPTIONS.findIndex((option) => option.value === theme)
 
   return (
-    // role="group" + aria-label: 스크린리더가 버튼 셋을 "화면 모드"라는 한 덩어리로 읽는다.
+    // 스크린리더가 버튼 셋을 "화면 모드"라는 한 덩어리로 읽게 한다.
     <div
       role="group"
       aria-label="화면 모드"
@@ -52,11 +49,11 @@ export function ThemeToggle({ className }: { className?: string }) {
         <button
           key={value}
           type="button"
-          // aria-pressed: 이 버튼이 지금 눌린 상태인지 알려준다. 셋 중 하나만 true다.
+          // 셋 중 하나만 true 다.
           aria-pressed={theme === value}
           aria-label={label}
           title={label}
-          // event.currentTarget = 방금 누른 이 버튼. 그 좌표에서 테마가 원형으로 번진다.
+          // 누른 버튼의 좌표에서 테마가 원형으로 번진다.
           onClick={(event) => setTheme(value, event.currentTarget)}
           className={cn(
             // z-10: 위의 블록보다 위에 있어야 클릭이 버튼에 닿는다.

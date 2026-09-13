@@ -16,18 +16,17 @@ import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 
 /**
  * '/' 가 세 가지 얼굴을 갖는다.
+ *   비로그인          → 소개 화면
+ *   로그인 + 0대      → 등록을 권하는 빈 상태
+ *   로그인 + 1대 이상 → 통계
  *
- *   비로그인          → 소개 화면(LandingPage). 그대로 둔다.
- *   로그인 + 0대      → 등록을 권하는 빈 상태. 이미 가입한 사람에게 소개를 또 읽힐 이유가 없다.
- *   로그인 + 1대 이상 → 통계.
- *
- * 여러 기능(vehicles·maintenance)의 데이터를 한데 모으는 화면이라 app/ 에 둔다.
- * 기능 하나에 넣으면 그 기능이 다른 기능을 알게 된다.
+ * 여러 기능의 데이터를 모으는 화면이라 app/ 에 둔다. 기능 하나에 넣으면 그 기능이
+ * 다른 기능을 알게 된다.
  */
 export function HomePage() {
   const { user, loading } = useAuth()
 
-  // 세션 복구가 끝나기 전에 판단하면, 로그인돼 있는데도 소개 화면이 한 번 깜빡인다.
+  // 세션 복구 전에 판단하면 로그인돼 있어도 소개 화면이 한 번 깜빡인다.
   if (loading) {
     return <LoadingText className="justify-center py-24" />
   }
@@ -40,8 +39,7 @@ export function HomePage() {
 }
 
 function Dashboard({ nickname }: { nickname: string }) {
-  // loadHomeData 는 모듈 최상단의 고정된 함수라 useCallback 으로 감쌀 필요가 없다.
-  // 렌더마다 새로 만들어지지 않으므로 useAsyncData 가 반복 호출하지 않는다.
+  // 모듈 최상단의 고정된 함수라 useCallback 이 필요 없다.
   const { data, loading, error } = useAsyncData(loadHomeData, '차고 정보를 불러오지 못했습니다.')
 
   if (loading) {
@@ -69,7 +67,7 @@ function Dashboard({ nickname }: { nickname: string }) {
     >
       <StatTiles data={data} />
 
-      {/* 히어로 숫자를 품은 차트가 화면의 중심이다. 전체 폭을 준다. */}
+      {/* 히어로 숫자를 품은 차트가 중심이라 전체 폭을 준다. */}
       <MonthlyCostChart monthly={data.monthly} />
 
       {/* 두 카드를 나란히 둔다. 세로로 쌓으면 넓은 화면에서 오른쪽 절반이 통째로 빈다. */}
@@ -93,21 +91,16 @@ function StatTiles({ data }: { data: HomeData }) {
 
   return (
     /*
-      gap-px + 바깥 배경을 선 색으로: 칸 사이에 1px 틈만 남기고 그 틈으로 뒷배경(선 색)이
-      비치게 하는 방식. 칸마다 border 를 붙이면 맞닿는 자리에서 선이 두 겹이 되어
-      1px 이 2px 로 보인다. 소개 화면의 기능 3칸과 같은 방식이다.
-
-      이 구조 때문에 **여기에는 등장 연출을 걸 수 없다.** 칸이 투명한 동안에는 틈이 아니라
-      격자 전체로 선 색이 비쳐서, 나타나는 내내 색 덩어리가 번쩍인다.
+      칸 사이 1px 틈으로 뒷배경(선 색)이 비치게 한다. 칸마다 border 를 주면 맞닿는 자리에서
+      선이 두 겹이 되어 1px 이 2px 로 보인다.
+      이 구조라서 등장 연출은 걸 수 없다. 칸이 투명한 동안 격자 전체가 선 색으로 번쩍인다.
     */
     <dl className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {tiles.map(({ label, value, unit, exact }) => (
         <div key={label} className="flex flex-col gap-5 bg-background p-7 sm:p-8">
           <dt className="text-eyebrow text-muted-foreground uppercase">{label}</dt>
-          {/* tabular-nums 를 쓰지 않는다. 모든 숫자를 0 너비로 맞추는 설정이라 큰 글씨에서는
-              1 같은 좁은 글자 주변이 휑하게 벌어진다. 세로로 자릿수를 맞춰야 하는
-              '표의 열'에서만 쓴다(아래 목록들이 그렇다).
-              굵기 300 + 큰 크기. 굵게 키우면 숫자가 뭉쳐 보이고, 얇게 키우면 정밀해 보인다. */}
+          {/* 큰 숫자에는 tabular-nums 를 쓰지 않는다. 세로로 맞출 상대가 있는 아래 목록에만 쓴다.
+              굵기는 낮춘다. 굵게 키우면 숫자가 뭉쳐 보인다. */}
           <dd className="flex items-baseline gap-1.5 text-[2.75rem] leading-[0.95] font-light tracking-[-0.045em] text-strong">
             {value}
             <span className="text-[0.8125rem] font-normal tracking-normal text-muted-foreground">
@@ -115,11 +108,8 @@ function StatTiles({ data }: { data: HomeData }) {
             </span>
           </dd>
 
-          {/*
-            합계(주행거리·비용)는 받아 온 행을 직접 더한 값이라 상한을 넘으면 일부만 더해진다.
-            건수는 서버가 준 totalElements 라 언제나 정확하다. 틀릴 수 있는 쪽에만 단서를 단다 —
-            "대충 맞겠지"라고 넘기면 나중에 숫자가 안 맞을 때 어디가 문제인지 알 수 없다.
-          */}
+          {/* 합계는 받아 온 행을 직접 더한 값이라 상한을 넘으면 일부만 반영된다.
+              건수는 서버의 totalElements 라 항상 정확하다. 틀릴 수 있는 쪽에만 단서를 단다. */}
           {!exact && !data.sumsComplete && (
             <p className="text-xs text-muted-foreground">일부 기록만 합산됨</p>
           )}
@@ -213,10 +203,8 @@ function RecentServices({ recent }: { recent: HomeData['recent'] }) {
 
 /**
  * 로그인은 했지만 차량이 없을 때.
- *
- * 차량 목록의 빈 상태와 문구가 다르다. 일부러 공용 컴포넌트로 뽑지 않았다 —
- * 여기는 "앱을 시작하는 자리", 저기는 "목록이 비어 있는 자리"라 하는 말이 다르고,
- * 한 컴포넌트로 덮으면 옵션만 늘어난다.
+ * 차량 목록의 빈 상태와 문구가 다르다. 여기는 "앱을 시작하는 자리", 저기는
+ * "목록이 비어 있는 자리"라 공용 컴포넌트로 뽑지 않았다.
  */
 function EmptyGarage() {
   return (

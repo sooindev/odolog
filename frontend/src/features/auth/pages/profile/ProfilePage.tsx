@@ -18,8 +18,7 @@ import type { UpdateProfileRequest, UserResponse } from '@/features/auth/api/typ
 export function ProfilePage() {
   const { user } = useAuth()
 
-  // 여기서 null을 걸러내고, 아래 폼에는 확정된 user를 props로 넘긴다.
-  // 이렇게 나누면 폼 안에서 user가 null인지 다시 따질 필요가 없다.
+  // 여기서 null 을 걸러내고 폼에는 확정된 user 를 넘긴다. 폼 안에서 다시 따질 필요가 없다.
   if (user === null) {
     return null
   }
@@ -45,8 +44,7 @@ export function ProfilePage() {
 function AppearanceCard() {
   const { theme, resolved } = useTheme()
 
-  // resolved: 'system' 일 때 지금 실제로 어느 쪽인지. 이게 없으면 "시스템 설정"이라고만 적혀
-  // 지금 라이트인지 다크인지 화면을 봐야만 알 수 있다.
+  // 'system' 일 때 지금 실제로 어느 쪽인지. 없으면 "시스템 설정" 이라고만 적힌다.
   const detail =
     theme === 'system'
       ? `기기 설정을 따릅니다 — 현재 ${resolved === 'dark' ? '다크모드입니다' : '라이트모드입니다'}`
@@ -79,7 +77,7 @@ function ProfileForm({ user }: { user: UserResponse }) {
     setMessage(null)
     setError(null)
 
-    // 백엔드가 "보낸 필드만 변경"이므로 바뀐 것만 담는다. 전부 보내면 의도치 않은 덮어쓰기가 생긴다.
+    // 백엔드가 보낸 필드만 반영하므로 바뀐 것만 담는다.
     const request: UpdateProfileRequest = {}
     if (nickname !== user.nickname) request.nickname = nickname
     if (phone !== (user.phone ?? '')) request.phone = phone

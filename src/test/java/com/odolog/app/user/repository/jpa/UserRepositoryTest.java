@@ -68,9 +68,8 @@ class UserRepositoryTest {
     void duplicateEmailHitsUniqueConstraint() {
         userRepository.saveAndFlush(new User("dup@odolog.com", "encoded-pw", "차주A", null));
 
-        // GlobalExceptionHandler 가 이 예외의 "모양"에 기대어 409 를 판정한다.
-        // (DataIntegrityViolationException 의 cause 가 Hibernate ConstraintViolationException 이고,
-        //  그 kind 가 UNIQUE) 그래서 그 가정을 여기서 못박아 둔다.
+        // GlobalExceptionHandler 가 이 예외의 모양(cause 가 ConstraintViolationException 이고
+        // kind 가 UNIQUE)에 기대어 409 를 판정한다. 그 가정을 여기서 고정한다.
         assertThatThrownBy(() -> userRepository.saveAndFlush(
                 new User("dup@odolog.com", "encoded-pw", "차주B", null)))
                 .isInstanceOf(DataIntegrityViolationException.class)

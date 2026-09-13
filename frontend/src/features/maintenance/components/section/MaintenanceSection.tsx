@@ -24,16 +24,16 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
   // 폼 상태: 'closed' | 'new' | 수정할 이력
   const [editing, setEditing] = useState<'closed' | 'new' | MaintenanceRecordResponse>('closed')
-  // 조회 실패와 달리 "삭제 버튼을 눌렀는데 실패"는 사용자의 행동에 대한 답이라 따로 둔다.
+  // 조회 실패와 행동 실패는 사라져야 하는 시점이 달라서 따로 둔다.
   const [actionError, setActionError] = useState<string | null>(null)
-  // 삭제 중인 이력의 id. boolean 하나로 두면 목록 전체가 잠겨서 어느 줄을 지우는 중인지 안 보인다.
+  // 삭제 중인 이력의 id. boolean 이면 목록 전체가 잠겨 어느 줄을 지우는 중인지 안 보인다.
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const load = useCallback(() => fetchRecords(vehicleId, page), [vehicleId, page])
   const { data, loading, error, reload } = useAsyncData(load, '정비 이력을 불러오지 못했습니다.')
 
-  // 변수로 한 번 받아 두면 TypeScript 가 아래에서 null 이 아님을 알아준다.
-  // JSX 안에서 (error ?? actionError) 를 두 번 쓰면 매번 새 식이라 좁혀지지 않아 단언이 필요해진다.
+  // 변수로 받아 둬야 타입이 좁혀진다. JSX 에서 같은 식을 두 번 쓰면 매번 새 식이라
+  // 좁혀지지 않고 단언이 필요해진다.
   const errorMessage = error ?? actionError
 
   function refresh() {
@@ -53,12 +53,10 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
     try {
       await deleteRecord(vehicleId, recordId)
 
-      // 지운 것이 이 페이지의 마지막 한 건이었으면 페이지를 한 장 물러난다.
-      // 그대로 두면 서버가 빈 페이지를 주는데, totalElements 가 0 이 아니라서
-      // "아직 등록된 정비 이력이 없습니다" 도 안 뜨고, Pagination 은 totalPages <= 1 이면
-      // 사라지므로 돌아갈 버튼조차 없는 막다른 화면이 된다.
-      // page 를 바꾸면 load 가 새로 만들어져 useAsyncData 가 알아서 다시 조회한다
-      // — 여기서 reload() 까지 부르면 요청이 두 번 나간다.
+      // 이 페이지의 마지막 한 건을 지웠으면 한 장 물러난다. 그대로 두면 빈 페이지가 되는데
+      // totalElements 가 0 이 아니라 "이력이 없습니다" 도 안 뜨고, Pagination 도 사라져
+      // 돌아갈 버튼이 없다.
+      // page 만 바꾸면 useAsyncData 가 알아서 다시 조회한다. reload() 까지 부르면 두 번 나간다.
       if (data !== null && data.items.length === 1 && page > 0) {
         setEditing('closed')
         setActionError(null)
@@ -87,9 +85,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
       <CardContent className="flex flex-col gap-6">
         {editing !== 'closed' && (
-          // form-open: 칸이 위에서 아래로 열리고, 그 안에 폼이 조금 늦게 들어온다.
-          // 닫을 때는 연출하지 않는다 — 닫기는 사용자가 이미 결정한 일이라 기다릴 이유가
-          // 없고, 사라지는 것을 붙잡아 두려면 상태를 하나 더 들고 있어야 한다.
+          // 칸이 열리고 폼이 조금 늦게 들어온다. 닫을 때는 연출하지 않는다.
+          // 사라지는 것을 붙잡아 두려면 상태를 하나 더 들고 있어야 한다.
           <div className="form-open">
             <div>
               <MaintenanceForm
@@ -116,8 +113,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
         ) : (
           <ul className="divide-y divide-border">
             {data.items.map((record) => (
-              // group: 줄 전체에 마우스가 올라갔을 때 오른쪽 버튼들의 투명도를 함께 올린다.
-              // 버튼을 완전히 숨기지는 않는다 — 터치 기기에는 호버가 없어서 영영 못 찾게 된다.
+              // 줄에 마우스가 올라가면 오른쪽 버튼이 진해진다.
+              // 완전히 숨기지는 않는다. 터치 기기에는 호버가 없어서 영영 못 찾는다.
               <li
                 key={record.id}
                 className="group flex items-start gap-6 py-5 first:pt-0 last:pb-0"

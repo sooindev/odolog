@@ -37,16 +37,15 @@ export function SignUpPage() {
     setPending(true)
 
     try {
-      // 전화번호는 선택 입력이다. 폼 초기값 '' 를 그대로 보내면 "없음" 이 빈 문자열로
-      // 저장되어, nullable 컬럼인데 null 이 영영 생기지 않는다.
-      // trim 까지 하는 이유: 공백만 친 것도 안 적은 것으로 본다.
+      // 선택 입력이라 빈 값은 보내지 않는다. '' 를 그대로 보내면 nullable 컬럼에
+      // null 이 영영 안 생긴다. 공백만 친 것도 안 적은 것으로 본다.
       const phone = form.phone?.trim()
       await signUp({ ...form, phone: phone === '' ? undefined : phone })
-      // 가입만으로는 세션이 만들어지지 않는다. 바로 로그인까지 해 주면 사용자가 두 번 입력하지 않는다.
+      // 가입 API 는 세션을 만들지 않는다. 이어서 로그인까지 해 준다.
       await login({ email: form.email, password: form.password })
       navigate('/vehicles', { replace: true })
     } catch (caught) {
-      // 409면 이미 가입된 이메일, 400이면 검증 실패. 둘 다 백엔드 메시지를 그대로 보여준다.
+      // 409 는 이메일 중복, 400 은 검증 실패. 둘 다 백엔드 메시지를 그대로 쓴다.
       setError(caught instanceof ApiError ? caught.message : '회원가입에 실패했습니다.')
     } finally {
       setPending(false)
@@ -55,7 +54,7 @@ export function SignUpPage() {
 
   return (
     <Page title="회원가입" description="차량 한 대만 있으면 바로 시작할 수 있습니다.">
-      {/* 폼 + 아래 안내 문구는 한 덩어리다. 가로 폭(22rem)은 AuthLayout이 정한다. */}
+      {/* 폼과 안내 문구는 한 덩어리. 가로 폭은 AuthLayout 이 정한다. */}
       <div className="flex flex-col gap-6">
         <Card>
           <CardContent>
@@ -73,7 +72,7 @@ export function SignUpPage() {
                 />
               </Field>
 
-              {/* hint: 규칙을 에러로 알려주기 전에 미리 말해 준다. 틀린 뒤에 알려주는 건 늦다. */}
+              {/* 규칙은 틀리기 전에 알려준다. */}
               <Field label="비밀번호" htmlFor="password" hint="8자 이상">
                 <Input
                   id="password"

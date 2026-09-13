@@ -1,17 +1,14 @@
 import { createContext, useContext } from 'react'
 
 /**
- * 'system' 은 "정하지 않음"이다. 'light'/'dark' 와 나란한 세 번째 선택지가 아니라,
- * OS 설정을 그대로 따르겠다는 위임이다. 그래서 저장된 값이 없을 때의 기본값이기도 하다.
- *
- * 이 구분이 없으면 낮에 라이트로 골라 둔 사용자가 밤에 OS가 다크로 바뀌어도
- * 계속 라이트를 보게 된다. 대부분의 사용자는 아무것도 고르지 않는 쪽이 정답이다.
+ * 'system' 은 세 번째 색이 아니라 "정하지 않음"이고, 저장된 값이 없을 때의 기본값이다.
+ * 이게 없으면 낮에 라이트를 고른 사용자가 밤에 OS 가 바뀌어도 계속 라이트를 본다.
  */
 export type Theme = 'light' | 'dark' | 'system'
 
 /**
- * localStorage 키. index.html 의 인라인 스크립트에도 같은 문자열이 박혀 있다
- * (React가 뜨기 전에 읽어야 해서 import 를 할 수 없다). 한쪽만 고치면 안 된다.
+ * localStorage 키. index.html 인라인 스크립트에도 같은 문자열이 있다.
+ * React 가 뜨기 전에 읽어야 해서 import 를 쓸 수 없다. 한쪽만 고치면 안 된다.
  */
 export const THEME_STORAGE_KEY = 'odolog-theme'
 
@@ -27,7 +24,7 @@ export interface ThemeContextValue {
   setTheme: (theme: Theme, origin?: HTMLElement | null) => void
 }
 
-// 기본값을 null로 두면 <ThemeProvider>로 감싸는 걸 빠뜨렸을 때 조용히 동작하지 않고 바로 터진다.
+// 기본값이 null 이라 <ThemeProvider> 를 빠뜨리면 조용히 동작하지 않고 바로 터진다.
 export const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function useTheme() {

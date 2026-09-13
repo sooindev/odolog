@@ -18,11 +18,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 트랜잭션 경계가 실제로 동작하는지 확인한다.
  *
- * 다른 서비스 테스트는 Mockito 라 스프링 프록시를 거치지 않아 @Transactional 이 아예 적용되지
- * 않는다. 그래서 readOnly = true 를 잘못 붙여도 초록불이 뜬다. 여기만 진짜 컨테이너를 띄운다.
+ * 다른 서비스 테스트는 Mockito 라 스프링 프록시를 안 거쳐서 @Transactional 이 적용되지 않는다.
+ * readOnly = true 를 잘못 붙여도 초록불이 뜬다. 여기만 진짜 컨테이너를 띄운다.
  *
- * 테스트 클래스에 @Transactional 을 붙이면 안 된다. 붙이는 순간 서비스가 테스트의 트랜잭션에
- * 참여해 버려서, 서비스 자신의 readOnly 설정이 무시되고 이 테스트가 아무것도 못 잡는다.
+ * 테스트 클래스에 @Transactional 을 붙이면 안 된다. 서비스가 테스트의 트랜잭션에 참여해서
+ * 자신의 readOnly 설정이 무시된다.
  */
 @SpringBootTest
 class VehicleServiceTransactionTest {

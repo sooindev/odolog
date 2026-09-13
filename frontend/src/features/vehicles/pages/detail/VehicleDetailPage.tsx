@@ -24,8 +24,8 @@ export function VehicleDetailPage() {
 
   const id = Number(vehicleId)
 
-  // 404(없음)와 403(남의 차)을 구분해 보여주지 않는다.
-  // 남의 차량이 "존재한다"는 사실 자체를 알리지 않기 위해서다.
+  // 404(없음)와 403(남의 차)을 구분해 보여주지 않는다. 남의 차량이 존재한다는
+  // 사실 자체를 알리지 않기 위해서.
   const load = useCallback(() => fetchVehicle(id), [id])
   const {
     data: vehicle,
@@ -66,44 +66,28 @@ export function VehicleDetailPage() {
   }
 
   return (
-    // 머리말(번호판·모델명·연식)을 사이드바 안에서 꺼내 다른 화면들과 같은 자리에 뒀다.
-    // 예전에는 여기만 머리말을 손으로 그려서 sm:text-[2rem] 이 빠져 있었다.
+    // 머리말은 Page 에 맡긴다. 예전에 여기만 손으로 그리다 제목 크기를 빠뜨린 적이 있다.
     <Page
       back={{ to: '/vehicles', label: '내 차량' }}
-      // 차량을 식별하는 건 모델명이 아니라 번호판이다. 그래서 eyebrow 자리에 올린다.
+      // 차량을 식별하는 건 모델명이 아니라 번호판이라 eyebrow 자리에 올린다.
       eyebrow={vehicle.plateNumber}
       title={`${vehicle.manufacturer} ${vehicle.modelName}`}
       description={vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
     >
       {/*
-        넓은 화면에서 2단으로 나눈다. 왼쪽은 "이 차가 지금 어떤 상태인가"(주행거리),
-        오른쪽은 "무엇을 했고 무엇을 할 것인가"(이력과 다음 정비).
-        한 줄로 쌓으면 정비 이력을 보려고 스크롤할 때마다 주행거리가 화면 밖으로 사라진다.
-
-        minmax(0,1fr): 오른쪽 열이 내용보다 작아질 수 있게 한다. 이게 없으면 긴 메모 한 줄이
-        열을 밀어내 격자 전체가 넘친다(grid 자식의 기본 min-width는 auto라서).
+        왼쪽은 지금 상태(주행거리), 오른쪽은 이력과 다음 정비.
+        minmax(0,1fr) 이 없으면 긴 메모 한 줄이 열을 밀어내 격자가 넘친다
+        (grid 자식의 기본 min-width 가 auto 라서).
       */}
       <div className="grid gap-12 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
-        {/*
-          lg:sticky + self-start: 오른쪽 이력을 길게 스크롤해도 주행거리가 따라온다.
-          self-start 가 없으면 격자 칸이 오른쪽 높이만큼 늘어나 sticky 가 걸리지 않는다.
-          top-24 = 헤더 높이(64px) + 32px 숨통.
-        */}
+        {/* self-start 가 없으면 칸이 옆 열 높이만큼 늘어나 sticky 가 걸리지 않는다. */}
         <div className="flex flex-col gap-10 lg:sticky lg:top-28 lg:self-start">
-          {/*
-            주행거리를 표(dl) 한 줄이 아니라 이 열의 주인공으로 올렸다.
-            이 앱에서 사용자가 가장 자주 확인하는 숫자 하나이고, 앱 이름도 여기서 왔다.
-            숫자만 크게 두고 단위(km)는 작게 붙여 "값"과 "단위"의 위계를 나눈다.
-          */}
           <OdometerHero odometer={vehicle.odometer} />
 
           <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
 
-          {/*
-            파괴적인 동작은 선 하나로 끊어 맨 아래에 둔다. 버튼을 빨갛게 채우지 않고
-            글자만 빨갛게 두는 이유: 채운 빨강은 화면에서 가장 강한 요소가 되어,
-            가장 하면 안 되는 일이 가장 먼저 눈에 들어온다.
-          */}
+          {/* 되돌릴 수 없는 동작은 선으로 끊어 맨 아래에. 버튼을 빨갛게 채우면
+              가장 하면 안 되는 일이 화면에서 가장 강한 요소가 된다. */}
           <div className="flex flex-col gap-4 border-t border-border pt-8">
             {actionError !== null && <ErrorText message={actionError} />}
 
@@ -125,7 +109,7 @@ export function VehicleDetailPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-10">
-          {/* key 가 바뀌면 React 가 이 컴포넌트를 버리고 새로 만든다 → 자동으로 다시 계산된다. */}
+          {/* key 가 바뀌면 React 가 새로 만들어서 다음 정비 시점이 다시 계산된다. */}
           <NextServiceCard key={maintenanceVersion} vehicleId={vehicle.id} />
 
           <MaintenanceSection
@@ -166,19 +150,9 @@ function VehicleDetailSkeleton() {
 }
 
 /**
- * 이 화면의 주인공 숫자.
- *
- * **화면을 열 때는 움직이지 않는다.** 0에서 굴러 오르는 연출은 처음 한 번만 근사하고,
- * 두 번째부터는 값을 읽기까지 기다리는 시간이 된다. 아래 주행거리 갱신으로 **값이 실제로
- * 바뀐 순간에만** 직전 값에서 새 값으로 굴러간다 — 그 움직임이 곧 "얼마나 올랐는지"를
- * 말해 준다. 연출이 정보를 나르는 경우다.
- *
- * 굵기는 300이다. 크기가 이미 강조를 다 하고 있어서 굵기까지 올리면 숫자가 둔해지고,
- * 얇게 두면 같은 크기라도 훨씬 정밀해 보인다.
- *
- * tabular-nums 는 **굴러가는 동안에만** 붙인다. 큰 숫자에 항상 붙이면 맞출 상대가 없는데
- * 폭만 벌어져 헐거워 보이지만(디자인 시스템 7번), 매 프레임 숫자가 바뀌는 동안 폭이
- * 들쭉날쭉하면 숫자 전체가 덜덜 떨린다. 멈추면 원래 비례 숫자로 돌아간다.
+ * 이 화면의 주인공 숫자. 이 앱에서 가장 자주 확인하는 값이고 앱 이름도 여기서 왔다.
+ * 화면을 열 때는 움직이지 않고, 아래 폼으로 값이 바뀐 순간에만 굴러간다.
+ * tabular-nums 는 굴러가는 동안에만 붙인다(useCountUp 참고).
  */
 function OdometerHero({ odometer }: { odometer: number }) {
   const { value, running } = useCountUp(odometer)
@@ -217,7 +191,7 @@ function OdometerForm({
     try {
       onUpdated(await updateOdometer(vehicle.id, { odometer: Number(odometer) }))
     } catch (caught) {
-      // 백엔드는 주행거리가 줄면 409를 준다. 현재 값을 같이 보여줘야 뭘 잘못했는지 안다.
+      // 백엔드는 주행거리가 줄면 409 를 준다. 현재 값을 같이 보여줘야 뭘 잘못했는지 안다.
       const message =
         caught instanceof ApiError && caught.status === 409
           ? `${caught.message} (현재 ${formatKm(vehicle.odometer)})`
@@ -235,8 +209,7 @@ function OdometerForm({
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-          {/* 입력과 버튼을 한 줄에 둔다. 값 하나만 고치는 폼에서 버튼을 아래로 내리면
-              폼이 실제 하는 일보다 커 보인다. */}
+          {/* 값 하나만 고치는 폼이라 버튼을 아래로 내리지 않는다. 폼이 실제보다 커 보인다. */}
           <Field label="현재 주행거리 (km)" htmlFor="odometer">
             <div className="flex gap-2">
               <Input

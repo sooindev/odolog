@@ -3,11 +3,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/shared/ui/base/button'
 
 /**
- * 목록 페이지 이동. 차량 목록과 정비 이력이 같은 마크업을 각자 들고 있었다.
- *
- * 숫자에 tabular-nums 를 준다. 시스템 폰트의 기본 숫자는 글자마다 폭이 달라서
- * 1 → 2 처럼 페이지가 바뀔 때 "1 / 12" 전체가 미세하게 흔들린다.
- * tabular-nums 는 모든 숫자의 폭을 같게 만들어 그 떨림을 없앤다.
+ * 목록 페이지 이동. 차량 목록과 정비 이력이 함께 쓴다.
+ * 숫자에 tabular-nums 를 준다. 페이지가 1 → 2 로 바뀔 때 "1 / 12" 전체가 흔들린다.
  */
 export function Pagination({
   page,

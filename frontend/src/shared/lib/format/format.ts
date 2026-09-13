@@ -1,4 +1,4 @@
-/** 45000 → "45,000" — 단위 없이 숫자만. 큰 글씨로 값과 단위를 따로 배치할 때 쓴다. */
+/** 45000 → "45,000". 값과 단위를 따로 배치할 때 쓴다. */
 export function formatNumber(value: number) {
   return value.toLocaleString('ko-KR')
 }
@@ -14,8 +14,8 @@ export function formatWon(value: number) {
 }
 
 /**
- * 320000 → "32만", 12000000 → "1200만". 축 눈금처럼 자리가 좁은 곳에만 쓴다.
- * 본문에서는 formatWon 처럼 전체 자릿수를 보여준다 — 요약한 숫자를 근거로 계산하게 두면 안 된다.
+ * 320000 → "32만". 축 눈금처럼 자리가 좁은 곳에만 쓴다.
+ * 본문에서는 전체 자릿수를 보여준다. 요약한 숫자를 근거로 계산하게 두면 안 된다.
  */
 export function formatCompact(value: number) {
   if (value >= 100_000_000) return `${trimZero(value / 100_000_000)}억`
@@ -36,7 +36,7 @@ export function formatMonth(value: string) {
   return `${year}년 ${Number(month)}월`
 }
 
-/** "2026-07-15" → "2026. 7. 15." — 목록에서 날짜를 읽기 쉽게. */
+/** "2026-07-15" → "2026. 7. 15." */
 export function formatDate(value: string) {
   const [year, month, day] = value.split('-')
 
@@ -44,8 +44,8 @@ export function formatDate(value: string) {
 }
 
 /**
- * 오늘 날짜를 YYYY-MM-DD 로. `new Date().toISOString()`을 쓰면 UTC 기준이라
- * 한국 시간 오전 9시 이전에는 하루 전 날짜가 나온다.
+ * 오늘 날짜를 YYYY-MM-DD 로. toISOString() 은 UTC 기준이라 한국 시간 오전 9시 이전에는
+ * 하루 전 날짜가 나온다.
  */
 export function todayString() {
   const now = new Date()

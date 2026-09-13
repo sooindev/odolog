@@ -8,7 +8,7 @@ export interface SignUpRequest {
   email: string
   password: string
   nickname: string
-  /** 백엔드에 @NotBlank 가 없다 — 선택 항목이다. */
+  /** 백엔드에 @NotBlank 가 없는 선택 항목이다. */
   phone?: string
 }
 

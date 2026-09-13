@@ -36,9 +36,8 @@ public class MaintenanceRecord {
     )
     private Vehicle vehicle;
 
-    // length 를 주지 않는다. Hibernate 6 이 MariaDB 에서 @Enumerated(STRING) 을 varchar 가
-    // 아니라 네이티브 enum('BATTERY','BRAKE_PAD',...) 컬럼으로 만들기 때문에 길이가 쓰이지
-    // 않는다 — 숫자를 적어 두면 코드가 거짓말을 한다.
+    // length 를 주지 않는다. Hibernate 6 은 MariaDB 에서 이 컬럼을 varchar 가 아니라
+    // 네이티브 enum(...) 으로 만들어서 길이가 쓰이지 않는다.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ServiceType type;
