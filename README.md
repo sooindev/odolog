@@ -34,11 +34,28 @@
             └── shared/            api 클라이언트, 포맷 함수, 공용 훅, UI 컴포넌트
 
 백엔드의 각 기능 패키지는 `domain / repository / dto / service / controller`로 나뉘고,
-`dto`는 다시 `request / response`로 나뉜다.
+그 아래 한 겹이 더 있다 — 파일의 성격을 폴더 이름으로 드러내는 층이다.
+
+    user/
+    ├── domain/entity/User.java
+    ├── repository/jpa/UserRepository.java
+    ├── dto/request/signup/SignUpRequest.java
+    ├── dto/request/login/LoginRequest.java
+    ├── dto/request/profile/UpdateProfileRequest.java
+    ├── dto/response/profile/UserResponse.java
+    ├── service/application/UserService.java
+    └── controller/rest/UserController.java
+
+`domain/entity` 와 `domain/type`(enum), `repository/jpa`(구현 기술),
+`dto/request/<유스케이스>`, `controller/rest`(노출 방식) 같은 식이다.
+테스트도 같은 경로를 그대로 따라간다.
 
 프론트엔드의 각 기능 폴더는 `api`(엔드포인트 + 그 기능의 DTO 타입)와
-`pages`(라우트가 있는 화면) 또는 `components`(다른 화면에 얹히는 조각)로 나뉜다.
-`auth`에는 로그인 상태를 들고 있는 `context`가 추가로 있다.
+`pages`(라우트가 있는 화면) 또는 `components`(다른 화면에 얹히는 조각)로 나뉘고,
+역시 그 아래 한 겹이 더 있다 (`pages/login/LoginPage.tsx`,
+`api/endpoints/endpoints.ts`). `auth`에는 로그인 상태를 들고 있는 `context`가 추가로 있다.
+`shared/ui` 는 성격별로 `base`(shadcn이 복사해 넣는 자리) / `form` / `layout` /
+`feedback` / `nav` / `brand` 로 나뉜다.
 
 의존 방향은 `app → features → shared` 한 방향이다. `app`은 여러 기능을 동시에 알아도 되는
 유일한 층이라, `useAuth`를 쓰는 `Header`와 `ProtectedRoute`가 여기에 있다.

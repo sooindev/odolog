@@ -248,6 +248,11 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
 DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘지만, "클라이언트가 보내는 것"과
 "서버가 돌려주는 것"이 섞이지 않아 검증 애노테이션을 어디에 붙일지 헷갈리지 않는다.
 
+**그 아래 한 겹이 더 있다 (2026-09-13).** `dto/request/login/`, `domain/entity/`,
+`repository/jpa/`, `controller/rest/`, `shared/ui/base/` 처럼 **파일의 성격을 폴더 이름이 말한다.**
+파일 개수를 기준으로 삼지 않으므로 파일 1개짜리 폴더가 많다 — 기준과 그 대가는
+아래 트리 뒤에 정리해 뒀다.
+
 ### 저장소 루트
 
     odolog/
@@ -268,110 +273,140 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 
 ### 백엔드 — `src/main/java/com/odolog/app/`
 
+계층(`domain`/`repository`/`dto`/`service`/`controller`) 아래에 **성격을 말하는 한 겹이 더** 있다.
+`domain/entity` 와 `domain/type`(enum), `repository/jpa`(구현 기술), `dto/request/<유스케이스>`,
+`service/application`, `controller/rest`(노출 방식).
+
     com/odolog/app/
-    ├── OdoLogApplication.java                @SpringBootApplication. IntelliJ에서 실행하는 진입점
+    ├── OdoLogApplication.java                @SpringBootApplication.
+    │                                         **이 파일만 더 내려가지 못한다.** 컴포넌트 스캔이
+    │                                         이 클래스의 패키지부터 시작하므로 bootstrap/ 같은
+    │                                         하위 폴더로 옮기면 scanBasePackages·@EntityScan·
+    │                                         @EnableJpaRepositories 를 전부 손으로 지정해야 한다
     │
     ├── user/  ────────────────────────────── 회원가입·로그인·프로필
     │   ├── domain/
-    │   │   └── User.java                     @Entity(users). uk_users_email 유니크 제약.
+    │   │   └── entity/
+    │   │       └── User.java                 @Entity(users). uk_users_email 유니크 제약.
     │   │                                     changeNickname()/changePhone() — setter 없음
     │   ├── repository/
-    │   │   └── UserRepository.java           findByEmail, existsByEmail
+    │   │   └── jpa/
+    │   │       └── UserRepository.java       findByEmail, existsByEmail
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── SignUpRequest.java        @NotBlank/@Email/@Size(min=8,max=100).
+    │   │   │   ├── signup/
+    │   │   │   │   └── SignUpRequest.java    @NotBlank/@Email/@Size(min=8,max=100).
     │   │   │   │                             phone은 선택이지만 @Size(max=20) 필수
-    │   │   │   ├── LoginRequest.java         email, password
-    │   │   │   └── UpdateProfileRequest.java 둘 다 nullable — 보낸 필드만 변경
+    │   │   │   ├── login/
+    │   │   │   │   └── LoginRequest.java     email, password
+    │   │   │   └── profile/
+    │   │   │       └── UpdateProfileRequest.java
+    │   │   │                                 둘 다 nullable — 보낸 필드만 변경
     │   │   └── response/
-    │   │       └── UserResponse.java         from() 팩토리. password는 절대 담지 않음
+    │   │       └── profile/
+    │   │           └── UserResponse.java     from() 팩토리. password는 절대 담지 않음
     │   ├── service/
-    │   │   └── UserService.java              signUp(중복 체크·BCrypt), login(사유 통일),
+    │   │   └── application/
+    │   │       └── UserService.java          signUp(중복 체크·BCrypt), login(사유 통일),
     │   │                                     findById, updateProfile(널 아닌 필드만)
     │   └── controller/
-    │       └── UserController.java           POST /api/users, /login(+changeSessionId),
+    │       └── rest/
+    │           └── UserController.java       POST /api/users, /login(+changeSessionId),
     │                                         /logout(204), GET·PATCH /api/users/me
     │
     ├── vehicle/  ─────────────────────────── 차량 등록·조회·주행거리·삭제
-    │   ├── domain/
-    │   │   └── Vehicle.java                  @Entity(vehicles). owner→User(@ManyToOne LAZY).
+    │   ├── domain/entity/Vehicle.java        @Entity(vehicles). owner→User(@ManyToOne LAZY).
     │   │                                     uk_vehicles_user_plate_number(소유자+번호판 복합).
     │   │                                     updateOdometer()는 감소 시 ConflictException
-    │   ├── repository/
-    │   │   └── VehicleRepository.java        findByOwnerId(Pageable),
+    │   ├── repository/jpa/VehicleRepository.java
+    │   │                                     findByOwnerId(Pageable),
     │   │                                     existsByOwnerIdAndPlateNumber(소유자별 중복 검사)
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── VehicleRegisterRequest.java  owner 없음 — 세션에서 식별.
-    │   │   │   │                                modelYear @NotNull/@Min(1900)/@Max(2100)
-    │   │   │   └── UpdateOdometerRequest.java   @PositiveOrZero
+    │   │   │   ├── register/VehicleRegisterRequest.java
+    │   │   │   │                             owner 없음 — 세션에서 식별.
+    │   │   │   │                             modelYear @NotNull/@Min(1900)/@Max(2100)
+    │   │   │   └── odometer/UpdateOdometerRequest.java   @PositiveOrZero
     │   │   └── response/
-    │   │       └── VehicleResponse.java         owner 없음 — LAZY 미접근으로 N+1 방지
-    │   ├── service/
-    │   │   └── VehicleService.java           register, findMyVehicles(Pageable),
+    │   │       └── vehicle/VehicleResponse.java
+    │   │                                     owner 없음 — LAZY 미접근으로 N+1 방지
+    │   ├── service/application/VehicleService.java
+    │   │                                     register, findMyVehicles(Pageable),
     │   │                                     updateOdometer(dirty checking),
     │   │                                     delete(이력 먼저 → 차량),
     │   │                                     findOwnedVehicle(404/403 — maintenance도 재사용)
-    │   └── controller/
-    │       └── VehicleController.java        POST·GET /api/vehicles,
+    │   └── controller/rest/VehicleController.java
+    │                                         POST·GET /api/vehicles,
     │                                         GET·DELETE /api/vehicles/{id},
     │                                         PATCH /api/vehicles/{id}/odometer
     │
     ├── maintenance/  ─────────────────────── 정비 이력·다음 정비 시점
     │   ├── domain/
-    │   │   ├── ServiceType.java              enum 5종. recommendedIntervalKm +
-    │   │   │                                 recommendedIntervalMonths (OTHER는 둘 다 null)
-    │   │   └── MaintenanceRecord.java        @Entity. type은 @Enumerated(STRING).
-    │   │                                     필드별 change 메서드 5개
-    │   ├── repository/
-    │   │   └── MaintenanceRecordRepository.java
+    │   │   ├── entity/MaintenanceRecord.java @Entity. type은 @Enumerated(STRING).
+    │   │   │                                 필드별 change 메서드 5개
+    │   │   └── type/ServiceType.java         enum 5종. recommendedIntervalKm +
+    │   │                                     recommendedIntervalMonths (OTHER는 둘 다 null).
+    │   │                                     **entity 와 형제 폴더로 갈라 둔 이유**: 엔티티가 아니라
+    │   │                                     값의 종류라서, 한 폴더에 섞이면 @Entity 인지
+    │   │                                     아닌지를 파일을 열어 봐야 안다
+    │   ├── repository/jpa/MaintenanceRecordRepository.java
     │   │                                     findByVehicleId(Pageable),
     │   │                                     findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc,
     │   │                                     findByIdAndVehicleId(타 차량 소속 차단),
     │   │                                     deleteByVehicleId
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── MaintenanceRecordRegisterRequest.java  @NotNull/@PositiveOrZero/@Size
-    │   │   │   └── MaintenanceRecordUpdateRequest.java    전부 nullable. cost/serviceOdometer는
-    │   │   │                                              Integer로 "안 보냄"과 "0"을 구분
+    │   │   │   ├── register/MaintenanceRecordRegisterRequest.java
+    │   │   │   │                             @NotNull/@PositiveOrZero/@Size
+    │   │   │   └── update/MaintenanceRecordUpdateRequest.java
+    │   │   │                                 전부 nullable. cost/serviceOdometer는
+    │   │   │                                 Integer로 "안 보냄"과 "0"을 구분
     │   │   └── response/
-    │   │       ├── MaintenanceRecordResponse.java         from() 팩토리
-    │   │       └── NextServiceResponse.java               주행거리·날짜 두 기준
-    │   ├── service/
-    │   │   └── MaintenanceRecordService.java register, findByVehicle(Pageable),
+    │   │       ├── record/MaintenanceRecordResponse.java     from() 팩토리
+    │   │       └── schedule/NextServiceResponse.java         주행거리·날짜 두 기준
+    │   ├── service/application/MaintenanceRecordService.java
+    │   │                                     register, findByVehicle(Pageable),
     │   │                                     calculateNextService(km·개월),
     │   │                                     findOne, update(부분), delete.
     │   │                                     VehicleService.findOwnedVehicle()를 주입받아 재사용
-    │   └── controller/
-    │       └── MaintenanceRecordController.java
+    │   └── controller/rest/MaintenanceRecordController.java
     │                                         POST·GET  .../maintenance-records,
     │                                         GET·PATCH·DELETE  .../{recordId},
     │                                         GET  .../next-service?type=
     │
     └── common/  ──────────────────────────── 기능 어디에도 속하지 않는 공통 인프라
         ├── auth/
-        │   ├── LoginUser.java                @Target(PARAMETER) 커스텀 애노테이션
-        │   ├── LoginUserArgumentResolver.java 세션 LOGIN_USER_ID → Long 주입. 없으면 401
-        │   └── SessionConst.java             세션 키 상수
+        │   ├── annotation/LoginUser.java     @Target(PARAMETER) 커스텀 애노테이션
+        │   ├── resolver/LoginUserArgumentResolver.java
+        │   │                                 세션 LOGIN_USER_ID → Long 주입. 없으면 401
+        │   └── constant/SessionConst.java    세션 키 상수
         ├── config/
-        │   ├── WebConfig.java                ArgumentResolver 등록 + CORS(5173, credentials)
-        │   └── OpenApiConfig.java            문서 제목/설명 + @LoginUser를 스펙에서 제외
-        ├── exception/                        ※ 기능별로 나누지 않는다. 세 기능이 모두 쓰는
-        │   │                                   것이라 어느 한 기능으로 옮기면 잘못된 방향의
-        │   │                                   의존이 생긴다
-        │   ├── ConflictException.java              409 전용
-        │   ├── AuthenticationFailedException.java  401 전용
-        │   ├── ForbiddenAccessException.java       403 전용
-        │   ├── ResourceNotFoundException.java      404 전용
-        │   └── GlobalExceptionHandler.java         409/401/403/404/400 매핑. 전용 예외만
-        │                                           잡는다 — IllegalArgumentException 같은
-        │                                           JDK 범용 예외는 매핑하지 않음(규칙 12).
-        │                                           IllegalStateException은 미처리 → 500
-        └── dto/
-            └── response/                     요청 DTO가 없어 response만 있다
-                ├── ErrorResponse.java        record(message)
-                └── PageResponse.java         record<T>(items/page/size/totalElements/
-                                              totalPages/hasNext) + Page<T>.from()
+        │   ├── web/WebConfig.java            ArgumentResolver 등록 + CORS(5173, credentials)
+        │   └── openapi/OpenApiConfig.java    문서 제목/설명 + @LoginUser를 스펙에서 제외
+        ├── dto/
+        │   └── response/                     요청 DTO가 없어 response만 있다
+        │       ├── error/ErrorResponse.java   record(message)
+        │       └── page/PageResponse.java     record<T>(items/page/size/totalElements/
+        │                                      totalPages/hasNext) + Page<T>.from()
+        └── exception/                        ※ 기능별로 나누지 않는다. 세 기능이 모두 쓰는
+            │                                   것이라 어느 한 기능으로 옮기면 잘못된 방향의
+            │                                   의존이 생긴다
+            ├── type/                         예외 타입만 모아 둔다 (상태 코드 하나당 하나)
+            │   ├── ConflictException.java              409 전용
+            │   ├── AuthenticationFailedException.java  401 전용
+            │   ├── ForbiddenAccessException.java       403 전용
+            │   └── ResourceNotFoundException.java      404 전용
+            └── handler/GlobalExceptionHandler.java
+                                              409/401/403/404/400 매핑. 전용 예외만
+                                              잡는다 — IllegalArgumentException 같은
+                                              JDK 범용 예외는 매핑하지 않음(규칙 12).
+                                              IllegalStateException은 미처리 → 500
+
+**같은 패키지였던 것이 갈라지면 import 가 새로 필요해진다.** 세분화하면서 실제로 컴파일이
+세 곳에서 깨졌다: `LoginUserArgumentResolver`(→`LoginUser`,`SessionConst`),
+`GlobalExceptionHandler`(→예외 4개), `MaintenanceRecord`(→`ServiceType`). 전에는 같은 패키지라
+import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 드러낸 결합이다** — 이제 파일 맨 위만
+봐도 그 클래스가 무엇에 기대는지 보인다.
 
 ### 백엔드 — 리소스와 테스트
 
@@ -380,33 +415,42 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
 
-    src/test/java/com/odolog/app/        총 56개 테스트 (기능별 구조를 그대로 따라감)
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 56개.
+
+    src/test/java/com/odolog/app/
     ├── user/
-    │   ├── repository/UserRepositoryTest.java     @DataJpaTest — save/findByEmail/existsByEmail
-    │   ├── service/UserServiceTest.java           Mockito — 중복·암호화·로그인·부분수정
-    │   └── controller/UserControllerTest.java     @WebMvcTest — 201/409, 세션 저장, /me
+    │   ├── repository/jpa/UserRepositoryTest.java      @DataJpaTest — save/findByEmail/
+    │   │                                              existsByEmail
+    │   ├── service/application/UserServiceTest.java    Mockito — 중복·암호화·로그인·부분수정
+    │   └── controller/rest/UserControllerTest.java     @WebMvcTest — 201/409, 세션 저장, /me
     ├── vehicle/
-    │   ├── repository/VehicleRepositoryTest.java  @DataJpaTest — 페이징·LAZY·주행거리·
-    │   │                                          소유자별 번호판 중복
-    │   ├── service/VehicleServiceTest.java        Mockito — 404·403·감소방지·삭제순서(InOrder)
-    │   ├── service/VehicleServiceTransactionTest.java
-    │   │                                          @SpringBootTest — 유일하게 진짜 컨테이너를
-    │   │                                          띄운다. dirty checking이 DB까지 가는지 검증
-    │   └── controller/VehicleControllerTest.java  @WebMvcTest — 401/400/201/404/403, 페이지 응답
+    │   ├── repository/jpa/VehicleRepositoryTest.java   @DataJpaTest — 페이징·LAZY·주행거리·
+    │   │                                              소유자별 번호판 중복
+    │   ├── service/application/
+    │   │   ├── VehicleServiceTest.java                 Mockito — 404·403·감소방지·
+    │   │   │                                           삭제순서(InOrder)
+    │   │   └── VehicleServiceTransactionTest.java      @SpringBootTest — 유일하게 진짜 컨테이너를
+    │   │                                               띄운다. dirty checking이 DB까지 가는지 검증
+    │   └── controller/rest/VehicleControllerTest.java  @WebMvcTest — 401/400/201/404/403,
+    │                                                   페이지 응답
     └── maintenance/
-        ├── repository/MaintenanceRecordRepositoryTest.java
-        │                                              @DataJpaTest — 같은 날짜 동점 처리,
-        │                                              페이징, 타 차량 차단, 이력 일괄 삭제
-        ├── service/MaintenanceRecordServiceTest.java  Mockito — 다음정비 3케이스, 부분수정
-        └── controller/MaintenanceRecordControllerTest.java
-                                                       @WebMvcTest — next-service, enum 400,
-                                                       목록 페이지 응답, delete 204
+        ├── repository/jpa/MaintenanceRecordRepositoryTest.java
+        │                                               @DataJpaTest — 같은 날짜 동점 처리,
+        │                                               페이징, 타 차량 차단, 이력 일괄 삭제
+        ├── service/application/MaintenanceRecordServiceTest.java
+        │                                               Mockito — 다음정비 3케이스, 부분수정
+        └── controller/rest/MaintenanceRecordControllerTest.java
+                                                        @WebMvcTest — next-service, enum 400,
+                                                        목록 페이지 응답, delete 204
 
     ※ Mockito 테스트는 스프링 프록시를 안 거치므로 `@Transactional` 이 아예 적용되지 않고,
       `@WebMvcTest` 는 서비스가 `@MockitoBean` 이라 진짜 코드가 돌지 않는다. 즉 트랜잭션 설정
       실수는 이 둘로는 절대 못 잡는다 — 그래서 `VehicleServiceTransactionTest` 하나를 둔다.
 
 ### 프론트엔드 — `frontend/`
+
+백엔드와 같은 기준으로 한 겹 더 내려간다. 화면은 화면 이름 폴더 안에(`pages/login/LoginPage.tsx`),
+`api` 는 `endpoints/` 와 `types/` 로, `shared/ui` 는 성격별로.
 
     frontend/
     ├── package.json                  스크립트: dev / build / lint / preview
@@ -415,7 +459,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     ├── tsconfig.json                 references + paths ← shadcn CLI가 읽는 파일 (지우면 안 됨)
     ├── tsconfig.app.json             src/ 코드용 (브라우저). paths 여기에도
     ├── tsconfig.node.json            vite.config.ts용 (Node 환경)
-    ├── components.json               shadcn 설정. aliases가 @/shared/ui 를 가리킨다
+    ├── components.json               shadcn 설정. aliases.ui 가 **`@/shared/ui/base`** 를
+    │                                 가리킨다 — 안 바꾸면 다음 `shadcn add` 가 base/ 밖에
+    │                                 파일을 만들어 우리 파일과 다시 섞인다
     ├── .oxlintrc.json                린터 설정 (ESLint 아님)
     ├── .env.development              VITE_API_BASE_URL=http://localhost:8080
     ├── .gitignore                    node_modules/, dist/
@@ -423,100 +469,126 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     ├── README.md                     프론트 실행법 (백엔드가 먼저 떠 있어야 함)
     ├── public/favicon.svg            빌드 시 그대로 복사되는 정적 파일 (아직 Vite 기본 로고)
     └── src/
-        ├── main.tsx                  Vite 진입점. index.html이 이 경로를 직접 가리키므로
-        │                             위치를 옮기지 않는다.
+        ├── main.tsx                  Vite 진입점. **index.html이 이 경로를 직접 가리키므로
+        │                             폴더로 내려보낼 수 없다** (백엔드의 OdoLogApplication 과
+        │                             같은 이유로 남은 예외).
         │                             ThemeProvider > BrowserRouter > AuthProvider > App
-        ├── index.css                 디자인 토큰 전부가 여기 한 파일에 있다 (아래 "디자인 시스템").
+        ├── index.css                 디자인 토큰 전부가 여기 한 파일에 있다 (위 "디자인 시스템").
         │                             :root = 라이트, :root.dark = 다크. 값은 여기에만 있다.
         │                             .reveal(스크롤 진입 연출)과 View Transition 규칙도 여기
         ├── env.d.ts                  import.meta.env 타입 선언
         │
         ├── app/  ──────────────────── 조립층. **여러 기능을 동시에 알아도 되는 유일한 자리**
-        │   ├── App.tsx               라우트 8개 정의 + Header 배치. 본문 폭 76rem
-        │   ├── HomePage.tsx          '/' 의 갈림. 비로그인 → LandingPage, 로그인+0대 → 등록 권유,
-        │   │                         로그인+차량 있음 → 통계(Dashboard)
-        │   ├── homeStats.ts          통계 조회·계산. 요청 수 = 1 + 차량 수
-        │   ├── HomeCharts.tsx        월별 비용(세로 막대) · 종류별 비용(가로 막대).
-        │   │                         라이브러리 없이 HTML/CSS 로만 그린다
-        │   ├── LandingPage.tsx       소개 화면(비로그인 전용). API·상태 없이 shared/ui 조립만
-        │   │                         하는 화면이라 features/ 가 아니라 여기 있다
-        │   ├── Header.tsx            로고 · 화면 모드 · (로그인 | 닉네임·로그아웃)
-        │   ├── AuthLayout.tsx        로그인·회원가입을 감싸는 2단 레이아웃(lg 이상).
+        │   ├── root/App.tsx          라우트 8개 정의 + Header 배치. 본문 폭 76rem
+        │   ├── routing/ProtectedRoute.tsx
+        │   │                         로그인 안 했으면 /login으로. loading 중엔 대기
+        │   ├── layout/
+        │   │   ├── Header.tsx        로고 · 화면 모드 · (로그인 | 닉네임·로그아웃)
+        │   │   └── AuthLayout.tsx    로그인·회원가입을 감싸는 2단 레이아웃(lg 이상).
         │   │                         ProtectedRoute 와 같은 "라우트를 감싸는 울타리"라 여기 있다
-        │   └── ProtectedRoute.tsx    로그인 안 했으면 /login으로. loading 중엔 대기
+        │   ├── home/
+        │   │   ├── HomePage.tsx      '/' 의 갈림. 비로그인 → LandingPage, 로그인+0대 → 등록 권유,
+        │   │   │                     로그인+차량 있음 → 통계(Dashboard)
+        │   │   ├── charts/HomeCharts.tsx
+        │   │   │                     월별 비용(세로 막대) · 종류별 비용(가로 막대).
+        │   │   │                     라이브러리 없이 HTML/CSS 로만 그린다
+        │   │   └── stats/homeStats.ts
+        │   │                         통계 조회·계산. 요청 수 = 1 + 차량 수
+        │   └── landing/LandingPage.tsx
+        │                             소개 화면(비로그인 전용). API·상태 없이 shared/ui 조립만
+        │                             하는 화면이라 features/ 가 아니라 여기 있다
         │
         ├── features/  ─────────────── 기능별. 백엔드의 user/vehicle/maintenance와 짝을 이룬다
-        │   │                         각 기능은 api / (context) / pages·components 로 나뉜다
         │   ├── auth/
         │   │   ├── api/
-        │   │   │   ├── endpoints.ts      fetchMe·signUp·login·logout·updateProfile
-        │   │   │   └── types.ts          백엔드 user.dto 대응
+        │   │   │   ├── endpoints/endpoints.ts  fetchMe·signUp·login·logout·updateProfile
+        │   │   │   └── types/types.ts          백엔드 user.dto 대응
         │   │   ├── context/
-        │   │   │   ├── AuthContext.ts    Context 정의 + useAuth 훅 (컴포넌트 아닌 것만)
-        │   │   │   └── AuthProvider.tsx  세션 복구(/me 1회)·login·logout·401 핸들러 등록
+        │   │   │   ├── definition/AuthContext.ts
+        │   │   │   │                     Context 정의 + useAuth 훅 (컴포넌트 아닌 것만)
+        │   │   │   └── provider/AuthProvider.tsx
+        │   │   │                         세션 복구(/me 1회)·login·logout·401 핸들러 등록
         │   │   └── pages/
-        │   │       ├── LoginPage.tsx     401 → 폼 에러. 원래 가려던 곳으로 복귀
-        │   │       ├── SignUpPage.tsx    가입 후 이어서 로그인까지. 409 → 폼 에러
-        │   │       └── ProfilePage.tsx   Section 2개(계정 / 화면). 바뀐 필드만 PATCH.
-        │   │                             null 걸러내는 겉 + 폼 2단 구조
+        │   │       ├── login/LoginPage.tsx    401 → 폼 에러. 원래 가려던 곳으로 복귀
+        │   │       ├── signup/SignUpPage.tsx  가입 후 이어서 로그인까지. 409 → 폼 에러
+        │   │       └── profile/ProfilePage.tsx
+        │   │                                  Section 2개(계정 / 화면). 바뀐 필드만 PATCH.
+        │   │                                  null 걸러내는 겉 + 폼 2단 구조
         │   ├── vehicles/
         │   │   ├── api/
-        │   │   │   ├── endpoints.ts      차량 엔드포인트 5개
-        │   │   │   └── types.ts          백엔드 vehicle.dto 대응
+        │   │   │   ├── endpoints/endpoints.ts  차량 엔드포인트 5개
+        │   │   │   └── types/types.ts          백엔드 vehicle.dto 대응
         │   │   └── pages/
-        │   │       ├── VehicleListPage.tsx   카드 격자(sm 2열 / xl 3열) + 페이지네이션 + 빈 상태
-        │   │       ├── VehicleNewPage.tsx    등록 폼. 409(번호판 중복) → 폼 에러
-        │   │       └── VehicleDetailPage.tsx lg에서 2단. 왼쪽=차량정보·주행거리·삭제(sticky),
-        │   │                                 오른쪽=다음정비·이력
+        │   │       ├── list/VehicleListPage.tsx
+        │   │       │                     카드 격자(sm 2열 / xl 3열) + 페이지네이션 + 빈 상태
+        │   │       ├── new/VehicleNewPage.tsx
+        │   │       │                     등록 폼. 409(번호판 중복) → 폼 에러
+        │   │       └── detail/VehicleDetailPage.tsx
+        │   │                             lg에서 2단. 왼쪽=차량정보·주행거리·삭제(sticky),
+        │   │                             오른쪽=다음정비·이력
         │   └── maintenance/
         │       ├── api/
-        │       │   ├── endpoints.ts      정비 이력 엔드포인트 5개
-        │       │   └── types.ts          ServiceType 유니온 + SERVICE_TYPE_LABELS + DTO
+        │       │   ├── endpoints/endpoints.ts  정비 이력 엔드포인트 5개
+        │       │   └── types/types.ts          ServiceType 유니온 + SERVICE_TYPE_LABELS + DTO
         │       └── components/           pages/ 가 없다 — 자기 라우트 없이 차량 상세에 얹힌다
-        │           ├── NextServiceCard.tsx    종류 5개 다음 정비 시점 (Promise.all 동시 요청).
-        │           │                          재조회는 부모가 key 를 바꿔 재생성
-        │           ├── MaintenanceSection.tsx 목록 + 페이지네이션 + 삭제 + 폼 토글
-        │           └── MaintenanceForm.tsx    등록·수정 겸용 (record가 null이면 등록)
+        │           ├── next-service/NextServiceCard.tsx
+        │           │                     종류 5개 다음 정비 시점 (Promise.all 동시 요청).
+        │           │                     재조회는 부모가 key 를 바꿔 재생성
+        │           ├── section/MaintenanceSection.tsx
+        │           │                     목록 + 페이지네이션 + 삭제 + 폼 토글
+        │           └── form/MaintenanceForm.tsx
+        │                                 등록·수정 겸용 (record가 null이면 등록)
         │
         └── shared/  ───────────────── 어느 기능에도 속하지 않는 것. 백엔드의 common과 같은 자리
             ├── api/
-            │   ├── client.ts             fetch 래퍼. credentials:'include' / ApiError /
+            │   ├── client/client.ts      fetch 래퍼. credentials:'include' / ApiError /
             │   │                         204 처리 / 401 전역 핸들러 등록 창구
-            │   └── types.ts              PageResponse<T> / ErrorResponse 둘뿐.
-            │                             기능별 DTO는 features/*/api/types.ts 로 옮겼다
+            │   └── types/types.ts        PageResponse<T> / ErrorResponse 둘뿐.
+            │                             기능별 DTO는 features/*/api/types/ 로 옮겼다
             ├── theme/                    라이트/다크. AuthContext와 똑같이 3파일로 나뉜다
-            │   ├── ThemeContext.ts       Theme 타입 + localStorage 키 + useTheme 훅
-            │   ├── ThemeProvider.tsx     저장·복원, OS 설정 추적, View Transition 전환
-            │   └── ThemeToggle.tsx       해/모니터/달 3칸 세그먼트 컨트롤 (헤더에 배치)
+            │   ├── context/ThemeContext.ts   Theme 타입 + localStorage 키 + useTheme 훅
+            │   ├── provider/ThemeProvider.tsx 저장·복원, OS 설정 추적, View Transition 전환
+            │   └── toggle/ThemeToggle.tsx    해/모니터/달 3칸 세그먼트 컨트롤 (헤더에 배치)
             ├── lib/
-            │   ├── format.ts             formatNumber / formatKm / formatWon / formatDate /
+            │   ├── format/format.ts      formatNumber / formatKm / formatWon / formatDate /
             │   │                         todayString(UTC 함정 회피)
-            │   └── useAsyncData.ts       조회 4곳의 공통 훅. data/loading/error +
+            │   └── hooks/useAsyncData.ts 조회 4곳의 공통 훅. data/loading/error +
             │                             reload()/setData. cancelled 플래그가 여기 한 곳에만
-            └── ui/                       shadcn이 복사해 넣은 파일과 우리가 쓴 파일이 섞여 있다.
-                │                         ※ 우리 것: state / field / page-header / section / mark / pagination / control
-                ├── state.tsx             LoadingText / ErrorText / NoticeText / Skeleton
-                ├── field.tsx             라벨+입력+도움말 한 벌. htmlFor 필수(접근성)
-                ├── page.tsx              Page — 앱 화면 한 장의 껍데기(뒤로가기·머리말·간격).
-                │                         FormActions — 폼 맨 아래 버튼 줄.
-                │                         **모든 앱 화면이 이 둘을 쓴다** (랜딩만 예외)
-                ├── section.tsx           설정 화면용 2단(왼쪽 설명 / 오른쪽 내용).
-                │                         넓은 화면의 남는 폭을 여백이 아니라 정보로 채운다
-                ├── mark.tsx              계기판 로고 SVG. 헤더·로그인·빈 상태 3곳이 공유
-                ├── pagination.tsx        목록 2곳이 복사해 쓰던 페이지 이동 UI
-                ├── control.ts            입력 요소 공통 클래스 문자열.
+            └── ui/                       **base/ 만 shadcn 이 건드리는 자리이고 나머지는 우리 것.**
+                │                         전에는 한 폴더(12개)에 섞여 있어서 문서로만 구분했다
+                ├── base/                 shadcn CLI 가 복사해 넣는 자리 (components.json 이 여길 가리킨다)
+                │   ├── button.tsx        asChild 없음. Base UI의 render prop 사용
+                │   ├── card.tsx
+                │   ├── input.tsx
+                │   ├── label.tsx
+                │   └── textarea.tsx
+                ├── form/
+                │   ├── field.tsx         라벨+입력+도움말 한 벌. htmlFor 필수(접근성)
+                │   └── control.ts        입력 요소 공통 클래스 문자열.
                 │                         input·textarea·네이티브 select 셋이 공유한다.
                 │                         .tsx 가 아닌 이유는 AuthContext 와 같다 —
                 │                         컴포넌트와 값을 한 파일에서 내보내면 핫 리로드가 깨진다
-                ├── button.tsx            asChild 없음. Base UI의 render prop 사용
-                ├── card.tsx
-                ├── input.tsx
-                ├── label.tsx
-                └── textarea.tsx
+                ├── layout/
+                │   ├── page.tsx          Page — 앱 화면 한 장의 껍데기(뒤로가기·머리말·간격).
+                │   │                     FormActions — 폼 맨 아래 버튼 줄.
+                │   │                     **모든 앱 화면이 이 둘을 쓴다** (랜딩만 예외)
+                │   └── section.tsx       설정 화면용 2단(왼쪽 설명 / 오른쪽 내용).
+                │                         넓은 화면의 남는 폭을 여백이 아니라 정보로 채운다
+                ├── feedback/state.tsx    LoadingText / ErrorText / NoticeText / Skeleton
+                ├── nav/pagination.tsx    목록 2곳이 복사해 쓰던 페이지 이동 UI
+                └── brand/mark.tsx        계기판 로고 SVG. 헤더·로그인·빈 상태 3곳이 공유
 
-**폴더는 파일이 2개가 될 때 만든다.** 파일 1개짜리 폴더는 경로만 길어지고 아무것도 안 알려준다.
-`shared/lib/` 을 `hooks/` 와 `lib/` 로 더 쪼개지 않은 이유, `maintenance/` 에 `pages/` 를
-만들지 않은 이유가 이것이다. 백엔드도 같은 기준으로 보면 더 쪼갤 곳이 없다 (아래 참고).
+**폴더는 파일의 성격을 드러낼 때 만든다 — 파일 개수로 정하지 않는다.**
+전에는 "폴더는 파일이 2개가 될 때 만든다"였고, 그 기준으로 2026-09-09에 "세분화는 끝났다"고
+결론 냈었다. 2026-09-13에 **사용자 요청으로 그 기준을 바꿨다.** 바뀐 기준에서는
+`dto/request/LoginRequest.java` 보다 `dto/request/login/LoginRequest.java` 가 낫다 —
+폴더 이름이 "이 DTO는 로그인 유스케이스의 것"이라고 말해 주고, 형제 폴더 목록이 곧
+그 기능의 유스케이스 목록이 된다.
+
+**치르는 값은 정직하게 적어 둔다.** 파일을 보유한 폴더가 45개 → 81개, 그중 파일 1개짜리가
+24개 → 74개가 됐다. 경로가 길어지고, 새 파일을 놓을 자리를 매번 판단해야 한다.
+`exception/type/` 처럼 4개가 모인 곳이나 `ui/base/` 처럼 **소유자가 다른 파일을 갈라놓는**
+자리는 값을 치를 만하고, `service/application/` 처럼 형제가 생길 기약이 없는 곳은 순수 비용이다.
 
 ### 의존 방향
 
@@ -541,22 +613,61 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
 **백엔드에는 알려진 예외가 하나 있다.** 패키지 수준으로 보면 `vehicle` 과 `maintenance` 는
 서로를 안다:
 
-    vehicle/service/VehicleService              → maintenance/repository/MaintenanceRecordRepository
-    maintenance/service/MaintenanceRecordService → vehicle/service/VehicleService
+    vehicle/service/application/VehicleService
+        → maintenance/repository/jpa/MaintenanceRecordRepository
+    maintenance/service/application/MaintenanceRecordService
+        → vehicle/service/application/VehicleService
 
 차량 삭제 시 "이력 먼저, 차량 나중" 순서를 서비스가 직접 제어하려고 `VehicleService` 가
 `MaintenanceRecordRepository` 를 주입받기 때문이다. 서비스끼리 주입하면 스프링이 잡아내는
 진짜 순환 참조가 되므로 리포지토리를 골랐고, 그래서 **클래스 수준에서는 순환이 아니다.**
 위의 한 줄 요약(`maintenance → vehicle`)이 이 사실을 가리고 있어 여기 적어 둔다.
 
-### 백엔드 디렉토리를 더 쪼개지 않는 이유
+### 세분화가 멈추는 두 지점
 
-백엔드는 파일 37개가 디렉토리 23개에 들어 있고, **그중 13개는 파일이 1개뿐이다**
-(`user/domain/`, `user/service/`, `vehicle/repository/` …). 기능별 × 계층별 × request/response
-까지 이미 3중으로 나뉘어 있어서, 여기서 더 나누면 폴더당 파일 1개인 구조가 될 뿐이다.
-프론트엔드와 달리 백엔드의 세분화는 **이미 끝나 있다.**
+깊이를 더 내려갈 수 없는 자리가 둘 있다. 둘 다 **바깥에서 경로를 이름으로 붙잡고 있기** 때문이다.
+
+- `com/odolog/app/OdoLogApplication.java` — `@SpringBootApplication` 의 컴포넌트 스캔 기점이다.
+  `bootstrap/` 으로 내리면 `scanBasePackages` / `@EntityScan` / `@EnableJpaRepositories` 를
+  손으로 지정해야 하고, 그 순간 "어디까지 스캔되는가"가 코드에서 안 보이게 된다.
+- `frontend/src/main.tsx` — `index.html` 의 `<script type="module" src="/src/main.tsx">` 가
+  이 경로를 문자열로 가리킨다. 옮기면 HTML 도 같이 고쳐야 하는데,
+  `'odolog-theme'` 문자열이 HTML 과 `ThemeContext.ts` 양쪽에 중복인 것과 같은 종류의 함정이다.
 
 ## 진행 상황 (완료)
+
+- [x] 디렉토리 전면 세분화 — 계층 아래 "성격" 한 겹 추가 (2026-09-13)
+      → **사용자 요청으로 기준 자체를 바꿨다.** 전에는 "폴더는 파일이 2개가 될 때 만든다"였고,
+        2026-09-09 점검에서 그 기준으로 "백엔드 세분화는 이미 끝났다"고 결론 냈었다.
+        새 기준은 **"폴더는 파일의 성격을 드러낼 때 만든다"** — 개수로 정하지 않는다.
+      → 백엔드: `domain/entity` · `domain/type`(enum) · `repository/jpa` ·
+        `dto/request/<유스케이스>` · `dto/response/<유스케이스>` · `service/application` ·
+        `controller/rest`, `common` 은 `auth/{annotation,resolver,constant}` ·
+        `config/{web,openapi}` · `dto/response/{error,page}` · `exception/{type,handler}`.
+        파일 36개 이동, `package` 선언과 import 를 전부 갱신.
+      → 프론트: 화면은 화면 이름 폴더 안으로(`pages/login/LoginPage.tsx`), `api` 는
+        `endpoints/`·`types/` 로, `shared/ui` 는 `base`(shadcn) / `form` / `layout` /
+        `feedback` / `nav` / `brand` 로. 파일 44개 이동.
+      → **`shared/ui/base/` 가 이번 세분화에서 가장 값이 있는 자리다.** 전에는 shadcn이 복사해
+        넣은 파일 5개와 우리가 쓴 파일 7개가 한 폴더(12개)에 섞여 있고 **문서로만** 구분돼 있었다.
+        이제 소유자가 폴더로 갈려 있다. `components.json` 의 `aliases.ui` 도
+        `@/shared/ui/base` 로 함께 바꿨다 — **안 바꾸면 다음 `shadcn add` 가 base/ 밖에 파일을
+        만들어 원래대로 섞인다.**
+      → **컴파일이 세 곳에서 깨졌고, 그게 세분화의 소득이었다.** 같은 패키지라 import 없이 쓰던
+        것들이 갈라지면서 드러났다: `LoginUserArgumentResolver`→`LoginUser`/`SessionConst`,
+        `GlobalExceptionHandler`→예외 4개, `MaintenanceRecord`→`ServiceType`.
+        이제 파일 맨 위만 봐도 무엇에 기대는지 보인다.
+      → **깊이를 더 내려갈 수 없는 자리 2곳을 확인했다.** `OdoLogApplication`(컴포넌트 스캔 기점 —
+        옮기면 `scanBasePackages`/`@EntityScan`/`@EnableJpaRepositories` 를 손으로 지정해야 함)과
+        `main.tsx`(`index.html` 이 경로를 문자열로 가리킴). 둘 다 제자리에 뒀다.
+      → **대가는 문서에 그대로 적었다**: 파일 보유 폴더 45개 → 81개, 그중 파일 1개짜리
+        24개 → 74개. `exception/type/`(4개)이나 `ui/base/`(소유자 분리)처럼 값을 치를 만한 곳과
+        `service/application/`(형제가 생길 기약 없음)처럼 순수 비용인 곳이 섞여 있다.
+      → 이동은 전부 `git mv`(히스토리 보존).
+      → 검증: 백엔드 `./gradlew test` **56개 전부 통과**(테스트 클래스 10개도 새 패키지에서 실행됨),
+        프론트 `tsc -b` / `oxlint`(기존 shadcn 경고 1건만) / `vite build` 통과.
+        옛 import 잔재 0건을 grep 으로 확인. **브라우저 눈 확인은 하지 않았다** — 구조 변경이라
+        화면은 그대로여야 한다.
 
 - [x] 홈 통계에 그래프 추가 (2026-09-13)
       → **"화려하게"를 색으로 풀지 않았다.** 이 프로젝트의 규칙이 "Accent 하나, 쨍한 색 금지"이고,
@@ -772,6 +883,8 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
         `MaintenanceRecordRepository` 주입) 한 줄 요약이 그걸 가리고 있었다. 둘 다 바로잡았다.
       → 기준: **폴더는 파일 2개부터 만든다.** 그래서 `shared/lib` 을 `hooks`/`lib` 로 쪼개지 않았고
         `maintenance` 에 `pages/` 를 만들지 않았다.
+        **※ 이 기준은 2026-09-13에 뒤집혔다** (맨 위 항목 참고). 지금은 `shared/lib` 이
+        `format/` 과 `hooks/` 로 나뉘어 있다.
       → 검증: 이동은 전부 `git mv`(히스토리 보존), 타입 검사·린트 통과, **빌드 CSS 해시가
         재구성 전과 동일**(`index-SCKbKCcF.css`). JS 만 296.49 → 296.62 kB 로 늘었는데
         새로 만든 `auth/api/endpoints.ts` 모듈 하나에 해당한다.
