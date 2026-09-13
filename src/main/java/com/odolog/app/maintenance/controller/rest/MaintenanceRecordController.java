@@ -49,7 +49,7 @@ public class MaintenanceRecordController {
             @PathVariable Long vehicleId,
             @LoginUser Long requesterId,
             @ParameterObject
-            @PageableDefault(size = 20, sort = "serviceDate", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = {"serviceDate", "id"}, direction = Sort.Direction.DESC) Pageable pageable) {
 
         PageResponse<MaintenanceRecordResponse> records = PageResponse.from(
                 maintenanceRecordService.findByVehicle(requesterId, vehicleId, pageable)

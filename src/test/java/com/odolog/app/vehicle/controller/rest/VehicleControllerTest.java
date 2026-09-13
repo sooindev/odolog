@@ -16,6 +16,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mapping.PropertyPath;
+import org.springframework.data.mapping.PropertyReferenceException;
+import org.springframework.data.util.TypeInformation;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -178,5 +181,28 @@ class VehicleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"odometer\":50000}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("주행거리 갱신에서 odometer 를 빠뜨리면 400")
+    void updateOdometerMissingValue() throws Exception {
+        mockMvc.perform(patch("/api/vehicles/10/odometer")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("정렬할 수 없는 속성을 sort 로 보내면 500이 아니라 400")
+    void findMyVehiclesInvalidSort() throws Exception {
+        when(vehicleService.findMyVehicles(eq(1L), any(Pageable.class)))
+                .thenThrow(new PropertyReferenceException("nonexistent",
+                        TypeInformation.of(Vehicle.class), List.<PropertyPath>of()));
+
+        mockMvc.perform(get("/api/vehicles")
+                        .param("sort", "nonexistent")
+                        .session(loginSessionOf(1L)))
+                .andExpect(status().isBadRequest());
     }
 }

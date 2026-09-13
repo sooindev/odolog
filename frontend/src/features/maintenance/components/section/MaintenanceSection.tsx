@@ -52,7 +52,21 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
     try {
       await deleteRecord(vehicleId, recordId)
-      refresh()
+
+      // 지운 것이 이 페이지의 마지막 한 건이었으면 페이지를 한 장 물러난다.
+      // 그대로 두면 서버가 빈 페이지를 주는데, totalElements 가 0 이 아니라서
+      // "아직 등록된 정비 이력이 없습니다" 도 안 뜨고, Pagination 은 totalPages <= 1 이면
+      // 사라지므로 돌아갈 버튼조차 없는 막다른 화면이 된다.
+      // page 를 바꾸면 load 가 새로 만들어져 useAsyncData 가 알아서 다시 조회한다
+      // — 여기서 reload() 까지 부르면 요청이 두 번 나간다.
+      if (data !== null && data.items.length === 1 && page > 0) {
+        setEditing('closed')
+        setActionError(null)
+        setPage((current) => current - 1)
+        onChanged()
+      } else {
+        refresh()
+      }
     } catch (caught) {
       setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
     } finally {

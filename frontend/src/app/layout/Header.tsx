@@ -23,6 +23,8 @@ export function Header() {
   // 로그인 화면에서 "로그인" 버튼을 또 보여주면 지금 있는 곳을 가리키는 버튼이 된다.
   const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'
 
+  // logout() 은 서버 요청이 실패해도 던지지 않는다(AuthProvider 가 삼키고 상태만 비운다).
+  // 그래서 여기서는 navigate 가 항상 실행된다 — 여기에 try/catch 를 또 두지 않는 이유다.
   async function handleLogout() {
     await logout()
     navigate('/login', { replace: true })

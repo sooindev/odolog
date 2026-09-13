@@ -4,13 +4,17 @@ import com.odolog.app.user.domain.entity.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -57,5 +61,22 @@ class UserRepositoryTest {
 
         assertThat(userRepository.existsByEmail("c@odolog.com")).isTrue();
         assertThat(userRepository.existsByEmail("none@odolog.com")).isFalse();
+    }
+
+    @Test
+    @DisplayName("같은 이메일을 두 번 저장하면 유니크 제약이 막는다")
+    void duplicateEmailHitsUniqueConstraint() {
+        userRepository.saveAndFlush(new User("dup@odolog.com", "encoded-pw", "차주A", null));
+
+        // GlobalExceptionHandler 가 이 예외의 "모양"에 기대어 409 를 판정한다.
+        // (DataIntegrityViolationException 의 cause 가 Hibernate ConstraintViolationException 이고,
+        //  그 kind 가 UNIQUE) 그래서 그 가정을 여기서 못박아 둔다.
+        assertThatThrownBy(() -> userRepository.saveAndFlush(
+                new User("dup@odolog.com", "encoded-pw", "차주B", null)))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .cause()
+                .isInstanceOf(ConstraintViolationException.class)
+                .extracting(cause -> ((ConstraintViolationException) cause).getKind())
+                .isEqualTo(ConstraintViolationException.ConstraintKind.UNIQUE);
     }
 }

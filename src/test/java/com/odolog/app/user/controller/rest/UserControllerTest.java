@@ -9,20 +9,25 @@ import com.odolog.app.user.dto.request.signup.SignUpRequest;
 import com.odolog.app.user.service.application.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.sql.SQLException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -135,5 +140,37 @@ class UserControllerTest {
         mockMvc.perform(get("/api/users/me").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nickname").value("닉네임"));
+    }
+
+    @Test
+    @DisplayName("닉네임을 빈 문자열로 수정하려 하면 400")
+    void updateProfileBlankNickname() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+
+        mockMvc.perform(patch("/api/users/me")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("중복 검사를 통과한 뒤 DB 유니크 제약에 막히면 500이 아니라 409")
+    void signUpLosesRaceToUniqueConstraint() throws Exception {
+        // existsByEmail 검사와 save 사이에 다른 요청이 먼저 저장한 상황.
+        ConstraintViolationException unique = new ConstraintViolationException(
+                "Duplicate entry", new SQLException("duplicate"),
+                ConstraintViolationException.ConstraintKind.UNIQUE, "uk_users_email");
+
+        when(userService.signUp(any()))
+                .thenThrow(new DataIntegrityViolationException("could not execute statement", unique));
+
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password123", "닉네임", null);
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict());
     }
 }

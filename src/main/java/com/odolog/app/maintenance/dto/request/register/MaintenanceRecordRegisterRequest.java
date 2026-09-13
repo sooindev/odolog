@@ -15,11 +15,13 @@ public record MaintenanceRecordRegisterRequest(
         @Size(max = 255)
         String description,
 
+        @NotNull
         @PositiveOrZero
-        int cost,
+        Integer cost,
 
+        @NotNull
         @PositiveOrZero
-        int serviceOdometer,
+        Integer serviceOdometer,
 
         @NotNull
         LocalDate serviceDate

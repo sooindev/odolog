@@ -37,7 +37,11 @@ export function SignUpPage() {
     setPending(true)
 
     try {
-      await signUp(form)
+      // 전화번호는 선택 입력이다. 폼 초기값 '' 를 그대로 보내면 "없음" 이 빈 문자열로
+      // 저장되어, nullable 컬럼인데 null 이 영영 생기지 않는다.
+      // trim 까지 하는 이유: 공백만 친 것도 안 적은 것으로 본다.
+      const phone = form.phone?.trim()
+      await signUp({ ...form, phone: phone === '' ? undefined : phone })
       // 가입만으로는 세션이 만들어지지 않는다. 바로 로그인까지 해 주면 사용자가 두 번 입력하지 않는다.
       await login({ email: form.email, password: form.password })
       navigate('/vehicles', { replace: true })

@@ -32,6 +32,9 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
   const total = monthly.reduce((acc, entry) => acc + entry.cost, 0)
   const peak = Math.max(...monthly.map((entry) => entry.cost))
   const max = niceMax(peak)
+  // 값을 직접 적는 막대는 하나뿐이다. 비용이 같은 달이 둘이면 '가장 높은 것 하나만'
+  // 이라는 규칙이 깨지므로, 최고값을 가진 첫 번째 달의 위치를 정해 그 칸에만 라벨을 준다.
+  const peakIndex = peak > 0 ? monthly.findIndex((entry) => entry.cost === peak) : -1
 
   return (
     <Card>
@@ -80,7 +83,7 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
                   index={index}
                   total={monthly.length}
                   max={max}
-                  isPeak={entry.cost === peak && peak > 0}
+                  isPeak={index === peakIndex}
                 />
               ))}
             </div>

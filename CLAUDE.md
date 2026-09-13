@@ -400,7 +400,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                               409/401/403/404/400 매핑. 전용 예외만
                                               잡는다 — IllegalArgumentException 같은
                                               JDK 범용 예외는 매핑하지 않음(규칙 12).
-                                              IllegalStateException은 미처리 → 500
+                                              IllegalStateException은 미처리 → 500.
+                                              PropertyReferenceException(잘못된 sort) → 400.
+                                              DataIntegrityViolationException 은 cause 의
+                                              kind 가 UNIQUE 일 때만 409, 아니면 다시 던져 500
 
 **같은 패키지였던 것이 갈라지면 import 가 새로 필요해진다.** 세분화하면서 실제로 컴파일이
 세 곳에서 깨졌다: `LoginUserArgumentResolver`(→`LoginUser`,`SessionConst`),
@@ -415,12 +418,13 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 56개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 62개.
 
     src/test/java/com/odolog/app/
     ├── user/
     │   ├── repository/jpa/UserRepositoryTest.java      @DataJpaTest — save/findByEmail/
-    │   │                                              existsByEmail
+    │   │                                              existsByEmail + 이메일 유니크 위반 시
+    │   │                                              올라오는 예외의 "모양" 고정
     │   ├── service/application/UserServiceTest.java    Mockito — 중복·암호화·로그인·부분수정
     │   └── controller/rest/UserControllerTest.java     @WebMvcTest — 201/409, 세션 저장, /me
     ├── vehicle/
@@ -635,6 +639,45 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
   `'odolog-theme'` 문자열이 HTML 과 `ThemeContext.ts` 양쪽에 중복인 것과 같은 종류의 함정이다.
 
 ## 진행 상황 (완료)
+
+- [x] 전체 점검에서 찾은 결함 12건 수정 (2026-09-13)
+      → README 의 "남은 작업" 1~4번을 전부 비웠다. 항목별 표는 `README.md` 에 있고,
+        여기에는 **왜 그렇게 고쳤는지**만 남긴다.
+      → **요청 DTO 에서 `int` 는 "안 보냄"을 표현하지 못한다.** 필드가 없으면 Jackson 이
+        조용히 0 을 채우고 `@PositiveOrZero` 가 그 0 을 통과시킨다. 정비 이력 등록의
+        `cost`/`serviceOdometer`, 주행거리 갱신의 `odometer` 세 곳이 그랬다 →
+        `@NotNull Integer`. **엔티티는 그대로 `int` 가 맞다** — 규칙 8의 "없음이 존재하는 값만
+        래퍼"는 저장된 값에 대한 이야기이고, 요청 DTO 는 "클라이언트가 보낸 JSON"이라
+        "필드를 안 보냄"이라는 상태가 실제로 존재한다. `MaintenanceRecordUpdateRequest` 는
+        이미 같은 이유로 `Integer` 였는데 등록 DTO 에만 그 논리가 빠져 있었다.
+      → **부분 수정 DTO 에 `@NotBlank` 를 쓰면 안 된다.** null 까지 막아서 "보낸 필드만 변경"이
+        깨진다. `@Size(min = 1)` + `@Pattern(".*\S.*")` 은 둘 다 null 을 통과시키므로
+        부분 수정과 짝이 맞는다.
+      → **3-2 는 추측으로 못 고쳤다.** JPA 를 거치면 `DuplicateKeyException` 이 아니라
+        `DataIntegrityViolationException` 이 올라온다(탐색용 테스트로 직접 던져 보고 확인).
+        그런데 이 예외는 NOT NULL 위반 같은 우리 쪽 버그도 함께 타고 오므로 전부 409 로
+        감싸면 500 이어야 할 것이 조용히 4xx 로 나간다 — cause 가 Hibernate
+        `ConstraintViolationException` 이고 `kind == UNIQUE` 일 때만 409, 아니면 다시 던져
+        500 으로 보낸다. 그 "예외의 모양"에 기대는 코드라 `UserRepositoryTest` 에
+        가정을 못박는 테스트를 뒀다.
+      → **`sort` 동점 기준은 정비 이력에만 붙였다**(`{"serviceDate", "id"}`).
+        차량 목록의 `createdAt` 은 `datetime(6)` 이라 같은 마이크로초에 두 대를 등록해야
+        동점이 되지만, 정비 이력의 `serviceDate` 는 날짜라 **같은 날 두 건이면 일상적으로**
+        동점이다. 같은 종류의 위험이라도 발생 조건이 다르면 대응도 달라진다.
+      → **로그아웃 실패는 `AuthProvider` 가 책임진다.** "서버 요청이 실패해도 클라이언트
+        상태는 비운다"는 로그아웃이라는 동작의 정의이지 헤더라는 화면의 사정이 아니다.
+        `Header` 에 try/catch 를 넣으면 로그아웃 버튼이 하나 더 생기는 날 같은 코드를 또 쓴다.
+      → **`@Column(length = 20)` 이 거짓말이었다.** Hibernate 6 이 MariaDB 에서
+        `@Enumerated(STRING)` 을 varchar 가 아니라 네이티브
+        `enum('BATTERY','BRAKE_PAD','ENGINE_OIL','OTHER','TIRE')` 로 만든다(테스트 로그의
+        실제 DDL 로 확인). `@JdbcTypeCode(SqlTypes.VARCHAR)` 로 varchar 를 강제할 수도 있지만
+        잘 도는 컬럼 타입을 바꾸느라 운영 DB 에 `alter table` 이 필요해지므로 숫자만 지웠다.
+      → **정비 이력 삭제 후 페이지 이동은 `page` 만 바꾼다.** `useAsyncData` 가 `load` 의
+        정체성 변화로 재조회하므로 `reload()` 를 같이 부르면 요청이 두 번 나간다.
+      → 테스트 56 → 62개. 새 테스트 6개는 **고치기 전 코드에 돌려 실제로 실패하는 것까지
+        확인**했다(연식·전화번호 때와 같은 절차).
+      → 검증: `./gradlew test` 62개 통과, 프론트 `tsc -b` / `oxlint`(기존 shadcn 경고 1건) /
+        `vite build` 통과. **브라우저 눈 확인은 여전히 안 했다.**
 
 - [x] 디렉토리 전면 세분화 — 계층 아래 "성격" 한 겹 추가 (2026-09-13)
       → **사용자 요청으로 기준 자체를 바꿨다.** 전에는 "폴더는 파일이 2개가 될 때 만든다"였고,

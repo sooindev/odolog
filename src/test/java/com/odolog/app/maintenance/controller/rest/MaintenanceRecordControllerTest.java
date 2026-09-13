@@ -132,6 +132,16 @@ class MaintenanceRecordControllerTest {
     }
 
     @Test
+    @DisplayName("정비 이력 등록에서 cost/serviceOdometer 를 빠뜨리면 400")
+    void registerMissingRequiredNumbers() throws Exception {
+        mockMvc.perform(post("/api/vehicles/10/maintenance-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"ENGINE_OIL\",\"serviceDate\":\"2026-09-01\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("정비 이력 삭제 성공 시 204")
     void deleteSuccess() throws Exception {
         mockMvc.perform(delete("/api/vehicles/10/maintenance-records/100")

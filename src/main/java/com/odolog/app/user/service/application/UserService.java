@@ -59,7 +59,11 @@ public class UserService {
             user.changeNickname(request.nickname());
         }
         if (request.phone() != null) {
-            user.changePhone(request.phone());
+            // 부분 수정에서 null 은 "안 보냄" 이라 "지움" 을 표현할 수 없다. 그래서 빈 문자열이
+            // 그 자리를 맡는다 — 빈 문자열로 저장하면 nullable 컬럼에 null 이 영영 안 생기고,
+            // "전화번호 없음" 이 두 가지 모양(null 과 "")으로 갈린다.
+            String phone = request.phone().isBlank() ? null : request.phone();
+            user.changePhone(phone);
         }
 
         return user;
