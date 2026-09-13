@@ -1,12 +1,12 @@
 import { CalendarClock, Gauge, Wrench } from 'lucide-react'
 import { Link } from 'react-router'
 
-import { useAuth } from '@/features/auth/context/AuthContext'
 import { Button } from '@/shared/ui/button'
 import { GaugeMark } from '@/shared/ui/mark'
 
 /*
- * 로그인 전에 처음 만나는 화면.
+ * 로그인 전에 처음 만나는 화면. **비로그인 상태에서만 렌더된다** — 갈림은 HomePage 가 한다.
+ * 그래서 여기엔 로그인 여부를 따지는 코드가 없다.
  *
  * `app/` 에 두는 이유: API 호출도, 자기만의 상태도 없다. shared/ui 조각들과 라우트 링크를
  * 엮어 놓은 순수한 조립이라 features/ 안에 들어갈 알맹이가 없다.
@@ -16,19 +16,17 @@ import { GaugeMark } from '@/shared/ui/mark'
  * 화면에 들어온 순간 바로 들통난다.
  */
 export function LandingPage() {
-  const { user } = useAuth()
-
   return (
     <div className="flex flex-col gap-28 sm:gap-36">
-      <Hero loggedIn={user !== null} />
+      <Hero />
       <Highlights />
       <Preview />
-      <Closing loggedIn={user !== null} />
+      <Closing />
     </div>
   )
 }
 
-function Hero({ loggedIn }: { loggedIn: boolean }) {
+function Hero() {
   return (
     // 가운데 정렬은 랜딩에서만 쓴다. 앱 화면은 전부 왼쪽 정렬인데, 이 대비 자체가
     // "여기는 아직 앱 바깥"이라는 신호가 된다.
@@ -48,21 +46,12 @@ function Hero({ loggedIn }: { loggedIn: boolean }) {
       </p>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-        {loggedIn ? (
-          // 이미 로그인한 사람에게 "시작하기"를 보여주면 이미 한 일을 또 하라는 말이 된다.
-          <Button size="lg" render={<Link to="/vehicles" />}>
-            내 차량 보기
-          </Button>
-        ) : (
-          <>
-            <Button size="lg" render={<Link to="/signup" />}>
-              시작하기
-            </Button>
-            <Button size="lg" variant="ghost" render={<Link to="/login" />}>
-              로그인
-            </Button>
-          </>
-        )}
+        <Button size="lg" render={<Link to="/signup" />}>
+          시작하기
+        </Button>
+        <Button size="lg" variant="ghost" render={<Link to="/login" />}>
+          로그인
+        </Button>
       </div>
     </section>
   )
@@ -160,11 +149,7 @@ function Preview() {
   )
 }
 
-function Closing({ loggedIn }: { loggedIn: boolean }) {
-  if (loggedIn) {
-    return null
-  }
-
+function Closing() {
   return (
     <section className="reveal flex flex-col items-center gap-7 border-t border-border pt-20 text-center">
       <h2 className="max-w-md text-[1.75rem] leading-tight font-semibold tracking-[-0.03em] text-strong">

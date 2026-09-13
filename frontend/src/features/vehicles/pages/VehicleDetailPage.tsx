@@ -95,7 +95,9 @@ export function VehicleDetailPage() {
             숫자만 크게 두고 단위(km)는 작게 붙여 "값"과 "단위"의 위계를 나눈다.
           */}
           <div className="flex items-baseline gap-2.5">
-            <span className="text-[3.25rem] leading-none font-semibold tracking-[-0.045em] tabular-nums text-strong">
+            {/* 큰 숫자에는 tabular-nums 를 쓰지 않는다 — 자릿수를 세로로 맞출 상대가 없는데
+                모든 글자를 0 너비로 벌려 놓으면 사이가 헐거워 보인다. */}
+            <span className="text-[3.25rem] leading-none font-semibold tracking-[-0.045em] text-strong">
               {formatNumber(vehicle.odometer)}
             </span>
             <span className="text-base text-muted-foreground">km</span>

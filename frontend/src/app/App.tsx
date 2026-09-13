@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 
 import { AuthLayout } from '@/app/AuthLayout'
-import { LandingPage } from '@/app/LandingPage'
+import { HomePage } from '@/app/HomePage'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
 import { Header } from '@/app/Header'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
@@ -37,8 +37,9 @@ function App() {
         */}
         <div key={location.pathname} className="animate-rise">
           <Routes>
-            {/* 로그인 전에 처음 만나는 화면. 로그인해도 막지 않는다 — 다시 볼 수 있어야 한다. */}
-            <Route path="/" element={<LandingPage />} />
+            {/* 한 주소가 세 얼굴을 갖는다: 비로그인 → 소개, 로그인+0대 → 등록 권유,
+                로그인+차량 있음 → 통계. 갈림은 HomePage 안에 있다. */}
+            <Route path="/" element={<HomePage />} />
 
             {/* path 없는 라우트 = 자식들을 감싸는 울타리. 아래 ProtectedRoute와 같은 구조다. */}
             <Route element={<AuthLayout />}>

@@ -78,6 +78,8 @@
   --animate-rise: rise 0.45s var(--ease-out-apple) both;
   --animate-breathe: breathe 1.6s ease-in-out infinite;
   --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-grow-up: grow-up 0.7s var(--ease-out-apple) both;
+  --animate-grow-right: grow-right 0.7s var(--ease-out-apple) both;
 }
 
 /* ---------------------------------------------------------------------------
@@ -214,6 +216,32 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/*
+ * 막대가 바닥에서 자라 오르는 연출.
+ *
+ * transform: scaleY() 를 쓰지 않는다. 막대 위쪽 모서리(4px 라운드)까지 같이 눌려서
+ * 자라는 동안 모양이 찌그러진다. clip-path 로 아래에서부터 '드러내면' 실제 모양은
+ * 처음부터 끝까지 그대로다.
+ */
+@keyframes grow-up {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* 가로 막대용. 왼쪽(기준선)에서 오른쪽으로 드러난다. */
+@keyframes grow-right {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
   }
 }
 
