@@ -50,11 +50,9 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
           큰 글씨에서는 1 같은 좁은 글자 주변이 휑하게 벌어져 보인다.
           자릿수를 세로로 맞춰야 하는 '표의 열'에서만 쓸 것.
         */}
-        <div className="flex items-baseline gap-2">
-          <span className="text-[3rem] leading-none font-semibold tracking-[-0.045em] text-strong">
-            {formatNumber(total)}
-          </span>
-          <span className="text-base text-muted-foreground">원</span>
+        <div className="flex items-baseline gap-3">
+          <span className="text-display text-strong">{formatNumber(total)}</span>
+          <span className="text-eyebrow text-muted-foreground uppercase">원</span>
         </div>
 
         <figure className="flex flex-col gap-2">
@@ -169,11 +167,11 @@ function MonthColumn({
     // 칸 전체가 판정 영역이라 막대보다 훨씬 넓다 — 24px 막대를 정확히 겨냥할 필요가 없다.
     <div
       tabIndex={0}
-      className="group relative flex h-full flex-1 items-end justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative flex h-full flex-1 items-end justify-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {entry.cost > 0 && (
         <div
-          className="min-h-[3px] w-full max-w-6 animate-grow-up rounded-t-[4px] bg-primary transition-opacity duration-200 ease-apple group-hover:opacity-80 group-focus-visible:opacity-80"
+          className="min-h-[3px] w-full max-w-5 animate-grow-up bg-primary transition-opacity duration-200 ease-apple group-hover:opacity-80 group-focus-visible:opacity-80"
           // 칸마다 조금씩 늦게 시작시켜 왼쪽에서 오른쪽으로 훑고 지나가게 한다.
           style={{ height: `${percent}%`, animationDelay: `${index * 45}ms` }}
         />
@@ -191,7 +189,7 @@ function MonthColumn({
 
       {/* 말풍선은 값이 먼저, 이름이 나중. 읽는 사람은 이미 어느 달인지 알고 숫자를 보러 온다. */}
       <div
-        className={`pointer-events-none absolute bottom-full z-20 mb-2 hidden rounded-lg border border-border bg-background px-2.5 py-1.5 whitespace-nowrap group-hover:block group-focus-visible:block ${align}`}
+        className={`pointer-events-none absolute bottom-full z-20 mb-2 hidden border border-border bg-background px-2.5 py-1.5 whitespace-nowrap group-hover:block group-focus-visible:block ${align}`}
       >
         <p className="text-[0.8125rem] font-medium tabular-nums text-strong">
           {formatWon(entry.cost)}
@@ -243,10 +241,10 @@ export function TypeCostChart({ byType }: { byType: TypeCost[] }) {
                 </div>
 
                 {/* 트랙(옅은 바탕)을 깔아야 "얼마나 찼는지"가 끝 위치만으로도 읽힌다. */}
-                <div className="h-2 w-full overflow-hidden rounded-[4px] bg-sunken">
+                <div className="h-2 w-full overflow-hidden bg-sunken">
                   {/* 오른쪽(데이터가 끝나는 쪽)만 둥글다. 왼쪽은 기준선이라 각지게 둔다. */}
                   <div
-                    className="h-full animate-grow-right rounded-r-[4px] bg-primary"
+                    className="h-full animate-grow-right bg-primary"
                     style={{
                       width: `${(entry.cost / max) * 100}%`,
                       animationDelay: `${index * 70}ms`,

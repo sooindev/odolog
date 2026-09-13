@@ -16,7 +16,15 @@ import { Link } from 'react-router'
  * - **back** = 목록에서 파고 들어간 화면에만. 차량 등록·차량 상세 두 곳이다.
  * - **action** = 이 화면에서 새로 만드는 동작 하나. 목록의 "차량 등록"이 유일하다.
  *
- * children 은 이 컴포넌트의 flex 자식이 되어 자동으로 같은 간격(gap-10)으로 벌어진다.
+ * **머리말 아래의 1px 괘선이 이 레이아웃의 기준선이다.** 제목 덩어리와 본문을 여백만으로
+ * 떼어 놓으면 둘의 경계가 흐릿해서 화면이 "위에서 아래로 흐르는 덩어리"가 된다.
+ * 선을 하나 그으면 그 위는 표제, 아래는 내용이라는 것이 한눈에 잡힌다 — 신문·연감에서
+ * 제목 아래 괘선을 긋는 것과 같은 이유다.
+ *
+ * 제목은 text-title(32→52px, clamp) 하나로 끝낸다. sm:text-[2rem] 같은 계단을 쓰면
+ * 그 분기점을 빠뜨린 화면만 혼자 작아진다 — 실제로 차량 상세가 그렇게 어긋났었다.
+ *
+ * children 은 이 컴포넌트의 flex 자식이 되어 자동으로 같은 간격으로 벌어진다.
  * 더 촘촘히 붙여야 하는 덩어리는 화면 쪽에서 한 번 더 묶는다(목록의 격자+페이지 이동처럼).
  */
 export function Page({
@@ -35,8 +43,8 @@ export function Page({
   children?: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-10">
-      <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-12 sm:gap-14">
+      <div className="flex flex-col gap-6">
         {back !== undefined && (
           <Link
             to={back.to}
@@ -47,30 +55,33 @@ export function Page({
           </Link>
         )}
 
-        <header className="flex items-end justify-between gap-6">
-          <div className="flex flex-col gap-2">
-            {/*
-              eyebrow 는 제목 위의 작은 분류 한 줄이다. 자간을 아주 넓게(0.16em) 벌려
-              제목의 좁은 자간(-0.03em)과 대비시키는 게 이 조합의 핵심 — 두 줄이 크기가 아니라
-              '질감'으로 구분된다.
-            */}
-            {eyebrow !== undefined && (
-              <p className="text-[0.6875rem] font-medium tracking-[0.16em] text-muted-foreground uppercase">
-                {eyebrow}
-              </p>
-            )}
+        {/*
+          eyebrow 는 제목 위의 작은 분류 한 줄이다. 자간을 극단적으로(0.2em) 벌려
+          제목의 좁은 자간(-0.04em)과 대비시키는 게 이 조합의 핵심 — 두 줄이 크기가 아니라
+          '질감'으로 구분된다. 글꼴이 하나뿐인 화면에서 위계를 만드는 가장 강한 수단이다.
+        */}
+        <header className="flex flex-col gap-7">
+          <div className="flex items-end justify-between gap-8">
+            <div className="flex min-w-0 flex-col gap-4">
+              {eyebrow !== undefined && (
+                <p className="text-eyebrow text-muted-foreground uppercase">{eyebrow}</p>
+              )}
 
-            <h1 className="text-[1.75rem] leading-[1.15] font-semibold tracking-[-0.03em] text-strong sm:text-[2rem]">
-              {title}
-            </h1>
+              {/* text-balance: 제목이 두 줄로 넘어갈 때 둘째 줄에 한 단어만 남는 것을 막는다. */}
+              <h1 className="text-title text-balance text-strong">{title}</h1>
+            </div>
 
-            {description !== undefined && (
-              <p className="text-sm text-muted-foreground">{description}</p>
-            )}
+            {action !== undefined && <div className="shrink-0 pb-2">{action}</div>}
           </div>
 
-          {action !== undefined && <div className="shrink-0 pb-1.5">{action}</div>}
+          {/* 설명은 제목 폭을 따라가지 않고 읽기 좋은 폭(46ch)에서 끊는다. */}
+          {description !== undefined && (
+            <p className="max-w-[46ch] text-lede text-muted-foreground">{description}</p>
+          )}
         </header>
+
+        {/* 표제와 내용을 가르는 기준선. 이 화면의 모든 괘선이 이것과 같은 두께·색이다. */}
+        <hr className="border-t border-border" />
       </div>
 
       {children}
@@ -85,5 +96,5 @@ export function Page({
  * 취소 버튼을 채워진 버튼으로 두지 않는 이유는 둘 중 무엇이 기본 동작인지 흐려지기 때문.
  */
 export function FormActions({ children }: { children: ReactNode }) {
-  return <div className="mt-2 flex gap-2">{children}</div>
+  return <div className="mt-4 flex gap-2">{children}</div>
 }

@@ -12,4 +12,4 @@
  * 입력창에 포커스가 가면 화면을 자동으로 확대해 버린다. md 이상에서만 15px 로 줄인다.
  */
 export const controlClassName =
-  "h-11 w-full min-w-0 rounded-xl border border-input bg-fill px-3.5 text-base text-strong transition-all duration-200 ease-apple outline-none placeholder:text-faint focus-visible:border-ring/60 focus-visible:bg-fill-hover focus-visible:ring-[3px] focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:bg-sunken disabled:text-muted-foreground aria-invalid:border-destructive/50 aria-invalid:ring-[3px] aria-invalid:ring-destructive/15 md:text-[0.9375rem]"
+  "h-11 w-full min-w-0 border border-input bg-fill px-3.5 text-base text-strong transition-all duration-200 ease-apple outline-none placeholder:text-faint focus-visible:border-ring/60 focus-visible:bg-fill-hover focus-visible:ring-[3px] focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:bg-sunken disabled:text-muted-foreground aria-invalid:border-destructive/50 aria-invalid:ring-[3px] aria-invalid:ring-destructive/15 md:text-[0.9375rem]"

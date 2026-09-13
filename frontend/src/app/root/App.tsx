@@ -29,7 +29,7 @@ function App() {
         pb-32: 아래에 넉넉한 공백을 둔다. 마지막 요소가 화면 바닥에 붙으면 "여기서 끝"이
         아니라 "잘렸다"로 읽힌다.
       */}
-      <main className="mx-auto w-full max-w-[76rem] px-6 pt-14 pb-32 sm:px-8 sm:pt-16 lg:px-10">
+      <main className="mx-auto w-full max-w-[76rem] px-6 pt-16 pb-40 sm:px-8 sm:pt-20 lg:px-10">
         {/*
           key에 현재 경로를 준다. 경로가 바뀌면 React가 이 div를 버리고 새로 만들기 때문에
           animate-rise(6px 아래에서 떠오르며 나타나기)가 페이지를 옮길 때마다 다시 실행된다.

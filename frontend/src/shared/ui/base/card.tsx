@@ -2,13 +2,16 @@ import * as React from "react"
 import { cn } from "cn"
 
 /*
- * 카드는 "검은 판 위에 올린 유리"다. 불투명한 회색 배경(#1C1C1E)을 칠하는 대신
- * 흰색 3% + backdrop-blur(20px) 로 만든다. 뒤에 깔린 상단 그라데이션이 유리를
- * 통과해 비치기 때문에, 화면 위쪽 카드가 아래쪽 카드보다 아주 미세하게 밝아진다.
- * 불투명하게 칠하면 이 깊이감이 사라진다.
+ * 카드는 평면이다. 전에는 흰색 3% + backdrop-blur(20px) 짜리 '유리'였는데 걷어냈다.
+ * 흐림 효과는 2020년 이후 템플릿 UI 의 서명 같은 것이라 어느 서비스에나 있고,
+ * 무엇보다 **뒤가 비치는 면은 그 위에 놓인 글자의 배경을 불확실하게 만든다.**
  *
- * 그림자는 쓰지 않는다. 검정 위의 그림자는 보이지도 않으면서 가장자리만 탁하게 만든다.
- * 높이 차이는 오직 hairline 경계선(흰색 8%)으로만 표현한다.
+ * 지금 카드가 하는 일은 두 가지뿐이다: 아주 옅은 면(bg-card)과 1px 괘선.
+ * 그림자는 쓰지 않는다. 어두운 바탕의 그림자는 보이지도 않으면서 가장자리만 탁하게 만든다.
+ * 높이 차이는 오직 괘선과 배경 농도로만 표현한다.
+ *
+ * **카드를 남발하지 않는 것이 이 디자인의 핵심이다.** 목록처럼 같은 모양이 반복되는 곳은
+ * 카드를 하나씩 씌우지 않고 행을 괘선으로 나눈다 — 상자가 줄면 정보가 선으로 정렬된다.
  */
 function Card({
   className,
@@ -20,7 +23,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "group/card flex flex-col gap-(--card-spacing) rounded-2xl border border-border bg-card py-(--card-spacing) text-sm text-card-foreground backdrop-blur-[20px] [--card-spacing:--spacing(6)] has-data-[slot=card-footer]:pb-0 data-[size=sm]:[--card-spacing:--spacing(5)]",
+        "group/card flex flex-col gap-(--card-spacing) border border-border bg-card py-(--card-spacing) text-sm text-card-foreground [--card-spacing:--spacing(7)] has-data-[slot=card-footer]:pb-0 data-[size=sm]:[--card-spacing:--spacing(6)]",
         className
       )}
       {...props}
@@ -46,7 +49,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "font-heading text-[1.0625rem] leading-snug font-semibold tracking-[-0.02em] text-strong",
+        "font-heading text-section text-strong",
         className
       )}
       {...props}

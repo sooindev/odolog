@@ -85,7 +85,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
         )}
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-5">
+      <CardContent className="flex flex-col gap-6">
         {editing !== 'closed' && (
           <MaintenanceForm
             vehicleId={vehicleId}
@@ -113,7 +113,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
               // 버튼을 완전히 숨기지는 않는다 — 터치 기기에는 호버가 없어서 영영 못 찾게 된다.
               <li
                 key={record.id}
-                className="group flex items-start gap-4 py-4 first:pt-0 last:pb-0"
+                className="group flex items-start gap-6 py-5 first:pt-0 last:pb-0"
               >
                 {/* flex-1 + min-w-0: 남는 폭을 전부 가져가되, 긴 메모가 오른쪽 숫자 열을
                     밀어내지는 못하게 한다. */}

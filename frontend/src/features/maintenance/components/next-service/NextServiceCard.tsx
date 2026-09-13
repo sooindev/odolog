@@ -62,9 +62,9 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
               */
               <li
                 key={result.type}
-                className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-1 py-3.5 first:pt-0 last:pb-0 sm:grid-cols-[7.5rem_minmax(0,1fr)_auto]"
+                className="grid grid-cols-[1fr_auto] items-baseline gap-x-6 gap-y-1.5 py-5 first:pt-0 last:pb-0 sm:grid-cols-[8rem_minmax(0,1fr)_auto]"
               >
-                <span className="text-[0.9375rem] tracking-[-0.01em] text-strong">
+                <span className="text-[0.9375rem] font-medium tracking-[-0.015em] text-strong">
                   {SERVICE_TYPE_LABELS[result.type]}
                 </span>
 

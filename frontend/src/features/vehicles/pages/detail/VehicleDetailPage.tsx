@@ -82,25 +82,28 @@ export function VehicleDetailPage() {
         minmax(0,1fr): 오른쪽 열이 내용보다 작아질 수 있게 한다. 이게 없으면 긴 메모 한 줄이
         열을 밀어내 격자 전체가 넘친다(grid 자식의 기본 min-width는 auto라서).
       */}
-      <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-14">
+      <div className="grid gap-12 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
         {/*
           lg:sticky + self-start: 오른쪽 이력을 길게 스크롤해도 주행거리가 따라온다.
           self-start 가 없으면 격자 칸이 오른쪽 높이만큼 늘어나 sticky 가 걸리지 않는다.
           top-24 = 헤더 높이(64px) + 32px 숨통.
         */}
-        <div className="flex flex-col gap-8 lg:sticky lg:top-24 lg:self-start">
+        <div className="flex flex-col gap-10 lg:sticky lg:top-28 lg:self-start">
           {/*
             주행거리를 표(dl) 한 줄이 아니라 이 열의 주인공으로 올렸다.
             이 앱에서 사용자가 가장 자주 확인하는 숫자 하나이고, 앱 이름도 여기서 왔다.
             숫자만 크게 두고 단위(km)는 작게 붙여 "값"과 "단위"의 위계를 나눈다.
           */}
-          <div className="flex items-baseline gap-2.5">
+          <div className="flex flex-col gap-4 border-b border-border pb-8">
+            <p className="text-eyebrow text-muted-foreground uppercase">Odometer</p>
             {/* 큰 숫자에는 tabular-nums 를 쓰지 않는다 — 자릿수를 세로로 맞출 상대가 없는데
-                모든 글자를 0 너비로 벌려 놓으면 사이가 헐거워 보인다. */}
-            <span className="text-[3.25rem] leading-none font-semibold tracking-[-0.045em] text-strong">
+                모든 글자를 0 너비로 벌려 놓으면 사이가 헐거워 보인다.
+                굵기는 300이다. 크기가 이미 강조를 다 하고 있어서 굵기까지 올리면
+                숫자가 둔해지고, 얇게 두면 같은 크기라도 훨씬 정밀해 보인다. */}
+            <p className="flex items-baseline gap-3 text-display text-strong">
               {formatNumber(vehicle.odometer)}
-            </span>
-            <span className="text-base text-muted-foreground">km</span>
+              <span className="text-eyebrow text-muted-foreground uppercase">km</span>
+            </p>
           </div>
 
           <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
@@ -110,7 +113,7 @@ export function VehicleDetailPage() {
             글자만 빨갛게 두는 이유: 채운 빨강은 화면에서 가장 강한 요소가 되어,
             가장 하면 안 되는 일이 가장 먼저 눈에 들어온다.
           */}
-          <div className="flex flex-col gap-4 border-t border-border pt-6">
+          <div className="flex flex-col gap-4 border-t border-border pt-8">
             {actionError !== null && <ErrorText message={actionError} />}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -130,7 +133,7 @@ export function VehicleDetailPage() {
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-10">
           {/* key 가 바뀌면 React 가 이 컴포넌트를 버리고 새로 만든다 → 자동으로 다시 계산된다. */}
           <NextServiceCard key={maintenanceVersion} vehicleId={vehicle.id} />
 
@@ -157,14 +160,14 @@ function VehicleDetailSkeleton() {
         </div>
       </div>
 
-      <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-14">
+      <div className="grid gap-12 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
         <div className="flex flex-col gap-8">
           <Skeleton className="h-13 w-48" />
-          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-40" />
         </div>
         <div className="flex flex-col gap-6">
-          <Skeleton className="h-64 rounded-2xl" />
-          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-64" />
+          <Skeleton className="h-72" />
         </div>
       </div>
     </div>

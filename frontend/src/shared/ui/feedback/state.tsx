@@ -17,7 +17,7 @@ export function LoadingText({ className }: { className?: string }) {
       role="status"
       className={cn('flex items-center gap-2.5 text-sm text-muted-foreground', className)}
     >
-      <span className="size-1.5 animate-breathe rounded-full bg-current" aria-hidden="true" />
+      <span className="size-1.5 animate-breathe bg-current" aria-hidden="true" />
       <span>불러오는 중…</span>
     </div>
   )
@@ -33,7 +33,7 @@ export function ErrorText({ message, className }: { message: string; className?:
     <p
       role="alert"
       className={cn(
-        'rounded-xl border border-destructive/20 bg-destructive/[0.07] px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-destructive',
+        'border border-destructive/20 bg-destructive/[0.07] px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-destructive',
         className,
       )}
     >
@@ -48,7 +48,7 @@ export function NoticeText({ message, className }: { message: string; className?
     <p
       role="status"
       className={cn(
-        'rounded-xl border border-border bg-sunken px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-muted-foreground',
+        'border border-border bg-sunken px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-muted-foreground',
         className,
       )}
     >
@@ -67,7 +67,7 @@ export function Skeleton({ className }: { className?: string }) {
     <div
       aria-hidden="true"
       className={cn(
-        'animate-shimmer rounded-xl bg-wash bg-[linear-gradient(90deg,transparent,var(--shimmer),transparent)] bg-[length:200%_100%]',
+        'animate-shimmer bg-wash bg-[linear-gradient(90deg,transparent,var(--shimmer),transparent)] bg-[length:200%_100%]',
         className,
       )}
     />

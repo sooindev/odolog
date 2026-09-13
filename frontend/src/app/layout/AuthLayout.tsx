@@ -14,13 +14,15 @@ import { GaugeMark } from '@/shared/ui/brand/mark'
  */
 export function AuthLayout() {
   return (
-    <div className="grid items-center gap-12 lg:min-h-[30rem] lg:grid-cols-2 lg:gap-20">
-      <div className="hidden flex-col gap-9 lg:flex">
+    <div className="grid items-center gap-12 lg:min-h-[32rem] lg:grid-cols-2 lg:gap-16">
+      {/* 오른쪽 폼과 왼쪽 글 사이에 세로 괘선을 하나 세운다. 가로선이 지면을 나누듯
+          세로선은 두 단이 별개의 열이라는 것을 말해 준다 — 여백만으로는 그게 안 잡힌다. */}
+      <div className="hidden flex-col gap-10 lg:flex lg:border-r lg:border-border lg:pr-16">
         <GaugeMark className="size-9 text-strong" />
 
         {/* 문장을 직접 끊는다(<br/>). 줄바꿈을 브라우저에 맡기면 창 크기에 따라
             "다음은"에서 끊기는 등 리듬이 매번 달라진다. 큰 글씨일수록 티가 난다. */}
-        <h2 className="text-[2.25rem] leading-[1.12] font-semibold tracking-[-0.035em] text-strong">
+        <h2 className="text-[clamp(2rem,1.4rem+1.8vw,2.75rem)] leading-[1.06] font-semibold tracking-[-0.04em] text-strong">
           마지막 정비가 언제였는지,
           <br />
           다음은 언제인지.
@@ -38,7 +40,7 @@ export function AuthLayout() {
       </div>
 
       {/* 폼 자체는 넓은 화면에서도 22rem 을 넘기지 않는다. 입력창이 길어져서 좋을 일은 없다. */}
-      <div className="mx-auto w-full max-w-[22rem] lg:mx-0">
+      <div className="mx-auto w-full max-w-[23rem] lg:mx-0">
         <Outlet />
       </div>
     </div>

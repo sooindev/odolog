@@ -44,30 +44,33 @@ export function VehicleListPage() {
         </Button>
       }
     >
-      {/* 격자와 페이지 이동은 한 덩어리다. Page 기본 간격(gap-10)으로 벌리면 너무 멀어진다. */}
-      <div className="flex flex-col gap-6">
+      {/* 목록과 페이지 이동은 한 덩어리다. Page 기본 간격으로 벌리면 너무 멀어진다. */}
+      <div className="flex flex-col gap-10">
+        {/*
+          카드 격자가 아니라 **괘선으로 나눈 행**이다. 카드를 하나씩 씌우면 차량 수만큼
+          상자가 늘어나 화면이 상자 목록이 된다. 행으로 깔면 번호판은 번호판끼리,
+          주행거리는 주행거리끼리 세로로 정렬되어 **여러 대를 훑어 비교할 수 있다** —
+          목록에서 실제로 하는 일이 그것이다.
 
-      {/*
-        한 줄짜리 가로 행이 아니라 격자로 깐다. 넓은 화면에서 행은 오른쪽 60%가 통째로
-        비어 버리는데, 격자는 같은 공간에 차량을 3배로 담으면서 카드 하나의 폭은
-        오히려 적당해진다. lg에서 2열, xl에서 3열 — lg부터 3열로 가면 카드가 315px까지
-        좁아져 "현대 아반떼" 같은 짧은 이름도 줄바꿈된다.
-      */}
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          넓은 화면에서 행이 길어지는 문제는 폭이 아니라 정렬로 푼다. 왼쪽은 이름,
+          오른쪽은 수치로 밀어 두면 가운데 여백이 둘을 갈라 주는 홈이 된다.
+          (디자인 시스템 11번의 "700px 넘기지 않는다"는 **글이 담기는 열**에 대한 규칙이고,
+          이런 표 형태의 행은 그 예외다.)
+        */}
+        <ul className="border-t border-border">
           {data.items.map((vehicle) => (
-            <li key={vehicle.id}>
+            <li key={vehicle.id} className="border-b border-border">
               <Link
                 to={`/vehicles/${vehicle.id}`}
-                // h-full: 격자에서 카드 높이를 줄에 맞춰 늘린다. 없으면 메모가 긴 카드만 키가 커서
-                // 줄이 들쭉날쭉해진다.
-                // group: 이 링크에 마우스가 올라갔을 때 안쪽 화살표(group-hover)도 같이 반응시킨다.
-                className="group flex h-full flex-col justify-between gap-8 rounded-2xl border border-border bg-card p-6 backdrop-blur-[20px] transition-all duration-200 ease-apple hover:border-border-strong hover:bg-card-hover active:scale-[0.995]"
+                // group: 행 전체에 마우스가 올라갔을 때 안쪽 화살표도 같이 반응시킨다.
+                // 행 전체가 판정 영역이라 -mx/px 로 좌우에 여유를 준다.
+                className="group -mx-4 flex items-center gap-6 px-4 py-7 transition-colors duration-200 ease-apple hover:bg-wash sm:gap-10"
               >
-                <div className="flex flex-col gap-1.5">
-                  <p className="truncate text-[0.6875rem] font-medium tracking-[0.16em] text-muted-foreground uppercase">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <p className="truncate text-eyebrow text-muted-foreground uppercase">
                     {vehicle.plateNumber}
                   </p>
-                  <p className="truncate text-[1.0625rem] font-semibold tracking-[-0.02em] text-strong">
+                  <p className="truncate text-section text-strong">
                     {vehicle.manufacturer} {vehicle.modelName}
                   </p>
                   <p className="text-[0.8125rem] text-muted-foreground">
@@ -75,21 +78,19 @@ export function VehicleListPage() {
                   </p>
                 </div>
 
-                <div className="flex items-end justify-between gap-3">
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-[1.75rem] leading-none font-semibold tracking-[-0.035em] tabular-nums text-strong">
-                      {formatNumber(vehicle.odometer)}
-                      <span className="ml-1 text-sm font-normal tracking-normal text-muted-foreground">
-                        km
-                      </span>
-                    </p>
-                    <p className="text-[0.625rem] tracking-[0.14em] text-muted-foreground uppercase">
-                      Odometer
-                    </p>
-                  </div>
-                  {/* 2px만 움직인다. 화살표가 크게 미끄러지면 장난스러워진다. */}
-                  <ChevronRight className="size-4 shrink-0 text-faint transition-transform duration-200 ease-apple group-hover:translate-x-0.5" />
+                {/* 수치는 오른쪽 끝에 고정한다. tabular-nums 로 자릿수가 달라도 줄이 안 떨린다. */}
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <p className="text-eyebrow text-faint uppercase">Odometer</p>
+                  <p className="text-figure tabular-nums text-strong">
+                    {formatNumber(vehicle.odometer)}
+                    <span className="ml-1.5 text-[0.8125rem] tracking-normal text-muted-foreground">
+                      km
+                    </span>
+                  </p>
                 </div>
+
+                {/* 2px만 움직인다. 화살표가 크게 미끄러지면 장난스러워진다. */}
+                <ChevronRight className="size-4 shrink-0 text-faint transition-transform duration-200 ease-apple group-hover:translate-x-0.5" />
               </Link>
             </li>
           ))}
@@ -112,14 +113,16 @@ export function VehicleListPage() {
  */
 function VehicleListSkeleton() {
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-12">
+      <div className="flex flex-col gap-4">
         <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-9 w-40" />
+        <Skeleton className="h-12 w-56" />
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {[0, 1, 2, 3, 4, 5].map((row) => (
-          <Skeleton key={row} className="h-[11.5rem] rounded-2xl" />
+      <div className="border-t border-border">
+        {[0, 1, 2, 3].map((row) => (
+          <div key={row} className="border-b border-border py-7">
+            <Skeleton className="h-12" />
+          </div>
         ))}
       </div>
     </div>
@@ -132,13 +135,11 @@ function VehicleListSkeleton() {
  */
 function EmptyGarage() {
   return (
-    <div className="flex flex-col items-center gap-7 rounded-3xl border border-border bg-card px-8 py-24 text-center backdrop-blur-[20px]">
+    <div className="flex flex-col items-center gap-8 border-y border-border px-8 py-32 text-center">
       <GaugeMark className="size-10 text-muted-foreground" />
 
       <div className="flex max-w-sm flex-col gap-2">
-        <p className="text-[1.0625rem] font-semibold tracking-[-0.02em] text-strong">
-          아직 등록된 차량이 없습니다
-        </p>
+        <p className="text-section text-strong">아직 등록된 차량이 없습니다</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
           차량을 등록하면 정비 이력과 다음 정비 시점을 함께 관리할 수 있습니다.
         </p>

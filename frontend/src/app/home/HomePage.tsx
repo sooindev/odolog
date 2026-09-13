@@ -97,18 +97,17 @@ function StatTiles({ data }: { data: HomeData }) {
       비치게 하는 방식. 칸마다 border 를 붙이면 맞닿는 자리에서 선이 두 겹이 되어
       1px 이 2px 로 보인다. 소개 화면의 기능 3칸과 같은 방식이다.
     */
-    <dl className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+    <dl className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {tiles.map(({ label, value, unit, exact }) => (
-        <div key={label} className="flex flex-col gap-2.5 bg-background p-6">
-          <dt className="text-[0.625rem] font-medium tracking-[0.16em] text-muted-foreground uppercase">
-            {label}
-          </dt>
+        <div key={label} className="flex flex-col gap-5 bg-background p-7 sm:p-8">
+          <dt className="text-eyebrow text-muted-foreground uppercase">{label}</dt>
           {/* tabular-nums 를 쓰지 않는다. 모든 숫자를 0 너비로 맞추는 설정이라 큰 글씨에서는
               1 같은 좁은 글자 주변이 휑하게 벌어진다. 세로로 자릿수를 맞춰야 하는
-              '표의 열'에서만 쓴다(아래 목록들이 그렇다). */}
-          <dd className="text-[1.75rem] leading-none font-semibold tracking-[-0.035em] text-strong">
+              '표의 열'에서만 쓴다(아래 목록들이 그렇다).
+              굵기 300 + 큰 크기. 굵게 키우면 숫자가 뭉쳐 보이고, 얇게 키우면 정밀해 보인다. */}
+          <dd className="flex items-baseline gap-1.5 text-[2.75rem] leading-[0.95] font-light tracking-[-0.045em] text-strong">
             {value}
-            <span className="ml-1 text-sm font-normal tracking-normal text-muted-foreground">
+            <span className="text-[0.8125rem] font-normal tracking-normal text-muted-foreground">
               {unit}
             </span>
           </dd>
@@ -136,7 +135,7 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
       <CardContent>
         <ul className="divide-y divide-border">
           {vehicles.map(({ vehicle, recordCount, lastServiceDate }) => (
-            <li key={vehicle.id} className="py-3.5 first:pt-0 last:pb-0">
+            <li key={vehicle.id} className="py-5 first:pt-0 last:pb-0">
               <Link
                 to={`/vehicles/${vehicle.id}`}
                 className="flex items-center justify-between gap-4 transition-opacity duration-200 ease-apple hover:opacity-70"
@@ -181,7 +180,7 @@ function RecentServices({ recent }: { recent: HomeData['recent'] }) {
             {recent.map(({ record, vehicle }) => (
               <li
                 key={record.id}
-                className="flex items-start justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
+                className="flex items-start justify-between gap-4 py-5 first:pt-0 last:pb-0"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="text-[0.9375rem] tracking-[-0.01em] text-strong">
@@ -219,11 +218,11 @@ function RecentServices({ recent }: { recent: HomeData['recent'] }) {
 function EmptyGarage() {
   return (
     <Page eyebrow="Garage" title="내 차고" description="차량을 등록하면 여기에 통계가 모입니다.">
-      <div className="flex flex-col items-center gap-7 rounded-3xl border border-border bg-card px-8 py-24 text-center backdrop-blur-[20px]">
+      <div className="flex flex-col items-center gap-8 border-y border-border px-8 py-32 text-center">
         <GaugeMark className="size-10 text-muted-foreground" />
 
         <div className="flex max-w-sm flex-col gap-2">
-          <p className="text-[1.0625rem] font-semibold tracking-[-0.02em] text-strong">
+          <p className="text-section text-strong">
             아직 등록된 차량이 없습니다
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -245,13 +244,13 @@ function DashboardSkeleton() {
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-4 w-64" />
       </div>
-      <Skeleton className="h-28 rounded-2xl" />
-      <Skeleton className="h-96 rounded-2xl" />
+      <Skeleton className="h-28" />
+      <Skeleton className="h-96" />
       <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-72 rounded-2xl" />
-        <Skeleton className="h-72 rounded-2xl" />
+        <Skeleton className="h-72" />
+        <Skeleton className="h-72" />
       </div>
-      <Skeleton className="h-48 rounded-2xl" />
+      <Skeleton className="h-48" />
     </div>
   )
 }

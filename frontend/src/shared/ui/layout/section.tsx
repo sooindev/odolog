@@ -20,9 +20,14 @@ export function Section({
   children: ReactNode
 }) {
   return (
-    <section className="grid gap-5 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
-      <div className="flex flex-col gap-2 lg:pt-1">
-        <h2 className="text-[0.9375rem] font-semibold tracking-[-0.01em] text-strong">{title}</h2>
+    <section className="grid gap-6 border-t border-border pt-10 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-16">
+      {/* 구역마다 위에 괘선을 하나 긋는다. 설정 화면처럼 구역이 이어지는 곳에서는
+          이 선이 목차 역할을 해서, 스크롤하지 않고도 몇 개의 구역이 있는지 보인다.
+          제목에 eyebrow(11px + 자간 0.2em)를 쓰지 않는 이유: 한글은 대문자가 없어서
+          자간만 벌어진 2글자("계정")가 흩어져 보인다. 여기서는 크기를 읽히게 두고
+          구획은 괘선이 맡는다. */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-[0.875rem] font-semibold tracking-[-0.01em] text-strong">{title}</h2>
         {description !== undefined && (
           <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">{description}</p>
         )}

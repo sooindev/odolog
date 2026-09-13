@@ -30,22 +30,24 @@ function Hero() {
   return (
     // 가운데 정렬은 랜딩에서만 쓴다. 앱 화면은 전부 왼쪽 정렬인데, 이 대비 자체가
     // "여기는 아직 앱 바깥"이라는 신호가 된다.
-    <section className="flex flex-col items-center gap-8 pt-6 text-center sm:pt-14">
+    <section className="flex flex-col items-center gap-10 pt-8 text-center sm:pt-20">
       <GaugeMark className="size-11 text-strong" />
 
       {/* 줄바꿈을 브라우저에 맡기지 않는다(<br/>). 큰 글씨일수록 창 너비에 따라
-          끊기는 자리가 달라지는 게 눈에 띈다. 좁은 화면에서는 br 을 숨겨 자연스럽게 흐르게 둔다. */}
-      <h1 className="max-w-3xl text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.04em] text-strong sm:text-[3.5rem]">
+          끊기는 자리가 달라지는 게 눈에 띈다. 좁은 화면에서는 br 을 숨겨 자연스럽게 흐르게 둔다.
+          크기는 화면 제목(text-title)보다 한 단 위다 — 랜딩은 앱 화면이 아니라 표지이고,
+          표지의 제목은 본문 지면의 제목보다 커야 표지로 읽힌다. */}
+      <h1 className="max-w-4xl text-[clamp(2.5rem,1.5rem+4.4vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.045em] text-strong">
         마지막 정비가 언제였는지,
         <br className="hidden sm:block" /> 다음은 언제인지.
       </h1>
 
-      <p className="max-w-lg text-[0.9375rem] leading-relaxed text-muted-foreground sm:text-base">
+      <p className="max-w-xl text-lede text-muted-foreground">
         차량을 등록하고 정비 이력을 남기면, 다음 정비 시점을 주행거리와 날짜 두 기준으로
         계산합니다.
       </p>
 
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
         <Button size="lg" render={<Link to="/signup" />}>
           시작하기
         </Button>
@@ -82,7 +84,7 @@ function Highlights() {
       비쳐 보이게 하는 방식이다. 칸마다 border 를 붙이면 맞닿는 자리에서 선이 두 겹이 되어
       1px 이 2px 로 보이는데, 이 방법은 어디서나 정확히 1px 다.
     */
-    <section className="reveal grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3">
+    <section className="reveal grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-3">
       {HIGHLIGHTS.map(({ Icon, title, body }) => (
         <div key={title} className="flex flex-col gap-4 bg-background p-8">
           <Icon className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
@@ -98,7 +100,7 @@ function Preview() {
   return (
     <section className="reveal flex flex-col gap-10">
       <div className="flex flex-col items-center gap-3 text-center">
-        <h2 className="text-[1.75rem] leading-tight font-semibold tracking-[-0.03em] text-strong sm:text-[2rem]">
+        <h2 className="text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)] leading-[1.1] font-semibold tracking-[-0.035em] text-strong">
           차 한 대의 기록이 한 화면에
         </h2>
         <p className="max-w-md text-[0.9375rem] leading-relaxed text-muted-foreground">
@@ -111,13 +113,13 @@ function Preview() {
         순간 옛날 화면이 되어 버리는데, 이건 테마를 바꾸면 이것도 같이 바뀐다.
         카드 안에 카드를 넣어 기기 프레임처럼 보이게 했다.
       */}
-      <div className="mx-auto w-full max-w-2xl rounded-3xl border border-border bg-card p-3 backdrop-blur-[20px] sm:p-4">
-        <div className="flex flex-col gap-8 rounded-2xl border border-border bg-sunken p-6 sm:p-8">
+      <div className="mx-auto w-full max-w-2xl border border-border bg-card p-3 sm:p-4">
+        <div className="flex flex-col gap-8 border border-border bg-sunken p-6 sm:p-8">
           <div className="flex flex-col gap-1.5">
-            <p className="text-[0.6875rem] font-medium tracking-[0.16em] text-muted-foreground uppercase">
+            <p className="text-eyebrow text-muted-foreground uppercase">
               12가 3456
             </p>
-            <p className="text-[1.0625rem] font-semibold tracking-[-0.02em] text-strong">
+            <p className="text-section text-strong">
               현대 아반떼
             </p>
           </div>
@@ -152,7 +154,7 @@ function Preview() {
 function Closing() {
   return (
     <section className="reveal flex flex-col items-center gap-7 border-t border-border pt-20 text-center">
-      <h2 className="max-w-md text-[1.75rem] leading-tight font-semibold tracking-[-0.03em] text-strong">
+      <h2 className="max-w-lg text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)] leading-[1.1] font-semibold tracking-[-0.035em] text-strong">
         차 한 대만 있으면 시작할 수 있습니다.
       </h2>
 
