@@ -13,6 +13,7 @@ import { ErrorText, Skeleton } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { formatKm, formatNumber } from '@/shared/lib/format/format'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { useCountUp } from '@/shared/lib/hooks/useCountUp'
 import { deleteVehicle, fetchVehicle, updateOdometer } from '@/features/vehicles/api/endpoints/endpoints'
 import type { VehicleResponse } from '@/features/vehicles/api/types/types'
 
@@ -94,17 +95,7 @@ export function VehicleDetailPage() {
             이 앱에서 사용자가 가장 자주 확인하는 숫자 하나이고, 앱 이름도 여기서 왔다.
             숫자만 크게 두고 단위(km)는 작게 붙여 "값"과 "단위"의 위계를 나눈다.
           */}
-          <div className="flex flex-col gap-4 border-b border-border pb-8">
-            <p className="text-eyebrow text-muted-foreground uppercase">Odometer</p>
-            {/* 큰 숫자에는 tabular-nums 를 쓰지 않는다 — 자릿수를 세로로 맞출 상대가 없는데
-                모든 글자를 0 너비로 벌려 놓으면 사이가 헐거워 보인다.
-                굵기는 300이다. 크기가 이미 강조를 다 하고 있어서 굵기까지 올리면
-                숫자가 둔해지고, 얇게 두면 같은 크기라도 훨씬 정밀해 보인다. */}
-            <p className="flex items-baseline gap-3 text-display text-strong">
-              {formatNumber(vehicle.odometer)}
-              <span className="text-eyebrow text-muted-foreground uppercase">km</span>
-            </p>
-          </div>
+          <OdometerHero odometer={vehicle.odometer} />
 
           <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
 
@@ -170,6 +161,39 @@ function VehicleDetailSkeleton() {
           <Skeleton className="h-72" />
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * 이 화면의 주인공 숫자.
+ *
+ * **화면을 열 때는 움직이지 않는다.** 0에서 굴러 오르는 연출은 처음 한 번만 근사하고,
+ * 두 번째부터는 값을 읽기까지 기다리는 시간이 된다. 아래 주행거리 갱신으로 **값이 실제로
+ * 바뀐 순간에만** 직전 값에서 새 값으로 굴러간다 — 그 움직임이 곧 "얼마나 올랐는지"를
+ * 말해 준다. 연출이 정보를 나르는 경우다.
+ *
+ * 굵기는 300이다. 크기가 이미 강조를 다 하고 있어서 굵기까지 올리면 숫자가 둔해지고,
+ * 얇게 두면 같은 크기라도 훨씬 정밀해 보인다.
+ *
+ * tabular-nums 는 **굴러가는 동안에만** 붙인다. 큰 숫자에 항상 붙이면 맞출 상대가 없는데
+ * 폭만 벌어져 헐거워 보이지만(디자인 시스템 7번), 매 프레임 숫자가 바뀌는 동안 폭이
+ * 들쭉날쭉하면 숫자 전체가 덜덜 떨린다. 멈추면 원래 비례 숫자로 돌아간다.
+ */
+function OdometerHero({ odometer }: { odometer: number }) {
+  const { value, running } = useCountUp(odometer)
+
+  return (
+    <div className="flex flex-col gap-4 border-b border-border pb-8">
+      <p className="text-eyebrow text-muted-foreground uppercase">Odometer</p>
+      <p
+        className={`flex items-baseline gap-3 text-display text-strong ${
+          running ? 'tabular-nums' : ''
+        }`}
+      >
+        {formatNumber(value)}
+        <span className="text-eyebrow text-muted-foreground uppercase">km</span>
+      </p>
     </div>
   )
 }

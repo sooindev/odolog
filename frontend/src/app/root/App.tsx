@@ -32,10 +32,15 @@ function App() {
       <main className="mx-auto w-full max-w-[76rem] px-6 pt-16 pb-40 sm:px-8 sm:pt-20 lg:px-10">
         {/*
           key에 현재 경로를 준다. 경로가 바뀌면 React가 이 div를 버리고 새로 만들기 때문에
-          animate-rise(6px 아래에서 떠오르며 나타나기)가 페이지를 옮길 때마다 다시 실행된다.
+          등장 연출이 페이지를 옮길 때마다 다시 실행된다.
           라우터에는 전환 애니메이션 기능이 없어서, key 를 이용한 재생성이 가장 단순한 방법이다.
+
+          **페이드만, 그것도 짧게(0.18s) 건다.** 화면이 통째로 떠오르는 연출은 처음 한 번은
+          근사하지만 페이지를 옮길 때마다 보게 되는 것이라, 몇 번만 지나면 화면이 뜨기를
+          기다리는 시간으로만 남는다. 여기서 필요한 건 연출이 아니라 **갈아 끼우는 순간을
+          부드럽게 덮는 것**이다.
         */}
-        <div key={location.pathname} className="animate-rise">
+        <div key={location.pathname} className="animate-fade">
           <Routes>
             {/* 한 주소가 세 얼굴을 갖는다: 비로그인 → 소개, 로그인+0대 → 등록 권유,
                 로그인+차량 있음 → 통계. 갈림은 HomePage 안에 있다. */}

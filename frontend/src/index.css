@@ -126,7 +126,11 @@
   /* cubic-bezier(0.16, 1, 0.3, 1) = 처음에 확 나가고 끝에서 길게 눕는 곡선.
      ease-out 보다 감속 구간이 훨씬 길어서 "쫀득하게 멈춘다"는 느낌을 만든다. */
   --ease-apple: var(--ease-out-apple);
-  --animate-rise: rise 0.45s var(--ease-out-apple) both;
+  --animate-fade: fade 0.18s var(--ease-out-apple) both;
+  /* 경고·오류는 다른 연출보다 짧고 가깝게 움직인다(0.24s / 4px). 사용자가 방금 누른
+     것에 대한 답이라 바로 와야 한다 — 우아하게 떠오르면 그만큼 늦게 읽힌다. */
+  --animate-alert: alert-in 0.24s var(--ease-out-apple) both;
+  --animate-draw: draw-x 0.7s var(--ease-out-apple) both;
   --animate-breathe: breathe 1.6s ease-in-out infinite;
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-grow-up: grow-up 0.7s var(--ease-out-apple) both;
@@ -224,14 +228,48 @@
   --selection: rgba(255, 255, 255, 0.16);
 }
 
-@keyframes rise {
+@keyframes fade {
   from {
     opacity: 0;
-    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes form-open {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+@keyframes alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/*
+ * 괘선이 왼쪽에서 오른쪽으로 그어진다.
+ *
+ * 이 디자인에서 선은 장식이 아니라 구조라서, 선이 그어지는 동작 자체가
+ * "지면이 짜인다"는 인상을 만든다. scaleX 를 쓰는 이유는 width 를 애니메이션하면
+ * 매 프레임 레이아웃을 다시 계산하기 때문(transform 은 합성만 한다).
+ */
+@keyframes draw-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
   }
 }
 
@@ -376,7 +414,48 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      /* 지연도 함께 0 으로 만든다. 지속 시간만 없애면 차트 막대의 지연(칸마다 45ms)이
+         그대로 남아, 연출을 끈 사용자에게는 **내용이 잠깐 안 보이는 시간**으로만
+         나타난다. 연출이 아니라 지연이 된다. */
+      animation-delay: 0ms !important;
+      transition-delay: 0ms !important;
     }
+  }
+}
+
+@layer components {
+  /*
+   * 폼이 자리를 밀어내며 펼쳐진다.
+   *
+   * 지금까지는 폼이 툭 나타나서 아래 목록이 그 높이만큼 순간적으로 뛰었다. 사용자가
+   * 보고 있던 줄이 예고 없이 아래로 밀리면, 방금 무엇이 일어났는지 눈으로 따라갈 수 없다.
+   *
+   * grid-template-rows 를 0fr → 1fr 로 움직인다. height 는 내용 높이를 미리 알아야 해서
+   * JS 로 재야 하는데(그러면 창 크기가 바뀔 때마다 다시 재야 한다), 이 방식은 내용이
+   * 몇 줄이든 CSS 가 알아서 한다.
+   *
+   * 안쪽 내용은 조금 늦게(0.12s) 나타난다. 칸이 열리는 것과 글자가 나타나는 것이 동시면
+   * 글자가 찌그러지며 늘어나는 것처럼 보인다. 열리고 난 자리에 글자가 들어와야 한다.
+   *
+   * grid-template-rows 보간을 지원하지 않는 브라우저에서는 높이 변화만 즉시 일어나고
+   * 페이드는 그대로 남는다 — 연출이 빠질 뿐 내용이 사라지지는 않는다.
+   */
+  .form-open {
+    display: grid;
+    animation: form-open 0.36s var(--ease-out-apple) both;
+  }
+  .form-open > * {
+    min-height: 0;
+    overflow: hidden;
+    animation: fade 0.3s var(--ease-out-apple) 0.12s both;
+  }
+
+  /* 괘선 그리기. 왼쪽 끝을 축으로 고정해야 '그어진다'로 보인다 —
+     기본값(가운데)이면 선이 양쪽으로 벌어져 '펼쳐진다'가 된다.
+     화면당 하나뿐인 연출이다. 이 선이 이 지면의 기준선이라서 값을 한다. */
+  .rule-draw {
+    transform-origin: left;
+    animation: var(--animate-draw);
   }
 }
 

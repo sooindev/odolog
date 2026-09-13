@@ -24,16 +24,20 @@ export function LoadingText({ className }: { className?: string }) {
 }
 
 /**
- * 에러는 빨간 글씨 한 줄이 아니라 옅은 면으로 보여준다. 검정 배경에서 빨간 글씨만
+ * 에러는 빨간 글씨 한 줄이 아니라 옅은 면으로 보여준다. 어두운 배경에서 빨간 글씨만
  * 덩그러니 놓이면 폼의 다른 글자와 구분은 되지만 "영역"으로 읽히지 않는다.
  * role="alert" 는 스크린리더가 이 문장을 즉시 읽어 주게 한다.
+ *
+ * **이 화면에서 가장 짧고 가까운 움직임이다**(0.24s / 4px). 다른 연출은 길게 감속시켰지만
+ * 이건 사용자가 방금 누른 것에 대한 답이라 우아하게 떠오르면 그만큼 늦게 읽힌다.
+ * 움직임의 성격이 곧 "이건 급한 소식"이라고 말한다.
  */
 export function ErrorText({ message, className }: { message: string; className?: string }) {
   return (
     <p
       role="alert"
       className={cn(
-        'border border-destructive/20 bg-destructive/[0.07] px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-destructive',
+        'animate-alert border border-destructive/20 bg-destructive/[0.07] px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-destructive',
         className,
       )}
     >
@@ -42,13 +46,17 @@ export function ErrorText({ message, className }: { message: string; className?:
   )
 }
 
-/** 실패가 아닌 안내("저장했습니다", "변경된 내용이 없습니다"). 색 없이 농도만 다르다. */
+/**
+ * 실패가 아닌 안내("저장했습니다", "변경된 내용이 없습니다"). 색 없이 농도만 다르다.
+ * 등장도 에러와 같은 박자로 둔다 — 둘 다 "방금 한 일에 대한 답"이라 같은 자리에서
+ * 같은 속도로 나타나야, 무엇이 떴는지 읽기 전에 위치부터 헷갈리지 않는다.
+ */
 export function NoticeText({ message, className }: { message: string; className?: string }) {
   return (
     <p
       role="status"
       className={cn(
-        'border border-border bg-sunken px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-muted-foreground',
+        'animate-alert border border-border bg-sunken px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-muted-foreground',
         className,
       )}
     >

@@ -87,13 +87,20 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
       <CardContent className="flex flex-col gap-6">
         {editing !== 'closed' && (
-          <MaintenanceForm
-            vehicleId={vehicleId}
-            record={editing === 'new' ? null : editing}
-            defaultOdometer={currentOdometer}
-            onSaved={refresh}
-            onCancel={() => setEditing('closed')}
-          />
+          // form-open: 칸이 위에서 아래로 열리고, 그 안에 폼이 조금 늦게 들어온다.
+          // 닫을 때는 연출하지 않는다 — 닫기는 사용자가 이미 결정한 일이라 기다릴 이유가
+          // 없고, 사라지는 것을 붙잡아 두려면 상태를 하나 더 들고 있어야 한다.
+          <div className="form-open">
+            <div>
+              <MaintenanceForm
+                vehicleId={vehicleId}
+                record={editing === 'new' ? null : editing}
+                defaultOdometer={currentOdometer}
+                onSaved={refresh}
+                onCancel={() => setEditing('closed')}
+              />
+            </div>
+          </div>
         )}
 
         {errorMessage !== null && <ErrorText message={errorMessage} />}

@@ -96,6 +96,9 @@ function StatTiles({ data }: { data: HomeData }) {
       gap-px + 바깥 배경을 선 색으로: 칸 사이에 1px 틈만 남기고 그 틈으로 뒷배경(선 색)이
       비치게 하는 방식. 칸마다 border 를 붙이면 맞닿는 자리에서 선이 두 겹이 되어
       1px 이 2px 로 보인다. 소개 화면의 기능 3칸과 같은 방식이다.
+
+      이 구조 때문에 **여기에는 등장 연출을 걸 수 없다.** 칸이 투명한 동안에는 틈이 아니라
+      격자 전체로 선 색이 비쳐서, 나타나는 내내 색 덩어리가 번쩍인다.
     */
     <dl className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {tiles.map(({ label, value, unit, exact }) => (

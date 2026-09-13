@@ -64,7 +64,13 @@ export function VehicleListPage() {
                 to={`/vehicles/${vehicle.id}`}
                 // group: 행 전체에 마우스가 올라갔을 때 안쪽 화살표도 같이 반응시킨다.
                 // 행 전체가 판정 영역이라 -mx/px 로 좌우에 여유를 준다.
-                className="group -mx-4 flex items-center gap-6 px-4 py-7 transition-colors duration-200 ease-apple hover:bg-wash sm:gap-10"
+                //
+                // before:*: 행 왼쪽 끝에 1px 표식이 **위에서 아래로 그어진다.**
+                // 배경만 옅게 바뀌면 어느 행에 있는지 훑어봐야 알 수 있는데, 왼쪽 끝에 선이
+                // 하나 서면 눈이 그 자리를 바로 찾는다. 목록의 가로 괘선과 같은 1px 이라
+                // 새로운 요소가 아니라 **이미 있던 선 하나가 세로로 서는 것**으로 보인다.
+                // 세로로 자라게 한 이유: 가로로 늘리면 글자를 밀어내는 것처럼 보인다.
+                className="group relative -mx-4 flex items-center gap-6 px-4 py-7 transition-colors duration-200 ease-apple before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:origin-top before:scale-y-0 before:bg-strong before:transition-transform before:duration-300 before:ease-apple hover:bg-wash hover:before:scale-y-100 focus-visible:before:scale-y-100 sm:gap-10"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <p className="truncate text-eyebrow text-muted-foreground uppercase">

@@ -80,8 +80,9 @@ export function Page({
           )}
         </header>
 
-        {/* 표제와 내용을 가르는 기준선. 이 화면의 모든 괘선이 이것과 같은 두께·색이다. */}
-        <hr className="border-t border-border" />
+        {/* 표제와 내용을 가르는 기준선. 이 화면의 모든 괘선이 이것과 같은 두께·색이다.
+            rule-draw: 이 선이 왼쪽에서 오른쪽으로 그어지며 지면이 짜인다. */}
+        <hr className="rule-draw border-t border-border" />
       </div>
 
       {children}
