@@ -130,23 +130,33 @@
 
    본문이 순수 흰색이 아닌 게 핵심이다. 검정 위의 #FFF 는 대비가 너무 세서
    오래 보면 글자가 번져 보인다(halation). 제목만 96%로 올려 위계를 만든다.
+
+   바닥도 순수 검정이 아니다(#000000 → #17171A). 순검정 위에 흰색 3%를 얹은
+   카드는 #080808 이라 배경과 거의 구분되지 않아 화면 전체가 한 덩어리로 가라앉는다.
+   바닥을 한 단 올리면 그 위의 면들이 비로소 층으로 보인다 — 라이트에서 배경을
+   #FFFFFF 가 아니라 #F4F4F6 으로 둔 것과 정확히 같은 이유다.
+
+   바닥을 올린 만큼 대비는 내려가므로 면 토큰의 α 도 함께 올렸다. 글자 4단계는
+   그대로 두고 계산으로 확인했다(아래 주석의 수치). 앞의 세 단계는 배경 위에서도
+   카드 위에서도 AA(4.5:1)를 넘는다.
    --------------------------------------------------------------------------- */
 :root.dark {
   color-scheme: dark;
 
-  --background: #000000;
+  --background: #17171a;
 
-  --strong: rgba(255, 255, 255, 0.96); /* #000 대비 19.23:1 */
-  --foreground: rgba(255, 255, 255, 0.72); /*         10.54:1 */
-  --muted-foreground: rgba(255, 255, 255, 0.5); /*     5.28:1 */
-  --faint: rgba(255, 255, 255, 0.35); /* placeholder·장식 전용 — 본문에 쓰지 않는다 */
+  /* 대비는 '배경 위 / 카드(#232325) 위' 두 값. 카드 쪽이 더 빡빡해서 그쪽이 기준이다. */
+  --strong: rgba(255, 255, 255, 0.96); /* 16.55 / 14.52 */
+  --foreground: rgba(255, 255, 255, 0.72); /*  9.63 /  8.72 */
+  --muted-foreground: rgba(255, 255, 255, 0.5); /* 5.26 / 4.98 */
+  --faint: rgba(255, 255, 255, 0.35); /* 3.22 / 3.17 — placeholder·장식 전용 */
 
-  --card: rgba(255, 255, 255, 0.03);
-  --card-hover: rgba(255, 255, 255, 0.055);
-  --fill: rgba(255, 255, 255, 0.04);
-  --fill-hover: rgba(255, 255, 255, 0.065);
-  --wash: rgba(255, 255, 255, 0.06);
-  --sunken: rgba(255, 255, 255, 0.02);
+  --card: rgba(255, 255, 255, 0.05);
+  --card-hover: rgba(255, 255, 255, 0.075);
+  --fill: rgba(255, 255, 255, 0.06);
+  --fill-hover: rgba(255, 255, 255, 0.085);
+  --wash: rgba(255, 255, 255, 0.07);
+  --sunken: rgba(255, 255, 255, 0.03);
 
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
@@ -280,16 +290,18 @@
     background: radial-gradient(110% 60% at 50% -10%, var(--glow) 0%, transparent 60%);
   }
 
-  /* 미세 노이즈는 **다크에만** 넣는다. 넓은 검정 면에 생기는 색 띠(banding)를 깨려고
+  /* 미세 노이즈는 **다크에만** 넣는다. 넓은 어두운 면에 생기는 색 띠(banding)를 깨려고
      넣은 것인데, 밝은 바탕에서는 깰 띠가 없고 얼룩으로만 보인다.
-     "다크에 있으니 라이트에도" 식으로 옮기지 않는다. */
+     "다크에 있으니 라이트에도" 식으로 옮기지 않는다.
+     바닥을 #17171A 로 올리면서 세기를 0.035 → 0.025 로 낮췄다. 순검정일 때보다 띠가
+     덜 생기는데 같은 세기로 두면 노이즈만 도드라져 화면이 지저분해 보인다. */
   .dark body::after {
     content: "";
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    opacity: 0.035;
+    opacity: 0.025;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 

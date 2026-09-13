@@ -39,7 +39,7 @@ function applyTheme(resolved: 'light' | 'dark') {
   document.documentElement.classList.toggle('dark', resolved === 'dark')
 
   const meta = document.querySelector('meta[name="theme-color"]')
-  meta?.setAttribute('content', resolved === 'dark' ? '#000000' : '#f4f4f6')
+  meta?.setAttribute('content', resolved === 'dark' ? '#17171a' : '#f4f4f6')
 }
 
 /**

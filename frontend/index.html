@@ -19,6 +19,8 @@
        *
        * 'odolog-theme' 문자열이 ThemeContext.ts 에도 있다. 여기서는 import 를 쓸 수 없어
        * 중복이 불가피하다 — 한쪽만 고치면 안 된다.
+       * 아래 '#17171a' 도 같은 종류의 중복이다. 다크 배경색은 index.css(--background) 와
+       * ThemeProvider.tsx 에도 있고, 세 곳이 어긋나면 주소창만 다른 색으로 남는다.
        */
       ;(function () {
         try {
@@ -29,7 +31,7 @@
 
           if (dark) {
             document.documentElement.classList.add('dark')
-            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#000000')
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#17171a')
           }
         } catch (error) {
           /* localStorage를 막아 둔 브라우저. 라이트로 시작한다. */
