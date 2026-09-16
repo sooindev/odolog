@@ -48,10 +48,16 @@ export interface TypeCost {
   count: number
 }
 
-export interface RecentRecord {
-  record: MaintenanceRecordResponse
-  vehicle: VehicleResponse
-}
+/**
+ * 최근 활동 한 줄. 정비와 주유가 한 목록에 섞인다.
+ *
+ * kind 를 판별 필드로 둔 유니온이라, 화면에서 kind 를 확인하면 record 타입이 좁혀진다.
+ * date 는 정비의 serviceDate 와 주유의 fueledAt 을 한 이름으로 모은 것이다 —
+ * 정렬할 때마다 어느 필드를 봐야 하는지 따지지 않으려고.
+ */
+export type RecentActivity =
+  | { kind: 'maintenance'; date: string; vehicle: VehicleResponse; record: MaintenanceRecordResponse }
+  | { kind: 'fuel'; date: string; vehicle: VehicleResponse; record: FuelRecordResponse }
 
 export interface HomeData {
   vehicleCount: number
@@ -70,7 +76,7 @@ export interface HomeData {
    */
   sumsComplete: boolean
   vehicles: VehicleSummary[]
-  recent: RecentRecord[]
+  recent: RecentActivity[]
   monthly: MonthlyCost[]
   byType: TypeCost[]
 }
@@ -119,17 +125,40 @@ export async function loadHomeData(): Promise<HomeData> {
     lastServiceDate: recordPages[index].items[0]?.serviceDate ?? null,
   }))
 
-  const recent = recordPages
-    .flatMap((page, index) =>
-      page.items.map((record) => ({ record, vehicle: vehicles[index] })),
-    )
+  const recent: RecentActivity[] = [
+    ...recordPages.flatMap((page, index) =>
+      page.items.map(
+        (record): RecentActivity => ({
+          kind: 'maintenance',
+          date: record.serviceDate,
+          vehicle: vehicles[index],
+          record,
+        }),
+      ),
+    ),
+    ...fuelPages.flatMap((page, index) =>
+      page.items.map(
+        (record): RecentActivity => ({
+          kind: 'fuel',
+          date: record.fueledAt,
+          vehicle: vehicles[index],
+          record,
+        }),
+      ),
+    ),
+  ]
     // 'YYYY-MM-DD' 라 문자열 비교로 날짜 순서가 맞는다.
-    // 같은 날짜면 id 내림차순. 백엔드가 쓰는 동점 기준과 같게 맞췄다.
-    .sort((a, b) =>
-      a.record.serviceDate === b.record.serviceDate
-        ? b.record.id - a.record.id
-        : b.record.serviceDate.localeCompare(a.record.serviceDate),
-    )
+    .sort((a, b) => {
+      if (a.date !== b.date) return b.date.localeCompare(a.date)
+
+      // 같은 날짜에 종류가 다르면 정비를 먼저 둔다.
+      // **id 로 비교하면 안 된다** — 정비와 주유는 테이블이 달라 id 가 서로 무관하다.
+      // 주유 3번이 정비 3번보다 나중이라는 보장이 없다.
+      if (a.kind !== b.kind) return a.kind === 'maintenance' ? -1 : 1
+
+      // 같은 종류끼리는 id 내림차순. 백엔드가 쓰는 동점 기준과 같다.
+      return b.record.id - a.record.id
+    })
     .slice(0, RECENT_LIMIT)
 
   const allRecords = recordPages.flatMap((page) => page.items)

@@ -73,7 +73,7 @@ function Dashboard({ nickname }: { nickname: string }) {
       {/* 두 카드를 나란히 둔다. 세로로 쌓으면 넓은 화면에서 오른쪽 절반이 통째로 빈다. */}
       <div className="grid gap-6 lg:grid-cols-2">
         <TypeCostChart byType={data.byType} />
-        <RecentServices recent={data.recent} />
+        <RecentActivities recent={data.recent} />
       </div>
 
       <VehicleBreakdown vehicles={data.vehicles} />
@@ -170,37 +170,41 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
   )
 }
 
-function RecentServices({ recent }: { recent: HomeData['recent'] }) {
+function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>최근 정비</CardTitle>
+        <CardTitle>최근 활동</CardTitle>
       </CardHeader>
       <CardContent>
         {recent.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">아직 등록된 정비 이력이 없습니다.</p>
+          <p className="py-4 text-sm text-muted-foreground">아직 등록된 기록이 없습니다.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {recent.map(({ record, vehicle }) => (
+            {recent.map((item) => (
+              /* key 에 kind 를 섞는다. 정비 3번과 주유 3번은 테이블이 달라 id 가 겹친다. */
               <li
-                key={record.id}
+                key={`${item.kind}-${item.record.id}`}
                 className="flex items-start justify-between gap-4 py-5 first:pt-0 last:pb-0"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="text-[0.9375rem] tracking-[-0.01em] text-strong">
-                    {SERVICE_TYPE_LABELS[record.type]}
+                    {item.kind === 'maintenance' ? SERVICE_TYPE_LABELS[item.record.type] : '주유'}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {vehicle.manufacturer} {vehicle.modelName}
+                    {item.vehicle.manufacturer} {item.vehicle.modelName}
+                    {/* 주유는 종류가 하나뿐이라 제목만으로는 구분이 안 된다.
+                        넣은 양을 붙여 그 줄이 무슨 기록인지 한눈에 보이게 한다. */}
+                    {item.kind === 'fuel' && ` · ${item.record.liters.toFixed(2)}L`}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-right">
                   <p className="text-[0.9375rem] tabular-nums text-strong">
-                    {formatWon(record.cost)}
+                    {formatWon(item.kind === 'maintenance' ? item.record.cost : item.record.totalCost)}
                   </p>
                   <p className="text-xs tabular-nums text-muted-foreground">
-                    {formatDate(record.serviceDate)}
+                    {formatDate(item.date)}
                   </p>
                 </div>
               </li>
