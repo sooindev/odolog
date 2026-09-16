@@ -406,44 +406,56 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │   ├── login/
     │   │   │   │   └── LoginRequest.java     email, password
     │   │   │   └── profile/
-    │   │   │       └── UpdateProfileRequest.java
-    │   │   │                                 둘 다 nullable — 보낸 필드만 변경
+    │   │   │       ├── UpdateProfileRequest.java
+    │   │   │       │                         둘 다 nullable — 보낸 필드만 변경
+    │   │   │       └── (password/)ChangePasswordRequest.java
+    │   │   │                                 current/new 둘 다 @NotBlank — 부분 수정이 아니다.
+    │   │   │                                 new 의 길이 제한은 가입과 같아야 한다
     │   │   └── response/
     │   │       └── profile/
     │   │           └── UserResponse.java     from() 팩토리. password는 절대 담지 않음
     │   ├── service/
     │   │   └── application/
     │   │       └── UserService.java          signUp(중복 체크·BCrypt), login(사유 통일),
-    │   │                                     findById, updateProfile(널 아닌 필드만)
+    │   │                                     findById, updateProfile(널 아닌 필드만),
+    │   │                                     verifyPassword(되돌릴 수 없는 동작 앞의 관문 —
+    │   │                                     changePassword 와 탈퇴가 공유), changePassword, delete
     │   └── controller/
     │       └── rest/
     │           └── UserController.java       POST /api/users, /login(+changeSessionId),
-    │                                         /logout(204), GET·PATCH /api/users/me
+    │                                         /logout(204), GET·PATCH /api/users/me,
+    │                                         PATCH /api/users/me/password(204)
     │
     ├── vehicle/  ─────────────────────────── 차량 등록·조회·주행거리·삭제
     │   ├── domain/entity/Vehicle.java        @Entity(vehicles). owner→User(@ManyToOne LAZY).
     │   │                                     uk_vehicles_user_plate_number(소유자+번호판 복합).
     │   │                                     updateOdometer()는 감소 시 ConflictException
     │   ├── repository/jpa/VehicleRepository.java
-    │   │                                     findByOwnerId(Pageable),
+    │   │                                     findByOwnerId(Pageable), findAllByOwnerId(탈퇴용 —
+    │   │                                     "한 사람의 전부"가 대상이라 페이지를 나눌 수 없다),
     │   │                                     existsByOwnerIdAndPlateNumber(소유자별 중복 검사)
     │   ├── dto/
     │   │   ├── request/
     │   │   │   ├── register/VehicleRegisterRequest.java
     │   │   │   │                             owner 없음 — 세션에서 식별.
     │   │   │   │                             modelYear @NotNull/@Min(1900)/@Max(2100)
-    │   │   │   └── odometer/UpdateOdometerRequest.java   @PositiveOrZero
+    │   │   │   ├── odometer/UpdateOdometerRequest.java   @PositiveOrZero
+    │   │   │   └── update/VehicleUpdateRequest.java
+    │   │   │                                 전부 nullable. @NotBlank 대신
+    │   │   │                                 @Size(min=1)+@Pattern — 둘 다 null 을 통과시킨다
     │   │   └── response/
     │   │       └── vehicle/VehicleResponse.java
     │   │                                     owner 없음 — LAZY 미접근으로 N+1 방지
     │   ├── service/application/VehicleService.java
     │   │                                     register, findMyVehicles(Pageable),
+    │   │                                     update(번호판이 실제로 바뀔 때만 중복 검사),
     │   │                                     updateOdometer(dirty checking),
     │   │                                     delete(이력 먼저 → 차량),
+    │   │                                     deleteAllOwnedBy(탈퇴용 일괄 삭제),
     │   │                                     findOwnedVehicle(404/403 — maintenance도 재사용)
     │   └── controller/rest/VehicleController.java
     │                                         POST·GET /api/vehicles,
-    │                                         GET·DELETE /api/vehicles/{id},
+    │                                         GET·PATCH·DELETE /api/vehicles/{id},
     │                                         PATCH /api/vehicles/{id}/odometer
     │
     ├── maintenance/  ─────────────────────── 정비 이력·다음 정비 시점
@@ -479,6 +491,20 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │                                         POST·GET  .../maintenance-records,
     │                                         GET·PATCH·DELETE  .../{recordId},
     │                                         GET  .../next-service?type=
+    │
+    ├── account/  ─────────────────────────── 조율 층. **여러 기능을 동시에 알아도 되는 유일한 자리**
+    │   │                                     (프론트의 app/ 과 같은 성격 — 위 "의존 방향" 참고)
+    │   ├── dto/request/withdraw/WithdrawRequest.java
+    │   │                                     비밀번호 @NotBlank. 체크박스로 대신하지 않는다 —
+    │   │                                     그건 실수만 막고 본인 확인이 아니다
+    │   ├── service/application/AccountWithdrawalService.java
+    │   │                                     withdraw(비밀번호 확인 → 차량·이력 → 사용자).
+    │   │                                     순서만 정하고 실제 삭제는 각 기능이 한다
+    │   └── controller/rest/AccountController.java
+    │                                         DELETE /api/users/me(204) + 세션 invalidate.
+    │                                         **URL 은 users 인데 패키지는 account** — UserController
+    │                                         에 두면 user 가 account 를 알게 되어 순환이다.
+    │                                         비밀번호는 본문에 싣는다(URL 에 넣으면 로그에 남는다)
     │
     └── common/  ──────────────────────────── 기능 어디에도 속하지 않는 공통 인프라
         ├── auth/
@@ -524,7 +550,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 62개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 84개.
 
     src/test/java/com/odolog/app/
     ├── user/
@@ -543,6 +569,12 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │   │                                               띄운다. dirty checking이 DB까지 가는지 검증
     │   └── controller/rest/VehicleControllerTest.java  @WebMvcTest — 401/400/201/404/403,
     │                                                   페이지 응답
+    ├── account/
+    │   ├── service/application/AccountWithdrawalServiceTest.java
+    │   │                                           Mockito — 삭제 순서(InOrder),
+    │   │                                           비밀번호 틀리면 아무것도 안 지움
+    │   └── controller/rest/AccountControllerTest.java
+    │                                               @WebMvcTest — 204+세션 무효화, 401, 400
     └── maintenance/
         ├── repository/jpa/MaintenanceRecordRepositoryTest.java
         │                                               @DataJpaTest — 같은 날짜 동점 처리,
@@ -626,8 +658,13 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         │   │                                  Section 2개(계정 / 화면). 바뀐 필드만 PATCH.
         │   │                                  null 걸러내는 겉 + 폼 2단 구조
         │   ├── vehicles/
+        │   │   ├── components/
+        │   │   │   └── info-form/VehicleInfoForm.tsx
+        │   │   │                         차량 정보(번호판·제조사·모델·연식) 수정.
+        │   │   │                         닫혀 있을 땐 값 4개, 열면 폼(.form-open).
+        │   │   │                         바뀐 필드만 PATCH
         │   │   ├── api/
-        │   │   │   ├── endpoints/endpoints.ts  차량 엔드포인트 5개
+        │   │   │   ├── endpoints/endpoints.ts  차량 엔드포인트 6개
         │   │   │   └── types/types.ts          백엔드 vehicle.dto 대응
         │   │   └── pages/
         │   │       ├── list/VehicleListPage.tsx
@@ -704,8 +741,16 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 
 ### 의존 방향
 
-    백엔드:  maintenance → vehicle → user,  셋 다 필요하면 common
+    백엔드:  account → {maintenance, vehicle, user},  셋 다 필요하면 common
+             maintenance → vehicle → user
     프론트:  app → features → shared
+
+**`account` 는 백엔드의 조율 층이다** (2026-09-16 신설). 프론트의 `app/` 과 정확히 같은 성격 —
+**여러 기능을 동시에 알아도 되는 유일한 자리**다. 회원 탈퇴가 user·vehicle·maintenance 를 모두
+건드리는데, 이걸 `UserService` 에 넣으면 `user → vehicle` 역방향 의존이 생긴다. `common` 도 안 된다
+— 세 기능이 전부 `common` 을 의존하므로 `common` 이 `vehicle` 을 알면 진짜 순환이 된다.
+`account` 는 **순서만 정하고 실제 삭제는 각 기능에 맡긴다.** 여기서 리포지토리를 직접 부르면
+조율 층이 남의 테이블 구조를 알게 된다.
 
 `shared/theme` 는 `shared/ui` 와 같은 층이다. `ThemeToggle` 이 `Button` 대신 평범한 `<button>` 을
 쓰는 이유가 이것 — 같은 층끼리 얽히는 것보다 20줄짜리 버튼을 직접 쓰는 편이 싸다.
@@ -747,6 +792,59 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
   `'odolog-theme'` 문자열이 HTML 과 `ThemeContext.ts` 양쪽에 중복인 것과 같은 종류의 함정이다.
 
 ## 진행 상황 (완료)
+
+- [x] 미구현 기능 3개 구현 — 차량 수정 · 비밀번호 변경 · 회원 탈퇴 (2026-09-16)
+      → **엔드포인트를 코드로 직접 세어 보고 찾은 구멍이다.** 정비 이력은 필드 5개를 다 고칠 수
+        있는데 차량은 `updateOdometer()` 하나뿐이었다. 번호판 오타를 고치려면 삭제 후 재등록인데,
+        `delete()` 가 정비 이력을 먼저 지우므로 **오타 하나에 그 차의 기록이 전부 날아갔다.**
+      → **① 차량 수정** `PATCH /api/vehicles/{id}`. 엔티티에 필드별 change 메서드 4개
+        (`MaintenanceRecord` 와 같은 모양). 주행거리는 안 넣었다 — 감소 금지 규칙이 붙어 있어
+        성격이 다르고 전용 엔드포인트가 이미 있다.
+      → **함정: 등록 때 쓰던 중복 검사를 그대로 가져오면 안 된다.**
+        `existsByOwnerIdAndPlateNumber` 를 무조건 돌리면 번호판을 그대로 두고 제조사만 고쳐도
+        **자기 자신이 검색되어 409** 가 난다. `...AndIdNot` 쿼리를 새로 만드는 방법도 있지만
+        **"값이 실제로 바뀔 때만 검사한다"** 가 더 단순하고 리포지토리도 안 늘어난다.
+        이 함정을 고정하는 테스트를 넣고, 조건을 빼면 **그 테스트만 실패하는 것까지 확인**했다.
+      → 번호판을 **가장 먼저** 처리한다. 다른 필드를 먼저 바꾸면 엔티티가 dirty 상태가 되고,
+        exists 쿼리 직전에 Hibernate 가 자동 flush 해서 **방금 쓴 값을 내가 다시 조회해 "중복"으로
+        판정**할 수 있다.
+      → **② 비밀번호 변경** `PATCH /api/users/me/password` → 204.
+        **현재 비밀번호를 반드시 확인한다** — 로그인만으로 바꿀 수 있으면 자리를 비운 사이 열린
+        세션을 잡은 사람이 계정을 통째로 가져간다. 세션은 유지한다(본인이 바꾼 것이라 쫓아낼 이유가
+        없다). 엔티티의 `changePassword()` 는 **이미 암호화된 문자열만** 받는다 — 평문을 받아
+        직접 인코딩하면 도메인이 스프링 시큐리티에 묶이고 `new User(...)` 에 빈이 필요해진다.
+      → `verifyPassword()` 를 뽑아 변경과 탈퇴가 같은 관문을 쓰게 했다. `changePassword` 안에서
+        `findById` 가 두 번 불리지만 **쿼리는 한 번만 나간다** — 같은 트랜잭션의 1차 캐시가 받는다.
+      → **③ 회원 탈퇴** `DELETE /api/users/me` → 204. **여기서 설계 결정이 하나 필요했다.**
+        탈퇴는 user·vehicle·maintenance 를 모두 건드리는데 `UserService` 에 넣으면
+        `user → vehicle` 역방향 의존이 생기고, `common` 에 넣으면 진짜 순환이 된다.
+        → **`account` 패키지를 새로 만들었다.** 프론트의 `app/` 과 같은 성격의 조율 층이고,
+        **순서만 정하고 실제 삭제는 각 기능에 맡긴다.** 자세한 이유는 위 "의존 방향"에.
+      → 탈퇴 컨트롤러는 **URL 이 `/api/users/me` 인데 패키지는 `account`** 다. URL 은 클라이언트가
+        보는 주소이고 패키지는 코드의 소속이라 같을 필요가 없다 — `UserController` 에 두면
+        `user` 가 `account` 를 알게 되어 순환이다.
+      → **DELETE 에 본문을 싣는다.** 비밀번호를 쿼리 파라미터에 넣으면 접근 로그와 브라우저 기록에
+        평문으로 남는다. 본문 있는 DELETE 를 꺼리는 중간 장비가 있지만 그쪽이 낫다.
+        `api.del()` 이 본문을 안 받고 있어서 인자 하나를 열었다(`request()` 는 원래 지원했다).
+      → 탈퇴 후 **세션을 끊는다.** 안 끊으면 없는 사용자 id 를 든 세션이 남아 다음 요청의
+        `findById` 가 `IllegalStateException` → 500 이 된다.
+      → **작업 중에 만든 버그를 하나 잡았다.** 비밀번호 변경이 401 을 돌려주면 `client.ts` 의
+        전역 401 핸들러가 돌아 **사용자 정보를 비우고 /login 으로 쫓아냈다** — 현재 비밀번호를
+        한 번 잘못 치면 로그아웃되는 셈이다. `SKIP_UNAUTHORIZED_HANDLER` 는 `includes` 라
+        정확히 일치하는 문자열만 찾으므로 `/api/users/me/password` 를 따로 적어야 했다.
+        (탈퇴는 경로가 `/api/users/me` 라 우연히 이미 제외돼 있었다. 우연이라 주석에 적어 뒀다.)
+      → 프론트: 차량 상세 사이드바에 **차량 정보 카드**(닫혀 있을 땐 값 4개, 열면 폼 — 정비 이력과
+        같은 `.form-open` 펼침), 프로필에 **비밀번호 구역**과 **탈퇴 구역**.
+        `AuthProvider` 에 `withdraw` 를 추가했다 — "성공하면 로그인 상태가 사라진다"는 화면의
+        사정이 아니라 그 동작의 정의라서. 단 **로그아웃과 달리 실패를 삼키지 않는다**:
+        탈퇴가 실패했는데 로그아웃된 것처럼 보이면 계정이 지워졌다고 믿게 된다.
+      → 비밀번호 확인란은 **서버에 보내지 않는다.** "두 번 같게 쳤는가"는 오타 방지 장치일 뿐이고,
+        보내면 비밀번호를 한 번 더 전송하는 셈이다.
+      → 테스트 62 → **84개**(+22). 탈퇴는 **순서**(InOrder)와 **"비밀번호가 틀리면 아무것도 안
+        지운다"** 를 고정했다 — 트랜잭션 롤백이 막아 주긴 하지만, 순서로 막을 수 있는 것을
+        롤백에 기대지 않는다.
+      → 검증: `./gradlew test` 84개 통과, 프론트 `tsc -b` / `oxlint`(기존 shadcn 경고 1건) /
+        `vite build` 통과. **브라우저 눈 확인은 사용자 몫이다** — Phase 6 체크리스트에 항목을 더했다.
 
 - [x] 플랫폼을 웹으로 확정 + 파비콘 정리 (2026-09-16)
       → **네이티브 앱(iOS/Android)을 만들지 않기로 했다.** "앱이 접근성이 더 좋지 않나"에서
@@ -1880,7 +1978,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 이력도 함께 사라짐 — B-57
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-54
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-55, B-56
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (62개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (84개)
 
 ---
 
@@ -1901,7 +1999,6 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 이메일 중복 확인 API (`GET /api/users/exists?email=`) — 회원가입 폼 실시간 피드백용
       → 단, 이건 계정 존재 여부를 노출하는 API다. 로그인 실패 메시지를 일부러 통일해 둔 것과
         모순되므로 **도입 전에 트레이드오프를 다시 따진다.**
-- [ ] 비밀번호 변경 / 회원 탈퇴 API
 - [ ] 정비 이력 종류별 필터링 (`GET .../maintenance-records?type=`)
 - [ ] 차량 목록에 각 차량의 "임박한 정비" 요약 포함 (목록 화면에서 바로 보이게)
 

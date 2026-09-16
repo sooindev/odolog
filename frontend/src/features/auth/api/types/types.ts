@@ -22,6 +22,17 @@ export interface UpdateProfileRequest {
   phone?: string
 }
 
+/** 둘 다 필수다. 부분 수정이 아니라 "현재 비밀번호를 대고 새것으로 바꾸는" 한 동작이다. */
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
+/** 되돌릴 수 없는 동작이라 비밀번호로 본인을 다시 확인한다. */
+export interface WithdrawRequest {
+  password: string
+}
+
 export interface UserResponse {
   id: number
   email: string

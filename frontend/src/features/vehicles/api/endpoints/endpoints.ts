@@ -4,6 +4,7 @@ import type {
   UpdateOdometerRequest,
   VehicleRegisterRequest,
   VehicleResponse,
+  VehicleUpdateRequest,
 } from '@/features/vehicles/api/types/types'
 
 /**
@@ -21,6 +22,10 @@ export function fetchVehicle(vehicleId: number) {
 
 export function registerVehicle(request: VehicleRegisterRequest) {
   return api.post<VehicleResponse>('/api/vehicles', request)
+}
+
+export function updateVehicle(vehicleId: number, request: VehicleUpdateRequest) {
+  return api.patch<VehicleResponse>(`/api/vehicles/${vehicleId}`, request)
 }
 
 export function updateOdometer(vehicleId: number, request: UpdateOdometerRequest) {

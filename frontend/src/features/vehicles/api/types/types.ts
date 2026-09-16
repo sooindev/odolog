@@ -10,6 +10,17 @@ export interface VehicleRegisterRequest {
   modelYear: number
 }
 
+/**
+ * 부분 수정이라 전부 선택이다 — 보낸 필드만 바뀐다.
+ * odometer 는 여기 없다. 감소 금지 규칙이 붙어 있어 전용 엔드포인트를 쓴다.
+ */
+export interface VehicleUpdateRequest {
+  plateNumber?: string
+  manufacturer?: string
+  modelName?: string
+  modelYear?: number
+}
+
 export interface UpdateOdometerRequest {
   odometer: number
 }

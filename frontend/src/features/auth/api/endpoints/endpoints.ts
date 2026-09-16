@@ -1,9 +1,11 @@
 import { api } from '@/shared/api/client/client'
 import type {
+  ChangePasswordRequest,
   LoginRequest,
   SignUpRequest,
   UpdateProfileRequest,
   UserResponse,
+  WithdrawRequest,
 } from '@/features/auth/api/types/types'
 
 /**
@@ -32,4 +34,14 @@ export function logout() {
 
 export function updateProfile(request: UpdateProfileRequest) {
   return api.patch<UserResponse>('/api/users/me', request)
+}
+
+// 204 라 돌려받을 것이 없다. 세션은 그대로 유지되므로 다시 로그인시키지 않는다.
+export function changePassword(request: ChangePasswordRequest) {
+  return api.patch<void>('/api/users/me/password', request)
+}
+
+// 204. 서버가 세션까지 끊으므로 따로 로그아웃을 부를 필요가 없다.
+export function withdraw(request: WithdrawRequest) {
+  return api.del<void>('/api/users/me', request)
 }

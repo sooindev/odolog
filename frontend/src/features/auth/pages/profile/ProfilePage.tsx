@@ -10,6 +10,8 @@ import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
 import { Section } from '@/shared/ui/layout/section'
+import { changePassword } from '@/features/auth/api/endpoints/endpoints'
+import { useNavigate } from 'react-router'
 import { ErrorText, NoticeText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { updateProfile } from '@/features/auth/api/endpoints/endpoints'
@@ -29,6 +31,14 @@ export function ProfilePage() {
         <ProfileForm user={user} />
       </Section>
 
+      {/* 계정 바로 다음에 둔다. 화면 설정보다 앞이어야 하는 이유는 성격이 계정 쪽이기 때문이다. */}
+      <Section
+        title="비밀번호"
+        description="바꾸려면 현재 비밀번호를 함께 입력해야 합니다. 변경해도 로그인은 유지됩니다."
+      >
+        <PasswordForm />
+      </Section>
+
       {/*
         화면 모드를 여기에 둔 이유: 헤더의 컨트롤은 "지금 당장 바꾸는" 자리이고,
         설정 화면은 "이 앱이 무엇을 기억하고 있는지" 확인하는 자리다.
@@ -37,7 +47,204 @@ export function ProfilePage() {
       <Section title="화면" description="라이트·다크 중 하나를 고르거나, 기기 설정을 그대로 따를 수 있습니다.">
         <AppearanceCard />
       </Section>
+
+      {/* 되돌릴 수 없는 동작은 맨 아래에. 위에 두면 스크롤할 때마다 지나치게 된다. */}
+      <Section
+        title="회원 탈퇴"
+        description="계정과 등록한 차량·정비 이력이 모두 삭제됩니다. 되돌릴 수 없습니다."
+      >
+        <WithdrawCard />
+      </Section>
     </Page>
+  )
+}
+
+function PasswordForm() {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setMessage(null)
+    setError(null)
+
+    // 확인란은 서버에 보내지 않는다. "두 번 같게 쳤는가"는 오타 방지 장치일 뿐이라
+    // 서버가 알 이유가 없고, 알면 비밀번호를 한 번 더 전송하는 셈이 된다.
+    if (newPassword !== confirmPassword) {
+      setError('새 비밀번호가 서로 다릅니다.')
+      return
+    }
+
+    setPending(true)
+
+    try {
+      await changePassword({ currentPassword, newPassword })
+      setMessage('비밀번호를 변경했습니다.')
+      // 성공하면 비운다. 화면에 남겨 두면 다음 사람이 그대로 볼 수 있다.
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (caught) {
+      // 401 은 현재 비밀번호가 틀린 경우. 여기서는 이미 본인이 로그인한 상태라
+      // 로그인 화면처럼 사유를 뭉뚱그릴 이유가 없다.
+      setError(caught instanceof ApiError ? caught.message : '비밀번호 변경에 실패했습니다.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent>
+        <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+          {/* autoComplete 을 정확히 적어야 비밀번호 관리자가 "현재"와 "새것"을 구분한다.
+              전부 password 로 두면 저장된 값이 새 비밀번호 칸에 채워진다. */}
+          <Field label="현재 비밀번호" htmlFor="current-password">
+            <Input
+              id="current-password"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+            />
+          </Field>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="새 비밀번호" htmlFor="new-password" hint="8자 이상">
+              <Input
+                id="new-password"
+                type="password"
+                required
+                minLength={8}
+                maxLength={100}
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+              />
+            </Field>
+
+            <Field label="새 비밀번호 확인" htmlFor="confirm-password">
+              <Input
+                id="confirm-password"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+              />
+            </Field>
+          </div>
+
+          {message !== null && <NoticeText message={message} />}
+          {error !== null && <ErrorText message={error} />}
+
+          <FormActions>
+            <Button type="submit" disabled={pending}>
+              {pending ? '변경 중…' : '비밀번호 변경'}
+            </Button>
+          </FormActions>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+function WithdrawCard() {
+  const { withdraw } = useAuth()
+  const navigate = useNavigate()
+
+  const [open, setOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setError(null)
+    setPending(true)
+
+    try {
+      await withdraw({ password })
+      // replace: true — 뒤로가기로 방금 떠난 화면에 돌아가지 못하게 한다.
+      navigate('/', { replace: true })
+    } catch (caught) {
+      // 401 은 비밀번호가 틀린 것. 이 경로는 전역 401 핸들러에서 제외돼 있어
+      // 여기서 잡아 보여줄 수 있다 (안 그러면 그냥 로그아웃돼 버린다).
+      setError(caught instanceof ApiError ? caught.message : '탈퇴에 실패했습니다.')
+      // 성공하면 화면을 떠나므로 실패했을 때만 되돌린다.
+      setPending(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent>
+        {open ? (
+          <div className="form-open">
+            <div>
+              <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+                {/* 확인 문구를 따라 치게 하는 방식도 있지만 비밀번호가 더 강한 관문이다.
+                    그건 실수만 막고, 이건 본인인지까지 확인한다. */}
+                <Field
+                  label="비밀번호"
+                  htmlFor="withdraw-password"
+                  hint="본인 확인을 위해 현재 비밀번호를 입력하세요."
+                >
+                  <Input
+                    id="withdraw-password"
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </Field>
+
+                {error !== null && <ErrorText message={error} />}
+
+                <FormActions>
+                  <Button type="submit" variant="destructive" disabled={pending}>
+                    {pending ? '탈퇴 중…' : '탈퇴하기'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setOpen(false)
+                      setPassword('')
+                      setError(null)
+                    }}
+                  >
+                    취소
+                  </Button>
+                </FormActions>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* min-w-0: 글이 줄어들지 못하면 버튼을 아래로 밀어낸다. */}
+            <p className="min-w-0 text-[0.8125rem] text-muted-foreground">
+              탈퇴하면 같은 이메일로 다시 가입할 수 있지만, 기록은 복구되지 않습니다.
+            </p>
+            {/* 빨갛게 채우지 않는다. 가장 하면 안 되는 일이 화면에서 가장 강한 요소가 된다. */}
+            <Button
+              variant="destructive"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setOpen(true)}
+            >
+              회원 탈퇴
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

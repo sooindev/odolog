@@ -7,8 +7,13 @@ import {
   fetchMe,
   login as requestLogin,
   logout as requestLogout,
+  withdraw as requestWithdraw,
 } from '@/features/auth/api/endpoints/endpoints'
-import type { LoginRequest, UserResponse } from '@/features/auth/api/types/types'
+import type {
+  LoginRequest,
+  UserResponse,
+  WithdrawRequest,
+} from '@/features/auth/api/types/types'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserResponse | null>(null)
@@ -60,9 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // 로그아웃과 달리 실패를 삼키지 않는다. 로그아웃은 실패해도 "화면에서는 나간 것"으로
+  // 다루면 되지만, 탈퇴가 실패했는데 로그아웃된 것처럼 보이면 계정이 지워졌다고 믿게 된다.
+  const withdraw = useCallback(async (request: WithdrawRequest) => {
+    await requestWithdraw(request)
+    setUser(null)
+  }, [])
+
   const value = useMemo(
-    () => ({ user, loading, login, logout, replaceUser: setUser }),
-    [user, loading, login, logout],
+    () => ({ user, loading, login, logout, withdraw, replaceUser: setUser }),
+    [user, loading, login, logout, withdraw],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

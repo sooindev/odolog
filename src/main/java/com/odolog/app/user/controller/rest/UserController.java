@@ -2,6 +2,7 @@ package com.odolog.app.user.controller.rest;
 
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.login.LoginRequest;
+import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
 import com.odolog.app.user.dto.request.signup.SignUpRequest;
 import com.odolog.app.user.dto.request.profile.UpdateProfileRequest;
 import com.odolog.app.user.dto.response.profile.UserResponse;
@@ -61,6 +62,18 @@ public class UserController {
     public ResponseEntity<UserResponse> me(@LoginUser Long userId) {
         User user = userService.findById(userId);
         return ResponseEntity.ok(UserResponse.from(user));
+    }
+
+    // 204. 돌려줄 것이 없다 — UserResponse 를 주면 비밀번호와 무관한 값만 다시 보내는 꼴이고,
+    // 비밀번호 자체는 어떤 경우에도 응답에 담지 않는다.
+    //
+    // 세션은 그대로 둔다. 본인이 바꾼 것이라 다시 로그인시킬 이유가 없다.
+    // (다른 기기의 세션까지 끊으려면 세션 저장소를 따로 둬야 한다 — 지금 범위 밖)
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                                 @LoginUser Long userId) {
+        userService.changePassword(userId, request);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/me")

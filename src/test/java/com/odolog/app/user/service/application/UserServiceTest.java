@@ -4,6 +4,7 @@ import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.login.LoginRequest;
+import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
 import com.odolog.app.user.dto.request.signup.SignUpRequest;
 import com.odolog.app.user.dto.request.profile.UpdateProfileRequest;
 import com.odolog.app.user.repository.jpa.UserRepository;
@@ -100,5 +101,34 @@ class UserServiceTest {
 
         assertThat(result.getNickname()).isEqualTo("새닉네임");
         assertThat(result.getPhone()).isEqualTo("010-0000-0000");
+    }
+
+    @Test
+    @DisplayName("현재 비밀번호가 맞으면 새 비밀번호가 암호화되어 저장된다")
+    void changePasswordSuccess() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        User user = new User("test@odolog.com", encoder.encode("oldpassword"), "닉네임", null);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        userService.changePassword(1L, new ChangePasswordRequest("oldpassword", "newpassword1234"));
+
+        assertThat(user.getPassword()).isNotEqualTo("newpassword1234");
+        assertThat(encoder.matches("newpassword1234", user.getPassword())).isTrue();
+        assertThat(encoder.matches("oldpassword", user.getPassword())).isFalse();
+    }
+
+    @Test
+    @DisplayName("현재 비밀번호가 틀리면 401이고 비밀번호는 그대로다")
+    void changePasswordWrongCurrentFails() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String original = encoder.encode("oldpassword");
+        User user = new User("test@odolog.com", original, "닉네임", null);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> userService.changePassword(1L,
+                new ChangePasswordRequest("wrongpassword", "newpassword1234")))
+                .isInstanceOf(AuthenticationFailedException.class);
+
+        assertThat(user.getPassword()).isEqualTo(original);
     }
 }

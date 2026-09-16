@@ -91,6 +91,24 @@ public class Vehicle {
         this.odometer = odometer;
     }
 
+    // 번호판 중복 검사는 여기서 못 한다. 다른 행을 봐야 하는 일이라 리포지토리가 필요하고,
+    // 엔티티가 리포지토리를 알면 "자기 자신만 아는 객체" 라는 성질이 깨진다. 그래서 서비스가 맡는다.
+    public void changePlateNumber(String plateNumber) {
+        this.plateNumber = plateNumber;
+    }
+
+    public void changeManufacturer(String manufacturer) {
+        this.manufacturer = manufacturer;
+    }
+
+    public void changeModelName(String modelName) {
+        this.modelName = modelName;
+    }
+
+    public void changeModelYear(Integer modelYear) {
+        this.modelYear = modelYear;
+    }
+
     public Long getId() {
         return id;
     }

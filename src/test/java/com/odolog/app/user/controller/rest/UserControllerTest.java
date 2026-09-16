@@ -5,6 +5,7 @@ import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.login.LoginRequest;
+import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
 import com.odolog.app.user.dto.request.signup.SignUpRequest;
 import com.odolog.app.user.service.application.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,6 +26,7 @@ import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -172,5 +174,60 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("비밀번호 변경에 성공하면 204이고 본문이 없다")
+    void changePasswordSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+
+        mockMvc.perform(patch("/api/users/me/password")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ChangePasswordRequest("oldpassword", "newpassword1234"))))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("로그인하지 않고 비밀번호를 바꾸려 하면 401")
+    void changePasswordWithoutLogin() throws Exception {
+        mockMvc.perform(patch("/api/users/me/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ChangePasswordRequest("oldpassword", "newpassword1234"))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("현재 비밀번호가 틀리면 401")
+    void changePasswordWrongCurrent() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+
+        doThrow(new AuthenticationFailedException("현재 비밀번호가 올바르지 않습니다."))
+                .when(userService).changePassword(any(), any());
+
+        mockMvc.perform(patch("/api/users/me/password")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ChangePasswordRequest("wrongpassword", "newpassword1234"))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("새 비밀번호가 8자 미만이면 400 — 가입 때와 같은 제한")
+    void changePasswordTooShort() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+
+        mockMvc.perform(patch("/api/users/me/password")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ChangePasswordRequest("oldpassword", "short"))))
+                .andExpect(status().isBadRequest());
     }
 }

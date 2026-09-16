@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router'
 
 import { MaintenanceSection } from '@/features/maintenance/components/section/MaintenanceSection'
 import { NextServiceCard } from '@/features/maintenance/components/next-service/NextServiceCard'
+import { VehicleInfoForm } from '@/features/vehicles/components/info-form/VehicleInfoForm'
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { Field } from '@/shared/ui/form/field'
@@ -85,6 +86,10 @@ export function VehicleDetailPage() {
           <OdometerHero odometer={vehicle.odometer} />
 
           <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
+
+          {/* setVehicle 을 그대로 넘긴다 — 응답이 곧 최신 상태라 다시 조회할 필요가 없고,
+              머리말(번호판·제조사·모델·연식)도 같은 객체를 보므로 함께 갱신된다. */}
+          <VehicleInfoForm vehicle={vehicle} onUpdated={setVehicle} />
 
           {/* 되돌릴 수 없는 동작은 선으로 끊어 맨 아래에. 버튼을 빨갛게 채우면
               가장 하면 안 되는 일이 화면에서 가장 강한 요소가 된다. */}

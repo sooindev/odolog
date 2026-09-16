@@ -7,6 +7,7 @@ import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.dto.request.odometer.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.register.VehicleRegisterRequest;
+import com.odolog.app.vehicle.dto.request.update.VehicleUpdateRequest;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -190,6 +191,71 @@ class VehicleControllerTest {
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("차량 정보를 수정하면 200과 바뀐 값을 돌려준다")
+    void updateVehicle() throws Exception {
+        User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        ReflectionTestUtils.setField(owner, "id", 1L);
+        Vehicle vehicle = new Vehicle(owner, "12가3456", "기아", "아반떼", 2023);
+        ReflectionTestUtils.setField(vehicle, "id", 10L);
+
+        when(vehicleService.update(eq(1L), eq(10L), any(VehicleUpdateRequest.class))).thenReturn(vehicle);
+
+        mockMvc.perform(patch("/api/vehicles/10")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new VehicleUpdateRequest(null, "기아", null, null))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.manufacturer").value("기아"));
+    }
+
+    @Test
+    @DisplayName("로그인하지 않고 차량을 수정하면 401")
+    void updateVehicleWithoutLogin() throws Exception {
+        mockMvc.perform(patch("/api/vehicles/10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"manufacturer\":\"기아\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("빈 본문은 아무 필드도 안 바꾸겠다는 뜻이라 통과한다")
+    void updateVehicleWithEmptyBodyPasses() throws Exception {
+        User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        ReflectionTestUtils.setField(owner, "id", 1L);
+        Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
+        ReflectionTestUtils.setField(vehicle, "id", 10L);
+
+        when(vehicleService.update(eq(1L), eq(10L), any(VehicleUpdateRequest.class))).thenReturn(vehicle);
+
+        mockMvc.perform(patch("/api/vehicles/10")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("수정에서도 연식 범위를 벗어나면 400")
+    void updateVehicleInvalidModelYear() throws Exception {
+        mockMvc.perform(patch("/api/vehicles/10")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"modelYear\":1899}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("공백만으로는 수정할 수 없다 — 400")
+    void updateVehicleBlankFails() throws Exception {
+        mockMvc.perform(patch("/api/vehicles/10")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"manufacturer\":\"   \"}"))
                 .andExpect(status().isBadRequest());
     }
 

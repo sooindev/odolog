@@ -9,6 +9,7 @@ import com.odolog.app.user.repository.jpa.UserRepository;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.dto.request.odometer.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.register.VehicleRegisterRequest;
+import com.odolog.app.vehicle.dto.request.update.VehicleUpdateRequest;
 import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -114,6 +116,58 @@ class VehicleServiceTest {
     }
 
     @Test
+    @DisplayName("차량 수정은 보낸 필드만 바꾸고 나머지는 건드리지 않는다")
+    void updateChangesOnlyGivenFields() {
+        Vehicle vehicle = createVehicle(10L, createOwner(1L));
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+
+        vehicleService.update(1L, 10L, new VehicleUpdateRequest(null, "기아", null, null));
+
+        assertThat(vehicle.getManufacturer()).isEqualTo("기아");
+        assertThat(vehicle.getPlateNumber()).isEqualTo("12가3456");
+        assertThat(vehicle.getModelName()).isEqualTo("아반떼");
+        assertThat(vehicle.getModelYear()).isEqualTo(2023);
+    }
+
+    @Test
+    @DisplayName("번호판을 그대로 둔 채 다른 필드만 고치면 중복 검사를 아예 하지 않는다")
+    void updateSkipsDuplicateCheckWhenPlateNumberUnchanged() {
+        Vehicle vehicle = createVehicle(10L, createOwner(1L));
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+
+        // 번호판을 지금과 같은 값으로 보낸다. 자기 자신을 빼지 않고 검사하면 여기서 409 가 난다.
+        vehicleService.update(1L, 10L, new VehicleUpdateRequest("12가3456", "기아", null, null));
+
+        verify(vehicleRepository, never()).existsByOwnerIdAndPlateNumber(any(), any());
+        assertThat(vehicle.getManufacturer()).isEqualTo("기아");
+    }
+
+    @Test
+    @DisplayName("번호판을 이미 가진 다른 차량의 번호로 바꾸면 예외가 발생한다")
+    void updateDuplicatePlateNumberFails() {
+        Vehicle vehicle = createVehicle(10L, createOwner(1L));
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.existsByOwnerIdAndPlateNumber(1L, "99하9999")).thenReturn(true);
+
+        assertThatThrownBy(() -> vehicleService.update(1L, 10L,
+                new VehicleUpdateRequest("99하9999", null, null, null)))
+                .isInstanceOf(ConflictException.class);
+
+        assertThat(vehicle.getPlateNumber()).isEqualTo("12가3456");
+    }
+
+    @Test
+    @DisplayName("남의 차량은 수정할 수 없다")
+    void updateOtherUsersVehicleFails() {
+        Vehicle vehicle = createVehicle(10L, createOwner(1L));
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+
+        assertThatThrownBy(() -> vehicleService.update(999L, 10L,
+                new VehicleUpdateRequest(null, "기아", null, null)))
+                .isInstanceOf(ForbiddenAccessException.class);
+    }
+
+    @Test
     @DisplayName("차량 삭제 시 정비 이력을 먼저 지운 뒤 차량을 지운다")
     void deleteRemovesMaintenanceRecordsBeforeVehicle() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
@@ -124,5 +178,21 @@ class VehicleServiceTest {
         InOrder order = inOrder(maintenanceRecordRepository, vehicleRepository);
         order.verify(maintenanceRecordRepository).deleteByVehicleId(10L);
         order.verify(vehicleRepository).delete(vehicle);
+    }
+
+    @Test
+    @DisplayName("소유 차량 일괄 삭제는 차량마다 이력을 먼저 지운 뒤 차량을 한 번에 지운다")
+    void deleteAllOwnedByRemovesRecordsFirst() {
+        User owner = createOwner(1L);
+        Vehicle first = createVehicle(10L, owner);
+        Vehicle second = createVehicle(11L, owner);
+        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(first, second));
+
+        vehicleService.deleteAllOwnedBy(1L);
+
+        InOrder order = inOrder(maintenanceRecordRepository, vehicleRepository);
+        order.verify(maintenanceRecordRepository).deleteByVehicleId(10L);
+        order.verify(maintenanceRecordRepository).deleteByVehicleId(11L);
+        order.verify(vehicleRepository).deleteAll(List.of(first, second));
     }
 }

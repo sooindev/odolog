@@ -3,6 +3,7 @@ package com.odolog.app.vehicle.controller.rest;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.dto.request.odometer.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.register.VehicleRegisterRequest;
+import com.odolog.app.vehicle.dto.request.update.VehicleUpdateRequest;
 import com.odolog.app.vehicle.dto.response.vehicle.VehicleResponse;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import com.odolog.app.common.auth.annotation.LoginUser;
@@ -55,6 +56,17 @@ public class VehicleController {
     @GetMapping("/{vehicleId}")
     public ResponseEntity<VehicleResponse> findOne(@PathVariable Long vehicleId, @LoginUser Long requesterId) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        return ResponseEntity.ok(VehicleResponse.from(vehicle));
+    }
+
+    // PATCH /{vehicleId} 와 PATCH /{vehicleId}/odometer 는 경로가 달라 충돌하지 않는다.
+    // 주행거리를 여기 합치지 않은 이유: 감소 금지라는 규칙이 붙어 있어 성격이 다르고,
+    // 화면에서도 "차량 정보 고치기"와 "주행거리 갱신"은 서로 다른 순간에 일어난다.
+    @PatchMapping("/{vehicleId}")
+    public ResponseEntity<VehicleResponse> update(@PathVariable Long vehicleId,
+                                                    @Valid @RequestBody VehicleUpdateRequest request,
+                                                    @LoginUser Long requesterId) {
+        Vehicle vehicle = vehicleService.update(requesterId, vehicleId, request);
         return ResponseEntity.ok(VehicleResponse.from(vehicle));
     }
 
