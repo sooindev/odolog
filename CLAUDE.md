@@ -134,8 +134,12 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
    `optional = false` 와 `@JoinColumn(nullable = false)` 를 짝으로 쓴다.
 6. **제약조건에는 이름을 직접 붙인다.** (`uk_vehicles_user_plate_number`, `fk_vehicles_user`)
    Hibernate가 짓는 해시 이름(`UK6dotkott2kjsp8vw4d0m25fb7`)은 로그 추적이 불가능하다.
-7. **시간 필드는 `@PrePersist` / `@PreUpdate`** 로 채운다. `@EnableJpaAuditing` 은 아직 미도입.
-   `createdAt` 에는 `updatable = false` 를 준다.
+7. **시간 필드는 `BaseTimeEntity` 를 상속해서 얻는다** (2026-09-16 부터. 그전에는 엔티티마다
+   `@PrePersist`/`@PreUpdate` 를 복사했다). `createdAt` 에는 `updatable = false` 를 준다.
+   **엔티티 3개까지는 복사가 옳았다** — 상속이 없으면 파일 하나만 열어도 모든 필드가 보인다.
+   4개째(`FuelRecord`)에서 뒤집혔다. 새 엔티티는 `extends BaseTimeEntity` 만 하면 된다.
+   **스위치는 `common/config/jpa/JpaAuditingConfig`** 이고, `@DataJpaTest` 는 그걸 자동으로
+   집어 가지 못하므로 리포지토리 테스트에 `@Import(JpaAuditingConfig.class)` 가 필요하다.
 8. **타입 선택**: "없음"이라는 상태가 존재하는 값만 래퍼 타입(`Integer`), 아니면 기본형(`int`).
    PK는 저장 전 `null` 구분을 위해 항상 `Long`.
 9. **테이블명은 복수형** (`users`, `vehicles`). `user` 는 예약어라 반드시 `users`.
@@ -492,6 +496,37 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │                                         GET·PATCH·DELETE  .../{recordId},
     │                                         GET  .../next-service?type=
     │
+    ├── fuel/  ────────────────────────────── 주유 기록·연비. maintenance 와 같은 모양이다
+    │   ├── domain/entity/FuelRecord.java     @Entity(fuel_records). vehicle→Vehicle(LAZY).
+    │   │                                     liters 는 BigDecimal(6,2) — int 로는 32.45L 를
+    │   │                                     못 담고, double 은 합산 시 오차가 쌓인다.
+    │   │                                     단가가 아니라 총액(total_cost)을 저장한다
+    │   ├── repository/jpa/FuelRecordRepository.java
+    │   │                                     findByVehicleId(Pageable), findByIdAndVehicleId,
+    │   │                                     findTopByVehicleIdAndOdometerLessThan...(직전 1건),
+    │   │                                     findAllByVehicleIdOrderByOdometerAscIdAsc(요약용),
+    │   │                                     deleteByVehicleId
+    │   ├── dto/
+    │   │   ├── request/{register,update}/    liters 는 @Positive — 0 이면 연비가 0으로 나누기다
+    │   │   └── response/
+    │   │       ├── record/FuelRecordResponse.java
+    │   │       │                             저장값 + 계산값(단가·거리·연비)이 함께 온다.
+    │   │       │                             **계산값은 DB 에 없다** — 직전 기록이 바뀌면
+    │   │       │                             달라지므로 읽을 때 계산해야 언제나 맞다.
+    │   │       │                             구간이 성립 안 하면 null(0 이 아니다)
+    │   │       └── summary/FuelSummaryResponse.java
+    │   │                                     평균 연비 = 총 거리 ÷ (총 주유량 − 첫 주유량)
+    │   ├── service/application/FuelRecordService.java
+    │   │                                     register(+차량 주행거리 자동 갱신),
+    │   │                                     findByVehicle(페이지당 쿼리 2번), findOne,
+    │   │                                     update, delete, summary.
+    │   │                                     **FIXED_SORT 로 정렬을 고정한다** — 정렬이 곧
+    │   │                                     연비 계산의 전제라 sort 파라미터를 무시한다
+    │   └── controller/rest/FuelRecordController.java
+    │                                         POST·GET  .../fuel-records,
+    │                                         GET  .../summary (리터럴이 {recordId} 보다 우선),
+    │                                         GET·PATCH·DELETE  .../{recordId}
+    │
     ├── account/  ─────────────────────────── 조율 층. **여러 기능을 동시에 알아도 되는 유일한 자리**
     │   │                                     (프론트의 app/ 과 같은 성격 — 위 "의존 방향" 참고)
     │   ├── dto/request/withdraw/WithdrawRequest.java
@@ -512,8 +547,18 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   ├── resolver/LoginUserArgumentResolver.java
         │   │                                 세션 LOGIN_USER_ID → Long 주입. 없으면 401
         │   └── constant/SessionConst.java    세션 키 상수
+        ├── domain/
+        │   └── entity/BaseTimeEntity.java    @MappedSuperclass + @EntityListeners.
+        │                                     createdAt/updatedAt 을 네 엔티티가 상속받는다.
+        │                                     테이블을 만들지 않고 필드만 자식에 합쳐지므로
+        │                                     컬럼 이름이 그대로다(ddl-auto 가 안 건드린다)
         ├── config/
         │   ├── web/WebConfig.java            ArgumentResolver 등록 + CORS(5173, credentials)
+        │   ├── jpa/JpaAuditingConfig.java    @EnableJpaAuditing 스위치.
+        │   │                                 **OdoLogApplication 에 두면 @WebMvcTest 가 전부
+        │   │                                 깨진다**(JPA 메타모델이 비어 있음). 대신 여기 두면
+        │   │                                 @DataJpaTest 가 못 집어 가므로 리포지토리 테스트에
+        │   │                                 @Import 가 필요하다 — 실제로 둘 다 밟고 정했다
         │   └── openapi/OpenApiConfig.java    문서 제목/설명 + @LoginUser를 스펙에서 제외
         ├── dto/
         │   └── response/                     요청 DTO가 없어 response만 있다
@@ -550,7 +595,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 84개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 106개.
 
     src/test/java/com/odolog/app/
     ├── user/
@@ -569,6 +614,16 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │   │                                               띄운다. dirty checking이 DB까지 가는지 검증
     │   └── controller/rest/VehicleControllerTest.java  @WebMvcTest — 401/400/201/404/403,
     │                                                   페이지 응답
+    ├── fuel/
+    │   ├── repository/jpa/FuelRecordRepositoryTest.java
+    │   │                                           @DataJpaTest — 직전 기록 조회, 타 차량 차단,
+    │   │                                           BigDecimal 소수 보존, 일괄 삭제
+    │   ├── service/application/FuelRecordServiceTest.java
+    │   │                                           Mockito — 연비 계산, 페이지 경계(쿼리 2번),
+    │   │                                           차량 주행거리 자동 갱신, 평균 연비
+    │   └── controller/rest/FuelRecordControllerTest.java
+    │                                               @WebMvcTest — 201/401/400(0L·누락·소수 3자리),
+    │                                               /summary 라우팅, 목록 페이지
     ├── account/
     │   ├── service/application/AccountWithdrawalServiceTest.java
     │   │                                           Mockito — 삭제 순서(InOrder),
@@ -675,6 +730,13 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         │   │       └── detail/VehicleDetailPage.tsx
         │   │                             lg에서 2단. 왼쪽=차량정보·주행거리·삭제(sticky),
         │   │                             오른쪽=다음정비·이력
+        │   ├── fuel/                     주유 기록·연비. pages/ 가 없다 — maintenance 와 같이
+        │   │   │                         자기 라우트 없이 차량 상세에 얹힌다
+        │   │   ├── api/{endpoints,types}/  sort 를 보내지 않는다(서버가 고정)
+        │   │   └── components/
+        │   │       ├── summary/FuelSummaryCard.tsx   평균 연비 히어로 + 통계 4칸
+        │   │       ├── section/FuelSection.tsx       목록 + 페이지네이션 + 삭제 + 폼 토글
+        │   │       └── form/FuelForm.tsx             등록·수정 겸용. 입력 중 리터당 단가 표시
         │   └── maintenance/
         │       ├── api/
         │       │   ├── endpoints/endpoints.ts  정비 이력 엔드포인트 5개
@@ -741,7 +803,8 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 
 ### 의존 방향
 
-    백엔드:  account → {maintenance, vehicle, user},  셋 다 필요하면 common
+    백엔드:  account → {fuel, maintenance, vehicle, user},  전부 common 을 쓴다
+             fuel → vehicle → user
              maintenance → vehicle → user
     프론트:  app → features → shared
 
@@ -792,6 +855,67 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
   `'odolog-theme'` 문자열이 HTML 과 `ThemeContext.ts` 양쪽에 중복인 것과 같은 종류의 함정이다.
 
 ## 진행 상황 (완료)
+
+- [x] 주유 기록 + 연비 — 네 번째 기능, 그리고 `@EnableJpaAuditing` (2026-09-16)
+      → **정비보다 자주 쓰는 기능이다.** 정비는 1년에 몇 번이지만 주유는 주 단위다. 더 중요한 건
+        이 앱 이름이 오도로그(주행거리 기록)인데 **주행거리가 아무것도 계산하지 않고 있었다는
+        것**이다. 주유 기록이 들어오면서 `주행거리 ÷ 리터 = 연비` 가 나온다 — 이미 있던 것과
+        새로 들어온 것이 곱해지는 자리다.
+      → **먼저 `@EnableJpaAuditing` 부터 했다.** 주유 기록을 만든 뒤에 하면 `@PrePersist` 를
+        네 번째로 복사한 다음 다시 지우는 셈이다. Phase 1-B 에 "엔티티 4개째" 조건을 걸어 둔 게
+        정확히 이 순간이었다. `common/domain/entity/BaseTimeEntity` 로 8줄 × 3벌이 사라졌다.
+      → **`@EnableJpaAuditing` 을 어디 두느냐로 두 번 틀렸다.** ① `OdoLogApplication` 에 붙이니
+        **@WebMvcTest 22개가 전부 깨졌다** — 웹 계층만 띄우느라 JPA 가 없는데 이 애노테이션은
+        엔티티 메타모델을 요구한다(`IllegalArgumentException: JPA metamodel must not be empty`).
+        ② 별도 `@Configuration`(`common/config/jpa/JpaAuditingConfig`)으로 옮기니 이번엔
+        **@DataJpaTest 가 깨졌다** — JPA 와 무관한 `@Configuration` 을 전부 걸러내기 때문이다.
+        결론: 별도 설정 클래스 + 리포지토리 테스트에 `@Import(JpaAuditingConfig.class)`.
+        **빠뜨리면 created_at 이 null 로 INSERT 되어 NOT NULL 위반으로 터지므로 조용히 넘어가지
+        않는다** — 그게 이 선택의 안전장치다.
+      → `@MappedSuperclass` 는 테이블을 만들지 않고 필드만 자식 테이블에 합친다. 그래서 컬럼
+        이름이 그대로고 `ddl-auto: update` 가 아무것도 건드리지 않는다. 실제 DB 로 확인했다
+        (`created_at datetime(6) NO`).
+      → **연비는 단순법으로 정했다** (사용자 선택). 매 기록마다 `(이번 주행거리 − 직전 주행거리)
+        ÷ 이번 주유량`. 만탱크법이 더 정확하지만 "가득 채웠는가" 플래그가 필요하다.
+        **대가는 문서에 적어 둔다: 반만 넣은 주유가 섞이면 그 구간만 실제보다 높게 나온다**
+        (거리는 그대로인데 리터가 적어서).
+      → **liters 는 `BigDecimal(6,2)`.** 32.45L 같은 값이라 `int` 가 안 되고, `double` 은 2진
+        부동소수라 리터를 합산해 평균 연비를 내는 순간 오차가 쌓인다.
+      → **단가를 저장하지 않고 총액을 저장한다.** 단가 × 리터는 반올림 때문에 영수증 총액과
+        어긋난다. 실제로 나간 돈이 총액이므로 그쪽을 저장하고 단가는 나눠서 보여준다.
+      → **계산 값(연비·거리·단가)을 DB 에 넣지 않는다.** 직전 기록이 수정·삭제되면 연비가
+        달라지는데, 저장해 두면 그때마다 뒤따르는 기록을 전부 다시 써야 한다. 읽을 때 계산하면
+        언제나 맞다.
+      → **목록 정렬을 서비스가 고정한다**(`odometer DESC, id DESC`). 차량·정비 목록이 `sort` 를
+        허용하는 것과 다르다 — 거기서는 정렬이 표시 순서일 뿐이지만 **여기서는 정렬이 곧 계산의
+        전제**다. 총액 순으로 정렬하면 옆 행이 직전 주유가 아니게 되어 연비가 조용히 틀린다.
+      → **페이지 하나에 쿼리 2번.** 각 행의 연비는 바로 앞 행이 있어야 나오는데, 페이지 안쪽
+        행들은 서로가 서로의 짝이다. **마지막 행만 짝이 다음 페이지에 있어서** 그 한 건만 따로
+        가져온다. 행마다 직전을 조회하면 N+1 이다.
+      → **평균 연비에서 첫 주유량을 뺀다.** 그 연료는 첫 기록 이전 구간을 달린 것이라 우리가 아는
+        거리(첫 기록 → 마지막 기록)와 짝이 맞지 않는다. 안 빼면 연비가 낮게 나온다 —
+        테스트 데이터로 20.00 이 나와야 할 것이 12.50 이 된다.
+      → **구간 연비들의 평균을 내지 않는 이유**도 같다. 30km 구간과 600km 구간이 같은 무게로
+        들어가면 짧은 구간의 오차가 전체를 흔든다. 총 거리 ÷ 총 주유량이 맞다.
+      → **차량 주행거리 자동 갱신을 넣었다**(백로그에 있던 항목). 주유할 때 계기판을 보고 적는
+        값이라 차량의 현재 주행거리보다 크면 그쪽이 더 최신이다. 같은 숫자를 두 번 입력하게 하지
+        않는다. 작거나 같으면 건드리지 않는다(과거 기록을 뒤늦게 넣는 경우).
+      → **차량 삭제가 주유 기록도 지우게 고쳤다.** 안 하면 FK 제약 위반이다. `VehicleService` 가
+        `FuelRecordRepository` 를 주입받는데, 서비스를 주입하면 `FuelRecordService` 가 이미
+        `VehicleService` 를 쓰고 있어 **스프링이 잡아내는 진짜 순환 참조**가 된다.
+        `MaintenanceRecordRepository` 를 그렇게 둔 것과 같은 이유다.
+      → 프론트: `features/fuel/` 신설(`maintenance` 와 같은 모양). 차량 상세 오른쪽에 **연비
+        요약 카드**(평균 연비를 히어로 숫자로) + **주유 기록 목록**. 폼에서 금액·리터를 입력하는
+        동안 **리터당 단가를 실시간으로 보여준다** — 영수증과 대조해 오타를 그 자리에서 잡는다.
+      → 주유를 등록하면 차량을 다시 조회한다. 서버가 주행거리를 올렸을 수 있고, 그래야 위쪽
+        히어로 숫자가 맞고 **값이 바뀐 만큼 굴러가는 연출**도 거기서 나온다.
+      → `distance`/`efficiency` 는 계산이 성립하지 않으면 **null 이다(0 이 아니다).** 0 으로 두면
+        "연비 0km/L" 라는 틀린 값이 화면에 찍힌다. 프론트 타입에도 `number | null` 로 적었다.
+      → 테스트 84 → **106개**(+22). 리포지토리 테스트를 특히 신경 썼다 — 파생 쿼리
+        (`findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc`)는 이름 오타가
+        컴파일에 안 걸리고 **앱 기동 때야 터진다.**
+      → 검증: `./gradlew test` 106개 통과, 프론트 `tsc -b` / `oxlint`(기존 shadcn 경고 1건) /
+        `vite build` 통과. **브라우저 눈 확인은 사용자 몫이다.**
 
 - [x] 미구현 기능 3개 구현 — 차량 수정 · 비밀번호 변경 · 회원 탈퇴 (2026-09-16)
       → **엔드포인트를 코드로 직접 세어 보고 찾은 구멍이다.** 정비 이력은 필드 5개를 다 고칠 수
@@ -1683,11 +1807,10 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ### 1-B. 보류 (조건이 갖춰지면 재검토)
 
-- [ ] `@EnableJpaAuditing` 도입 검토
-      → 지금 엔티티 3개(`User`/`Vehicle`/`MaintenanceRecord`)에서 `@PrePersist`/`@PreUpdate`가
-        반복 중. 아직 견딜 만하다. **엔티티가 4개째 생기는 시점**에 규칙 7을 재검토한다.
-      → 도입하면 `BaseTimeEntity`(`@MappedSuperclass` + `@EntityListeners`)로 상속 구조가 생긴다.
-        상속이 생기면 "이 필드가 어디서 오는지" 눈에 안 보이는 게 단점.
+- [x] `@EnableJpaAuditing` 도입 — **2026-09-16 완료.** 걸어 뒀던 조건("엔티티가 4개째 생기는
+      시점")이 `FuelRecord` 로 충족됐다. 자세한 내용은 위 진행 상황의 2026-09-16 항목에.
+
+여기 남은 보류 항목은 없다.
 
 ---
 
@@ -1978,7 +2101,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 이력도 함께 사라짐 — B-57
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-54
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-55, B-56
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (84개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (106개)
 
 ---
 
@@ -1994,8 +2117,9 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
         SQL 한 번이면 정확하고 요청도 1번으로 준다.
 - [ ] 다음 정비 시점을 **전체 종류 한 번에** 반환하는 API (`GET .../next-services`)
       → 화면 하나 그리는 데 요청 5번은 낭비. 다만 API를 늘리는 비용도 있으니 실제 필요할 때.
-- [ ] 정비 이력 등록 시 `serviceOdometer`가 차량 `odometer`보다 크면 차량 주행거리 자동 갱신
-      → 사용자가 두 번 입력하지 않게. 비즈니스 규칙이므로 `Vehicle` 엔티티 안에 둔다.
+- [ ] **정비 이력** 등록 시 `serviceOdometer`가 차량 `odometer`보다 크면 차량 주행거리 자동 갱신
+      → **주유 기록에는 2026-09-16에 넣었다**(`FuelRecordService.register`). 정비 쪽은 아직이다.
+        주유가 훨씬 잦아서 그쪽부터 했고, 같은 규칙을 정비에도 옮길지는 화면을 써 보고 정한다.
 - [ ] 이메일 중복 확인 API (`GET /api/users/exists?email=`) — 회원가입 폼 실시간 피드백용
       → 단, 이건 계정 존재 여부를 노출하는 API다. 로그인 실패 메시지를 일부러 통일해 둔 것과
         모순되므로 **도입 전에 트레이드오프를 다시 따진다.**

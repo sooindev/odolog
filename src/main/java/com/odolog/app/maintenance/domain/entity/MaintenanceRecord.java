@@ -2,6 +2,7 @@ package com.odolog.app.maintenance.domain.entity;
 
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
+import com.odolog.app.common.domain.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,16 +14,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "maintenance_records")
-public class MaintenanceRecord {
+public class MaintenanceRecord extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,11 +52,6 @@ public class MaintenanceRecord {
     @Column(name = "service_date", nullable = false)
     private LocalDate serviceDate;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
 
     protected MaintenanceRecord() {
     }
@@ -73,16 +66,6 @@ public class MaintenanceRecord {
         this.serviceDate = serviceDate;
     }
 
-    @PrePersist
-    void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     public Long getId() {
         return id;
@@ -112,13 +95,6 @@ public class MaintenanceRecord {
         return serviceDate;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 
     public void changeType(ServiceType type) {
         this.type = type;

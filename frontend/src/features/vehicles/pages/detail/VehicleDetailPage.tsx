@@ -5,6 +5,8 @@ import { useNavigate, useParams } from 'react-router'
 import { MaintenanceSection } from '@/features/maintenance/components/section/MaintenanceSection'
 import { NextServiceCard } from '@/features/maintenance/components/next-service/NextServiceCard'
 import { VehicleInfoForm } from '@/features/vehicles/components/info-form/VehicleInfoForm'
+import { FuelSection } from '@/features/fuel/components/section/FuelSection'
+import { FuelSummaryCard } from '@/features/fuel/components/summary/FuelSummaryCard'
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { Field } from '@/shared/ui/form/field'
@@ -32,11 +34,14 @@ export function VehicleDetailPage() {
     data: vehicle,
     loading,
     error,
+    reload: reloadVehicle,
     setData: setVehicle,
   } = useAsyncData(load, '차량을 불러오지 못했습니다.')
 
   // 정비 이력이 바뀌면 이 값을 올려 "다음 정비 시점"을 다시 계산하게 한다.
   const [maintenanceVersion, setMaintenanceVersion] = useState(0)
+  // 주유 기록도 같은 방식으로 요약 카드를 재생성시킨다.
+  const [fuelVersion, setFuelVersion] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -121,6 +126,19 @@ export function VehicleDetailPage() {
             vehicleId={vehicle.id}
             currentOdometer={vehicle.odometer}
             onChanged={() => setMaintenanceVersion((current) => current + 1)}
+          />
+
+          <FuelSummaryCard key={fuelVersion} vehicleId={vehicle.id} />
+
+          <FuelSection
+            vehicleId={vehicle.id}
+            currentOdometer={vehicle.odometer}
+            onChanged={() => {
+              setFuelVersion((current) => current + 1)
+              // 주유 기록의 주행거리가 더 크면 서버가 차량 쪽도 올린다. 다시 받아 와야
+              // 위의 히어로 숫자가 맞고, 값이 바뀐 만큼 굴러가는 연출도 거기서 나온다.
+              reloadVehicle()
+            }}
           />
         </div>
       </div>

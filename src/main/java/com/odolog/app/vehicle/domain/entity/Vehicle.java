@@ -2,6 +2,7 @@ package com.odolog.app.vehicle.domain.entity;
 
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.user.domain.entity.User;
+import com.odolog.app.common.domain.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -11,12 +12,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-import java.time.LocalDateTime;
 
 @Entity
 @Table(
@@ -26,7 +24,7 @@ import java.time.LocalDateTime;
                 columnNames = {"user_id", "plate_number"}
         )
 )
-public class Vehicle {
+public class Vehicle extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,11 +53,6 @@ public class Vehicle {
     @Column(nullable = false)
     private int odometer;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
 
     protected Vehicle() {
     }
@@ -73,16 +66,6 @@ public class Vehicle {
         this.odometer = 0;
     }
 
-    @PrePersist
-    void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     public void updateOdometer(int odometer) {
         if (odometer < this.odometer) {
@@ -137,11 +120,4 @@ public class Vehicle {
         return odometer;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 }

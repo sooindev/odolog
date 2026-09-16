@@ -3,6 +3,7 @@ package com.odolog.app.vehicle.service.application;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.ForbiddenAccessException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
+import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.repository.jpa.UserRepository;
@@ -42,6 +43,9 @@ class VehicleServiceTest {
 
     @Mock
     private MaintenanceRecordRepository maintenanceRecordRepository;
+
+    @Mock
+    private FuelRecordRepository fuelRecordRepository;
 
     @InjectMocks
     private VehicleService vehicleService;
@@ -175,8 +179,10 @@ class VehicleServiceTest {
 
         vehicleService.delete(1L, 10L);
 
-        InOrder order = inOrder(maintenanceRecordRepository, vehicleRepository);
+        // 자식(정비 이력·주유 기록)이 전부 먼저, 차량이 마지막.
+        InOrder order = inOrder(maintenanceRecordRepository, fuelRecordRepository, vehicleRepository);
         order.verify(maintenanceRecordRepository).deleteByVehicleId(10L);
+        order.verify(fuelRecordRepository).deleteByVehicleId(10L);
         order.verify(vehicleRepository).delete(vehicle);
     }
 
@@ -190,9 +196,11 @@ class VehicleServiceTest {
 
         vehicleService.deleteAllOwnedBy(1L);
 
-        InOrder order = inOrder(maintenanceRecordRepository, vehicleRepository);
+        InOrder order = inOrder(maintenanceRecordRepository, fuelRecordRepository, vehicleRepository);
         order.verify(maintenanceRecordRepository).deleteByVehicleId(10L);
+        order.verify(fuelRecordRepository).deleteByVehicleId(10L);
         order.verify(maintenanceRecordRepository).deleteByVehicleId(11L);
+        order.verify(fuelRecordRepository).deleteByVehicleId(11L);
         order.verify(vehicleRepository).deleteAll(List.of(first, second));
     }
 }
