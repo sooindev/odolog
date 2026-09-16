@@ -4,25 +4,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { ErrorText, Skeleton } from '@/shared/ui/feedback/state'
 import { formatDate, formatKm } from '@/shared/lib/format/format'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
-import { fetchNextService } from '@/features/maintenance/api/endpoints/endpoints'
-import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
+import { fetchNextServices } from '@/features/maintenance/api/endpoints/endpoints'
+import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import type { NextServiceResponse } from '@/features/maintenance/api/types/types'
 
 /**
  * 다음 정비 시점을 종류별로 보여준다.
- * 백엔드 API가 종류 하나씩만 계산하므로 요청이 종류 수만큼 나간다.
- * 실제로 느려지면 "전체 종류 한 번에" API 추가를 검토한다 (CLAUDE.md 백로그).
+ *
+ * <p>전에는 종류마다 요청을 보내 Promise.all 로 묶었다(5종 = 5요청). 종류가 15개가 되면서
+ * 그 방식을 버리고 서버가 한 번에 돌려주는 /next-services 로 바꿨다 — 요청 1번이다.
+ * 덤으로 "5개 중 3개만 뜨는" 부분 실패 상태가 원리적으로 사라졌다.
+ *
+ * <p><b>이력이 있는 종류만 온다.</b> "다음 정비 시점"은 마지막 정비가 있어야 나오는 값이라,
+ * 15줄 중 13줄이 "이력 없음"이면 카드가 빈칸 목록이 된다.
  *
  * 이력이 바뀌면 부모가 key 를 바꿔 이 컴포넌트를 새로 만든다. 그래서 여기엔 재조회 장치가 없다.
  */
 export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
-  // Promise.all: 5개 요청을 순서대로 기다리지 않고 동시에 보낸다.
-  // 하나만 실패해도 전체가 실패한다. 부분 성공을 보여줄 수도 있지만,
-  // 5개 중 3개만 뜨는 화면이 더 헷갈려서 통째로 에러로 처리한다.
-  const load = useCallback(
-    () => Promise.all(SERVICE_TYPES.map((type) => fetchNextService(vehicleId, type))),
-    [vehicleId],
-  )
+  const load = useCallback(() => fetchNextServices(vehicleId), [vehicleId])
   const {
     data: results,
     loading,
@@ -39,15 +38,22 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
       <CardContent>
         {loading && (
           <div className="flex flex-col gap-5">
-            {SERVICE_TYPES.map((type) => (
-              <Skeleton key={type} className="h-4" />
+            {[0, 1, 2].map((row) => (
+              <Skeleton key={row} className="h-4" />
             ))}
           </div>
         )}
 
         {!loading && error !== null && <ErrorText message={error} />}
 
-        {!loading && error === null && results !== null && (
+        {!loading && error === null && results !== null && results.length === 0 && (
+          <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
+            아직 계산할 이력이 없습니다. 정비 이력을 등록하면 그 종류의 권장 주기로 다음 시점을
+            알려 드립니다.
+          </p>
+        )}
+
+        {!loading && error === null && results !== null && results.length > 0 && (
           // divide-y: 항목마다 테두리를 직접 붙이지 않고 "사이"에만 선을 넣는다.
           // 첫 줄 위와 마지막 줄 아래에 선이 생기지 않아 카드 안쪽이 깔끔하다.
           <ul className="divide-y divide-border">
@@ -98,12 +104,9 @@ function describeLast(result: NextServiceResponse) {
   return `마지막 ${parts.join(' · ')}`
 }
 
-/** 결론: 이력 없음 / 권장 주기 없음(OTHER) / 정상 계산됨 세 경우. */
+/** 결론: 권장 주기 없음(OTHER) / 정상 계산됨 두 경우.
+ *  이력 없는 종류는 서버가 아예 안 보내므로 여기서 다룰 필요가 없다. */
 function describeNext(result: NextServiceResponse) {
-  if (result.lastServiceDate === null) {
-    return '이력 없음'
-  }
-
   const parts: string[] = []
   if (result.nextServiceOdometer !== null) {
     parts.push(formatKm(result.nextServiceOdometer))

@@ -19,6 +19,27 @@
 - 빌드/컴파일만 확인할 때는 터미널에서 `./gradlew build`.
 - API 문서: 실행 후 `http://localhost:8080/swagger-ui.html`
 
+### ⚠️ 이미 쓰던 DB 가 있다면 — 정비 종류 확장 (2026-09-16)
+
+정비 종류를 5개에서 15개로 늘리면서 `maintenance_records.type` 컬럼 타입을 바꿨다.
+**처음 받아서 스키마를 새로 만드는 경우에는 할 일이 없다.** 이 저장소를 예전부터 쓰던
+DB 에만 아래를 한 번 실행해야 한다.
+
+```
+/opt/homebrew/opt/mariadb/bin/mariadb --no-defaults \
+  -e "USE odolog; ALTER TABLE maintenance_records MODIFY COLUMN type VARCHAR(30) NOT NULL;"
+```
+
+**왜 필요한가**: Hibernate 6 은 MariaDB 에서 `@Enumerated(STRING)` 을 varchar 가 아니라
+네이티브 `enum('BATTERY','BRAKE_PAD',...)` 컬럼으로 만든다. `ddl-auto: update` 는 컬럼 타입을
+바꿔 주지 않으므로, 자바 enum 에 값을 더해도 DB 컬럼은 옛 5개 그대로다 —
+**새 종류를 저장하는 순간 데이터 잘림 오류가 난다.** 테스트 스키마는 매번 새로 만들어지므로
+`./gradlew test` 는 멀쩡히 통과한다.
+
+이번에 `@JdbcTypeCode(SqlTypes.VARCHAR)` 로 컬럼을 varchar 로 고정했으므로,
+**이 ALTER 는 한 번만 하면 되고 앞으로 종류를 더 늘려도 다시 필요하지 않다.**
+enum 은 값을 문자열로 저장하므로 기존 데이터는 그대로 보존된다.
+
 ## 프로젝트 구조
 
 백엔드와 프론트엔드 모두 기능별(package-by-feature)로 구성되어 있다.
@@ -94,7 +115,8 @@
 | 차량 삭제 | `DELETE /api/vehicles/{vehicleId}` |
 | 정비 이력 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/maintenance-records` |
 | 정비 이력 상세조회/수정/삭제 | `GET`/`PATCH`/`DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` |
-| 다음 정비 시점 조회 | `GET /api/vehicles/{vehicleId}/maintenance-records/next-service?type=` |
+| 다음 정비 시점 조회(종류 하나) | `GET /api/vehicles/{vehicleId}/maintenance-records/next-service?type=` |
+| 다음 정비 시점 조회(전체) | `GET /api/vehicles/{vehicleId}/maintenance-records/next-services` |
 | 주유 기록 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/fuel-records` |
 | 주유 기록 상세조회/수정/삭제 | `GET`/`PATCH`/`DELETE /api/vehicles/{vehicleId}/fuel-records/{recordId}` |
 | 연비 요약 조회 | `GET /api/vehicles/{vehicleId}/fuel-records/summary` |
@@ -107,8 +129,8 @@
 
 ## 진행 상황
 
-백엔드 API **25개**와 프론트엔드 화면 8장(라우트 기준. `/` 가 세 얼굴을 가져 실제로 볼 상태는
-10개)이 모두 동작하는 상태다. 백엔드 테스트 **106개**가 통과하고, 프론트엔드는
+백엔드 API **26개**와 프론트엔드 화면 8장(라우트 기준. `/` 가 세 얼굴을 가져 실제로 볼 상태는
+10개)이 모두 동작하는 상태다. 백엔드 테스트 **116개**가 통과하고, 프론트엔드는
 `tsc -b` / `oxlint` / `vite build` 를 통과한다.
 
 남은 것은 **브라우저 실동작 확인**과, 할지 말지부터 정해야 하는 두 가지(토스트 / 필드별 에러)뿐이다.
@@ -131,6 +153,7 @@ Phase 6 이후에 기능이 더 붙었다.
 | 회원 탈퇴 | 계정과 딸린 데이터 전부. `account` 조율 층 신설 | 2026-09-16 |
 | `@EnableJpaAuditing` | `BaseTimeEntity` 로 시간 필드 일원화 | 2026-09-16 |
 | **주유 기록과 연비** | 주유 CRUD + km/L 계산 + 요약. 차량 주행거리 자동 갱신 | 2026-09-16 |
+| 정비 종류 5 → 15개 | 미션오일·냉각수·점화 플러그·타이밍 벨트 등. `type` 컬럼을 varchar 로 | 2026-09-16 |
 
 Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않는다.
 
@@ -210,6 +233,9 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 - [ ] 정비 이력 삭제 (204)
 - [ ] **차량 정보 수정** — 제조사만 바꿨을 때 **409 가 나지 않는지**(번호판이 안 바뀌었으면
       중복 검사를 건너뛰어야 한다. 이 기능의 핵심 함정이다)
+- [ ] **미션오일 등 새 종류**로 정비 이력이 등록되는지 (⚠️ 위 "정비 종류 확장" 참고)
+- [ ] 정비 종류 선택 목록이 **부위별로 묶여** 보이는지(엔진·구동 / 제동 / …)
+- [ ] "다음 정비 시점" 카드가 **이력 있는 종류만** 보여주는지. 요청은 **1번**인지(Network 탭)
 - [ ] **주유 기록 등록** → 첫 기록은 연비가 `—` 인지(`0.00` 이면 잘못된 것)
 - [ ] **두 번째 주유 기록** → 연비가 나오는지. 주행거리 500km · 25L 이면 **20.00 km/L**
 - [ ] **주유가 차량 주행거리를 따라 올리는지** — 위쪽 히어로 숫자가 그만큼 굴러가야 한다
@@ -264,8 +290,8 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
         (차량 100 / 이력 200건)을 넘으면 일부만 반영된다. 화면에 "일부 기록만 합산됨" 으로
         **표시는 하고 있다** — 틀릴 수 있는 값을 맞는 값처럼 보여주지 않으려고.
         SQL 한 번이면 정확하고 요청도 1번이다.
-- [ ] 다음 정비 시점을 **전체 종류 한 번에** 반환하는 API (`GET .../next-services`)
-      → 지금은 화면 하나를 그리는 데 요청이 5번 나간다.
+- [x] ~~다음 정비 시점을 **전체 종류 한 번에** 반환하는 API~~ — **완료.**
+      정비 종류가 15개가 되면서 요청 15번이 되어 더 미룰 수 없었다.
 - [ ] **정비 이력** 등록 시 `serviceOdometer` 가 차량 `odometer` 보다 크면 차량 주행거리 자동 갱신
       → **주유 기록에는 이미 넣었다.** 주유가 훨씬 잦아 그쪽부터 했고, 같은 규칙을 정비에도
         옮길지는 화면을 써 보고 정한다.
@@ -283,7 +309,7 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 ### 완료 판정 기준
 
 위 0번을 처음부터 끝까지 막힘없이 수행할 수 있고, `./gradlew test` 가 통과하면 "완성"으로 본다.
-(테스트 **106개**는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
+(테스트 **116개**는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
 배포(서버 인프라, 도메인, CI/CD)는 이 프로젝트의 범위 밖이며, **로컬에서 완전히 동작하는 것**까지가 목표다.
 
 ## 트러블슈팅

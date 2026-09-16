@@ -26,6 +26,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/vehicles/{vehicleId}/maintenance-records")
 public class MaintenanceRecordController {
@@ -56,6 +58,18 @@ public class MaintenanceRecordController {
                         .map(MaintenanceRecordResponse::from));
 
         return ResponseEntity.ok(records);
+    }
+
+    /**
+     * 종류 전체를 한 번에. 이력이 있는 종류만 담겨 온다.
+     *
+     * <p>/next-service(단수)는 종류 하나만 묻는 기존 엔드포인트라 그대로 둔다 —
+     * 경로가 달라 충돌하지 않고, 특정 종류만 알고 싶을 때는 이쪽이 싸다.
+     */
+    @GetMapping("/next-services")
+    public ResponseEntity<List<NextServiceResponse>> calculateAllNextServices(
+            @PathVariable Long vehicleId, @LoginUser Long requesterId) {
+        return ResponseEntity.ok(maintenanceRecordService.calculateAllNextServices(requesterId, vehicleId));
     }
 
     @GetMapping("/next-service")

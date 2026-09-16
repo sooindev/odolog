@@ -148,4 +148,30 @@ class MaintenanceRecordControllerTest {
                         .session(loginSessionOf(1L)))
                 .andExpect(status().isNoContent());
     }
+
+    @Test
+    @DisplayName("/next-services 는 이력 있는 종류를 한 번에 돌려준다")
+    void calculateAllNextServices() throws Exception {
+        when(maintenanceRecordService.calculateAllNextServices(1L, 10L)).thenReturn(List.of(
+                new NextServiceResponse(ServiceType.ENGINE_OIL, 20000, 25000,
+                        LocalDate.of(2026, 9, 1), LocalDate.of(2027, 3, 1)),
+                new NextServiceResponse(ServiceType.TRANSMISSION_FLUID, 15000, 75000,
+                        LocalDate.of(2026, 6, 1), LocalDate.of(2030, 6, 1))));
+
+        mockMvc.perform(get("/api/vehicles/10/maintenance-records/next-services")
+                        .session(loginSessionOf(1L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].type").value("ENGINE_OIL"))
+                .andExpect(jsonPath("$[1].type").value("TRANSMISSION_FLUID"));
+    }
+
+    @Test
+    @DisplayName("새로 추가한 종류(미션오일)도 등록된다")
+    void registerNewServiceType() throws Exception {
+        mockMvc.perform(get("/api/vehicles/10/maintenance-records/next-service")
+                        .param("type", "TRANSMISSION_FLUID")
+                        .session(loginSessionOf(1L)))
+                .andExpect(status().isOk());
+    }
 }

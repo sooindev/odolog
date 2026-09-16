@@ -70,6 +70,14 @@
 
       /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SHOW CREATE TABLE vehicles\G"
 
+  **2026-09-16에 같은 함정을 다른 모양으로 또 만났다**: `@Enumerated(STRING)` 이 만든 네이티브
+  `enum(...)` 컬럼은 자바 enum 에 값을 더해도 `ddl-auto: update` 가 바꿔 주지 않는다.
+  이번엔 컬럼을 **varchar 로 바꿔 문제 자체를 없앴다**(`@JdbcTypeCode(SqlTypes.VARCHAR)`).
+  운영 DB 에 한 번만 아래를 실행하면 된다 — enum 은 값을 문자열로 저장하므로 데이터는 보존된다:
+
+      /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults \
+        -e "USE odolog; ALTER TABLE maintenance_records MODIFY COLUMN type VARCHAR(30) NOT NULL;"
+
   (`SHOW INDEX` 보다 `SHOW CREATE TABLE` 이 낫다. 복합 유니크가 `user_id` 로 시작하면 외래키용
   인덱스 `fk_vehicles_user` 가 그 역할을 대신해 `SHOW INDEX` 목록에서 사라지는데, FK 제약 자체는
   멀쩡히 살아 있다. `SHOW CREATE TABLE` 은 그걸 그대로 보여준다.)
@@ -466,7 +474,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   ├── domain/
     │   │   ├── entity/MaintenanceRecord.java @Entity. type은 @Enumerated(STRING).
     │   │   │                                 필드별 change 메서드 5개
-    │   │   └── type/ServiceType.java         enum 5종. recommendedIntervalKm +
+    │   │   └── type/ServiceType.java         enum 15종(부위별로 묶어 선언 — 화면 선택 목록이
+    │   │                                     이 순서를 따른다). recommendedIntervalKm +
     │   │                                     recommendedIntervalMonths (OTHER는 둘 다 null).
     │   │                                     **entity 와 형제 폴더로 갈라 둔 이유**: 엔티티가 아니라
     │   │                                     값의 종류라서, 한 폴더에 섞이면 @Entity 인지
@@ -595,7 +604,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 106개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 116개.
 
     src/test/java/com/odolog/app/
     ├── user/
@@ -855,6 +864,49 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
   `'odolog-theme'` 문자열이 HTML 과 `ThemeContext.ts` 양쪽에 중복인 것과 같은 종류의 함정이다.
 
 ## 진행 상황 (완료)
+
+- [x] 정비 종류 5 → 15개 확장 + enum 컬럼을 varchar 로 (2026-09-16)
+      → 미션오일(`TRANSMISSION_FLUID`)을 비롯해 10종을 더했다. 엔진·구동 5 / 제동 2 /
+        타이어·조향 3 / 소모품 4 / 기타 1.
+      → **가장 중요한 건 종류가 아니라 컬럼 타입이다.** `@Enumerated(STRING)` 을 그냥 두면
+        Hibernate 6 이 MariaDB 에서 네이티브 `enum('BATTERY','BRAKE_PAD',...)` 컬럼을 만든다.
+        운영 DB 를 확인하니 실제로 **값 5개짜리 enum 컬럼**이었다. `ddl-auto: update` 는 컬럼
+        타입을 바꿔 주지 않으므로, **코드만 고치면 새 종류를 저장하는 순간 데이터 잘림 오류가
+        나고 `odolog_test` 는 create-drop 이라 테스트는 멀쩡히 통과한다** — 이 저장소가 이미
+        한 번 크게 밟은 "테스트는 통과하는데 운영만 안 바뀌는" 함정의 재판이다.
+      → **`@JdbcTypeCode(SqlTypes.VARCHAR)` 로 varchar(30) 을 강제했다. 2026-09-13 에 한 번
+        반려했던 선택인데 근거가 뒤집혔다** — 그때는 "잘 도는 컬럼을 바꾸려고 ALTER 를 하긴
+        아깝다"였지만, 이제 ALTER 는 어차피 필요하고 varchar 로 바꿔 두면 **앞으로 종류를 몇 개
+        더 넣든 다시는 필요 없다.** 테스트 스키마를 `create` 로 잠깐 돌려 `varchar(30)` 으로
+        생성되는 것을 눈으로 확인했다.
+      → **운영 DB 는 ALTER 가 한 번 필요하다**(아래 "DB 접속 시 주의" 위의 항목 참고).
+        enum → varchar 는 값이 문자열로 저장돼 있어 데이터가 그대로 보존된다.
+      → **주기가 한쪽만 있는 종류가 처음 생겼다.** 와이퍼는 고무가 굳는 시간 문제라 개월만,
+        타이밍 벨트는 주행거리만 본다. 계산 로직이 원래 둘을 독립적으로 다루고 있어서 코드는
+        안 고쳐도 됐지만, 그 사실에 기대는 테스트를 새로 넣었다.
+      → **`TIRE` 주기를 10,000km → 50,000km 로 고쳤다.** `TIRE_ROTATION`(10,000km)이 생기면서
+        둘이 같은 값이면 앞뒤가 안 맞는다. 타이어 교체는 5만, 위치 교환은 1만이 맞다.
+        **나머지 기존 4종의 주기는 건드리지 않았다** — 종류를 늘리는 작업이 기존 계산을 조용히
+        바꾸면 안 된다.
+      → **종류가 늘면서 `NextServiceCard` 가 터졌다.** 종류마다 요청을 보내는 구조라 5요청이
+        **15요청**이 됐다. 그 파일 주석에 "실제로 느려지면 전체 종류 한 번에 API 를 검토한다"고
+        적어 둔 그 시점이다 — 백로그에서 꺼내 `GET .../next-services` 를 만들었다. **요청 1번.**
+      → 서버 쪽도 종류마다 쿼리를 돌리지 않는다. 차량의 이력을 **한 번** 정렬해 읽고 종류별로
+        처음 만나는 줄을 집는다(`EnumMap` + `putIfAbsent`). 한 차량의 이력은 많아야 수백 건이다.
+      → **이력이 없는 종류는 응답에서 뺀다.** "다음 정비 시점"은 마지막 정비가 있어야 나오는
+        값이라, 15줄 중 13줄이 "이력 없음"이면 카드가 빈칸 목록이 된다. 덤으로 프론트의
+        "5개 중 3개만 뜨는 부분 실패" 상태가 원리적으로 사라졌다.
+      → 계산 공식을 `toNextService()` 하나로 모았다. 단건과 전체가 각자 계산하면 언젠가 갈린다.
+      → 선택 목록은 `<optgroup>` 으로 묶었다. 5개일 때는 평평한 목록으로 충분했지만 15개는
+        훑어 찾기 어렵다. 그룹 정의(`SERVICE_TYPE_GROUPS`)가 15종을 빠짐없이 덮는지 스크립트로 확인.
+      → **백엔드 enum 과 프론트 `SERVICE_TYPES` 를 순서까지 diff 로 대조했다.** 하나만 어긋나면
+        그 종류만 조용히 깨진다.
+      → 새 테스트: `ServiceTypeTest` 는 값을 다시 적지 않고 **약속만** 못박는다 —
+        "OTHER 를 뺀 모든 종류는 주기가 최소 하나는 있다"(빠뜨리면 다음 시점이 영영 안 뜨는데
+        에러도 안 난다), 주기는 양수, 이름은 30자 이하(컬럼 폭).
+      → 테스트 106 → **116개**.
+      → 검증: `./gradlew test` 116개 통과, 프론트 `tsc -b` / `oxlint`(기존 shadcn 경고 1건) /
+        `vite build` 통과. **브라우저 눈 확인은 사용자 몫이다.**
 
 - [x] 주유 기록 + 연비 — 네 번째 기능, 그리고 `@EnableJpaAuditing` (2026-09-16)
       → **정비보다 자주 쓰는 기능이다.** 정비는 1년에 몇 번이지만 주유는 주 단위다. 더 중요한 건
@@ -2163,7 +2215,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-86
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-83
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-84, B-85
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (106개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (116개)
 
 ---
 
@@ -2177,8 +2229,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
         건수는 `totalElements` 라 정확하지만 **합계는 받아 온 행만 더한 값**이라, 한 차량의
         이력이 200건을 넘으면 일부만 반영된다(화면에 "일부 기록만 합산됨"으로 표시 중).
         SQL 한 번이면 정확하고 요청도 1번으로 준다.
-- [ ] 다음 정비 시점을 **전체 종류 한 번에** 반환하는 API (`GET .../next-services`)
-      → 화면 하나 그리는 데 요청 5번은 낭비. 다만 API를 늘리는 비용도 있으니 실제 필요할 때.
+- [x] 다음 정비 시점을 **전체 종류 한 번에** 반환하는 API — **2026-09-16 완료.**
+      종류가 15개가 되면서 "실제 필요할 때"가 왔다.
 - [ ] **정비 이력** 등록 시 `serviceOdometer`가 차량 `odometer`보다 크면 차량 주행거리 자동 갱신
       → **주유 기록에는 2026-09-16에 넣었다**(`FuelRecordService.register`). 정비 쪽은 아직이다.
         주유가 훨씬 잦아서 그쪽부터 했고, 같은 규칙을 정비에도 옮길지는 화면을 써 보고 정한다.

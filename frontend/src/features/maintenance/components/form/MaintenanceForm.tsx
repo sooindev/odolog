@@ -13,7 +13,7 @@ import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { todayString } from '@/shared/lib/format/format'
 import { registerRecord, updateRecord } from '@/features/maintenance/api/endpoints/endpoints'
-import { SERVICE_TYPES, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
+import { SERVICE_TYPE_GROUPS, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import type {
   MaintenanceRecordResponse,
   MaintenanceRecordUpdateRequest,
@@ -107,10 +107,19 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
               value={type}
               onChange={(event) => setType(event.target.value as ServiceType)}
             >
-              {SERVICE_TYPES.map((serviceType) => (
-                <option key={serviceType} value={serviceType}>
-                  {SERVICE_TYPE_LABELS[serviceType]}
-                </option>
+              {/*
+                optgroup 으로 묶는다. 종류가 5개일 때는 평평한 목록으로 충분했지만 15개가
+                되면서 훑어 찾기 어려워졌다. 브라우저·OS 기본 목록이라 구역 제목의 생김새는
+                제각각이지만, 모바일에서 OS 기본 선택 UI 가 뜨는 이점이 그보다 크다.
+              */}
+              {SERVICE_TYPE_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.types.map((serviceType) => (
+                    <option key={serviceType} value={serviceType}>
+                      {SERVICE_TYPE_LABELS[serviceType]}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
 
