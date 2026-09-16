@@ -577,7 +577,8 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     ├── .gitignore                    node_modules/, dist/
     ├── index.html                    <div id="root"> + main.tsx 로드
     ├── README.md                     프론트 실행법 (백엔드가 먼저 떠 있어야 함)
-    ├── public/favicon.svg            빌드 시 그대로 복사되는 정적 파일 (아직 Vite 기본 로고)
+    ├── public/favicon.svg            계기판 마크. mark.tsx 와 같은 도형이지만 이쪽은 값이 박혀 있다
+    │                                 — 정적 파일이라 테마를 못 따라가므로 다크 바닥(#17171a) 고정
     └── src/
         ├── main.tsx                  Vite 진입점. **index.html이 이 경로를 직접 가리키므로
         │                             폴더로 내려보낼 수 없다** (백엔드의 OdoLogApplication 과
