@@ -138,7 +138,7 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
       </CardHeader>
       <CardContent>
         <ul className="divide-y divide-border">
-          {vehicles.map(({ vehicle, recordCount, lastServiceDate, averageEfficiency }) => (
+          {vehicles.map(({ vehicle, recordCount, lastServiceDate }) => (
             <li key={vehicle.id} className="py-5 first:pt-0 last:pb-0">
               <Link
                 to={`/vehicles/${vehicle.id}`}
@@ -150,9 +150,6 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {vehicle.plateNumber} · 정비 {recordCount}건
-                    {/* 연비는 주유 기록이 2건 이상 쌓여야 나온다. 없으면 아예 안 적는다 —
-                        '연비 —' 를 붙이면 없는 값이 자리를 차지한다. */}
-                    {averageEfficiency !== null && ` · ${averageEfficiency.toFixed(1)}km/L`}
                   </p>
                 </div>
 

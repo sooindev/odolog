@@ -33,8 +33,8 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>지난 12개월 정비 비용</CardTitle>
-        <CardDescription>달마다 들어간 정비 비용입니다.</CardDescription>
+        <CardTitle>지난 12개월 유지비</CardTitle>
+        <CardDescription>달마다 들어간 정비비와 유류비의 합입니다.</CardDescription>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-8">
@@ -99,34 +99,50 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
           <summary className="w-fit cursor-pointer list-none text-[0.8125rem] text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70">
             표로 보기
           </summary>
-          <table className="mt-4 w-full text-[0.8125rem]">
-            <thead>
-              <tr className="border-b border-border text-left text-muted-foreground">
-                <th scope="col" className="pb-2 font-medium">
-                  월
-                </th>
-                <th scope="col" className="pb-2 text-right font-medium">
-                  건수
-                </th>
-                <th scope="col" className="pb-2 text-right font-medium">
-                  비용
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {monthly.map((entry) => (
-                <tr key={entry.month}>
-                  <td className="py-2 tabular-nums text-foreground">{formatMonth(entry.month)}</td>
-                  <td className="py-2 text-right tabular-nums text-muted-foreground">
-                    {entry.count}
-                  </td>
-                  <td className="py-2 text-right tabular-nums text-strong">
-                    {formatWon(entry.cost)}
-                  </td>
+          {/* 열이 5개라 좁은 화면에서는 넘친다. 표는 가로 스크롤을 허용하는 예외다 —
+              글이 담긴 열을 좁히는 것보다 옆으로 미는 편이 읽기 낫다. */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[26rem] text-[0.8125rem]">
+              <thead>
+                <tr className="border-b border-border text-left text-muted-foreground">
+                  <th scope="col" className="pb-2 font-medium">
+                    월
+                  </th>
+                  <th scope="col" className="pb-2 text-right font-medium">
+                    건수
+                  </th>
+                  <th scope="col" className="pb-2 text-right font-medium">
+                    정비
+                  </th>
+                  <th scope="col" className="pb-2 text-right font-medium">
+                    주유
+                  </th>
+                  <th scope="col" className="pb-2 text-right font-medium">
+                    합계
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {monthly.map((entry) => (
+                  <tr key={entry.month}>
+                    <td className="py-2 tabular-nums text-foreground">{formatMonth(entry.month)}</td>
+                    <td className="py-2 text-right tabular-nums text-muted-foreground">
+                      {entry.count}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-muted-foreground">
+                      {formatWon(entry.maintenanceCost)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-muted-foreground">
+                      {formatWon(entry.fuelCost)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-strong">
+                      {formatWon(entry.cost)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </details>
       </CardContent>
     </Card>
@@ -187,6 +203,12 @@ function MonthColumn({
         <p className="text-[0.6875rem] tabular-nums text-muted-foreground">
           {formatMonth(entry.month)} · {entry.count}건
         </p>
+        {/* 구성은 표에도 있다. 말풍선은 정보를 보태는 장치지 감췄다 보여주는 장치가 아니다. */}
+        {entry.cost > 0 && (
+          <p className="text-[0.6875rem] tabular-nums text-faint">
+            정비 {formatWon(entry.maintenanceCost)} · 주유 {formatWon(entry.fuelCost)}
+          </p>
+        )}
       </div>
     </div>
   )
@@ -206,7 +228,9 @@ export function TypeCostChart({ byType }: { byType: TypeCost[] }) {
     <Card>
       <CardHeader>
         <CardTitle>정비 종류별 비용</CardTitle>
-        <CardDescription>전체 기간 합계입니다.</CardDescription>
+        {/* 옆 차트가 '유지비'(정비+주유)로 바뀌면서 범위를 헷갈리기 쉬워졌다.
+            주유는 정비 종류가 아니라 여기 들어갈 자리가 없으므로 그 사실을 적어 둔다. */}
+        <CardDescription>전체 기간 합계입니다. 유류비는 포함하지 않습니다.</CardDescription>
       </CardHeader>
 
       <CardContent>

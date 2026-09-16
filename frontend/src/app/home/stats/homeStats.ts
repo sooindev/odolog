@@ -1,5 +1,6 @@
 import { fetchRecords } from '@/features/maintenance/api/endpoints/endpoints'
-import { fetchFuelSummary } from '@/features/fuel/api/endpoints/endpoints'
+import { fetchFuelRecords } from '@/features/fuel/api/endpoints/endpoints'
+import type { FuelRecordResponse } from '@/features/fuel/api/types/types'
 import { fetchVehicles } from '@/features/vehicles/api/endpoints/endpoints'
 import { SERVICE_TYPES } from '@/features/maintenance/api/types/types'
 import type { MaintenanceRecordResponse, ServiceType } from '@/features/maintenance/api/types/types'
@@ -11,28 +12,32 @@ import type { VehicleResponse } from '@/features/vehicles/api/types/types'
  * 요청 수는 1 + 차량 수 × 2. 차량 목록 1번, 차량마다 정비 이력과 주유 요약 1번씩 동시에.
  * 백엔드 요약 API 가 생기면 1번으로 줄어든다(CLAUDE.md 백로그).
  *
- * 주유 쪽은 /fuel-records/summary 를 쓴다. 서버가 전체를 합산해 주므로 정비 비용과 달리
- * **페이지 상한에 걸리지 않는 정확한 값**이다 — 그래서 sumsComplete 는 정비에만 해당한다.
+ * 정비와 주유 모두 **목록**으로 받는다. 주유는 요약 API(/fuel-records/summary)를 쓰면 정확한
+ * 합계를 얻지만 달별 내역이 없다. 합계는 요약에서, 달별은 목록에서 가져오면 **같은 데이터가
+ * 두 출처에서 오게 되어** 숫자가 어긋났을 때 어느 쪽이 맞는지 알 수 없다. 한 곳으로 통일했다.
+ * 그래서 sumsComplete 가 정비·주유 양쪽에 똑같이 적용된다.
  */
 
 // 개인용 앱이라 한 사람이 이보다 많이 가질 일은 없다고 보고 한 번에 받는다.
 const VEHICLE_PAGE_SIZE = 100
 const RECORD_PAGE_SIZE = 200
+const FUEL_PAGE_SIZE = 200
 
 export interface VehicleSummary {
   vehicle: VehicleResponse
   /** totalElements 라서 아래 비용 합계와 달리 항상 정확하다. */
   recordCount: number
   lastServiceDate: string | null
-  /** 주유 기록이 2건 미만이면 null. 서버가 계산해 준 값이다. */
-  averageEfficiency: number | null
 }
 
-/** 월별 정비 비용 한 칸. cost 가 0이면 그 달에 정비가 없었다는 뜻이다. */
+/** 월별 유지비 한 칸. cost 가 0이면 그 달에 아무 기록도 없었다는 뜻이다. */
 export interface MonthlyCost {
   /** 'YYYY-MM' */
   month: string
+  /** 정비 + 주유. 구성을 따로 들고 다녀 표에서 나눠 보여준다. */
   cost: number
+  maintenanceCost: number
+  fuelCost: number
   count: number
 }
 
@@ -88,16 +93,22 @@ export async function loadHomeData(): Promise<HomeData> {
       sumsComplete: true,
       vehicles: [],
       recent: [],
-      monthly: lastMonths(MONTHS_SHOWN).map((month) => ({ month, cost: 0, count: 0 })),
+      monthly: lastMonths(MONTHS_SHOWN).map((month) => ({
+        month,
+        cost: 0,
+        maintenanceCost: 0,
+        fuelCost: 0,
+        count: 0,
+      })),
       byType: [],
     }
   }
 
   // 순차로 기다리면 차량이 늘어난 만큼 그대로 느려진다.
   // 정비와 주유를 한 덩어리로 묶어 동시에 보낸다.
-  const [recordPages, fuelSummaries] = await Promise.all([
+  const [recordPages, fuelPages] = await Promise.all([
     Promise.all(vehicles.map((vehicle) => fetchRecords(vehicle.id, 0, RECORD_PAGE_SIZE))),
-    Promise.all(vehicles.map((vehicle) => fetchFuelSummary(vehicle.id))),
+    Promise.all(vehicles.map((vehicle) => fetchFuelRecords(vehicle.id, 0, FUEL_PAGE_SIZE))),
   ])
 
   const summaries: VehicleSummary[] = vehicles.map((vehicle, index) => ({
@@ -106,7 +117,6 @@ export async function loadHomeData(): Promise<HomeData> {
     // 목록 기본 정렬이 serviceDate DESC 라 첫 줄이 가장 최근이다.
     // 컨트롤러의 @PageableDefault 가 바뀌면 여기도 같이 틀어진다.
     lastServiceDate: recordPages[index].items[0]?.serviceDate ?? null,
-    averageEfficiency: fuelSummaries[index].averageEfficiency,
   }))
 
   const recent = recordPages
@@ -127,23 +137,25 @@ export async function loadHomeData(): Promise<HomeData> {
   const maintenanceCost = sum(
     recordPages.flatMap((page) => page.items.map((record) => record.cost)),
   )
-  const fuelCost = sum(fuelSummaries.map((summary) => summary.totalCost))
+  const allFuel = fuelPages.flatMap((page) => page.items)
+  const fuelCost = sum(allFuel.map((record) => record.totalCost))
 
   return {
     vehicleCount: vehiclePage.totalElements,
     totalOdometer: sum(vehicles.map((vehicle) => vehicle.odometer)),
     recordCount:
       sum(recordPages.map((page) => page.totalElements)) +
-      sum(fuelSummaries.map((summary) => summary.recordCount)),
+      sum(fuelPages.map((page) => page.totalElements)),
     totalCost: maintenanceCost + fuelCost,
     maintenanceCost,
     fuelCost,
     sumsComplete:
       vehicles.length === vehiclePage.totalElements &&
-      recordPages.every((page) => page.items.length === page.totalElements),
+      recordPages.every((page) => page.items.length === page.totalElements) &&
+      fuelPages.every((page) => page.items.length === page.totalElements),
     vehicles: summaries,
     recent,
-    monthly: monthlyCost(allRecords),
+    monthly: monthlyCost(allRecords, allFuel),
     byType: costByType(allRecords),
   }
 }
@@ -163,23 +175,39 @@ function lastMonths(count: number): string[] {
   })
 }
 
-function monthlyCost(records: MaintenanceRecordResponse[]): MonthlyCost[] {
-  const buckets = new Map<string, { cost: number; count: number }>()
+function monthlyCost(
+  records: MaintenanceRecordResponse[],
+  fuelRecords: FuelRecordResponse[],
+): MonthlyCost[] {
+  const buckets = new Map<string, { maintenanceCost: number; fuelCost: number; count: number }>()
+  const bucketOf = (month: string) =>
+    buckets.get(month) ?? { maintenanceCost: 0, fuelCost: 0, count: 0 }
 
   for (const record of records) {
     // 앞 7글자가 곧 'YYYY-MM'. Date 로 변환하면 시간대 문제만 생긴다.
     const month = record.serviceDate.slice(0, 7)
-    const bucket = buckets.get(month) ?? { cost: 0, count: 0 }
-    buckets.set(month, { cost: bucket.cost + record.cost, count: bucket.count + 1 })
+    const bucket = bucketOf(month)
+    buckets.set(month, { ...bucket, maintenanceCost: bucket.maintenanceCost + record.cost, count: bucket.count + 1 })
+  }
+
+  for (const record of fuelRecords) {
+    const month = record.fueledAt.slice(0, 7)
+    const bucket = bucketOf(month)
+    buckets.set(month, { ...bucket, fuelCost: bucket.fuelCost + record.totalCost, count: bucket.count + 1 })
   }
 
   // 빈 달도 채워 12칸을 유지한다. 기록이 있는 달만 모으면 가로축이 등간격이 아니게 되어
   // 띄엄띄엄 정비한 것이 꾸준히 정비한 것처럼 보인다.
-  return lastMonths(MONTHS_SHOWN).map((month) => ({
-    month,
-    cost: buckets.get(month)?.cost ?? 0,
-    count: buckets.get(month)?.count ?? 0,
-  }))
+  return lastMonths(MONTHS_SHOWN).map((month) => {
+    const bucket = bucketOf(month)
+    return {
+      month,
+      cost: bucket.maintenanceCost + bucket.fuelCost,
+      maintenanceCost: bucket.maintenanceCost,
+      fuelCost: bucket.fuelCost,
+      count: bucket.count,
+    }
+  })
 }
 
 function costByType(records: MaintenanceRecordResponse[]): TypeCost[] {
