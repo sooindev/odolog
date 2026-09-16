@@ -61,70 +61,9 @@ class MaintenanceRecordServiceTest {
         assertThat(saved.getType()).isEqualTo(ServiceType.ENGINE_OIL);
     }
 
-    @Test
-    @DisplayName("최근 이력이 있으면 권장 주기를 더해 다음 정비 시점을 계산한다")
-    void calculateNextServiceWithHistory() {
-        Vehicle vehicle = createVehicle(10L);
-        MaintenanceRecord lastRecord = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, null,
-                50000, 40000, LocalDate.of(2026, 1, 1));
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(10L, ServiceType.ENGINE_OIL))
-                .thenReturn(Optional.of(lastRecord));
 
-        NextServiceResponse response = maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.ENGINE_OIL);
 
-        assertThat(response.lastServiceOdometer()).isEqualTo(40000);
-        assertThat(response.nextServiceOdometer()).isEqualTo(45000);
-        assertThat(response.lastServiceDate()).isEqualTo(LocalDate.of(2026, 1, 1));
-        assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2026, 7, 1));
-    }
 
-    @Test
-    @DisplayName("권장 주기가 없는 종류(OTHER)는 다음 정비 시점을 계산하지 않는다")
-    void calculateNextServiceWithoutInterval() {
-        Vehicle vehicle = createVehicle(10L);
-        MaintenanceRecord lastRecord = new MaintenanceRecord(vehicle, ServiceType.OTHER, null,
-                10000, 40000, LocalDate.of(2026, 1, 1));
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(10L, ServiceType.OTHER))
-                .thenReturn(Optional.of(lastRecord));
-
-        NextServiceResponse response = maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.OTHER);
-
-        assertThat(response.lastServiceOdometer()).isEqualTo(40000);
-        assertThat(response.nextServiceOdometer()).isNull();
-        assertThat(response.nextServiceDate()).isNull();
-    }
-
-    @Test
-    @DisplayName("이력이 아예 없으면 둘 다 null이다")
-    void calculateNextServiceWithoutHistory() {
-        Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(10L, ServiceType.TIRE))
-                .thenReturn(Optional.empty());
-
-        NextServiceResponse response = maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.TIRE);
-
-        assertThat(response.lastServiceOdometer()).isNull();
-        assertThat(response.nextServiceOdometer()).isNull();
-        assertThat(response.lastServiceDate()).isNull();
-        assertThat(response.nextServiceDate()).isNull();
-    }
-
-    @Test
-    @DisplayName("정비 이력 단건 조회 성공")
-    void findOneSuccess() {
-        Vehicle vehicle = createVehicle(10L);
-        MaintenanceRecord record = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "정기 교체",
-                50000, 40000, LocalDate.of(2026, 1, 1));
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findByIdAndVehicleId(100L, 10L)).thenReturn(Optional.of(record));
-
-        MaintenanceRecord found = maintenanceRecordService.findOne(1L, 10L, 100L);
-
-        assertThat(found).isEqualTo(record);
-    }
 
     @Test
     @DisplayName("수정 요청에 보낸 필드만 반영된다")
@@ -166,39 +105,7 @@ class MaintenanceRecordServiceTest {
         return record;
     }
 
-    @Test
-    @DisplayName("주기가 개월만 있는 종류(와이퍼)는 날짜만 계산된다")
-    void nextServiceWithMonthsOnly() {
-        Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(
-                10L, ServiceType.WIPER))
-                .thenReturn(Optional.of(record(1L, vehicle, ServiceType.WIPER, 30000,
-                        LocalDate.of(2026, 3, 10))));
 
-        NextServiceResponse response =
-                maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.WIPER);
-
-        assertThat(response.nextServiceOdometer()).isNull();
-        assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2027, 3, 10));
-    }
-
-    @Test
-    @DisplayName("주기가 주행거리만 있는 종류(타이밍 벨트)는 거리만 계산된다")
-    void nextServiceWithKmOnly() {
-        Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(
-                10L, ServiceType.TIMING_BELT))
-                .thenReturn(Optional.of(record(1L, vehicle, ServiceType.TIMING_BELT, 90000,
-                        LocalDate.of(2026, 3, 10))));
-
-        NextServiceResponse response =
-                maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.TIMING_BELT);
-
-        assertThat(response.nextServiceOdometer()).isEqualTo(190000);
-        assertThat(response.nextServiceDate()).isNull();
-    }
 
     @Test
     @DisplayName("전체 조회는 이력이 있는 종류만, 종류별 최신 1건으로 돌려준다")
@@ -234,5 +141,73 @@ class MaintenanceRecordServiceTest {
                 .thenReturn(List.of());
 
         assertThat(maintenanceRecordService.calculateAllNextServices(1L, 10L)).isEmpty();
+    }
+
+    /** 종류 하나만 담긴 목록을 돌려주는 헬퍼. 일괄 조회로 개별 종류의 계산을 확인한다. */
+    private NextServiceResponse onlyType(Vehicle vehicle, MaintenanceRecord record) {
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
+                .thenReturn(List.of(record));
+
+        List<NextServiceResponse> responses =
+                maintenanceRecordService.calculateAllNextServices(1L, 10L);
+        assertThat(responses).hasSize(1);
+        return responses.get(0);
+    }
+
+    @Test
+    @DisplayName("권장 주기가 있으면 주행거리·날짜 두 기준이 모두 계산된다")
+    void nextServiceBothCriteria() {
+        Vehicle vehicle = createVehicle(10L);
+        NextServiceResponse response = onlyType(vehicle,
+                record(1L, vehicle, ServiceType.ENGINE_OIL, 40000, LocalDate.of(2026, 1, 15)));
+
+        // ENGINE_OIL = 5,000km / 6개월
+        assertThat(response.nextServiceOdometer()).isEqualTo(45000);
+        assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2026, 7, 15));
+    }
+
+    @Test
+    @DisplayName("OTHER 는 권장 주기가 없어 둘 다 계산되지 않는다")
+    void nextServiceForOther() {
+        Vehicle vehicle = createVehicle(10L);
+        NextServiceResponse response = onlyType(vehicle,
+                record(1L, vehicle, ServiceType.OTHER, 40000, LocalDate.of(2026, 1, 15)));
+
+        assertThat(response.nextServiceOdometer()).isNull();
+        assertThat(response.nextServiceDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("주기가 개월만 있는 종류(와이퍼)는 날짜만 계산된다")
+    void nextServiceWithMonthsOnly() {
+        Vehicle vehicle = createVehicle(10L);
+        NextServiceResponse response = onlyType(vehicle,
+                record(1L, vehicle, ServiceType.WIPER, 30000, LocalDate.of(2026, 3, 10)));
+
+        assertThat(response.nextServiceOdometer()).isNull();
+        assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2027, 3, 10));
+    }
+
+    @Test
+    @DisplayName("주기가 주행거리만 있는 종류(타이밍 벨트)는 거리만 계산된다")
+    void nextServiceWithKmOnly() {
+        Vehicle vehicle = createVehicle(10L);
+        NextServiceResponse response = onlyType(vehicle,
+                record(1L, vehicle, ServiceType.TIMING_BELT, 90000, LocalDate.of(2026, 3, 10)));
+
+        assertThat(response.nextServiceOdometer()).isEqualTo(190000);
+        assertThat(response.nextServiceDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("말일 보정 — 1/31 에 6개월을 더하면 7/31 이다")
+    void nextServiceHandlesMonthEnd() {
+        Vehicle vehicle = createVehicle(10L);
+        NextServiceResponse response = onlyType(vehicle,
+                record(1L, vehicle, ServiceType.ENGINE_OIL, 10000, LocalDate.of(2026, 1, 31)));
+
+        // plusMonths 는 달 길이를 알아서 맞춘다. plusDays(30 * n) 이었다면 어긋난다.
+        assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2026, 7, 31));
     }
 }

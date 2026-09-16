@@ -5,7 +5,6 @@ import type {
   MaintenanceRecordResponse,
   MaintenanceRecordUpdateRequest,
   NextServiceResponse,
-  ServiceType,
 } from '@/features/maintenance/api/types/types'
 
 /** 정비 이력은 항상 특정 차량에 속하므로 모든 경로가 /api/vehicles/{vehicleId} 아래에 있다. */
@@ -43,6 +42,3 @@ export function fetchNextServices(vehicleId: number) {
   return api.get<NextServiceResponse[]>(`${basePath(vehicleId)}/next-services`)
 }
 
-export function fetchNextService(vehicleId: number, type: ServiceType) {
-  return api.get<NextServiceResponse>(`${basePath(vehicleId)}/next-service?type=${type}`)
-}

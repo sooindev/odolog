@@ -83,10 +83,19 @@ function Dashboard({ nickname }: { nickname: string }) {
 
 function StatTiles({ data }: { data: HomeData }) {
   const tiles = [
-    { label: 'Vehicles', value: formatNumber(data.vehicleCount), unit: '대', exact: true },
-    { label: 'Distance', value: formatNumber(data.totalOdometer), unit: 'km', exact: false },
-    { label: 'Records', value: formatNumber(data.recordCount), unit: '건', exact: true },
-    { label: 'Cost', value: formatNumber(data.totalCost), unit: '원', exact: false },
+    { label: 'Vehicles', value: formatNumber(data.vehicleCount), unit: '대', exact: true, note: null },
+    { label: 'Distance', value: formatNumber(data.totalOdometer), unit: 'km', exact: false, note: null },
+    // 정비 + 주유. 양쪽 다 서버가 센 값이라 정확하다.
+    { label: 'Records', value: formatNumber(data.recordCount), unit: '건', exact: true, note: null },
+    {
+      label: 'Cost',
+      value: formatNumber(data.totalCost),
+      unit: '원',
+      exact: false,
+      // 합계만 보여주면 어느 쪽이 큰지 알 수 없다. 유지비에서 유류비 비중이 커서
+      // 이 한 줄이 "총 지출"을 실제 의미 있는 숫자로 만든다.
+      note: `정비 ${formatNumber(data.maintenanceCost)} · 주유 ${formatNumber(data.fuelCost)}`,
+    },
   ]
 
   return (
@@ -96,7 +105,7 @@ function StatTiles({ data }: { data: HomeData }) {
       이 구조라서 등장 연출은 걸 수 없다. 칸이 투명한 동안 격자 전체가 선 색으로 번쩍인다.
     */
     <dl className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-      {tiles.map(({ label, value, unit, exact }) => (
+      {tiles.map(({ label, value, unit, exact, note }) => (
         <div key={label} className="flex flex-col gap-4 bg-background p-5 sm:gap-5 sm:p-8">
           <dt className="text-eyebrow text-muted-foreground uppercase">{label}</dt>
           {/* 큰 숫자에는 tabular-nums 를 쓰지 않는다. 세로로 맞출 상대가 있는 아래 목록에만 쓴다.
@@ -110,8 +119,10 @@ function StatTiles({ data }: { data: HomeData }) {
 
           {/* 합계는 받아 온 행을 직접 더한 값이라 상한을 넘으면 일부만 반영된다.
               건수는 서버의 totalElements 라 항상 정확하다. 틀릴 수 있는 쪽에만 단서를 단다. */}
+          {note !== null && <p className="text-xs tabular-nums text-muted-foreground">{note}</p>}
+
           {!exact && !data.sumsComplete && (
-            <p className="text-xs text-muted-foreground">일부 기록만 합산됨</p>
+            <p className="text-xs text-muted-foreground">일부 정비 기록만 합산됨</p>
           )}
         </div>
       ))}
@@ -127,7 +138,7 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
       </CardHeader>
       <CardContent>
         <ul className="divide-y divide-border">
-          {vehicles.map(({ vehicle, recordCount, lastServiceDate }) => (
+          {vehicles.map(({ vehicle, recordCount, lastServiceDate, averageEfficiency }) => (
             <li key={vehicle.id} className="py-5 first:pt-0 last:pb-0">
               <Link
                 to={`/vehicles/${vehicle.id}`}
@@ -139,6 +150,9 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {vehicle.plateNumber} · 정비 {recordCount}건
+                    {/* 연비는 주유 기록이 2건 이상 쌓여야 나온다. 없으면 아예 안 적는다 —
+                        '연비 —' 를 붙이면 없는 값이 자리를 차지한다. */}
+                    {averageEfficiency !== null && ` · ${averageEfficiency.toFixed(1)}km/L`}
                   </p>
                 </div>
 

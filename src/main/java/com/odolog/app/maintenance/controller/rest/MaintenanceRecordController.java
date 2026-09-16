@@ -1,7 +1,6 @@
 package com.odolog.app.maintenance.controller.rest;
 
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
-import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.maintenance.dto.request.register.MaintenanceRecordRegisterRequest;
 import com.odolog.app.maintenance.dto.response.record.MaintenanceRecordResponse;
 import com.odolog.app.maintenance.dto.request.update.MaintenanceRecordUpdateRequest;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -70,22 +68,6 @@ public class MaintenanceRecordController {
     public ResponseEntity<List<NextServiceResponse>> calculateAllNextServices(
             @PathVariable Long vehicleId, @LoginUser Long requesterId) {
         return ResponseEntity.ok(maintenanceRecordService.calculateAllNextServices(requesterId, vehicleId));
-    }
-
-    @GetMapping("/next-service")
-    public ResponseEntity<NextServiceResponse> nextService(@PathVariable Long vehicleId,
-                                                             @RequestParam ServiceType type,
-                                                             @LoginUser Long requesterId) {
-        NextServiceResponse response = maintenanceRecordService.calculateNextService(requesterId, vehicleId, type);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/{recordId}")
-    public ResponseEntity<MaintenanceRecordResponse> findOne(@PathVariable Long vehicleId,
-                                                              @PathVariable Long recordId,
-                                                              @LoginUser Long requesterId) {
-        MaintenanceRecord record = maintenanceRecordService.findOne(requesterId, vehicleId, recordId);
-        return ResponseEntity.ok(MaintenanceRecordResponse.from(record));
     }
 
     @PatchMapping("/{recordId}")

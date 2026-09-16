@@ -114,11 +114,10 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 그대로 보�
 | 주행거리 갱신 | `PATCH /api/vehicles/{vehicleId}/odometer` |
 | 차량 삭제 | `DELETE /api/vehicles/{vehicleId}` |
 | 정비 이력 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/maintenance-records` |
-| 정비 이력 상세조회/수정/삭제 | `GET`/`PATCH`/`DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` |
-| 다음 정비 시점 조회(종류 하나) | `GET /api/vehicles/{vehicleId}/maintenance-records/next-service?type=` |
-| 다음 정비 시점 조회(전체) | `GET /api/vehicles/{vehicleId}/maintenance-records/next-services` |
+| 정비 이력 수정/삭제 | `PATCH`/`DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` |
+| 다음 정비 시점 조회 | `GET /api/vehicles/{vehicleId}/maintenance-records/next-services` |
 | 주유 기록 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/fuel-records` |
-| 주유 기록 상세조회/수정/삭제 | `GET`/`PATCH`/`DELETE /api/vehicles/{vehicleId}/fuel-records/{recordId}` |
+| 주유 기록 수정/삭제 | `PATCH`/`DELETE /api/vehicles/{vehicleId}/fuel-records/{recordId}` |
 | 연비 요약 조회 | `GET /api/vehicles/{vehicleId}/fuel-records/summary` |
 
 주유 기록 목록은 다른 목록 API 와 달리 **`sort` 를 받지 않는다.** 연비가 "바로 앞 기록과의
@@ -129,8 +128,8 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 그대로 보�
 
 ## 진행 상황
 
-백엔드 API **26개**와 프론트엔드 화면 8장(라우트 기준. `/` 가 세 얼굴을 가져 실제로 볼 상태는
-10개)이 모두 동작하는 상태다. 백엔드 테스트 **116개**가 통과하고, 프론트엔드는
+백엔드 API **23개**와 프론트엔드 화면 8장(라우트 기준. `/` 가 세 얼굴을 가져 실제로 볼 상태는
+10개)이 모두 동작하는 상태다. 백엔드 테스트 **113개**가 통과하고, 프론트엔드는
 `tsc -b` / `oxlint` / `vite build` 를 통과한다.
 
 남은 것은 **브라우저 실동작 확인**과, 할지 말지부터 정해야 하는 두 가지(토스트 / 필드별 에러)뿐이다.
@@ -154,6 +153,7 @@ Phase 6 이후에 기능이 더 붙었다.
 | `@EnableJpaAuditing` | `BaseTimeEntity` 로 시간 필드 일원화 | 2026-09-16 |
 | **주유 기록과 연비** | 주유 CRUD + km/L 계산 + 요약. 차량 주행거리 자동 갱신 | 2026-09-16 |
 | 정비 종류 5 → 15개 | 미션오일·냉각수·점화 플러그·타이밍 벨트 등. `type` 컬럼을 varchar 로 | 2026-09-16 |
+| 점검 결함 5건 수정 | 홈 통계 유류비 누락, 주유 수정 시 주행거리, 랜딩, 죽은 코드 | 2026-09-16 |
 
 Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않는다.
 
@@ -309,7 +309,7 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 ### 완료 판정 기준
 
 위 0번을 처음부터 끝까지 막힘없이 수행할 수 있고, `./gradlew test` 가 통과하면 "완성"으로 본다.
-(테스트 **116개**는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
+(테스트 **113개**는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
 배포(서버 인프라, 도메인, CI/CD)는 이 프로젝트의 범위 밖이며, **로컬에서 완전히 동작하는 것**까지가 목표다.
 
 ## 트러블슈팅

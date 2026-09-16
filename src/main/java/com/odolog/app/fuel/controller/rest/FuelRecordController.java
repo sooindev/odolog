@@ -61,12 +61,6 @@ public class FuelRecordController {
         return ResponseEntity.ok(fuelRecordService.summary(requesterId, vehicleId));
     }
 
-    @GetMapping("/{recordId}")
-    public ResponseEntity<FuelRecordResponse> findOne(@PathVariable Long vehicleId,
-                                                        @PathVariable Long recordId,
-                                                        @LoginUser Long requesterId) {
-        return ResponseEntity.ok(fuelRecordService.findOne(requesterId, vehicleId, recordId));
-    }
 
     @PatchMapping("/{recordId}")
     public ResponseEntity<FuelRecordResponse> update(@PathVariable Long vehicleId,

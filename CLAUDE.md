@@ -502,8 +502,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     VehicleService.findOwnedVehicle()를 주입받아 재사용
     │   └── controller/rest/MaintenanceRecordController.java
     │                                         POST·GET  .../maintenance-records,
-    │                                         GET·PATCH·DELETE  .../{recordId},
-    │                                         GET  .../next-service?type=
+    │                                         PATCH·DELETE  .../{recordId},
+    │                                         GET  .../next-services (이력 있는 종류 전체).
+    │                                         단건 조회와 next-service(단수)는 화면이 안 써서
+    │                                         2026-09-16 에 걷어냈다
     │
     ├── fuel/  ────────────────────────────── 주유 기록·연비. maintenance 와 같은 모양이다
     │   ├── domain/entity/FuelRecord.java     @Entity(fuel_records). vehicle→Vehicle(LAZY).
@@ -534,7 +536,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   └── controller/rest/FuelRecordController.java
     │                                         POST·GET  .../fuel-records,
     │                                         GET  .../summary (리터럴이 {recordId} 보다 우선),
-    │                                         GET·PATCH·DELETE  .../{recordId}
+    │                                         PATCH·DELETE  .../{recordId}
     │
     ├── account/  ─────────────────────────── 조율 층. **여러 기능을 동시에 알아도 되는 유일한 자리**
     │   │                                     (프론트의 app/ 과 같은 성격 — 위 "의존 방향" 참고)
@@ -604,7 +606,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 116개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 113개.
 
     src/test/java/com/odolog/app/
     ├── user/
@@ -864,6 +866,41 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
   `'odolog-theme'` 문자열이 HTML 과 `ThemeContext.ts` 양쪽에 중복인 것과 같은 종류의 함정이다.
 
 ## 진행 상황 (완료)
+
+- [x] 점검에서 찾은 결함 5건 수정 (2026-09-16)
+      → **① 홈 통계의 `Cost` 가 유류비를 빼고 있었다.** `homeStats.ts` 가 정비 이력만 조회하는데
+        타일 라벨은 그냥 `Cost` 라, **틀릴 수 있는 값을 맞는 값처럼 보여주고 있었다** —
+        `sumsComplete` 로 "일부만 합산됨"을 표시해 둔 이 프로젝트의 원칙과 정면으로 어긋난다.
+        이제 `정비비 + 유류비` 이고, 타일 아래에 **구성을 한 줄로 적는다**(합계만 주면 어느 쪽이
+        큰지 알 수 없다). `Records` 도 정비 + 주유 건수 합계로 바꿨다.
+      → 유류비는 차량별 `/fuel-records/summary` 로 받는다. **서버가 전부 합산하므로 정비 비용과
+        달리 페이지 상한에 안 걸린다** — `sumsComplete` 는 이제 정비에만 해당하고, 안내 문구도
+        "일부 **정비** 기록만 합산됨"으로 좁혔다. 요청은 `1 + 차량수` → `1 + 차량수 × 2`.
+      → 덤으로 차량별 카드에 평균 연비를 한 줄 넣었다. 요약 응답에 이미 들어 있던 값이다.
+        **없으면 아예 안 적는다** — "연비 —" 를 붙이면 없는 값이 자리를 차지한다.
+      → **② 주유 기록을 수정할 때는 차량 주행거리가 안 따라갔다.** 등록에만 있던 규칙이라,
+        주행거리를 10,000 으로 잘못 넣고 100,000 으로 고치면 기록만 고쳐지고 차량은 틀린 채로
+        남았다. 자리수 오타는 흔하다. `liftVehicleOdometer()` 로 뽑아 등록·수정이 같이 쓴다.
+      → **③ 랜딩이 주유·연비를 몰랐다.** 문자열 0건이었다. 하이라이트를 3 → 4칸으로 늘리고
+        (`sm:grid-cols-3` 이면 4번째만 홀로 남아서 `sm:grid-cols-2 lg:grid-cols-4` 로),
+        정비 종류 설명도 "엔진오일·타이어·브레이크 패드·배터리"에서 "15가지 종류"로 고쳤다.
+      → **미리보기가 거짓말을 하고 있었다**: `타이어 · 이력 없음` 줄이 있었는데, 다음 정비 시점을
+        일괄 조회로 바꾸면서 **실제 화면은 이력 없는 종류를 아예 안 보여준다.** 평균 연비 줄로 바꿨다.
+      → **④⑤ 죽은 코드와 미사용 엔드포인트를 걷어냈다.** 프론트의 `fetchNextService`(일괄 조회로
+        바뀌며 호출 0), 백엔드의 `GET .../maintenance-records/{recordId}`,
+        `GET .../fuel-records/{recordId}`, `GET .../next-service`(단수).
+        엔드포인트 26 → **23개**.
+      → **지우면서 테스트를 잃지 않으려고 옮겼다.** `calculateNextService` 에 매달려 있던 종류별
+        계산 검증 5개는 `calculateAllNextServices` 로 이관했고(종류 하나만 담긴 목록을 주는
+        헬퍼를 만들었다), 리포지토리의 동점 기준 테스트는 `findByVehicleIdOrderByServiceDateDescIdDesc`
+        로 겨눴다 — **그 쿼리에도 동점 기준은 그대로 필요하다.**
+      → **`MethodArgumentTypeMismatchException` 400 핸들러 테스트가 갈 곳을 잃을 뻔했다.**
+        `/next-service` 의 enum 파라미터로 확인하고 있었는데 그 엔드포인트가 사라졌다.
+        핸들러 자체는 타입 변환이 필요한 모든 파라미터에 적용되는 범용이라,
+        `GET /api/vehicles/abc/maintenance-records`(경로 변수 타입 불일치)로 다시 겨눴다.
+      → 테스트 116 → **113개**. 줄어든 건 지운 엔드포인트의 테스트가 옮겨지며 통합된 결과다.
+      → 검증: `./gradlew test` 113개 통과, 프론트 `tsc -b` / `oxlint`(기존 shadcn 경고 1건) /
+        `vite build` 통과.
 
 - [x] 정비 종류 5 → 15개 확장 + enum 컬럼을 varchar 로 (2026-09-16)
       → 미션오일(`TRANSMISSION_FLUID`)을 비롯해 10종을 더했다. 엔진·구동 5 / 제동 2 /
@@ -2215,7 +2252,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-86
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-83
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-84, B-85
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (116개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (113개)
 
 ---
 

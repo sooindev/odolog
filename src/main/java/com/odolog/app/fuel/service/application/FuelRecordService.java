@@ -53,11 +53,7 @@ public class FuelRecordService {
                 vehicle, request.fueledAt(), request.odometer(),
                 request.liters(), request.totalCost(), request.memo()));
 
-        // 주유할 때 계기판을 보고 적는 값이라, 차량의 현재 주행거리보다 크면 그쪽이 더 최신이다.
-        // 같은 숫자를 두 번 입력하게 하지 않는다. 작거나 같으면 건드리지 않는다(과거 기록 입력).
-        if (request.odometer() > vehicle.getOdometer()) {
-            vehicle.updateOdometer(request.odometer());
-        }
+        liftVehicleOdometer(vehicle, request.odometer());
 
         return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()));
     }
@@ -92,10 +88,6 @@ public class FuelRecordService {
         return new PageImpl<>(responses, page.getPageable(), page.getTotalElements());
     }
 
-    public FuelRecordResponse findOne(Long requesterId, Long vehicleId, Long recordId) {
-        FuelRecord record = findRecordInVehicle(requesterId, vehicleId, recordId);
-        return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()));
-    }
 
     @Transactional
     public FuelRecordResponse update(Long requesterId, Long vehicleId, Long recordId,
@@ -103,7 +95,12 @@ public class FuelRecordService {
         FuelRecord record = findRecordInVehicle(requesterId, vehicleId, recordId);
 
         if (request.fueledAt() != null) record.changeFueledAt(request.fueledAt());
-        if (request.odometer() != null) record.changeOdometer(request.odometer());
+        if (request.odometer() != null) {
+            record.changeOdometer(request.odometer());
+            // 등록과 같은 규칙을 적용한다. 전에는 등록에만 있어서, 주행거리를 10000 으로 잘못
+            // 넣고 100000 으로 고치면 기록만 고쳐지고 차량은 틀린 채로 남았다.
+            liftVehicleOdometer(record.getVehicle(), request.odometer());
+        }
         if (request.liters() != null) record.changeLiters(request.liters());
         if (request.totalCost() != null) record.changeTotalCost(request.totalCost());
         if (request.memo() != null) record.changeMemo(request.memo());
@@ -148,6 +145,19 @@ public class FuelRecordService {
 
         return new FuelSummaryResponse(records.size(), totalCost, totalLiters,
                 totalDistance, averageEfficiency);
+    }
+
+    /**
+     * 주유할 때 계기판을 보고 적는 값이라, 차량의 현재 주행거리보다 크면 그쪽이 더 최신이다.
+     * 같은 숫자를 두 번 입력하게 하지 않는다.
+     *
+     * <p>작거나 같으면 건드리지 않는다 — 과거 주유를 뒤늦게 넣는 경우이고,
+     * Vehicle.updateOdometer() 는 감소를 예외로 막으므로 그냥 넘기면 터진다.
+     */
+    private void liftVehicleOdometer(Vehicle vehicle, int odometer) {
+        if (odometer > vehicle.getOdometer()) {
+            vehicle.updateOdometer(odometer);
+        }
     }
 
     private FuelRecord findPrevious(Long vehicleId, int odometer) {

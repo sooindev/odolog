@@ -1,4 +1,4 @@
-import { CalendarClock, Gauge, Wrench } from 'lucide-react'
+import { CalendarClock, Fuel, Gauge, Wrench } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { Button } from '@/shared/ui/base/button'
@@ -38,8 +38,7 @@ function Hero() {
       </h1>
 
       <p className="max-w-xl text-lede text-muted-foreground">
-        차량을 등록하고 정비 이력을 남기면, 다음 정비 시점을 주행거리와 날짜 두 기준으로
-        계산합니다.
+        정비 이력과 주유 기록을 남기면, 다음 정비 시점과 연비를 대신 계산합니다.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -58,12 +57,17 @@ const HIGHLIGHTS = [
   {
     Icon: Wrench,
     title: '정비 이력',
-    body: '엔진오일 · 타이어 · 브레이크 패드 · 배터리, 그리고 기타. 비용과 메모까지 함께 남깁니다.',
+    body: '엔진오일 · 미션오일 · 브레이크 · 타이어 등 15가지 종류. 비용과 메모까지 함께 남깁니다.',
   },
   {
     Icon: CalendarClock,
     title: '다음 정비 시점',
     body: '종류별 권장 주기와 마지막 기록으로 계산합니다. 주행거리와 날짜, 두 기준을 모두 보여줍니다.',
+  },
+  {
+    Icon: Fuel,
+    title: '주유와 연비',
+    body: '주유할 때마다 주행거리와 넣은 양을 적으면 연비가 나옵니다. 유류비도 함께 쌓입니다.',
   },
   {
     Icon: Gauge,
@@ -78,8 +82,9 @@ function Highlights() {
       gap-px + 바깥 배경을 선 색으로: 칸 사이에 1px 틈만 남기고 그 틈으로 뒷배경(선 색)이
       비쳐 보이게 하는 방식이다. 칸마다 border 를 붙이면 맞닿는 자리에서 선이 두 겹이 되어
       1px 이 2px 로 보이는데, 이 방법은 어디서나 정확히 1px 다.
+      칸이 4개라 sm 에서 2×2, lg 에서 한 줄이다. sm:grid-cols-3 으로 두면 마지막 칸만 홀로 남는다.
     */
-    <section className="reveal grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-3">
+    <section className="reveal grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {HIGHLIGHTS.map(({ Icon, title, body }) => (
         <div key={title} className="flex flex-col gap-4 bg-background p-8">
           <Icon className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
@@ -99,7 +104,7 @@ function Preview() {
           차 한 대의 기록이 한 화면에
         </h2>
         <p className="max-w-md text-[0.9375rem] leading-relaxed text-muted-foreground">
-          주행거리, 다음 정비 시점, 지난 이력을 따로 찾아다닐 필요가 없습니다.
+          주행거리와 연비, 다음 정비 시점, 지난 이력을 따로 찾아다닐 필요가 없습니다.
         </p>
       </div>
 
@@ -126,11 +131,14 @@ function Preview() {
             <span className="text-sm text-muted-foreground">km</span>
           </div>
 
+          {/* 실제 화면은 이력이 있는 종류만 보여준다. 전에는 여기에 '타이어 · 이력 없음' 이
+              있었는데, 일괄 조회로 바꾸면서 그런 줄이 나오지 않게 되어 미리보기가 거짓말을
+              하고 있었다. */}
           <ul className="divide-y divide-border border-t border-border">
             {[
+              ['평균 연비', '13.4 km/L'],
               ['엔진오일', '50,000km 또는 2027. 1. 15.'],
-              ['타이어', '이력 없음'],
-              ['브레이크 패드', '85,000km 또는 2028. 3. 2.'],
+              ['미션오일', '105,000km 또는 2030. 6. 2.'],
             ].map(([type, next]) => (
               <li key={type} className="flex items-baseline justify-between gap-4 py-3.5">
                 <span className="text-[0.9375rem] tracking-[-0.01em] text-strong">{type}</span>

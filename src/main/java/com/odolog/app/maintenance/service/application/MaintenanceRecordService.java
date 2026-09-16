@@ -92,18 +92,7 @@ public class MaintenanceRecordService {
                 record.getServiceDate(), nextDate);
     }
 
-    public NextServiceResponse calculateNextService(Long requesterId, Long vehicleId, ServiceType type) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
 
-        return maintenanceRecordRepository.findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(vehicleId, type)
-                .map(record -> toNextService(type, record))
-                .orElse(new NextServiceResponse(type, null, null, null, null));
-    }
-
-    public MaintenanceRecord findOne(Long requesterId, Long vehicleId, Long recordId) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
-        return findRecordInVehicle(vehicleId, recordId);
-    }
 
     @Transactional
     public MaintenanceRecord update(Long requesterId, Long vehicleId, Long recordId,

@@ -1,4 +1,5 @@
 import { fetchRecords } from '@/features/maintenance/api/endpoints/endpoints'
+import { fetchFuelSummary } from '@/features/fuel/api/endpoints/endpoints'
 import { fetchVehicles } from '@/features/vehicles/api/endpoints/endpoints'
 import { SERVICE_TYPES } from '@/features/maintenance/api/types/types'
 import type { MaintenanceRecordResponse, ServiceType } from '@/features/maintenance/api/types/types'
@@ -7,8 +8,11 @@ import type { VehicleResponse } from '@/features/vehicles/api/types/types'
 /*
  * 홈 화면 통계의 조회와 계산. 순수 계산이라 JSX 와 섞지 않고 떼어 놨다.
  *
- * 요청 수는 1 + 차량 수. 차량 목록 1번, 차량마다 정비 이력 1번씩 동시에.
+ * 요청 수는 1 + 차량 수 × 2. 차량 목록 1번, 차량마다 정비 이력과 주유 요약 1번씩 동시에.
  * 백엔드 요약 API 가 생기면 1번으로 줄어든다(CLAUDE.md 백로그).
+ *
+ * 주유 쪽은 /fuel-records/summary 를 쓴다. 서버가 전체를 합산해 주므로 정비 비용과 달리
+ * **페이지 상한에 걸리지 않는 정확한 값**이다 — 그래서 sumsComplete 는 정비에만 해당한다.
  */
 
 // 개인용 앱이라 한 사람이 이보다 많이 가질 일은 없다고 보고 한 번에 받는다.
@@ -20,6 +24,8 @@ export interface VehicleSummary {
   /** totalElements 라서 아래 비용 합계와 달리 항상 정확하다. */
   recordCount: number
   lastServiceDate: string | null
+  /** 주유 기록이 2건 미만이면 null. 서버가 계산해 준 값이다. */
+  averageEfficiency: number | null
 }
 
 /** 월별 정비 비용 한 칸. cost 가 0이면 그 달에 정비가 없었다는 뜻이다. */
@@ -45,8 +51,13 @@ export interface RecentRecord {
 export interface HomeData {
   vehicleCount: number
   totalOdometer: number
+  /** 정비 + 주유 기록 건수. 양쪽 다 서버가 센 값이라 정확하다. */
   recordCount: number
+  /** 정비비 + 유류비. 차량 유지비에서 유류비가 빠지면 이 숫자는 사실상 틀린 값이 된다. */
   totalCost: number
+  /** 구성을 따로 들고 다닌다 — 합계만 보여주면 어느 쪽이 큰지 알 수 없다. */
+  maintenanceCost: number
+  fuelCost: number
   /**
    * 합계를 낼 때 모든 행을 다 가져왔는지.
    * 건수는 서버의 totalElements 라 항상 맞지만, 합계는 받아 온 행을 직접 더한 값이라
@@ -72,6 +83,8 @@ export async function loadHomeData(): Promise<HomeData> {
       totalOdometer: 0,
       recordCount: 0,
       totalCost: 0,
+      maintenanceCost: 0,
+      fuelCost: 0,
       sumsComplete: true,
       vehicles: [],
       recent: [],
@@ -81,9 +94,11 @@ export async function loadHomeData(): Promise<HomeData> {
   }
 
   // 순차로 기다리면 차량이 늘어난 만큼 그대로 느려진다.
-  const recordPages = await Promise.all(
-    vehicles.map((vehicle) => fetchRecords(vehicle.id, 0, RECORD_PAGE_SIZE)),
-  )
+  // 정비와 주유를 한 덩어리로 묶어 동시에 보낸다.
+  const [recordPages, fuelSummaries] = await Promise.all([
+    Promise.all(vehicles.map((vehicle) => fetchRecords(vehicle.id, 0, RECORD_PAGE_SIZE))),
+    Promise.all(vehicles.map((vehicle) => fetchFuelSummary(vehicle.id))),
+  ])
 
   const summaries: VehicleSummary[] = vehicles.map((vehicle, index) => ({
     vehicle,
@@ -91,6 +106,7 @@ export async function loadHomeData(): Promise<HomeData> {
     // 목록 기본 정렬이 serviceDate DESC 라 첫 줄이 가장 최근이다.
     // 컨트롤러의 @PageableDefault 가 바뀌면 여기도 같이 틀어진다.
     lastServiceDate: recordPages[index].items[0]?.serviceDate ?? null,
+    averageEfficiency: fuelSummaries[index].averageEfficiency,
   }))
 
   const recent = recordPages
@@ -108,11 +124,20 @@ export async function loadHomeData(): Promise<HomeData> {
 
   const allRecords = recordPages.flatMap((page) => page.items)
 
+  const maintenanceCost = sum(
+    recordPages.flatMap((page) => page.items.map((record) => record.cost)),
+  )
+  const fuelCost = sum(fuelSummaries.map((summary) => summary.totalCost))
+
   return {
     vehicleCount: vehiclePage.totalElements,
     totalOdometer: sum(vehicles.map((vehicle) => vehicle.odometer)),
-    recordCount: sum(recordPages.map((page) => page.totalElements)),
-    totalCost: sum(recordPages.flatMap((page) => page.items.map((record) => record.cost))),
+    recordCount:
+      sum(recordPages.map((page) => page.totalElements)) +
+      sum(fuelSummaries.map((summary) => summary.recordCount)),
+    totalCost: maintenanceCost + fuelCost,
+    maintenanceCost,
+    fuelCost,
     sumsComplete:
       vehicles.length === vehiclePage.totalElements &&
       recordPages.every((page) => page.items.length === page.totalElements),

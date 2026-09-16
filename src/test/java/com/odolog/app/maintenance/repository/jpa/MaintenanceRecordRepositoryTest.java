@@ -62,9 +62,11 @@ class MaintenanceRecordRepositoryTest {
         em.flush();
         em.clear();
 
+        // 일괄 조회의 첫 줄이 곧 "그 종류의 최신"이다. 동점 기준(id DESC)이 없으면
+        // 순서를 DB 가 정하게 되어, 다음 정비 시점이 새로고침마다 달라진다.
         MaintenanceRecord latest = maintenanceRecordRepository
-                .findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc(vehicle.getId(), ServiceType.ENGINE_OIL)
-                .orElseThrow();
+                .findByVehicleIdOrderByServiceDateDescIdDesc(vehicle.getId())
+                .get(0);
 
         assertThat(latest.getServiceOdometer()).isEqualTo(20000);
     }

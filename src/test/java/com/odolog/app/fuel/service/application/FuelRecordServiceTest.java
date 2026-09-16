@@ -2,6 +2,7 @@ package com.odolog.app.fuel.service.application;
 
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.dto.request.register.FuelRecordRegisterRequest;
+import com.odolog.app.fuel.dto.request.update.FuelRecordUpdateRequest;
 import com.odolog.app.fuel.dto.response.record.FuelRecordResponse;
 import com.odolog.app.fuel.dto.response.summary.FuelSummaryResponse;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
@@ -189,5 +190,40 @@ class FuelRecordServiceTest {
         assertThat(summary.totalDistance()).isNull();
         assertThat(summary.averageEfficiency()).isNull();
         assertThat(summary.totalCost()).isEqualTo(60000);
+    }
+
+    @Test
+    @DisplayName("주유 기록을 수정해 주행거리를 올리면 차량 주행거리도 따라 올라간다")
+    void updateLiftsVehicleOdometer() {
+        Vehicle vehicle = vehicle(10000);
+        FuelRecord existing = record(1L, vehicle, 10000, "30.00", 60000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(fuelRecordRepository.findByIdAndVehicleId(1L, 10L)).thenReturn(Optional.of(existing));
+        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
+                eq(10L), anyInt())).thenReturn(Optional.empty());
+
+        // 자리수를 잘못 넣었다가 고치는 흔한 경우.
+        fuelRecordService.update(1L, 10L, 1L,
+                new FuelRecordUpdateRequest(null, 100000, null, null, null));
+
+        assertThat(existing.getOdometer()).isEqualTo(100000);
+        assertThat(vehicle.getOdometer()).isEqualTo(100000);
+    }
+
+    @Test
+    @DisplayName("수정으로 주행거리를 낮춰도 차량 주행거리는 내려가지 않는다")
+    void updateDoesNotLowerVehicleOdometer() {
+        Vehicle vehicle = vehicle(50000);
+        FuelRecord existing = record(1L, vehicle, 20000, "30.00", 60000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(fuelRecordRepository.findByIdAndVehicleId(1L, 10L)).thenReturn(Optional.of(existing));
+        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
+                eq(10L), anyInt())).thenReturn(Optional.empty());
+
+        fuelRecordService.update(1L, 10L, 1L,
+                new FuelRecordUpdateRequest(null, 15000, null, null, null));
+
+        assertThat(existing.getOdometer()).isEqualTo(15000);
+        assertThat(vehicle.getOdometer()).isEqualTo(50000);
     }
 }

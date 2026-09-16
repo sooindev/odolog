@@ -68,52 +68,19 @@ class MaintenanceRecordControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
-    @Test
-    @DisplayName("다음 정비 시점을 조회하면 200과 계산 결과를 반환한다")
-    void nextServiceSuccess() throws Exception {
-        when(maintenanceRecordService.calculateNextService(1L, 10L, ServiceType.ENGINE_OIL))
-                .thenReturn(new NextServiceResponse(ServiceType.ENGINE_OIL, 40000, 45000,
-                        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 7, 1)));
-
-        mockMvc.perform(get("/api/vehicles/10/maintenance-records/next-service")
-                        .param("type", "ENGINE_OIL")
-                        .session(loginSessionOf(1L)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nextServiceOdometer").value(45000))
-                .andExpect(jsonPath("$.nextServiceDate").value("2026-07-01"));
-    }
 
     @Test
-    @DisplayName("존재하지 않는 ServiceType 값을 보내면 400")
-    void nextServiceInvalidType() throws Exception {
-        mockMvc.perform(get("/api/vehicles/10/maintenance-records/next-service")
-                        .param("type", "존재하지않는값")
+    @DisplayName("경로 변수 타입이 안 맞으면 500이 아니라 400")
+    void invalidPathVariableType() throws Exception {
+        // MethodArgumentTypeMismatchException 핸들러를 확인한다. 전에는 /next-service 의
+        // ServiceType 파라미터로 확인했는데 그 엔드포인트를 걷어내면서 경로 변수로 옮겼다.
+        // 핸들러 자체는 타입 변환이 필요한 모든 파라미터에 적용되는 범용이다.
+        mockMvc.perform(get("/api/vehicles/abc/maintenance-records")
                         .session(loginSessionOf(1L)))
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    @DisplayName("정비 이력 단건 조회 성공")
-    void findOneSuccess() throws Exception {
-        MaintenanceRecord record = new MaintenanceRecord(null, ServiceType.ENGINE_OIL, "정기 교체",
-                50000, 40000, LocalDate.of(2026, 1, 1));
 
-        when(maintenanceRecordService.findOne(1L, 10L, 100L)).thenReturn(record);
-
-        mockMvc.perform(get("/api/vehicles/10/maintenance-records/100").session(loginSessionOf(1L)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.type").value("ENGINE_OIL"));
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 정비 이력을 조회하면 404")
-    void findOneNotFound() throws Exception {
-        when(maintenanceRecordService.findOne(1L, 10L, 999L))
-                .thenThrow(new ResourceNotFoundException("존재하지 않는 정비 이력입니다: 999"));
-
-        mockMvc.perform(get("/api/vehicles/10/maintenance-records/999").session(loginSessionOf(1L)))
-                .andExpect(status().isNotFound());
-    }
 
     @Test
     @DisplayName("존재하지 않는 차량에 정비 이력을 등록하려 하면 404")
@@ -166,12 +133,4 @@ class MaintenanceRecordControllerTest {
                 .andExpect(jsonPath("$[1].type").value("TRANSMISSION_FLUID"));
     }
 
-    @Test
-    @DisplayName("새로 추가한 종류(미션오일)도 등록된다")
-    void registerNewServiceType() throws Exception {
-        mockMvc.perform(get("/api/vehicles/10/maintenance-records/next-service")
-                        .param("type", "TRANSMISSION_FLUID")
-                        .session(loginSessionOf(1L)))
-                .andExpect(status().isOk());
-    }
 }
