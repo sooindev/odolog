@@ -1,6 +1,9 @@
 # 오도로그 (OdoLog)
 
-차량 관리 앱. 사용자가 자기 차량을 등록하고 정비 이력을 관리한다.
+차량 관리 앱. 자기 차량을 등록하고 **정비 이력과 주유 기록**을 관리한다.
+주유 기록이 쌓이면 **연비(km/L)** 가 계산된다.
+
+플랫폼은 **웹 하나**다. 네이티브 앱은 만들지 않는다 — 이유는 `CLAUDE.md` 의 2026-09-16 항목에.
 
 ## 기술 스택
 
@@ -23,14 +26,16 @@
     odolog/
     ├── src/                       백엔드 (Spring Boot)
     │   └── main/java/com/odolog/app/
-    │       ├── user/              회원가입, 로그인/로그아웃, 프로필
-    │       ├── vehicle/           차량 등록·조회·주행거리 갱신·삭제
+    │       ├── user/              회원가입, 로그인/로그아웃, 프로필, 비밀번호 변경
+    │       ├── vehicle/           차량 등록·조회·수정·주행거리 갱신·삭제
     │       ├── maintenance/       정비 이력, 다음 정비 시점 계산
-    │       └── common/            인증(세션), 전역 예외 처리, 설정 등 공통 인프라
+    │       ├── fuel/              주유 기록, 연비 계산
+    │       ├── account/           회원 탈퇴 — 여러 기능을 조율하는 자리
+    │       └── common/            인증(세션), 전역 예외 처리, 설정, BaseTimeEntity
     └── frontend/                  프론트엔드 (Vite + React + TypeScript)
         └── src/
             ├── app/               라우트 정의, Header, ProtectedRoute
-            ├── features/          auth / vehicles / maintenance
+            ├── features/          auth / vehicles / maintenance / fuel
             └── shared/            api 클라이언트, 포맷 함수, 공용 훅, UI 컴포넌트
 
 백엔드의 각 기능 패키지는 `domain / repository / dto / service / controller`로 나뉘고,
@@ -57,8 +62,16 @@
 `shared/ui` 는 성격별로 `base`(shadcn이 복사해 넣는 자리) / `form` / `layout` /
 `feedback` / `nav` / `brand` 로 나뉜다.
 
-의존 방향은 `app → features → shared` 한 방향이다. `app`은 여러 기능을 동시에 알아도 되는
-유일한 층이라, `useAuth`를 쓰는 `Header`와 `ProtectedRoute`가 여기에 있다.
+프론트엔드의 의존 방향은 `app → features → shared` 한 방향이다. `app`은 여러 기능을 동시에
+알아도 되는 유일한 층이라, `useAuth`를 쓰는 `Header`와 `ProtectedRoute`가 여기에 있다.
+
+백엔드는 `fuel → vehicle → user`, `maintenance → vehicle → user` 이고, **`account` 가
+프론트의 `app` 과 같은 자리**다. 회원 탈퇴는 회원·차량·정비 이력·주유 기록을 모두 지워야 하는데,
+이걸 `UserService` 에 넣으면 `user → vehicle` 역방향 의존이 생긴다. `account` 는 **순서만 정하고
+실제 삭제는 각 기능에 맡긴다.**
+
+시간 필드(`createdAt`/`updatedAt`)는 네 엔티티가 `common/domain/entity/BaseTimeEntity` 를
+상속해서 얻는다. 엔티티가 3개일 때는 `@PrePersist` 를 복사하는 편이 나았고, 4개째에서 뒤집혔다.
 
 설계 결정과 진행 상황은 `CLAUDE.md`에 상세히 기록되어 있다.
 
@@ -72,20 +85,33 @@
 | 로그인 | `POST /api/users/login` |
 | 로그아웃 | `POST /api/users/logout` |
 | 내 정보 조회/수정 | `GET`, `PATCH /api/users/me` |
+| 비밀번호 변경 | `PATCH /api/users/me/password` |
+| 회원 탈퇴 | `DELETE /api/users/me` |
 | 차량 등록/목록조회 | `POST`, `GET /api/vehicles` |
 | 차량 상세조회 | `GET /api/vehicles/{vehicleId}` |
+| 차량 정보 수정 | `PATCH /api/vehicles/{vehicleId}` |
 | 주행거리 갱신 | `PATCH /api/vehicles/{vehicleId}/odometer` |
 | 차량 삭제 | `DELETE /api/vehicles/{vehicleId}` |
 | 정비 이력 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/maintenance-records` |
 | 정비 이력 상세조회/수정/삭제 | `GET`/`PATCH`/`DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` |
 | 다음 정비 시점 조회 | `GET /api/vehicles/{vehicleId}/maintenance-records/next-service?type=` |
+| 주유 기록 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/fuel-records` |
+| 주유 기록 상세조회/수정/삭제 | `GET`/`PATCH`/`DELETE /api/vehicles/{vehicleId}/fuel-records/{recordId}` |
+| 연비 요약 조회 | `GET /api/vehicles/{vehicleId}/fuel-records/summary` |
+
+주유 기록 목록은 다른 목록 API 와 달리 **`sort` 를 받지 않는다.** 연비가 "바로 앞 기록과의
+주행거리 차이"로 계산되기 때문에 **정렬이 곧 계산의 전제**라, 서버가 주행거리 내림차순으로 고정한다.
+
+응답의 `efficiency`(연비)·`distance`(구간 거리)는 **계산할 수 없으면 `0` 이 아니라 `null`** 이다.
+첫 기록이거나 주행거리가 직전보다 크지 않으면 그렇다.
 
 ## 진행 상황
 
-백엔드 API 16개와 프론트엔드 화면 8장이 모두 동작하는 상태다. 백엔드 테스트 62개가 통과하고,
-프론트엔드는 `tsc -b` / `oxlint` / `vite build` 를 통과한다. **코드로 잡을 수 있는 결함 12건은
-2026-09-13에 전부 고쳤다** — 남은 것은 **브라우저 실동작 확인**과, 할지 말지부터 정해야 하는
-두 가지(토스트 / 필드별 에러)뿐이다.
+백엔드 API **25개**와 프론트엔드 화면 8장(라우트 기준. `/` 가 세 얼굴을 가져 실제로 볼 상태는
+10개)이 모두 동작하는 상태다. 백엔드 테스트 **106개**가 통과하고, 프론트엔드는
+`tsc -b` / `oxlint` / `vite build` 를 통과한다.
+
+남은 것은 **브라우저 실동작 확인**과, 할지 말지부터 정해야 하는 두 가지(토스트 / 필드별 에러)뿐이다.
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
@@ -94,7 +120,17 @@
 | Phase 3 | 인증 화면 (회원가입·로그인·보호 라우트) | 완료 |
 | Phase 4 | 차량 관리 화면 | 완료 |
 | Phase 5 | 정비 이력 화면 + 다음 정비 시점 | 완료 |
-| Phase 6 | 다듬기 (로딩·에러·반응형·접근성) | 진행 중 |
+| Phase 6 | 다듬기 (로딩·에러·반응형·접근성) | 코드는 끝, **눈 확인만 남음** |
+
+Phase 6 이후에 기능이 더 붙었다.
+
+| 추가 | 내용 | 날짜 |
+|---|---|---|
+| 차량 정보 수정 | 번호판·제조사·모델·연식. 그전에는 주행거리만 고칠 수 있었다 | 2026-09-16 |
+| 비밀번호 변경 | 현재 비밀번호를 확인하는 관문 | 2026-09-16 |
+| 회원 탈퇴 | 계정과 딸린 데이터 전부. `account` 조율 층 신설 | 2026-09-16 |
+| `@EnableJpaAuditing` | `BaseTimeEntity` 로 시간 필드 일원화 | 2026-09-16 |
+| **주유 기록과 연비** | 주유 CRUD + km/L 계산 + 요약. 차량 주행거리 자동 갱신 | 2026-09-16 |
 
 Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않는다.
 
@@ -148,9 +184,12 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 
 ### 0. 브라우저 실동작 확인 (사람만 할 수 있다)
 
-여기까지 코드는 다 있지만 **브라우저에서 끝까지 눌러본 적이 없다.** 이 목록이 곧 완료 판정 기준이다.
+여기까지 코드는 다 있지만 **브라우저에서 끝까지 눌러본 적이 없다.**
 백엔드(IntelliJ `OdoLogApplication`)와 프론트(`cd frontend && npm run dev`)를 함께 띄우고
 `http://localhost:5173` 에서 확인한다.
+
+아래는 요약이다. **항목별로 "무엇을 봐야 하는지"까지 쪼갠 156개짜리 전체 목록은
+`CLAUDE.md` 의 Phase 6** 에 있다 (준비 6 · 기능 한 바퀴 93 · 폭 13 · 테마 10 · 접근성 7).
 
 기능:
 
@@ -169,7 +208,16 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 - [ ] `OTHER`(기타) 종류는 권장 주기가 없어 계산되지 않는 것이 맞는지
 - [ ] 정비 이력 수정 — 비용만 바꿨을 때 그 필드만 PATCH 되는지 (Network 탭 확인)
 - [ ] 정비 이력 삭제 (204)
-- [ ] 차량 삭제 → 정비 이력도 함께 사라짐
+- [ ] **차량 정보 수정** — 제조사만 바꿨을 때 **409 가 나지 않는지**(번호판이 안 바뀌었으면
+      중복 검사를 건너뛰어야 한다. 이 기능의 핵심 함정이다)
+- [ ] **주유 기록 등록** → 첫 기록은 연비가 `—` 인지(`0.00` 이면 잘못된 것)
+- [ ] **두 번째 주유 기록** → 연비가 나오는지. 주행거리 500km · 25L 이면 **20.00 km/L**
+- [ ] **주유가 차량 주행거리를 따라 올리는지** — 위쪽 히어로 숫자가 그만큼 굴러가야 한다
+- [ ] 주유 기록 11건 이상 → **2페이지 첫 행에도 연비가 나오는지**(그 행의 짝은 1페이지에 있다)
+- [ ] **비밀번호 변경** — 현재 비밀번호를 틀렸을 때 **로그아웃되지 않는지**
+- [ ] 로그아웃 후 **새 비밀번호로** 로그인되는지
+- [ ] **회원 탈퇴** — 비밀번호 확인 후 `/` 로 이동, 그 계정으로 로그인 불가
+- [ ] 차량 삭제 → **정비 이력과 주유 기록이** 함께 사라짐
 - [ ] 다른 계정으로 로그인 → 앞 계정의 차량이 보이지 않음
 
 화면(아직 아무도 눈으로 본 적이 없는 부분):
@@ -218,9 +266,16 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
         SQL 한 번이면 정확하고 요청도 1번이다.
 - [ ] 다음 정비 시점을 **전체 종류 한 번에** 반환하는 API (`GET .../next-services`)
       → 지금은 화면 하나를 그리는 데 요청이 5번 나간다.
-- [ ] 정비 이력 등록 시 `serviceOdometer` 가 차량 `odometer` 보다 크면 차량 주행거리 자동 갱신
-- [ ] 비밀번호 변경 / 회원 탈퇴 API
+- [ ] **정비 이력** 등록 시 `serviceOdometer` 가 차량 `odometer` 보다 크면 차량 주행거리 자동 갱신
+      → **주유 기록에는 이미 넣었다.** 주유가 훨씬 잦아 그쪽부터 했고, 같은 규칙을 정비에도
+        옮길지는 화면을 써 보고 정한다.
 - [ ] 정비 이력 종류별 필터링 (`GET .../maintenance-records?type=`)
+- [ ] 만탱크 연비 — 지금은 매 주유마다 직전 기록과의 차이로 계산한다(단순법).
+      **가득 채우지 않은 주유가 섞이면 그 구간만 실제보다 높게 나온다.** 기록에
+      "가득 채웠는가" 플래그를 두면 가득→가득 구간으로 정확히 낼 수 있다.
+- [ ] PWA (manifest + 아이콘 + 서비스 워커)
+      → 웹으로 확정했으므로 "홈 화면 아이콘"을 얻는 유일한 길이다. 하면 `theme-color` 가
+        네 곳 중복이 된다(`index.css`·`index.html`·`ThemeProvider.tsx`·manifest).
 - [ ] 로그인 실패 응답 시간이 계정 존재 여부에 따라 다르다
       → 이메일이 없으면 BCrypt 검증을 건너뛰어 빨리 답한다. 실패 메시지를 일부러 통일해
         둔 방침과 어긋나는 지점이라 언젠가 따져 볼 것.
@@ -228,10 +283,55 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 ### 완료 판정 기준
 
 위 0번을 처음부터 끝까지 막힘없이 수행할 수 있고, `./gradlew test` 가 통과하면 "완성"으로 본다.
-(테스트 62개는 지금 통과 중이고, 결함 12건도 고친 상태다. **남은 것은 사람 눈 확인 하나뿐이다.**)
+(테스트 **106개**는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
 배포(서버 인프라, 도메인, CI/CD)는 이 프로젝트의 범위 밖이며, **로컬에서 완전히 동작하는 것**까지가 목표다.
 
 ## 트러블슈팅
+
+### `@EnableJpaAuditing` 을 어디에 두느냐로 테스트가 두 번 깨졌다
+
+엔티티가 4개가 되면서 `@PrePersist`/`@PreUpdate` 복사를 걷어내고 `BaseTimeEntity` +
+`@EnableJpaAuditing` 으로 바꿨다. 그 애노테이션을 놓을 자리를 두 번 잘못 짚었다.
+
+**1차 — `OdoLogApplication` 에 붙였더니 `@WebMvcTest` 22개가 전부 실패했다.**
+
+```
+UserControllerTest > 회원가입 성공 시 201과 사용자 정보를 반환한다 FAILED
+    java.lang.IllegalArgumentException: JPA metamodel must not be empty
+```
+
+**원인**: `@WebMvcTest` 는 웹 계층만 띄우고 JPA 를 로드하지 않는데,
+`@EnableJpaAuditing` 이 등록하는 `AuditingEntityListener` 는 엔티티 메타모델을 요구한다.
+메인 클래스에 붙은 애노테이션은 `@WebMvcTest` 의 설정 기점이라 그대로 적용된다.
+
+**2차 — 별도 `@Configuration` 으로 옮겼더니 이번엔 `@DataJpaTest` 가 깨졌다.**
+
+```
+UserRepositoryTest > 사용자를 저장하면 id와 createdAt이 채워진다 FAILED
+```
+
+**원인**: `@DataJpaTest` 는 JPA 와 무관한 `@Configuration` 을 전부 걸러낸다.
+Auditing 이 켜지지 않아 `created_at` 이 null 인 채로 INSERT 되고 NOT NULL 위반이 났다.
+
+**해결**: 별도 설정 클래스(`common/config/jpa/JpaAuditingConfig`)에 두고,
+리포지토리 테스트에만 `@Import` 로 직접 끌어온다.
+
+```java
+@DataJpaTest
+@Import(JpaAuditingConfig.class)   // 빠뜨리면 created_at 이 null 로 INSERT 된다
+class UserRepositoryTest { ... }
+```
+
+`@Import` 를 깜빡하면 조용히 넘어가지 않고 NOT NULL 위반으로 바로 터진다 —
+이 선택의 안전장치가 그것이다.
+
+> 컬럼은 그대로다. `@MappedSuperclass` 는 테이블을 만들지 않고 필드만 자식 테이블에 합치므로
+> `created_at` / `updated_at` 의 이름과 타입이 바뀌지 않고, `ddl-auto: update` 가 아무것도
+> 건드리지 않는다. 실제 DB 로 확인했다:
+>
+> ```
+> /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SHOW COLUMNS FROM users LIKE '%_at';"
+> ```
 
 ### `mysql` 명령어로 접속 시 `Access denied`
 
