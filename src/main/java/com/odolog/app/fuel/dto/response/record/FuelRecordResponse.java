@@ -1,5 +1,6 @@
 package com.odolog.app.fuel.dto.response.record;
 
+import com.odolog.app.fuel.domain.calculation.FuelAnomaly;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 
 import java.math.BigDecimal;
@@ -31,7 +32,13 @@ public record FuelRecordResponse(
         /** 직전 주유 이후 달린 거리(km). 직전 기록이 없으면 null. */
         Integer distance,
         /** 연비(km/L), 소수 둘째 자리까지. 구간이 성립하지 않으면 null. */
-        BigDecimal efficiency
+        BigDecimal efficiency,
+        /**
+         * 연비가 물리적으로 말이 안 되는 값인지(50 초과 또는 2 미만).
+         * 주행거리나 주유량을 잘못 적은 경우다. "기록이 빠졌다"는 이것으로 못 잡는다 —
+         * 그건 요약의 longSegmentCount 가 본다.
+         */
+        boolean efficiencySuspicious
 ) {
 
     public static FuelRecordResponse of(FuelRecord record, FuelRecord previous) {
@@ -59,7 +66,8 @@ public record FuelRecordResponse(
                 record.isResetPoint(),
                 pricePerLiter(record),
                 distance,
-                efficiency
+                efficiency,
+                FuelAnomaly.isImpossible(efficiency)
         );
     }
 

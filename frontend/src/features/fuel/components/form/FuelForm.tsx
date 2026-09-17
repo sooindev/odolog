@@ -50,6 +50,18 @@ export function FuelForm({
       ? Math.round(costValue / litersValue)
       : null
 
+  /*
+   * 입력한 주행거리가 차량의 현재값보다 작으면 과거 기록이다.
+   * 차량 주행거리는 liftOdometerTo 때문에 **지금까지 기록된 최댓값**이라, 이 비교 하나로
+   * "계기판을 잘못 봤거나 자리수를 틀린" 경우 대부분이 걸린다. 새 API 가 필요 없다.
+   *
+   * **막지 않고 알려만 준다.** 지난달 영수증을 정리하는 건 정상적인 사용이고,
+   * 계기판을 교체했을 수도 있다. 사용자가 옳을 수 있는 자리에서 길을 막지 않는다.
+   */
+  const odometerValue = Number(odometer)
+  const looksPast =
+    odometer !== '' && Number.isFinite(odometerValue) && odometerValue < defaultOdometer
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
@@ -93,7 +105,11 @@ export function FuelForm({
         <Field
           label="주행거리 (km)"
           htmlFor="fuel-odometer"
-          hint="계기판 숫자. 이 값이 차량 주행거리보다 크면 차량 쪽도 함께 올라갑니다."
+          hint={
+            looksPast
+              ? `차량에 기록된 ${defaultOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
+              : '계기판 숫자. 이 값이 차량 주행거리보다 크면 차량 쪽도 함께 올라갑니다.'
+          }
         >
           <Input
             id="fuel-odometer"

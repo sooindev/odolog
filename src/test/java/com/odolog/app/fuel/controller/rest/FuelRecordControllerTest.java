@@ -51,7 +51,7 @@ class FuelRecordControllerTest {
     private FuelRecordResponse response() {
         return new FuelRecordResponse(1L, LocalDate.of(2026, 9, 10), 10500,
                 new BigDecimal("25.00"), 50000, null, false,
-                2000, 500, new BigDecimal("20.00"));
+                2000, 500, new BigDecimal("20.00"), false);
     }
 
     @Test
@@ -135,7 +135,7 @@ class FuelRecordControllerTest {
     @DisplayName("/summary 는 {recordId} 보다 먼저 매칭된다")
     void summaryRoutesBeforePathVariable() throws Exception {
         when(fuelRecordService.summary(1L, 10L)).thenReturn(new FuelSummaryResponse(
-                3, 160000, new BigDecimal("80.00"), 1000, new BigDecimal("20.00"), 3L, null));
+                3, 160000, new BigDecimal("80.00"), 1000, new BigDecimal("20.00"), 3L, null, 0));
 
         mockMvc.perform(get("/api/vehicles/10/fuel-records/summary").session(loginSessionOf(1L)))
                 .andExpect(status().isOk())

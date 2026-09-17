@@ -42,6 +42,17 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
+  /*
+   * 주유 폼과 같은 안내. 차량 주행거리는 liftOdometerTo 때문에 지금까지 기록된 최댓값이라,
+   * 그보다 작으면 과거 기록이라는 뜻이다. **막지 않고 알려만 준다** —
+   * 지난달 영수증을 정리하는 건 정상적인 사용이다.
+   */
+  const odometerValue = Number(serviceOdometer)
+  const looksPast =
+    serviceOdometer !== '' &&
+    Number.isFinite(odometerValue) &&
+    odometerValue < defaultOdometer
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
@@ -140,7 +151,15 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="정비 시 주행거리 (km)" htmlFor="serviceOdometer">
+        <Field
+          label="정비 시 주행거리 (km)"
+          htmlFor="serviceOdometer"
+          hint={
+            looksPast
+              ? `차량에 기록된 ${defaultOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
+              : undefined
+          }
+        >
           <Input
             id="serviceOdometer"
             type="number"

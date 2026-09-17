@@ -46,6 +46,12 @@ export interface FuelRecordResponse {
   distance: number | null
   /** 연비(km/L). */
   efficiency: number | null
+  /**
+   * 연비가 물리적으로 말이 안 되는 값인지(50 초과 · 2 미만). 주행거리나 주유량 입력 오류다.
+   * **"기록이 빠졌다"는 이것으로 안 잡힌다** — 한 번 빼먹으면 12.5 가 25 가 되는데
+   * 25 는 불가능한 값이 아니다. 그건 요약의 longSegmentCount 가 본다.
+   */
+  efficiencySuspicious: boolean
 }
 
 export interface FuelSummaryResponse {
@@ -59,4 +65,6 @@ export interface FuelSummaryResponse {
   latestRecordId: number | null
   /** 지금 적용 중인 기준점. 없으면 null. */
   resetPointId: number | null
+  /** 평소보다 눈에 띄게 긴 구간의 수. 주유 기록을 빼먹었을 가능성이다. */
+  longSegmentCount: number
 }

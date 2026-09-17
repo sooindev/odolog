@@ -124,9 +124,16 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                             <span className="ml-1 text-faint">· 다음 주유부터 계산</span>
                           </span>
                         ) : (
-                          <span className="text-figure tabular-nums text-strong">
-                            {record.efficiency.toFixed(2)}
-                            <span className="ml-1 text-sm text-muted-foreground">km/L</span>
+                          <span className="flex items-baseline gap-1.5">
+                            <span className="text-figure tabular-nums text-strong">
+                              {record.efficiency.toFixed(2)}
+                              <span className="ml-1 text-sm text-muted-foreground">km/L</span>
+                            </span>
+                            {/* 물리적으로 말이 안 되는 값. 숫자를 지우지 않고 옆에 붙인다 —
+                                사용자가 무엇을 잘못 적었는지 보려면 그 값이 남아 있어야 한다. */}
+                            {record.efficiencySuspicious && (
+                              <span className="text-xs text-destructive">확인 필요</span>
+                            )}
                           </span>
                         )}
                       </div>

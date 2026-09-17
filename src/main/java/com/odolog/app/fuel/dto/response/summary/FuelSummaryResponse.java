@@ -28,6 +28,12 @@ public record FuelSummaryResponse(
          */
         Long latestRecordId,
         /** 지금 적용 중인 기준점의 id. 없으면 null. 화면에서 해제 버튼을 띄울지 정한다. */
-        Long resetPointId
+        Long resetPointId,
+
+        /**
+         * 평소보다 눈에 띄게 긴 구간의 개수 — <b>기록을 빼먹었을 가능성</b>이다.
+         * 주유 한 번을 안 적으면 그 구간 거리가 두 배가 되고 연비도 두 배로 뻥튀기된다.
+         */
+        int longSegmentCount
 ) {
 }

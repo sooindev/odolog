@@ -103,6 +103,18 @@ export function FuelSummaryCard({
           <p className="text-xs text-muted-foreground">연비 초기화 이후 구간만 계산한 값입니다.</p>
         )}
 
+        {/*
+          기록을 빼먹었을 가능성. 주유 한 번을 안 적으면 그 구간 거리가 두 배가 되고
+          연비도 두 배로 뻥튀기된다 — 그 값이 평균에도 섞인다.
+          숨기지 않고 말해 주면 사용자가 빠진 기록을 채워 넣게 되고, 그러면 저절로 맞아진다.
+        */}
+        {data.longSegmentCount > 0 && (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            평소보다 긴 구간이 {data.longSegmentCount}곳 있습니다. 주유 기록이 빠졌다면 채워
+            넣으면 연비가 다시 계산됩니다.
+          </p>
+        )}
+
         {/* 격자 사이로 부모의 선 색이 비치게 한다. 칸마다 border 를 주면 맞닿는 자리가 2px 이 된다. */}
         <dl className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border sm:grid-cols-4">
           <Stat label="기록" value={`${formatNumber(data.recordCount)}건`} />

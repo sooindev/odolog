@@ -1,6 +1,7 @@
 package com.odolog.app.fuel.service.application;
 
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
+import com.odolog.app.fuel.domain.calculation.FuelAnomaly;
 import com.odolog.app.fuel.domain.calculation.FuelEfficiency;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.dto.request.register.FuelRecordRegisterRequest;
@@ -145,7 +146,8 @@ public class FuelRecordService {
         }
 
         return new FuelSummaryResponse(records.size(), totalCost, totalLiters,
-                efficiency.distance(), efficiency.average(), latestId, resetPointId);
+                efficiency.distance(), efficiency.average(), latestId, resetPointId,
+                FuelAnomaly.longSegmentCount(records));
     }
 
 
