@@ -133,7 +133,7 @@ function EmptyGarage() {
       <div className="flex max-w-sm flex-col gap-2">
         <p className="text-section text-strong">아직 등록된 차량이 없습니다</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          차량을 등록하면 정비 이력과 다음 정비 시점을 함께 관리할 수 있습니다.
+          차량을 등록하면 정비 이력과 다음 정비 시점, 주유 기록과 연비를 함께 관리할 수 있습니다.
         </p>
       </div>
 

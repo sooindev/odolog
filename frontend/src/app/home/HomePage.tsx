@@ -58,7 +58,7 @@ function Dashboard({ nickname }: { nickname: string }) {
     <Page
       eyebrow="Overview"
       title={`${nickname}님의 차고`}
-      description="등록한 차량과 정비 기록을 한눈에 봅니다."
+      description="차량과 정비·주유 기록, 들어간 유지비를 한눈에 봅니다."
       action={
         <Button size="sm" variant="secondary" render={<Link to="/vehicles" />}>
           내 차량

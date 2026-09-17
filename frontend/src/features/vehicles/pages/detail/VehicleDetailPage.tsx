@@ -60,8 +60,10 @@ export function VehicleDetailPage() {
   }
 
   async function handleDelete() {
-    // 되돌릴 수 없는 동작이라 정비 이력까지 사라진다는 걸 명시한다.
-    if (!window.confirm('이 차량과 정비 이력이 모두 삭제됩니다. 계속할까요?')) {
+    // 되돌릴 수 없는 동작이라 **무엇이 함께 사라지는지 빠짐없이** 적는다.
+    // 주유 기록을 빼먹고 있었다 — 코드는 지우는데 말을 안 하면 유류비와 연비가
+    // 남는 줄 알고 누르게 된다.
+    if (!window.confirm('이 차량과 정비 이력, 주유 기록이 모두 삭제됩니다. 계속할까요?')) {
       return
     }
 
@@ -109,7 +111,7 @@ export function VehicleDetailPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-[0.8125rem] text-muted-foreground">
-                삭제하면 정비 이력도 함께 사라집니다.
+                삭제하면 정비 이력과 주유 기록도 함께 사라집니다.
               </p>
               <Button
                 variant="destructive"

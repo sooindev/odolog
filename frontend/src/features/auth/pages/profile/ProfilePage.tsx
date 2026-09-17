@@ -51,7 +51,7 @@ export function ProfilePage() {
       {/* 되돌릴 수 없는 동작은 맨 아래에. 위에 두면 스크롤할 때마다 지나치게 된다. */}
       <Section
         title="회원 탈퇴"
-        description="계정과 등록한 차량·정비 이력이 모두 삭제됩니다. 되돌릴 수 없습니다."
+        description="계정과 등록한 차량, 정비 이력과 주유 기록이 모두 삭제됩니다. 되돌릴 수 없습니다."
       >
         <WithdrawCard />
       </Section>
