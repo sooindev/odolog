@@ -82,16 +82,16 @@ function Dashboard({ nickname }: { nickname: string }) {
 }
 
 function StatTiles({ data }: { data: HomeData }) {
+  // 전부 서버가 전체를 읽어 더한 값이다. 예전의 exact 플래그와 "일부 기록만 합산됨"
+  // 단서는 요약 API 가 생기면서 필요가 없어졌다.
   const tiles = [
-    { label: 'Vehicles', value: formatNumber(data.vehicleCount), unit: '대', exact: true, note: null },
-    { label: 'Distance', value: formatNumber(data.totalOdometer), unit: 'km', exact: false, note: null },
-    // 정비 + 주유. 양쪽 다 서버가 센 값이라 정확하다.
-    { label: 'Records', value: formatNumber(data.recordCount), unit: '건', exact: true, note: null },
+    { label: 'Vehicles', value: formatNumber(data.vehicleCount), unit: '대', note: null },
+    { label: 'Distance', value: formatNumber(data.totalOdometer), unit: 'km', note: null },
+    { label: 'Records', value: formatNumber(data.recordCount), unit: '건', note: null },
     {
       label: 'Cost',
       value: formatNumber(data.totalCost),
       unit: '원',
-      exact: false,
       // 합계만 보여주면 어느 쪽이 큰지 알 수 없다. 유지비에서 유류비 비중이 커서
       // 이 한 줄이 "총 지출"을 실제 의미 있는 숫자로 만든다.
       note: `정비 ${formatNumber(data.maintenanceCost)} · 주유 ${formatNumber(data.fuelCost)}`,
@@ -105,7 +105,7 @@ function StatTiles({ data }: { data: HomeData }) {
       이 구조라서 등장 연출은 걸 수 없다. 칸이 투명한 동안 격자 전체가 선 색으로 번쩍인다.
     */
     <dl className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-      {tiles.map(({ label, value, unit, exact, note }) => (
+      {tiles.map(({ label, value, unit, note }) => (
         <div key={label} className="flex flex-col gap-4 bg-background p-5 sm:gap-5 sm:p-8">
           <dt className="text-eyebrow text-muted-foreground uppercase">{label}</dt>
           {/* 큰 숫자에는 tabular-nums 를 쓰지 않는다. 세로로 맞출 상대가 있는 아래 목록에만 쓴다.
@@ -117,13 +117,7 @@ function StatTiles({ data }: { data: HomeData }) {
             </span>
           </dd>
 
-          {/* 합계는 받아 온 행을 직접 더한 값이라 상한을 넘으면 일부만 반영된다.
-              건수는 서버의 totalElements 라 항상 정확하다. 틀릴 수 있는 쪽에만 단서를 단다. */}
           {note !== null && <p className="text-xs tabular-nums text-muted-foreground">{note}</p>}
-
-          {!exact && !data.sumsComplete && (
-            <p className="text-xs text-muted-foreground">일부 정비 기록만 합산됨</p>
-          )}
         </div>
       ))}
     </dl>
@@ -138,27 +132,33 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
       </CardHeader>
       <CardContent>
         <ul className="divide-y divide-border">
-          {vehicles.map(({ vehicle, recordCount, lastServiceDate }) => (
-            <li key={vehicle.id} className="py-5 first:pt-0 last:pb-0">
+          {vehicles.map((line) => (
+            <li key={line.id} className="py-5 first:pt-0 last:pb-0">
               <Link
-                to={`/vehicles/${vehicle.id}`}
+                to={`/vehicles/${line.id}`}
                 className="flex items-center justify-between gap-4 transition-opacity duration-200 ease-apple hover:opacity-70"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="truncate text-[0.9375rem] tracking-[-0.01em] text-strong">
-                    {vehicle.manufacturer} {vehicle.modelName}
+                    {line.manufacturer} {line.modelName}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {vehicle.plateNumber} · 정비 {recordCount}건
+                    {line.plateNumber} · 정비 {line.maintenanceCount}건
+                    {/* 요약 API 가 서버에서 계산해 준 값이다. 주유 기록이 2건 미만이면 null 이고,
+                        그때는 아예 안 적는다 — '연비 —' 를 붙이면 없는 값이 자리를 차지한다. */}
+                    {line.averageEfficiency !== null &&
+                      ` · ${line.averageEfficiency.toFixed(1)}km/L`}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-right">
                   <p className="text-[0.9375rem] tabular-nums text-strong">
-                    {formatKm(vehicle.odometer)}
+                    {formatKm(line.odometer)}
                   </p>
                   <p className="text-xs tabular-nums text-muted-foreground">
-                    {lastServiceDate === null ? '정비 이력 없음' : formatDate(lastServiceDate)}
+                    {line.lastServiceDate === null
+                      ? '정비 이력 없음'
+                      : formatDate(line.lastServiceDate)}
                   </p>
                 </div>
               </Link>
@@ -184,24 +184,24 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
             {recent.map((item) => (
               /* key 에 kind 를 섞는다. 정비 3번과 주유 3번은 테이블이 달라 id 가 겹친다. */
               <li
-                key={`${item.kind}-${item.record.id}`}
+                key={`${item.kind}-${item.recordId}`}
                 className="flex items-start justify-between gap-4 py-5 first:pt-0 last:pb-0"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="text-[0.9375rem] tracking-[-0.01em] text-strong">
-                    {item.kind === 'maintenance' ? SERVICE_TYPE_LABELS[item.record.type] : '주유'}
+                    {item.type === null ? '주유' : SERVICE_TYPE_LABELS[item.type]}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {item.vehicle.manufacturer} {item.vehicle.modelName}
+                    {item.vehicleName}
                     {/* 주유는 종류가 하나뿐이라 제목만으로는 구분이 안 된다.
                         넣은 양을 붙여 그 줄이 무슨 기록인지 한눈에 보이게 한다. */}
-                    {item.kind === 'fuel' && ` · ${item.record.liters.toFixed(2)}L`}
+                    {item.liters !== null && ` · ${item.liters.toFixed(2)}L`}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-right">
                   <p className="text-[0.9375rem] tabular-nums text-strong">
-                    {formatWon(item.kind === 'maintenance' ? item.record.cost : item.record.totalCost)}
+                    {formatWon(item.cost)}
                   </p>
                   <p className="text-xs tabular-nums text-muted-foreground">
                     {formatDate(item.date)}

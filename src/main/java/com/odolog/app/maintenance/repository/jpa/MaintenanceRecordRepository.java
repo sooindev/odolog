@@ -25,5 +25,14 @@ public interface MaintenanceRecordRepository extends JpaRepository<MaintenanceRe
      */
     List<MaintenanceRecord> findByVehicleIdOrderByServiceDateDescIdDesc(Long vehicleId);
 
+    /**
+     * 한 사용자의 모든 정비 이력. 홈 요약에서만 쓴다.
+     *
+     * <p>{@code Vehicle_Owner_Id} 는 vehicle → owner → id 를 타고 들어가라는 뜻이다.
+     * 차량마다 따로 조회하면 차량 수만큼 쿼리가 나가는데, 요약은 어차피 전부 더할 것이라
+     * 한 번에 읽는 편이 싸다.
+     */
+    List<MaintenanceRecord> findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(Long ownerId);
+
     void deleteByVehicleId(Long vehicleId);
 }

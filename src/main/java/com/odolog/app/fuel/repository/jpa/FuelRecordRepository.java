@@ -28,5 +28,8 @@ public interface FuelRecordRepository extends JpaRepository<FuelRecord, Long> {
     /** 요약(평균 연비)은 전체를 봐야 한다. 페이지를 나누면 첫 기록과 마지막 기록을 못 만난다. */
     List<FuelRecord> findAllByVehicleIdOrderByOdometerAscIdAsc(Long vehicleId);
 
+    /** 한 사용자의 모든 주유 기록. 주행거리 오름차순이라 차량별 연비 계산에 그대로 쓴다. */
+    List<FuelRecord> findByVehicle_Owner_IdOrderByOdometerAscIdAsc(Long ownerId);
+
     void deleteByVehicleId(Long vehicleId);
 }
