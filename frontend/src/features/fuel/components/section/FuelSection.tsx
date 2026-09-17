@@ -114,7 +114,15 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                       <div className="flex items-baseline gap-2">
                         {/* 연비가 이 행에서 가장 중요한 값이라 맨 앞에 둔다. */}
                         {record.efficiency === null ? (
-                          <span className="text-muted-foreground">연비 —</span>
+                          /*
+                            연비가 없는 이유는 둘 중 하나다 — 직전 기록이 없거나(첫 기록),
+                            여기서부터 다시 세라고 찍어 둔 기준점이거나.
+                            "—" 만 두면 왜 없는지 알 수 없어서 이유를 적는다.
+                          */
+                          <span className="text-[0.8125rem] text-muted-foreground">
+                            {record.resetPoint ? '연비 기준점' : '기준 기록'}
+                            <span className="ml-1 text-faint">· 다음 주유부터 계산</span>
+                          </span>
                         ) : (
                           <span className="text-figure tabular-nums text-strong">
                             {record.efficiency.toFixed(2)}

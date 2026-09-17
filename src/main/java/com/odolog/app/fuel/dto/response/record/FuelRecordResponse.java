@@ -23,6 +23,8 @@ public record FuelRecordResponse(
         BigDecimal liters,
         int totalCost,
         String memo,
+        /** 연비를 여기서부터 다시 세는 기준점인지. */
+        boolean resetPoint,
 
         /** 리터당 단가(원). 총액 ÷ 리터를 반올림한 표시용 값이다. */
         int pricePerLiter,
@@ -36,7 +38,10 @@ public record FuelRecordResponse(
         Integer distance = null;
         BigDecimal efficiency = null;
 
-        if (previous != null && record.getOdometer() > previous.getOdometer()) {
+        // 기준점은 직전과의 연결을 끊는다. "여기서부터 다시"라는 뜻이므로 이 기록 자체의
+        // 구간 연비도 없다 — 첫 기록과 같은 처지가 된다.
+        if (!record.isResetPoint() && previous != null
+                && record.getOdometer() > previous.getOdometer()) {
             distance = record.getOdometer() - previous.getOdometer();
             // 단순법: 이번에 넣은 양으로 이번 구간을 나눈다.
             // 가득 채우지 않은 주유가 섞이면 그 구간만 실제보다 높게 나온다.
@@ -51,6 +56,7 @@ public record FuelRecordResponse(
                 record.getLiters(),
                 record.getTotalCost(),
                 record.getMemo(),
+                record.isResetPoint(),
                 pricePerLiter(record),
                 distance,
                 efficiency

@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -69,6 +70,25 @@ public class FuelRecord extends BaseTimeEntity {
     @Column(length = 255)
     private String memo;
 
+    /**
+     * 연비를 여기서부터 다시 세라는 표시.
+     *
+     * <p>연비가 이상해졌을 때(주행거리를 잘못 넣었다거나, 계절·운전 습관이 바뀌었다거나)
+     * 지금까지의 기록을 버리지 않고 기준만 다시 잡으려는 것이다.
+     * <b>기록을 지우는 방식은 쓰지 않는다</b> — 그러면 유류비 통계까지 함께 사라진다.
+     *
+     * <p>기준점이 여럿이면 <b>가장 최근 것</b>이 이긴다. 한 번만 찍을 수 있게 막지 않는 이유는,
+     * 여러 번 초기화하는 게 자연스러운 일이고 그때마다 옛 표시를 지우러 다닐 이유가 없어서다.
+     */
+    /*
+     * @ColumnDefault 는 생성되는 DDL 에 `default false` 를 넣는다.
+     * 이게 없으면 ddl-auto: update 가 기존 행이 있는 테이블에 NOT NULL 컬럼을 default 없이
+     * 붙이게 되고, 옛 행에 무엇이 들어갈지는 DB 구현에 달린다. 기본값을 코드에 적어 둔다.
+     */
+    @ColumnDefault("false")
+    @Column(name = "reset_point", nullable = false)
+    private boolean resetPoint;
+
     protected FuelRecord() {
     }
 
@@ -102,6 +122,10 @@ public class FuelRecord extends BaseTimeEntity {
         this.memo = memo;
     }
 
+    public void changeResetPoint(boolean resetPoint) {
+        this.resetPoint = resetPoint;
+    }
+
     public Long getId() {
         return id;
     }
@@ -128,5 +152,9 @@ public class FuelRecord extends BaseTimeEntity {
 
     public String getMemo() {
         return memo;
+    }
+
+    public boolean isResetPoint() {
+        return resetPoint;
     }
 }

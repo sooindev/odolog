@@ -19,6 +19,8 @@ export interface FuelRecordUpdateRequest {
   liters?: number
   totalCost?: number
   memo?: string
+  /** 연비 기준점 표시/해제. 안 보내면 그대로 둔다. */
+  resetPoint?: boolean
 }
 
 export interface FuelRecordResponse {
@@ -28,6 +30,11 @@ export interface FuelRecordResponse {
   liters: number
   totalCost: number
   memo: string | null
+  /**
+   * 연비를 여기서부터 다시 세는 기준점인지.
+   * 기준점은 직전과의 연결이 끊기므로 이 기록의 구간 연비도 null 이다.
+   */
+  resetPoint: boolean
 
   /** 리터당 단가(원). 총액 ÷ 리터를 서버가 반올림한 표시용 값. */
   pricePerLiter: number
@@ -48,4 +55,8 @@ export interface FuelSummaryResponse {
   /** 기록이 2건 미만이면 null. */
   totalDistance: number | null
   averageEfficiency: number | null
+  /** 가장 최근 주유 기록. "연비 초기화"가 이 기록을 기준점으로 찍는다. 기록이 없으면 null. */
+  latestRecordId: number | null
+  /** 지금 적용 중인 기준점. 없으면 null. */
+  resetPointId: number | null
 }

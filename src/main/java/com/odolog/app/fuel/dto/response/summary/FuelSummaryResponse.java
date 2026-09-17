@@ -19,6 +19,15 @@ public record FuelSummaryResponse(
         /** 첫 기록 → 마지막 기록 사이의 주행거리(km). 기록이 2건 미만이면 null. */
         Integer totalDistance,
         /** 총 거리 ÷ (총 주유량 − 첫 주유량). 계산할 수 없으면 null. */
-        BigDecimal averageEfficiency
+        BigDecimal averageEfficiency,
+
+        /**
+         * 가장 최근 주유 기록의 id. 기록이 없으면 null.
+         * 화면의 "연비 초기화"가 이 기록을 기준점으로 찍는다 — 그래서 여기 담아 보낸다.
+         * 안 그러면 화면이 목록을 한 번 더 받아야 한다.
+         */
+        Long latestRecordId,
+        /** 지금 적용 중인 기준점의 id. 없으면 null. 화면에서 해제 버튼을 띄울지 정한다. */
+        Long resetPointId
 ) {
 }

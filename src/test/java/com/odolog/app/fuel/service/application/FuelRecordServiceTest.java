@@ -204,7 +204,7 @@ class FuelRecordServiceTest {
 
         // 자리수를 잘못 넣었다가 고치는 흔한 경우.
         fuelRecordService.update(1L, 10L, 1L,
-                new FuelRecordUpdateRequest(null, 100000, null, null, null));
+                new FuelRecordUpdateRequest(null, 100000, null, null, null, null));
 
         assertThat(existing.getOdometer()).isEqualTo(100000);
         assertThat(vehicle.getOdometer()).isEqualTo(100000);
@@ -221,9 +221,84 @@ class FuelRecordServiceTest {
                 eq(10L), anyInt())).thenReturn(Optional.empty());
 
         fuelRecordService.update(1L, 10L, 1L,
-                new FuelRecordUpdateRequest(null, 15000, null, null, null));
+                new FuelRecordUpdateRequest(null, 15000, null, null, null, null));
 
         assertThat(existing.getOdometer()).isEqualTo(15000);
         assertThat(vehicle.getOdometer()).isEqualTo(50000);
+    }
+
+    private FuelRecord resetPointAt(Long id, Vehicle vehicle, int odometer, String liters, int cost) {
+        FuelRecord record = record(id, vehicle, odometer, liters, cost);
+        record.changeResetPoint(true);
+        return record;
+    }
+
+    @Test
+    @DisplayName("연비 초기화 이후 구간만으로 평균을 낸다")
+    void averageEfficiencySinceResetPoint() {
+        Vehicle vehicle = vehicle(30000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
+                // 초기화 이전 — 주행거리를 잘못 넣어 연비가 엉망이 된 구간
+                record(1L, vehicle, 10000, "90.00", 180000),
+                record(2L, vehicle, 10100, "90.00", 180000),
+                // 여기서부터 다시
+                resetPointAt(3L, vehicle, 20000, "30.00", 60000),
+                record(4L, vehicle, 20500, "25.00", 50000),
+                record(5L, vehicle, 21000, "25.00", 50000)));
+
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
+
+        // 1000km ÷ (80 - 30)L = 20.00. 초기화를 무시하면 11,000km 구간이 끼어들어 값이 달라진다.
+        assertThat(summary.totalDistance()).isEqualTo(1000);
+        assertThat(summary.averageEfficiency()).isEqualByComparingTo("20.00");
+
+        // 건수·비용·주유량은 **전체**다. 초기화는 연비를 다시 세는 것이지
+        // 지출을 없던 일로 만드는 게 아니다.
+        assertThat(summary.recordCount()).isEqualTo(5);
+        assertThat(summary.totalCost()).isEqualTo(520000);
+        assertThat(summary.totalLiters()).isEqualByComparingTo("260.00");
+
+        // 화면이 목록을 한 번 더 받지 않아도 되도록 요약이 두 id 를 함께 준다.
+        assertThat(summary.latestRecordId()).isEqualTo(5L);
+        assertThat(summary.resetPointId()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("기준점이 가장 마지막 기록이면 평균 연비를 낼 수 없다 — 다음 주유부터 계산된다")
+    void resetPointAtLatestLeavesNoAverage() {
+        Vehicle vehicle = vehicle(20000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
+                record(1L, vehicle, 10000, "30.00", 60000),
+                resetPointAt(2L, vehicle, 20000, "30.00", 60000)));
+
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
+
+        assertThat(summary.averageEfficiency()).isNull();
+        assertThat(summary.totalDistance()).isNull();
+    }
+
+    @Test
+    @DisplayName("기준점으로 찍힌 기록 자체는 구간 연비가 없다 — 직전과의 연결이 끊긴다")
+    void resetPointBreaksSegment() {
+        Vehicle vehicle = vehicle(20000);
+        FuelRecord existing = record(2L, vehicle, 20000, "25.00", 50000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(fuelRecordRepository.findByIdAndVehicleId(2L, 10L)).thenReturn(Optional.of(existing));
+        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
+                eq(10L), anyInt())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));
+
+        // 끄기 전에는 500km ÷ 25L = 20.00 이 나온다.
+        FuelRecordResponse before = fuelRecordService.update(1L, 10L, 2L,
+                new FuelRecordUpdateRequest(null, null, null, null, null, false));
+        assertThat(before.efficiency()).isEqualByComparingTo("20.00");
+
+        FuelRecordResponse after = fuelRecordService.update(1L, 10L, 2L,
+                new FuelRecordUpdateRequest(null, null, null, null, null, true));
+
+        assertThat(after.resetPoint()).isTrue();
+        assertThat(after.efficiency()).isNull();
+        assertThat(after.distance()).isNull();
     }
 }

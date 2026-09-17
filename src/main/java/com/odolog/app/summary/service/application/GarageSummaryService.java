@@ -2,6 +2,7 @@ package com.odolog.app.summary.service.application;
 
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
+import com.odolog.app.fuel.domain.calculation.FuelEfficiency;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
@@ -145,36 +146,10 @@ public class GarageSummaryService {
                     mine.size(),
                     // records 가 serviceDate 내림차순이라 첫 줄이 가장 최근이다.
                     mine.isEmpty() ? null : mine.get(0).getServiceDate(),
-                    averageEfficiency(myFuels)));
+                    FuelEfficiency.of(myFuels).average()));
         }
 
         return lines;
-    }
-
-    /**
-     * 총 거리 ÷ (총 주유량 − 첫 주유량).
-     *
-     * <p>첫 주유량을 빼는 이유: 그 연료는 첫 기록 <i>이전</i> 구간을 달린 것이라 우리가 아는
-     * 거리(첫 기록 → 마지막 기록)와 짝이 맞지 않는다. 안 빼면 연비가 실제보다 낮게 나온다.
-     * FuelRecordService.summary() 와 같은 공식이다.
-     */
-    private BigDecimal averageEfficiency(List<FuelRecord> fuels) {
-        if (fuels.size() < 2) {
-            return null;
-        }
-
-        FuelRecord first = fuels.get(0);
-        int distance = fuels.get(fuels.size() - 1).getOdometer() - first.getOdometer();
-
-        BigDecimal liters = fuels.stream()
-                .map(FuelRecord::getLiters)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .subtract(first.getLiters());
-
-        if (distance <= 0 || liters.compareTo(BigDecimal.ZERO) <= 0) {
-            return null;
-        }
-        return BigDecimal.valueOf(distance).divide(liters, 2, RoundingMode.HALF_UP);
     }
 
     private List<RecentActivity> recent(List<MaintenanceRecord> records, List<FuelRecord> fuels,

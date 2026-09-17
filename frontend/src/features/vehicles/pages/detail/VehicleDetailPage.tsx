@@ -42,6 +42,12 @@ export function VehicleDetailPage() {
   const [maintenanceVersion, setMaintenanceVersion] = useState(0)
   // 주유 기록도 같은 방식으로 요약 카드를 재생성시킨다.
   const [fuelVersion, setFuelVersion] = useState(0)
+  /*
+   * 목록은 스스로 갱신하므로 평소에는 건드리지 않는다. 예외가 하나 있다 —
+   * 연비 기준점을 바꾸면 **각 행의 구간 연비까지 달라지는데** 그건 카드 쪽에서 일어난다.
+   * 그때만 목록을 재생성한다(페이지가 1쪽으로 돌아가지만, 드물게 누르는 동작이라 괜찮다).
+   */
+  const [fuelListVersion, setFuelListVersion] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -128,9 +134,17 @@ export function VehicleDetailPage() {
             onChanged={() => setMaintenanceVersion((current) => current + 1)}
           />
 
-          <FuelSummaryCard key={fuelVersion} vehicleId={vehicle.id} />
+          <FuelSummaryCard
+            key={fuelVersion}
+            vehicleId={vehicle.id}
+            onChanged={() => {
+              setFuelVersion((current) => current + 1)
+              setFuelListVersion((current) => current + 1)
+            }}
+          />
 
           <FuelSection
+            key={fuelListVersion}
             vehicleId={vehicle.id}
             currentOdometer={vehicle.odometer}
             onChanged={() => {

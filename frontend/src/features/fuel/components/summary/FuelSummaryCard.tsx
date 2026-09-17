@@ -1,18 +1,43 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
+import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { ErrorText, LoadingText } from '@/shared/ui/feedback/state'
+import { ApiError } from '@/shared/api/client/client'
 import { formatKm, formatNumber, formatWon } from '@/shared/lib/format/format'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
-import { fetchFuelSummary } from '@/features/fuel/api/endpoints/endpoints'
+import { fetchFuelSummary, updateFuelRecord } from '@/features/fuel/api/endpoints/endpoints'
 
 /**
  * 평균 연비를 화면의 주인공으로 둔다. 이 앱이 주유 기록을 받는 이유가 이 숫자 하나다.
  * 재조회는 부모가 key 를 바꿔 컴포넌트를 재생성한다 (NextServiceCard 와 같은 방식).
  */
-export function FuelSummaryCard({ vehicleId }: { vehicleId: number }) {
+export function FuelSummaryCard({
+  vehicleId,
+  onChanged,
+}: {
+  vehicleId: number
+  /** 기준점을 바꾸면 목록의 구간 연비도 달라지므로 부모에게 알린다. */
+  onChanged: () => void
+}) {
   const load = useCallback(() => fetchFuelSummary(vehicleId), [vehicleId])
   const { data, loading, error } = useAsyncData(load, '주유 요약을 불러오지 못했습니다.')
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  async function setResetPoint(recordId: number, resetPoint: boolean) {
+    setActionError(null)
+    setPending(true)
+
+    try {
+      await updateFuelRecord(vehicleId, recordId, { resetPoint })
+      onChanged()
+    } catch (caught) {
+      setActionError(caught instanceof ApiError ? caught.message : '연비 초기화에 실패했습니다.')
+      // 성공하면 부모가 이 컴포넌트를 새로 만들므로 실패했을 때만 되돌린다.
+      setPending(false)
+    }
+  }
 
   if (loading) {
     return <LoadingText />
@@ -24,16 +49,46 @@ export function FuelSummaryCard({ vehicleId }: { vehicleId: number }) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>연비</CardTitle>
+        {/* 기록이 없으면 초기화할 것도 없다. 눌러도 아무 일 없는 버튼을 두지 않는다. */}
+        {data.latestRecordId !== null &&
+          (data.resetPointId === null ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => {
+                // 되돌릴 수 있는 동작이지만(해제 버튼이 생긴다) 숫자가 크게 바뀌므로 한 번 묻는다.
+                if (window.confirm('지금까지의 기록을 연비 계산에서 빼고 다시 셉니다. 계속할까요?')) {
+                  void setResetPoint(data.latestRecordId as number, true)
+                }
+              }}
+            >
+              {pending ? '처리 중…' : '연비 초기화'}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => void setResetPoint(data.resetPointId as number, false)}
+            >
+              {pending ? '처리 중…' : '초기화 해제'}
+            </Button>
+          ))}
       </CardHeader>
 
       <CardContent className="flex flex-col gap-6">
+        {actionError !== null && <ErrorText message={actionError} />}
+
         {data.averageEfficiency === null ? (
           <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
-            {data.recordCount < 2
-              ? '주유 기록이 2건 이상 쌓이면 평균 연비를 계산합니다. 첫 기록은 기준점이 됩니다.'
-              : '주행거리가 늘어난 기록이 없어 연비를 계산할 수 없습니다.'}
+            {data.resetPointId !== null
+              ? '연비를 초기화했습니다. 다음 주유 기록부터 다시 계산합니다.'
+              : data.recordCount < 2
+                ? '첫 주유 기록은 기준점이 됩니다. 다음 주유 기록부터 연비를 계산합니다.'
+                : '주행거리가 늘어난 기록이 없어 연비를 계산할 수 없습니다.'}
           </p>
         ) : (
           <div className="flex items-baseline gap-3">
@@ -41,6 +96,11 @@ export function FuelSummaryCard({ vehicleId }: { vehicleId: number }) {
             <span className="text-display text-strong">{data.averageEfficiency.toFixed(2)}</span>
             <span className="text-muted-foreground">km/L</span>
           </div>
+        )}
+
+        {/* 초기화 이후 구간만 센 값이라는 걸 밝힌다. 안 적으면 전체 평균으로 오해한다. */}
+        {data.resetPointId !== null && data.averageEfficiency !== null && (
+          <p className="text-xs text-muted-foreground">연비 초기화 이후 구간만 계산한 값입니다.</p>
         )}
 
         {/* 격자 사이로 부모의 선 색이 비치게 한다. 칸마다 border 를 주면 맞닿는 자리가 2px 이 된다. */}

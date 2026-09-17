@@ -1,6 +1,7 @@
 package com.odolog.app.fuel.service.application;
 
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
+import com.odolog.app.fuel.domain.calculation.FuelEfficiency;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.dto.request.register.FuelRecordRegisterRequest;
 import com.odolog.app.fuel.dto.request.update.FuelRecordUpdateRequest;
@@ -104,6 +105,7 @@ public class FuelRecordService {
         if (request.liters() != null) record.changeLiters(request.liters());
         if (request.totalCost() != null) record.changeTotalCost(request.totalCost());
         if (request.memo() != null) record.changeMemo(request.memo());
+        if (request.resetPoint() != null) record.changeResetPoint(request.resetPoint());
 
         return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()));
     }
@@ -118,6 +120,8 @@ public class FuelRecordService {
 
         List<FuelRecord> records = fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId);
 
+        // 건수·비용·주유량은 **전체**를 센다. 초기화는 연비를 다시 세는 것이지 지출을
+        // 없던 일로 만드는 게 아니다.
         int totalCost = 0;
         BigDecimal totalLiters = BigDecimal.ZERO;
         for (FuelRecord record : records) {
@@ -125,26 +129,22 @@ public class FuelRecordService {
             totalLiters = totalLiters.add(record.getLiters());
         }
 
-        Integer totalDistance = null;
-        BigDecimal averageEfficiency = null;
+        FuelEfficiency efficiency = FuelEfficiency.of(records);
 
-        if (records.size() >= 2) {
-            FuelRecord first = records.get(0);
-            FuelRecord last = records.get(records.size() - 1);
-            int distance = last.getOdometer() - first.getOdometer();
+        // 목록은 주행거리 오름차순이라 마지막이 가장 최근이다.
+        Long latestId = records.isEmpty() ? null : records.get(records.size() - 1).getId();
 
-            // 첫 주유량은 그 이전 구간에서 쓴 연료라 우리가 아는 거리와 짝이 맞지 않는다.
-            BigDecimal litersForDistance = totalLiters.subtract(first.getLiters());
-
-            if (distance > 0 && litersForDistance.compareTo(BigDecimal.ZERO) > 0) {
-                totalDistance = distance;
-                averageEfficiency = BigDecimal.valueOf(distance)
-                        .divide(litersForDistance, 2, RoundingMode.HALF_UP);
+        // 기준점이 여럿이면 가장 최근 것이 적용된다 — 뒤에서부터 찾는다.
+        Long resetPointId = null;
+        for (int i = records.size() - 1; i >= 0; i--) {
+            if (records.get(i).isResetPoint()) {
+                resetPointId = records.get(i).getId();
+                break;
             }
         }
 
         return new FuelSummaryResponse(records.size(), totalCost, totalLiters,
-                totalDistance, averageEfficiency);
+                efficiency.distance(), efficiency.average(), latestId, resetPointId);
     }
 
     /**
@@ -159,6 +159,7 @@ public class FuelRecordService {
             vehicle.updateOdometer(odometer);
         }
     }
+
 
     private FuelRecord findPrevious(Long vehicleId, int odometer) {
         return fuelRecordRepository
