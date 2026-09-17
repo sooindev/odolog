@@ -67,11 +67,26 @@ public class Vehicle extends BaseTimeEntity {
     }
 
 
+    /** 사용자가 "이 값으로 바꾸겠다"고 직접 누른 것. 줄어들면 잘못을 알려야 한다. */
     public void updateOdometer(int odometer) {
         if (odometer < this.odometer) {
             throw new ConflictException("주행거리는 줄어들 수 없습니다.");
         }
         this.odometer = odometer;
+    }
+
+    /**
+     * 기록의 주행거리가 지금보다 크면 따라 올린다. 작거나 같으면 아무 일도 하지 않는다.
+     *
+     * <p><b>updateOdometer 와 나눠 둔 이유.</b> 저쪽은 사용자가 주행거리 자체를 고치는 동작이라
+     * 줄어들면 예외로 막아야 한다. 이쪽은 정비·주유를 기록하다 <b>따라오는</b> 것이라
+     * 과거 기록을 뒤늦게 넣는 경우가 정상이고, 거기서 예외가 나면 기록 자체가 막혀 버린다.
+     * 같은 필드를 건드리지만 의도가 달라서 이름도 둘이다.
+     */
+    public void liftOdometerTo(int odometer) {
+        if (odometer > this.odometer) {
+            this.odometer = odometer;
+        }
     }
 
     // 번호판 중복 검사는 여기서 못 한다. 다른 행을 봐야 하는 일이라 리포지토리가 필요하고,

@@ -40,6 +40,10 @@ public class MaintenanceRecordService {
         MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(), request.description(),
                 request.cost(), request.serviceOdometer(), request.serviceDate());
 
+        // 정비소에서 5만km 에 갈았다고 적었으면 차량도 최소 5만km 는 달린 것이다.
+        // 같은 숫자를 두 번 입력하게 하지 않는다. 주유 기록과 같은 규칙이다.
+        vehicle.liftOdometerTo(request.serviceOdometer());
+
         return maintenanceRecordRepository.save(record);
     }
 
@@ -111,6 +115,8 @@ public class MaintenanceRecordService {
         }
         if (request.serviceOdometer() != null) {
             record.changeServiceOdometer(request.serviceOdometer());
+            // 등록과 같은 규칙. 자리수를 잘못 넣었다가 고치는 건 흔한 일이다.
+            record.getVehicle().liftOdometerTo(request.serviceOdometer());
         }
         if (request.serviceDate() != null) {
             record.changeServiceDate(request.serviceDate());

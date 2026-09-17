@@ -210,4 +210,55 @@ class MaintenanceRecordServiceTest {
         // plusMonths 는 달 길이를 알아서 맞춘다. plusDays(30 * n) 이었다면 어긋난다.
         assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2026, 7, 31));
     }
+
+    @Test
+    @DisplayName("정비 이력의 주행거리가 더 크면 차량 주행거리도 따라 올라간다")
+    void registerLiftsVehicleOdometer() {
+        Vehicle vehicle = createVehicle(10L);
+        vehicle.updateOdometer(30000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        maintenanceRecordService.register(1L, 10L, new MaintenanceRecordRegisterRequest(
+                ServiceType.ENGINE_OIL, null, 80000, 50000, LocalDate.of(2026, 9, 1)));
+
+        // 같은 숫자를 주행거리 갱신에 한 번 더 입력하게 하지 않는다.
+        assertThat(vehicle.getOdometer()).isEqualTo(50000);
+    }
+
+    @Test
+    @DisplayName("과거 정비를 뒤늦게 입력해도 차량 주행거리는 내려가지 않는다")
+    void registerDoesNotLowerVehicleOdometer() {
+        Vehicle vehicle = createVehicle(10L);
+        vehicle.updateOdometer(50000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // 작은 값이라고 예외를 던지면 안 된다 — 과거 기록을 넣는 것 자체가 막힌다.
+        maintenanceRecordService.register(1L, 10L, new MaintenanceRecordRegisterRequest(
+                ServiceType.ENGINE_OIL, null, 80000, 20000, LocalDate.of(2026, 1, 1)));
+
+        assertThat(vehicle.getOdometer()).isEqualTo(50000);
+    }
+
+    @Test
+    @DisplayName("정비 이력을 수정해 주행거리를 올리면 차량 주행거리도 따라 올라간다")
+    void updateLiftsVehicleOdometer() {
+        Vehicle vehicle = createVehicle(10L);
+        vehicle.updateOdometer(30000);
+        MaintenanceRecord existing = record(100L, vehicle, ServiceType.ENGINE_OIL, 30000,
+                LocalDate.of(2026, 9, 1));
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(maintenanceRecordRepository.findByIdAndVehicleId(100L, 10L))
+                .thenReturn(Optional.of(existing));
+
+        // 자리수를 잘못 넣었다가 고치는 흔한 경우.
+        maintenanceRecordService.update(1L, 10L, 100L, new MaintenanceRecordUpdateRequest(
+                null, null, null, 60000, null));
+
+        assertThat(existing.getServiceOdometer()).isEqualTo(60000);
+        assertThat(vehicle.getOdometer()).isEqualTo(60000);
+    }
 }

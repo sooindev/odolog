@@ -131,7 +131,12 @@ export function VehicleDetailPage() {
           <MaintenanceSection
             vehicleId={vehicle.id}
             currentOdometer={vehicle.odometer}
-            onChanged={() => setMaintenanceVersion((current) => current + 1)}
+            onChanged={() => {
+              setMaintenanceVersion((current) => current + 1)
+              // 정비 이력의 주행거리가 더 크면 서버가 차량 쪽도 올린다(주유와 같은 규칙).
+              // 다시 받아 와야 위의 히어로 숫자가 맞고, 오른 만큼 굴러가는 연출도 거기서 나온다.
+              reloadVehicle()
+            }}
           />
 
           <FuelSummaryCard
