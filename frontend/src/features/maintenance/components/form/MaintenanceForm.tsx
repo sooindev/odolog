@@ -8,6 +8,7 @@ import { controlClassName } from '@/shared/ui/form/control'
 import { Field } from '@/shared/ui/form/field'
 import { FormActions } from '@/shared/ui/layout/page'
 import { Input } from '@/shared/ui/base/input'
+import { DateInput } from '@/shared/ui/form/date-input'
 import { Textarea } from '@/shared/ui/base/textarea'
 import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
@@ -132,15 +133,9 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         </Field>
 
         <Field label="정비 날짜" htmlFor="serviceDate">
-          {/* type="date"는 값을 YYYY-MM-DD 문자열로 준다. 백엔드 LocalDate와 그대로 맞는다. */}
-          <Input
-            id="serviceDate"
-            type="date"
-            required
-            className="tabular-nums"
-            value={serviceDate}
-            onChange={(event) => setServiceDate(event.target.value)}
-          />
+          {/* 값은 어느 쪽이든 YYYY-MM-DD 문자열이다. 백엔드 LocalDate 와 그대로 맞는다.
+              터치 기기에서는 드럼 휠, 그 외에는 네이티브 date 입력으로 갈린다. */}
+          <DateInput id="serviceDate" required value={serviceDate} onChange={setServiceDate} />
         </Field>
       </div>
 

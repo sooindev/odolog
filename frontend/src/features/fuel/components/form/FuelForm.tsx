@@ -4,6 +4,7 @@ import type { FormEvent } from 'react'
 import { Button } from '@/shared/ui/base/button'
 import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
+import { DateInput } from '@/shared/ui/form/date-input'
 import { Textarea } from '@/shared/ui/base/textarea'
 import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/feedback/state'
@@ -86,13 +87,7 @@ export function FuelForm({
     <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="주유 날짜" htmlFor="fuel-date">
-          <Input
-            id="fuel-date"
-            type="date"
-            required
-            value={fueledAt}
-            onChange={(event) => setFueledAt(event.target.value)}
-          />
+          <DateInput id="fuel-date" required value={fueledAt} onChange={setFueledAt} />
         </Field>
 
         <Field
