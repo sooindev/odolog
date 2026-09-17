@@ -23,8 +23,8 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-// @DataJpaTest 는 JPA 와 무관한 @Configuration 을 걸러내므로 Auditing 이 자동으로
-// 켜지지 않는다. 없으면 created_at 이 null 인 채로 INSERT 되어 NOT NULL 위반이 난다.
+// DataJpaTest 는 JPA 와 무관한 Configuration 을 걸러내 Auditing 이 안 켜짐
+// 빠뜨리면 created_at null → NOT NULL 위반
 @Import(JpaAuditingConfig.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class MaintenanceRecordRepositoryTest {
@@ -55,15 +55,14 @@ class MaintenanceRecordRepositoryTest {
     void findTop_sameDate() {
         LocalDate sameDay = LocalDate.of(2026, 3, 1);
 
-        // 먼저 등록한 것(잘못 입력한 값)
+        // 먼저 등록 (오입력)
         em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "오타", 50000, 10000, sameDay));
-        // 나중에 등록한 것(고쳐서 다시 넣은 값)
+        // 나중에 등록 (정정)
         em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "정정", 50000, 20000, sameDay));
         em.flush();
         em.clear();
 
-        // 일괄 조회의 첫 줄이 곧 "그 종류의 최신"이다. 동점 기준(id DESC)이 없으면
-        // 순서를 DB 가 정하게 되어, 다음 정비 시점이 새로고침마다 달라진다.
+        // 일괄 조회의 첫 줄 = 그 종류의 최신. 동점 기준(id DESC)이 없으면 순서를 DB 가 정함
         MaintenanceRecord latest = maintenanceRecordRepository
                 .findByVehicleIdOrderByServiceDateDescIdDesc(vehicle.getId())
                 .get(0);

@@ -28,15 +28,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 홈 화면 요약. vehicle · maintenance · fuel 을 모두 읽는 조회 전용 서비스다.
- *
- * <p><b>왜 새 패키지인가.</b> 회원 탈퇴({@code account})와 같은 문제다 — 세 기능을 모두 알아야
- * 하는데 어느 한 기능에 넣으면 의존이 역방향이 된다. 다만 탈퇴는 <i>순서를 조율</i>하고
- * 이쪽은 <i>읽어서 합친다</i>는 점이 달라, 성격이 섞이지 않게 패키지를 따로 뒀다.
- *
- * <p>리포지토리를 직접 쓰는 것은 의도적이다. 여기서 하는 일은 집계뿐이라 각 기능의 서비스가
- * 가진 비즈니스 규칙(소유권 검사, 삭제 순서 같은 것)이 필요 없다. 소유자 id 로 조회하므로
- * 애초에 남의 데이터가 섞이지 않는다.
+ * 홈 요약. vehicle · maintenance · fuel 을 모두 읽는 조회 전용
+ * account 와 같은 조율 층이지만 그쪽은 순서 조율, 이쪽은 집계라 패키지를 나눔
+ * 서비스가 아닌 리포지토리 주입 — 집계에는 소유권 검사·삭제 순서 같은 규칙이 불필요
  */
 @Service
 @Transactional(readOnly = true)
@@ -58,7 +52,7 @@ public class GarageSummaryService {
     }
 
     public GarageSummaryResponse summarize(Long ownerId, LocalDate today) {
-        // 쿼리 3번. 전에는 HTTP 왕복이 1 + 차량수 × 2 번이었다.
+        // 쿼리 3번 (전에는 HTTP 왕복 1 + 차량수 × 2)
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(ownerId);
         List<MaintenanceRecord> records =
                 maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(ownerId);
@@ -80,7 +74,7 @@ public class GarageSummaryService {
                 recent(records, fuels, vehicles));
     }
 
-    /** 기록이 없는 달도 0 으로 채운다. 있는 달만 모으면 가로축이 등간격이 아니게 된다. */
+    /** 빈 달도 0 으로 채움. 있는 달만 모으면 가로축이 등간격이 아니게 됨 */
     private List<MonthlyCost> monthly(List<MaintenanceRecord> records, List<FuelRecord> fuels,
                                       LocalDate today) {
         record Bucket(long maintenance, long fuel, int count) {
@@ -112,7 +106,7 @@ public class GarageSummaryService {
         return monthly;
     }
 
-    /** 기록이 있는 종류만. 0원짜리 줄로 화면을 채우지 않는다. */
+    /** 기록 있는 종류만. 0원짜리 줄 제외 */
     private List<TypeCost> byType(List<MaintenanceRecord> records) {
         Map<ServiceType, long[]> sums = new EnumMap<>(ServiceType.class);
         for (MaintenanceRecord record : records) {
@@ -132,7 +126,7 @@ public class GarageSummaryService {
         List<VehicleLine> lines = new ArrayList<>(vehicles.size());
 
         for (Vehicle vehicle : vehicles) {
-            // getId() 는 LAZY 프록시에서도 초기화 없이 읽힌다 — FK 를 이미 들고 있기 때문.
+            // getId() 는 LAZY 프록시에서도 초기화 없이 읽힘 — FK 를 이미 들고 있음
             List<MaintenanceRecord> mine = records.stream()
                     .filter(record -> record.getVehicle().getId().equals(vehicle.getId()))
                     .toList();
@@ -144,7 +138,7 @@ public class GarageSummaryService {
                     vehicle.getId(), vehicle.getPlateNumber(), vehicle.getManufacturer(),
                     vehicle.getModelName(), vehicle.getOdometer(),
                     mine.size(),
-                    // records 가 serviceDate 내림차순이라 첫 줄이 가장 최근이다.
+                    // serviceDate 내림차순이라 첫 줄이 최근
                     mine.isEmpty() ? null : mine.get(0).getServiceDate(),
                     FuelEfficiency.of(myFuels).average()));
         }
@@ -155,10 +149,9 @@ public class GarageSummaryService {
     private List<RecentActivity> recent(List<MaintenanceRecord> records, List<FuelRecord> fuels,
                                         List<Vehicle> vehicles) {
         /*
-         * 이름은 이미 읽어 둔 차량에서 찾는다. record.getVehicle().getManufacturer() 로 읽으면
-         * LAZY 프록시가 초기화되는데(getId() 와 달리 FK 만으로는 알 수 없는 값이다),
-         * 같은 트랜잭션이라 1차 캐시가 받아 줄 뿐 그 사실에 기대는 코드가 된다.
-         * 지도를 만들어 두면 로딩 순서와 무관하게 쿼리가 더 나가지 않는다.
+         * 차량 이름은 이미 읽어 둔 목록에서 찾기
+         * getVehicle().getManufacturer() 는 LAZY 프록시를 초기화 — getId() 와 달리 FK 만으로는 모름
+         * 1차 캐시가 받아 주긴 하나 그 사실에 기대는 코드가 됨
          */
         Map<Long, String> names = new LinkedHashMap<>();
         for (Vehicle vehicle : vehicles) {
@@ -179,10 +172,9 @@ public class GarageSummaryService {
 
         return all.stream()
                 .sorted(Comparator.comparing(RecentActivity::date).reversed()
-                        // 같은 날짜면 정비 먼저. kind 를 문자열로 비교하면 "FUEL" < "MAINTENANCE" 라
-                        // 주유가 앞선다 — 순서를 알파벳에 맡기지 않고 직접 정한다.
+                        // 같은 날짜면 정비 먼저. 문자열 비교면 "FUEL" < "MAINTENANCE" 로 뒤집힘
                         .thenComparingInt(activity -> "MAINTENANCE".equals(activity.kind()) ? 0 : 1)
-                        // 같은 종류끼리만 id 내림차순. 정비 3번과 주유 3번은 테이블이 달라 무관하다.
+                        // 같은 종류끼리만 id 내림차순 — 테이블이 달라 id 는 서로 무관
                         .thenComparing(Comparator.comparingLong(RecentActivity::recordId).reversed()))
                 .limit(RECENT_LIMIT)
                 .toList();

@@ -78,11 +78,8 @@ public class User extends BaseTimeEntity {
     }
 
     /**
-     * 이미 암호화된 문자열만 받는다.
-     *
-     * 엔티티가 PasswordEncoder 를 들고 평문을 받아 직접 인코딩하게 만들 수도 있지만,
-     * 그러면 도메인 객체가 스프링 시큐리티에 묶이고 new User(...) 하나 하는 데 빈이 필요해진다.
-     * "무엇을 저장할지"는 엔티티가, "어떻게 암호화할지"는 서비스가 안다.
+     * 암호화된 문자열만 받음
+     * 엔티티가 직접 인코딩하면 도메인이 스프링 시큐리티에 묶이고 new User(...) 에 빈이 필요해짐
      */
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;

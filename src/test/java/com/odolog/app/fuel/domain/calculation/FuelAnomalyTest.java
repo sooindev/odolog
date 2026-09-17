@@ -21,7 +21,7 @@ class FuelAnomalyTest {
                 new BigDecimal("40.00"), 80000, null);
     }
 
-    /** 주행거리들을 순서대로 기록으로 만든다. */
+    /** 주행거리 목록 → 기록 목록 */
     private List<FuelRecord> records(int... odometers) {
         List<FuelRecord> list = new ArrayList<>();
         for (int odometer : odometers) {
@@ -38,14 +38,14 @@ class FuelAnomalyTest {
 
         assertThat(FuelAnomaly.isImpossible(new BigDecimal("12.50"))).isFalse();
         assertThat(FuelAnomaly.isImpossible(new BigDecimal("25.00"))).isFalse();
-        // 계산되지 않은 것을 이상하다고 하지 않는다.
+        // 미계산은 이상값이 아님
         assertThat(FuelAnomaly.isImpossible(null)).isFalse();
     }
 
     @Test
     @DisplayName("주유를 한 번 빼먹으면 그 구간이 두 배가 되고, 그걸 잡아낸다")
     void catchesMissedRecord() {
-        // 늘 400km 쯤 달리고 넣던 차. 가운데 한 번을 기록하지 않아 800km 구간이 생겼다.
+        // 평소 400km 구간. 가운데 한 번을 안 적어 800km 구간 발생
         List<FuelRecord> records = records(10000, 10400, 10800, 11600, 12000, 12400);
 
         assertThat(FuelAnomaly.longSegmentCount(records)).isEqualTo(1);
@@ -61,7 +61,7 @@ class FuelAnomalyTest {
     @Test
     @DisplayName("계절 편차 정도(1.5배)는 넘긴다 — 아무 때나 경고하면 아무도 안 본다")
     void toleratesNormalVariation() {
-        // 400 · 400 · 600 · 400 — 한 구간이 1.5배지만 기록이 빠진 건 아니다.
+        // 400 · 400 · 600 · 400 — 1.5배는 계절 편차 수준
         assertThat(FuelAnomaly.longSegmentCount(records(10000, 10400, 10800, 11400, 11800)))
                 .isZero();
     }
@@ -69,7 +69,7 @@ class FuelAnomalyTest {
     @Test
     @DisplayName("구간이 셋 미만이면 '평소'라는 게 없어 의심하지 않는다")
     void needsEnoughSegments() {
-        // 400 · 1200 — 한쪽이 세 배지만 기준으로 삼을 '평소'가 없다.
+        // 400 · 1200 — 세 배지만 기준 삼을 '평소'가 없음
         assertThat(FuelAnomaly.longSegmentCount(records(10000, 10400, 11600))).isZero();
         assertThat(FuelAnomaly.longSegmentCount(records(10000))).isZero();
         assertThat(FuelAnomaly.longSegmentCount(List.of())).isZero();
@@ -79,7 +79,7 @@ class FuelAnomalyTest {
     @DisplayName("연비 기준점에서는 구간을 세지 않는다 — 연비 계산과 같은 규칙")
     void skipsResetPoint() {
         List<FuelRecord> records = records(10000, 10400, 10800, 11200, 11600);
-        // 가운데를 기준점으로 만들면 그 앞 구간은 애초에 이어지지 않는다.
+        // 기준점 앞 구간은 애초에 이어지지 않음
         records.get(2).changeResetPoint(true);
 
         assertThat(FuelAnomaly.longSegmentCount(records)).isZero();

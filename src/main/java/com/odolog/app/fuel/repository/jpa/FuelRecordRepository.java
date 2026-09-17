@@ -12,23 +12,20 @@ public interface FuelRecordRepository extends JpaRepository<FuelRecord, Long> {
 
     Page<FuelRecord> findByVehicleId(Long vehicleId, Pageable pageable);
 
-    /** 다른 차량 소속 기록의 id 로 접근하는 것을 404 로 막는다. */
+    /** 타 차량 소속 기록 접근 차단 (404) */
     Optional<FuelRecord> findByIdAndVehicleId(Long id, Long vehicleId);
 
     /**
-     * 주행거리가 이 값보다 작은 것 중 가장 큰 것 = 바로 직전 주유.
-     *
-     * <p>연비는 "직전 주유 이후 달린 거리 ÷ 이번에 넣은 양"이라 직전 한 건만 있으면 된다.
-     * 동점(같은 주행거리에 두 번 기록)일 때를 위해 id 를 2차 기준으로 둔다 —
-     * 정비 이력의 findTopBy...OrderByServiceDateDescIdDesc 와 같은 이유다.
+     * 이 값보다 작은 주행거리 중 최대 = 직전 주유
+     * 동점(같은 주행거리 2건) 대비로 id 를 2차 기준에 둠
      */
     Optional<FuelRecord> findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
             Long vehicleId, int odometer);
 
-    /** 요약(평균 연비)은 전체를 봐야 한다. 페이지를 나누면 첫 기록과 마지막 기록을 못 만난다. */
+    /** 요약용 전체 조회. 페이지를 나누면 첫 기록과 마지막 기록이 못 만남 */
     List<FuelRecord> findAllByVehicleIdOrderByOdometerAscIdAsc(Long vehicleId);
 
-    /** 한 사용자의 모든 주유 기록. 주행거리 오름차순이라 차량별 연비 계산에 그대로 쓴다. */
+    /** 한 사용자의 전체 주유 기록. 오름차순이라 차량별 연비 계산에 그대로 사용 */
     List<FuelRecord> findByVehicle_Owner_IdOrderByOdometerAscIdAsc(Long ownerId);
 
     void deleteByVehicleId(Long vehicleId);

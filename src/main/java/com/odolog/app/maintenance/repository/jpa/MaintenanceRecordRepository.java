@@ -17,20 +17,14 @@ public interface MaintenanceRecordRepository extends JpaRepository<MaintenanceRe
     Optional<MaintenanceRecord> findByIdAndVehicleId(Long id, Long vehicleId);
 
     /**
-     * 종류별 최신 1건을 한 번에 구하려고 전체를 정렬해서 가져온다.
-     *
-     * <p>종류마다 findTopBy... 를 부르면 종류 수만큼(지금 15번) 쿼리가 나간다.
-     * 한 번 읽어서 자바에서 종류별 첫 줄만 집는 편이 싸다 — 한 차량의 이력은
-     * 많아야 수백 건이라 메모리에 올려도 무방하다.
+     * 종류별 최신 1건용. 전체를 정렬해 한 번에 읽기
+     * 종류마다 findTopBy 면 15쿼리. 한 차량의 이력은 많아야 수백 건이라 메모리가 쌈
      */
     List<MaintenanceRecord> findByVehicleIdOrderByServiceDateDescIdDesc(Long vehicleId);
 
     /**
-     * 한 사용자의 모든 정비 이력. 홈 요약에서만 쓴다.
-     *
-     * <p>{@code Vehicle_Owner_Id} 는 vehicle → owner → id 를 타고 들어가라는 뜻이다.
-     * 차량마다 따로 조회하면 차량 수만큼 쿼리가 나가는데, 요약은 어차피 전부 더할 것이라
-     * 한 번에 읽는 편이 싸다.
+     * 한 사용자의 전체 정비 이력. 홈 요약 전용
+     * Vehicle_Owner_Id = vehicle → owner → id 로 타고 들어가는 파생 쿼리
      */
     List<MaintenanceRecord> findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(Long ownerId);
 

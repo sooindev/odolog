@@ -6,19 +6,19 @@ import { Button } from '@/shared/ui/base/button'
 import { GaugeMark } from '@/shared/ui/brand/mark'
 
 /**
- * 화면 맨 위에 붙어 따라다니는 바. 불투명한 바닥색 + 아래쪽 1px 괘선뿐이다.
- * 반투명하게 두면 스크롤할 때 바 위의 글자와 아래 글자가 한순간 겹쳐 읽힌다.
+ * 상단 고정 바. 불투명한 바닥색 + 아래쪽 1px 괘선
+ * 반투명이면 스크롤할 때 바 위아래 글자가 한순간 겹쳐 읽힘
  */
 export function Header() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // 로그인 화면에서 "로그인" 버튼을 또 보여주면 지금 있는 곳을 가리키는 버튼이 된다.
+  // 로그인 화면의 "로그인" 버튼은 지금 있는 곳을 가리키는 버튼이 됨
   const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'
 
-  // logout() 은 실패해도 던지지 않는다(AuthProvider 가 상태만 비운다).
-  // 그래서 navigate 가 항상 실행된다. 여기에 try/catch 를 또 두지 않는 이유.
+  // logout() 은 실패해도 던지지 않아(AuthProvider 담당) navigate 가 항상 실행됨
+  // 여기에 try/catch 를 또 두지 않는 이유
   async function handleLogout() {
     await logout()
     navigate('/login', { replace: true })
@@ -39,10 +39,9 @@ export function Header() {
 
         <div className="flex min-w-0 items-center gap-1.5">
           {/*
-            좁은 화면에서는 숨긴다. 375px 에서 로고·토글·닉네임·로그아웃을 모두 넣으면
-            폭이 60px 모자라 닉네임이 말줄임만 남는다. 화면 모드는 프로필의 '화면' 구역에도
-            있으므로 기능이 사라지는 것은 아니다.
-            로그인 전에도 보여준다. 로그인 화면을 흰 화면으로 마주할 이유가 없다.
+            좁은 화면에서는 숨김. 375px 에서 전부 넣으면 60px 모자라 닉네임이 말줄임만 남음
+            프로필의 '화면' 구역에도 있어 기능이 사라지지는 않음
+            로그인 전에도 표시 — 로그인 화면을 흰 화면으로 마주할 이유가 없음
           */}
           <ThemeToggle className="hidden shrink-0 sm:flex" />
 
@@ -54,7 +53,7 @@ export function Header() {
 
           {user !== null && (
             <>
-              {/* 닉네임은 30자까지 가능하다. 폭을 안 막으면 로그아웃 버튼이 화면 밖으로 밀린다. */}
+              {/* 닉네임 최대 30자. 폭을 안 막으면 로그아웃 버튼이 화면 밖으로 밀림 */}
               <Button variant="ghost" size="sm" className="max-w-24" render={<Link to="/me" />}>
                 <span className="min-w-0 truncate">{user.nickname}</span>
               </Button>

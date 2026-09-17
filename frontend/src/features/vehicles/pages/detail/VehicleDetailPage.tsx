@@ -21,14 +21,13 @@ import { deleteVehicle, fetchVehicle, updateOdometer } from '@/features/vehicles
 import type { VehicleResponse } from '@/features/vehicles/api/types/types'
 
 export function VehicleDetailPage() {
-  // URL의 :vehicleId 는 항상 문자열로 들어온다.
+  // URL 파라미터는 언제나 문자열
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate = useNavigate()
 
   const id = Number(vehicleId)
 
-  // 404(없음)와 403(남의 차)을 구분해 보여주지 않는다. 남의 차량이 존재한다는
-  // 사실 자체를 알리지 않기 위해서.
+  // 404 와 403 을 구분해 보여주지 않음 — 남의 차량이 존재한다는 사실 자체를 숨김
   const load = useCallback(() => fetchVehicle(id), [id])
   const {
     data: vehicle,
@@ -38,15 +37,13 @@ export function VehicleDetailPage() {
     setData: setVehicle,
   } = useAsyncData(load, '차량을 불러오지 못했습니다.')
 
-  // 정비 이력이 바뀌면 이 값을 올려 "다음 정비 시점"을 다시 계산하게 한다.
+  // 정비 이력이 바뀌면 올려서 다음 정비 시점 재계산
   const [maintenanceVersion, setMaintenanceVersion] = useState(0)
-  // 주유 기록도 같은 방식으로 요약 카드를 재생성시킨다.
+  // 주유 요약 카드도 같은 방식으로 재생성
   const [fuelVersion, setFuelVersion] = useState(0)
-  /*
-   * 목록은 스스로 갱신하므로 평소에는 건드리지 않는다. 예외가 하나 있다 —
-   * 연비 기준점을 바꾸면 **각 행의 구간 연비까지 달라지는데** 그건 카드 쪽에서 일어난다.
-   * 그때만 목록을 재생성한다(페이지가 1쪽으로 돌아가지만, 드물게 누르는 동작이라 괜찮다).
-   */
+  // 목록은 스스로 갱신하므로 평소엔 미사용
+  // 예외는 연비 기준점 변경 — 각 행의 구간 연비까지 달라지는데 그 동작은 카드에서 일어남
+  // 페이지가 1쪽으로 돌아가지만 드물게 누르는 동작이라 감수
   const [fuelListVersion, setFuelListVersion] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -60,9 +57,8 @@ export function VehicleDetailPage() {
   }
 
   async function handleDelete() {
-    // 되돌릴 수 없는 동작이라 **무엇이 함께 사라지는지 빠짐없이** 적는다.
-    // 주유 기록을 빼먹고 있었다 — 코드는 지우는데 말을 안 하면 유류비와 연비가
-    // 남는 줄 알고 누르게 된다.
+    // 되돌릴 수 없는 동작이라 함께 사라지는 것을 빠짐없이 명시
+    // 코드는 지우는데 말을 안 하면 남는 줄 알고 누르게 됨
     if (!window.confirm('이 차량과 정비 이력, 주유 기록이 모두 삭제됩니다. 계속할까요?')) {
       return
     }
@@ -74,38 +70,37 @@ export function VehicleDetailPage() {
       navigate('/vehicles', { replace: true })
     } catch (caught) {
       setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
-      // 성공하면 이 화면을 떠나므로 실패했을 때만 되돌린다.
+      // 성공하면 화면을 떠나므로 실패했을 때만 복구
       setDeleting(false)
     }
   }
 
   return (
-    // 머리말은 Page 에 맡긴다. 예전에 여기만 손으로 그리다 제목 크기를 빠뜨린 적이 있다.
+    // 머리말은 Page 담당. 직접 그리다 제목 크기를 빠뜨린 전례가 있음
     <Page
       back={{ to: '/vehicles', label: '내 차량' }}
-      // 차량을 식별하는 건 모델명이 아니라 번호판이라 eyebrow 자리에 올린다.
+      // 차량을 식별하는 건 모델명이 아니라 번호판
       eyebrow={vehicle.plateNumber}
       title={`${vehicle.manufacturer} ${vehicle.modelName}`}
       description={vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
     >
       {/*
-        왼쪽은 지금 상태(주행거리), 오른쪽은 이력과 다음 정비.
-        minmax(0,1fr) 이 없으면 긴 메모 한 줄이 열을 밀어내 격자가 넘친다
-        (grid 자식의 기본 min-width 가 auto 라서).
+        왼쪽은 지금 상태(주행거리), 오른쪽은 이력과 다음 정비
+        minmax(0,1fr) 이 없으면 긴 메모 한 줄이 열을 밀어내 격자가 넘침 (grid 자식의 기본 min-width 가 auto)
       */}
       <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
-        {/* self-start 가 없으면 칸이 옆 열 높이만큼 늘어나 sticky 가 걸리지 않는다. */}
+        {/* self-start 가 없으면 칸이 옆 열 높이만큼 늘어나 sticky 가 안 걸림 */}
         <div className="flex flex-col gap-8 lg:sticky lg:top-28 lg:self-start lg:gap-10">
           <OdometerHero odometer={vehicle.odometer} />
 
           <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
 
-          {/* setVehicle 을 그대로 넘긴다 — 응답이 곧 최신 상태라 다시 조회할 필요가 없고,
-              머리말(번호판·제조사·모델·연식)도 같은 객체를 보므로 함께 갱신된다. */}
+          {/* setVehicle 을 그대로 전달 — 응답이 곧 최신 상태라 재조회 불필요
+              머리말도 같은 객체를 보므로 함께 갱신됨 */}
           <VehicleInfoForm vehicle={vehicle} onUpdated={setVehicle} />
 
-          {/* 되돌릴 수 없는 동작은 선으로 끊어 맨 아래에. 버튼을 빨갛게 채우면
-              가장 하면 안 되는 일이 화면에서 가장 강한 요소가 된다. */}
+          {/* 되돌릴 수 없는 동작은 선으로 끊어 맨 아래
+              빨갛게 채우면 가장 하면 안 되는 일이 화면에서 가장 강한 요소가 됨 */}
           <div className="flex flex-col gap-4 border-t border-border pt-8">
             {actionError !== null && <ErrorText message={actionError} />}
 
@@ -127,7 +122,7 @@ export function VehicleDetailPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-10">
-          {/* key 가 바뀌면 React 가 새로 만들어서 다음 정비 시점이 다시 계산된다. */}
+          {/* key 가 바뀌면 React 가 새로 만들어 다음 정비 시점 재계산 */}
           <NextServiceCard key={maintenanceVersion} vehicleId={vehicle.id} />
 
           <MaintenanceSection
@@ -135,8 +130,8 @@ export function VehicleDetailPage() {
             currentOdometer={vehicle.odometer}
             onChanged={() => {
               setMaintenanceVersion((current) => current + 1)
-              // 정비 이력의 주행거리가 더 크면 서버가 차량 쪽도 올린다(주유와 같은 규칙).
-              // 다시 받아 와야 위의 히어로 숫자가 맞고, 오른 만큼 굴러가는 연출도 거기서 나온다.
+              // 서버가 차량 주행거리를 올렸을 수 있음
+              // 다시 받아야 히어로 숫자가 맞고 굴러가는 연출도 거기서 나옴
               reloadVehicle()
             }}
           />
@@ -156,8 +151,7 @@ export function VehicleDetailPage() {
             currentOdometer={vehicle.odometer}
             onChanged={() => {
               setFuelVersion((current) => current + 1)
-              // 주유 기록의 주행거리가 더 크면 서버가 차량 쪽도 올린다. 다시 받아 와야
-              // 위의 히어로 숫자가 맞고, 값이 바뀐 만큼 굴러가는 연출도 거기서 나온다.
+              // 정비와 같은 이유 — 서버가 차량 주행거리를 올렸을 수 있음
               reloadVehicle()
             }}
           />
@@ -194,9 +188,9 @@ function VehicleDetailSkeleton() {
 }
 
 /**
- * 이 화면의 주인공 숫자. 이 앱에서 가장 자주 확인하는 값이고 앱 이름도 여기서 왔다.
- * 화면을 열 때는 움직이지 않고, 아래 폼으로 값이 바뀐 순간에만 굴러간다.
- * tabular-nums 는 굴러가는 동안에만 붙인다(useCountUp 참고).
+ * 이 화면의 주인공 숫자. 앱 이름도 여기서 나옴
+ * 화면을 열 때는 정지, 값이 실제로 바뀐 순간에만 굴러감
+ * tabular-nums 는 굴러가는 동안에만 (useCountUp)
  */
 function OdometerHero({ odometer }: { odometer: number }) {
   const { value, running } = useCountUp(odometer)
@@ -235,7 +229,7 @@ function OdometerForm({
     try {
       onUpdated(await updateOdometer(vehicle.id, { odometer: Number(odometer) }))
     } catch (caught) {
-      // 백엔드는 주행거리가 줄면 409 를 준다. 현재 값을 같이 보여줘야 뭘 잘못했는지 안다.
+      // 감소 시 409. 현재 값을 같이 보여줘야 무엇이 잘못됐는지 앎
       const message =
         caught instanceof ApiError && caught.status === 409
           ? `${caught.message} (현재 ${formatKm(vehicle.odometer)})`
@@ -253,7 +247,7 @@ function OdometerForm({
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-          {/* 값 하나만 고치는 폼이라 버튼을 아래로 내리지 않는다. 폼이 실제보다 커 보인다. */}
+          {/* 값 하나짜리 폼이라 버튼을 아래로 내리지 않음. 폼이 실제보다 커 보임 */}
           <Field label="현재 주행거리 (km)" htmlFor="odometer">
             <div className="flex gap-2">
               <Input

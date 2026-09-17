@@ -9,8 +9,8 @@ import '@/index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {/* ThemeProvider를 가장 바깥에 둔다. 테마는 로그인 여부나 현재 주소와 무관하게
-        앱 전체에 걸리는 것이라, 안쪽에 두면 감싸는 범위가 실제보다 좁다고 말하는 셈이 된다. */}
+    {/* ThemeProvider 가 가장 바깥. 테마는 로그인 여부·주소와 무관하게 앱 전체에 걸림
+        안쪽에 두면 감싸는 범위가 실제보다 좁다고 말하는 셈 */}
     <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>

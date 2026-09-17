@@ -26,7 +26,7 @@ export function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // 필드가 4개라 상태를 4개 두는 대신 객체 하나로 묶고, 바뀐 키만 덮어쓴다.
+  // 상태 4개 대신 객체 하나. 바뀐 키만 덮어쓰기
   function change(key: keyof SignUpRequest, value: string) {
     setForm((previous) => ({ ...previous, [key]: value }))
   }
@@ -37,15 +37,15 @@ export function SignUpPage() {
     setPending(true)
 
     try {
-      // 선택 입력이라 빈 값은 보내지 않는다. '' 를 그대로 보내면 nullable 컬럼에
-      // null 이 영영 안 생긴다. 공백만 친 것도 안 적은 것으로 본다.
+      // 선택 입력이라 빈 값 미전송. '' 를 보내면 nullable 컬럼에 null 이 영영 안 생김
+      // 공백만 친 것도 안 적은 것으로 처리
       const phone = form.phone?.trim()
       await signUp({ ...form, phone: phone === '' ? undefined : phone })
-      // 가입 API 는 세션을 만들지 않는다. 이어서 로그인까지 해 준다.
+      // 가입 API 는 세션을 안 만들므로 로그인까지 이어서
       await login({ email: form.email, password: form.password })
       navigate('/vehicles', { replace: true })
     } catch (caught) {
-      // 409 는 이메일 중복, 400 은 검증 실패. 둘 다 백엔드 메시지를 그대로 쓴다.
+      // 409 = 이메일 중복, 400 = 검증 실패. 둘 다 백엔드 메시지 그대로
       setError(caught instanceof ApiError ? caught.message : '회원가입에 실패했습니다.')
     } finally {
       setPending(false)
@@ -54,7 +54,7 @@ export function SignUpPage() {
 
   return (
     <Page title="회원가입" description="차량 한 대만 있으면 바로 시작할 수 있습니다.">
-      {/* 폼과 안내 문구는 한 덩어리. 가로 폭은 AuthLayout 이 정한다. */}
+      {/* 폼 + 안내 문구가 한 덩어리. 가로 폭은 AuthLayout 담당 */}
       <div className="flex flex-col gap-6">
         <Card>
           <CardContent>
@@ -72,7 +72,7 @@ export function SignUpPage() {
                 />
               </Field>
 
-              {/* 규칙은 틀리기 전에 알려준다. */}
+              {/* 규칙은 틀리기 전에 */}
               <Field label="비밀번호" htmlFor="password" hint="8자 이상">
                 <Input
                   id="password"

@@ -15,25 +15,24 @@ import type { MaintenanceRecordResponse } from '@/features/maintenance/api/types
 interface Props {
   vehicleId: number
   currentOdometer: number
-  /** 이력이 바뀌면 부모에게 알려 "다음 정비 시점"도 다시 계산하게 한다. */
+  /** 이력이 바뀌면 부모에게 알려 다음 정비 시점도 재계산 */
   onChanged: () => void
 }
 
 export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Props) {
   const [page, setPage] = useState(0)
 
-  // 폼 상태: 'closed' | 'new' | 수정할 이력
+  // 'closed' | 'new' | 수정할 이력
   const [editing, setEditing] = useState<'closed' | 'new' | MaintenanceRecordResponse>('closed')
-  // 조회 실패와 행동 실패는 사라져야 하는 시점이 달라서 따로 둔다.
+  // 조회 실패와 행동 실패는 사라지는 시점이 달라 분리
   const [actionError, setActionError] = useState<string | null>(null)
-  // 삭제 중인 이력의 id. boolean 이면 목록 전체가 잠겨 어느 줄을 지우는 중인지 안 보인다.
+  // 삭제 중인 id. boolean 이면 목록 전체가 잠겨 어느 줄인지 안 보임
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const load = useCallback(() => fetchRecords(vehicleId, page), [vehicleId, page])
   const { data, loading, error, reload } = useAsyncData(load, '정비 이력을 불러오지 못했습니다.')
 
-  // 변수로 받아 둬야 타입이 좁혀진다. JSX 에서 같은 식을 두 번 쓰면 매번 새 식이라
-  // 좁혀지지 않고 단언이 필요해진다.
+  // 변수로 받아야 타입이 좁혀짐. JSX 에서 같은 식을 두 번 쓰면 매번 새 식이라 단언이 필요해짐
   const errorMessage = error ?? actionError
 
   function refresh() {
@@ -53,10 +52,9 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
     try {
       await deleteRecord(vehicleId, recordId)
 
-      // 이 페이지의 마지막 한 건을 지웠으면 한 장 물러난다. 그대로 두면 빈 페이지가 되는데
-      // totalElements 가 0 이 아니라 "이력이 없습니다" 도 안 뜨고, Pagination 도 사라져
-      // 돌아갈 버튼이 없다.
-      // page 만 바꾸면 useAsyncData 가 알아서 다시 조회한다. reload() 까지 부르면 두 번 나간다.
+      // 이 페이지의 마지막 한 건이었으면 한 장 뒤로
+      // 그대로 두면 빈 페이지에 갇힘 — totalElements 가 0 이 아니라 안내도 안 뜨고 Pagination 도 사라짐
+      // page 만 바꾸면 useAsyncData 가 재조회. reload() 까지 부르면 두 번 나감
       if (data !== null && data.items.length === 1 && page > 0) {
         setEditing('closed')
         setActionError(null)
@@ -85,8 +83,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
       <CardContent className="flex flex-col gap-6">
         {editing !== 'closed' && (
-          // 칸이 열리고 폼이 조금 늦게 들어온다. 닫을 때는 연출하지 않는다.
-          // 사라지는 것을 붙잡아 두려면 상태를 하나 더 들고 있어야 한다.
+          // 칸이 열리고 폼은 조금 늦게. 닫을 때는 연출 없음 — 사라지는 것을 붙잡으려면 상태가 하나 더 필요
           <div className="form-open">
             <div>
               <MaintenanceForm
@@ -113,16 +110,14 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
         ) : (
           <ul className="divide-y divide-border">
             {data.items.map((record) => (
-              // 줄에 마우스가 올라가면 오른쪽 버튼이 진해진다.
-              // 완전히 숨기지는 않는다. 터치 기기에는 호버가 없어서 영영 못 찾는다.
+              // 호버 시 오른쪽 버튼이 진해짐. 완전히 숨기지는 않음 — 터치에는 호버가 없음
               <li
                 key={record.id}
                 className="group flex flex-wrap items-start gap-x-4 gap-y-3 py-5 first:pt-0 last:pb-0 sm:flex-nowrap sm:gap-6"
               >
-                {/* flex-1 + min-w-0: 남는 폭을 전부 가져가되, 긴 메모가 오른쪽 숫자 열을
-                    밀어내지는 못하게 한다. */}
-                {/* basis-full: 좁은 화면에서 첫 줄을 통째로 쓴다. 한 줄에 다 넣으면
-                    종류와 날짜가 들어갈 폭이 100px 남짓밖에 안 된다. */}
+                {/* flex-1 + min-w-0 — 남는 폭은 전부 가져가되 긴 메모가 오른쪽 숫자 열을 밀어내지 못하게 */}
+                {/* basis-full — 좁은 화면에서 첫 줄을 통째로
+                    한 줄이면 종류와 날짜가 들어갈 폭이 100px 남짓 */}
                 <div className="flex min-w-0 flex-1 basis-full flex-col gap-1 sm:basis-auto">
                   <div className="flex items-baseline gap-2.5">
                     <span className="text-[0.9375rem] font-medium tracking-[-0.01em] text-strong">
@@ -140,8 +135,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                   )}
                 </div>
 
-                {/* 수치를 별도 열로 빼 오른쪽 정렬한다. 줄마다 왼쪽에서 시작하면 자릿수가
-                    다른 값들이 들쭉날쭉해서 세로로 훑어 읽을 수가 없다. */}
+                {/* 수치는 별도 열로 빼 오른쪽 정렬
+                    왼쪽에서 시작하면 자릿수가 다른 값들이 들쭉날쭉해 세로로 훑어 읽을 수 없음 */}
                 <div className="shrink-0 sm:text-right">
                   <p className="text-[0.9375rem] tabular-nums text-strong">
                     {formatKm(record.serviceOdometer)}
@@ -151,7 +146,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                   </p>
                 </div>
 
-                {/* 터치 기기에는 호버가 없어서 흐린 채로 남는다. 거기서는 항상 진하게. */}
+                {/* 터치에는 호버가 없어 흐린 채로 남음. 거기서는 항상 진하게 */}
                 <div className="ml-auto flex shrink-0 gap-0.5 opacity-70 transition-opacity duration-200 ease-apple group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100">
                   <Button
                     size="xs"

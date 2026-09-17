@@ -160,7 +160,7 @@ class UserControllerTest {
     @Test
     @DisplayName("중복 검사를 통과한 뒤 DB 유니크 제약에 막히면 500이 아니라 409")
     void signUpLosesRaceToUniqueConstraint() throws Exception {
-        // existsByEmail 검사와 save 사이에 다른 요청이 먼저 저장한 상황.
+        // existsByEmail 과 save 사이에 다른 요청이 끼어든 상황
         ConstraintViolationException unique = new ConstraintViolationException(
                 "Duplicate entry", new SQLException("duplicate"),
                 ConstraintViolationException.ConstraintKind.UNIQUE, "uk_users_email");

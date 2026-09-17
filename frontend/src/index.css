@@ -2,13 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* shadcn 기본값(&:is(.dark *))은 후손만 잡아서 <html class="dark"> 자체에는 안 걸린다. */
+/* shadcn 기본값(&:is(.dark *))은 후손만 잡아 <html class="dark"> 자체가 빠짐 */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* 디자인 토큰. 값은 전부 이 파일에만 있다.
-   컴포넌트는 bg-card, hover:bg-wash 처럼 역할 이름만 쓴다. 컴포넌트에 색 값을 적으면
-   그 요소만 반대 테마에서 안 보인다.
-   색은 불투명도만 조절한다. 어두운 바닥에 흰색을, 밝은 바닥에 검정을 몇 % 얹느냐. */
+/* 디자인 토큰. 값은 전부 이 파일에만
+   컴포넌트는 bg-card, hover:bg-wash 처럼 역할 이름만 — 색 값을 적으면 반대 테마에서 안 보임
+   조절하는 건 불투명도뿐. 어두운 바닥에 흰색, 밝은 바닥에 검정을 몇 % */
 
 @theme inline {
   --font-sans:
@@ -16,50 +15,49 @@
     "Apple SD Gothic Neo", "Helvetica Neue", system-ui, sans-serif;
   --font-heading: var(--font-sans);
 
-  /* 타입 스케일. 글꼴이 하나라 위계는 크기·굵기·자간으로만 만든다.
-     크기마다 행간·자간을 함께 묶어 둔다. 화면에서 text-[2rem] 처럼 크기만 적으면
-     자간이 따라오지 않는다.
-     clamp() 를 쓰는 이유는 sm:text-[...] 계단을 빠뜨린 화면만 혼자 작아지기 때문. */
+  /* 타입 스케일. 글꼴이 하나라 위계는 크기·굵기·자간으로만
+     크기마다 행간·자간을 묶어 둠 — text-[2rem] 처럼 크기만 적으면 자간이 안 따라옴
+     clamp() 인 이유: sm:text-[...] 계단은 분기점을 빠뜨린 화면만 혼자 작아짐 */
 
-  /* 분류 한 줄. 자간을 크게 벌려 크기가 아니라 질감으로 제목과 구분한다. */
+  /* 분류 한 줄. 크기가 아니라 자간(질감)으로 제목과 구분 */
   --text-eyebrow: 0.6875rem;
   --text-eyebrow--line-height: 1;
   --text-eyebrow--letter-spacing: 0.2em;
   --text-eyebrow--font-weight: 500;
 
-  /* 화면 제목(h1). 32px → 52px 로 자란다. */
+  /* 화면 제목(h1). 32 → 52px */
   --text-title: clamp(2rem, 1.35rem + 2.8vw, 3.25rem);
   --text-title--line-height: 1.04;
   --text-title--letter-spacing: -0.04em;
   --text-title--font-weight: 600;
 
-  /* 히어로 숫자. 굵기를 낮춘다. 크기가 이미 강조라 굵기까지 올리면 숫자가 뭉쳐 보인다. */
+  /* 히어로 숫자. 굵기 300 — 크기가 이미 강조라 굵기까지 올리면 뭉쳐 보임 */
   --text-display: clamp(2.5rem, 1.4rem + 4.6vw, 5rem);
   --text-display--line-height: 0.92;
   --text-display--letter-spacing: -0.045em;
   --text-display--font-weight: 300;
 
-  /* 그보다 한 단 작은 수치(목록 행의 주행거리). */
+  /* 한 단 작은 수치 (목록 행) */
   --text-figure: 1.375rem;
   --text-figure--line-height: 1.1;
   --text-figure--letter-spacing: -0.03em;
   --text-figure--font-weight: 400;
 
-  /* 구획 제목(카드·섹션). */
+  /* 구획 제목 (카드·섹션) */
   --text-section: 1.0625rem;
   --text-section--line-height: 1.35;
   --text-section--letter-spacing: -0.022em;
   --text-section--font-weight: 600;
 
-  /* 제목 아래 설명 한 줄. 본문보다 한 눈금 크고 색은 muted. */
+  /* 제목 아래 설명. 본문보다 한 눈금 크고 색은 muted */
   --text-lede: 1rem;
   --text-lede--line-height: 1.65;
   --text-lede--letter-spacing: -0.011em;
 
   --color-background: var(--background);
 
-  /* 글자 4단계. 앞의 셋은 두 테마 모두 WCAG AA(4.5:1)를 넘는다.
-     faint 만 그 아래라서 placeholder 와 장식 아이콘에만 쓴다. */
+  /* 글자 4단계. 앞의 셋은 두 테마 모두 WCAG AA(4.5:1) 통과
+     faint 만 그 아래라 placeholder·장식 아이콘 전용 */
   --color-strong: var(--strong); /* 제목 */
   --color-foreground: var(--foreground); /* 본문 */
   --color-muted-foreground: var(--muted-foreground); /* 보조. 여기까지가 본문용 */
@@ -91,11 +89,11 @@
   --color-popover: var(--card);
   --color-popover-foreground: var(--foreground);
 
-  /* 모노톤의 유일한 예외. 장식이 아니라 "실패"를 뜻하는 기능색이다. */
+  /* 모노톤의 유일한 예외. 장식이 아니라 "실패"를 나르는 기능색 */
   --color-destructive: var(--destructive);
 
-  /* 반경은 0 하나뿐. 척도를 지우지 않는 이유는 shadcn 이 새로 받아오는 컴포넌트가
-     rounded-md 같은 유틸을 달고 오기 때문. 토큰이 0 이면 그것도 각지게 나온다. */
+  /* 반경은 0 하나뿐. 척도를 남겨 두는 이유 — shadcn 이 새로 받아오는 컴포넌트가
+     rounded-md 를 달고 오는데, 토큰이 0 이면 그것도 각지게 나옴 */
   --radius-sm: 0;
   --radius-md: 0;
   --radius-lg: 0;
@@ -103,10 +101,10 @@
   --radius-2xl: 0;
   --radius-3xl: 0;
 
-  /* 처음에 확 나가고 끝에서 길게 눕는 곡선. 앱 전체가 이 곡선 하나만 쓴다. */
+  /* 처음에 확 나가고 끝에서 길게 눕는 곡선. 앱 전체가 이것 하나만 사용 */
   --ease-apple: var(--ease-out-apple);
   --animate-fade: fade 0.18s var(--ease-out-apple) both;
-  /* 경고·오류는 가장 짧고 가깝게. 방금 누른 것에 대한 답이라 바로 와야 한다. */
+  /* 경고·오류는 가장 짧고 가깝게 — 방금 누른 것에 대한 답 */
   --animate-alert: alert-in 0.24s var(--ease-out-apple) both;
   --animate-draw: draw-x 0.7s var(--ease-out-apple) both;
   --animate-breathe: breathe 1.6s ease-in-out infinite;
@@ -118,9 +116,8 @@
 /* ---------------------------------------------------------------------------
    라이트 (기본값)
 
-   배경이 순수한 흰색이 아니다. #FFFFFF 는 주변 조명보다 밝아 눈이 부시고,
-   그 위에 올린 흰 카드가 배경과 구분되지 않아 레이아웃이 평평해진다.
-   아주 옅은 회색을 깔고 카드를 흰색으로 띄우면 층이 생긴다.
+   배경은 순백이 아님. #FFFFFF 는 눈이 부시고 그 위의 흰 카드가 배경과 구분되지 않음
+   옅은 회색을 깔고 카드를 흰색으로 띄워야 층이 생김
    --------------------------------------------------------------------------- */
 :root {
   color-scheme: light;
@@ -160,24 +157,19 @@
 /* ---------------------------------------------------------------------------
    다크
 
-   본문이 순수 흰색이 아닌 게 핵심이다. 검정 위의 #FFF 는 대비가 너무 세서
-   오래 보면 글자가 번져 보인다(halation). 제목만 96%로 올려 위계를 만든다.
+   본문도 순백이 아님. 검정 위의 #FFF 는 대비가 너무 세서 글자가 번져 보임(halation)
+   제목만 96%로 올려 위계
 
-   바닥도 순수 검정이 아니다(#000000 → #17171A). 순검정 위에 흰색 3%를 얹은
-   카드는 #080808 이라 배경과 거의 구분되지 않아 화면 전체가 한 덩어리로 가라앉는다.
-   바닥을 한 단 올리면 그 위의 면들이 비로소 층으로 보인다 — 라이트에서 배경을
-   #FFFFFF 가 아니라 #F4F4F6 으로 둔 것과 정확히 같은 이유다.
-
-   바닥을 올린 만큼 대비는 내려가므로 면 토큰의 α 도 함께 올렸다. 글자 4단계는
-   그대로 두고 계산으로 확인했다(아래 주석의 수치). 앞의 세 단계는 배경 위에서도
-   카드 위에서도 AA(4.5:1)를 넘는다.
+   바닥도 순검정이 아님(#000000 → #17171A). 순검정 위 흰색 3% 카드는 #080808 이라
+   배경과 구분되지 않음 — 라이트에서 #F4F4F6 을 깐 것과 같은 이유
+   바닥을 올린 만큼 면 토큰 α 도 상향. 글자 4단계는 그대로 두고 계산으로 확인
    --------------------------------------------------------------------------- */
 :root.dark {
   color-scheme: dark;
 
   --background: #17171a;
 
-  /* 대비는 '배경 위 / 카드(#232325) 위' 두 값. 카드 쪽이 더 빡빡해서 그쪽이 기준이다. */
+  /* 대비는 배경 위 / 카드(#232325) 위 두 값. 카드 쪽이 더 빡빡해 그쪽이 기준 */
   --strong: rgba(255, 255, 255, 0.96); /* 16.55 / 14.52 */
   --foreground: rgba(255, 255, 255, 0.72); /*  9.63 /  8.72 */
   --muted-foreground: rgba(255, 255, 255, 0.5); /* 5.26 / 4.98 */
@@ -235,7 +227,7 @@
   }
 }
 
-/* width 대신 scaleX. width 는 매 프레임 레이아웃을 다시 계산한다. */
+/* width 대신 scaleX — width 는 매 프레임 레이아웃 재계산 */
 @keyframes draw-x {
   from {
     transform: scaleX(0);
@@ -255,17 +247,16 @@
   }
 }
 
-/* 랜딩 섹션의 스크롤 진입 연출. animation-timeline: view() 는 시간 대신
- * "화면에 들어온 정도"를 진행도로 쓴다. IntersectionObserver 가 필요 없다.
- *
- * @supports 가 필수다. 미지원 브라우저에서 opacity:0 인 채로 굳으면 내용이 영영 안 보인다. */
+/* 랜딩 스크롤 진입 연출. animation-timeline: view() 는 시간 대신 "화면에 들어온 정도"가 진행도
+ * IntersectionObserver 불필요
+ * @supports 필수 — 미지원 브라우저에서 opacity:0 으로 굳으면 내용이 영영 안 보임 */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .reveal {
       animation: reveal 1s var(--ease-out-apple) both;
       animation-timeline: view();
-      /* entry 8% ~ cover 32%: 요소가 화면 아래에서 8% 들어온 시점에 시작해
-         32% 지점에서 끝난다. 화면 한가운데까지 끌고 오면 너무 늦게 나타난다. */
+      /* 화면 아래에서 8% 들어온 시점에 시작해 32% 에서 종료
+         한가운데까지 끌고 오면 너무 늦게 나타남 */
       animation-range: entry 8% cover 32%;
     }
   }
@@ -282,8 +273,7 @@
   }
 }
 
-/* 막대가 자라 오르는 연출. scaleY 가 아니라 clip-path 를 쓴다.
- * transform 은 요소를 통째로 변형해서 테두리와 포커스 링까지 같이 눌린다. */
+/* 막대 자라기. scaleY 가 아니라 clip-path — transform 은 테두리와 포커스 링까지 같이 누름 */
 @keyframes grow-up {
   from {
     clip-path: inset(100% 0 0 0);
@@ -293,7 +283,7 @@
   }
 }
 
-/* 가로 막대용. 왼쪽(기준선)에서 오른쪽으로 드러난다. */
+/* 가로 막대용. 기준선에서 오른쪽으로 */
 @keyframes grow-right {
   from {
     clip-path: inset(0 100% 0 0);
@@ -322,13 +312,13 @@
 
   body {
     @apply bg-background text-foreground;
-    /* 자간을 살짝 당긴다. 시스템 폰트의 기본 자간은 본문 기준이라 화면용으로는 약간 넓다. */
+    /* 자간 살짝 당기기. 시스템 폰트 기본값은 본문 기준이라 화면용으로는 약간 넓음 */
     letter-spacing: -0.011em;
     margin: 0;
   }
 
-  /* 미세 노이즈는 다크에만. 어두운 면의 색 띠(banding)를 깨려고 넣은 것이라
-     밝은 바탕에서는 깰 띠가 없고 얼룩으로만 보인다. */
+  /* 미세 노이즈는 다크 전용. 어두운 면의 색 띠(banding)를 깨는 용도라
+     밝은 바탕에서는 깰 띠가 없고 얼룩으로만 보임 */
   .dark body::after {
     content: "";
     position: fixed;
@@ -339,13 +329,13 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* 위 두 겹이 z-index 0 이므로 실제 화면은 그 위로 올린다. */
+  /* 위 두 겹이 z-index 0 이라 실제 화면은 그 위로 */
   #root {
     position: relative;
     z-index: 1;
   }
 
-  /* 호버 워시(4.5%)를 그대로 쓰면 라이트에서 선택 영역이 거의 안 보인다. 전용 값을 둔다. */
+  /* 호버 워시(4.5%)를 그대로 쓰면 라이트에서 선택 영역이 거의 안 보여 전용 값 */
   ::selection {
     background: var(--selection);
     color: var(--strong);
@@ -355,7 +345,7 @@
     @apply border-border;
   }
 
-  /* 마우스 클릭에는 포커스 링을 띄우지 않고 키보드 이동에만 띄운다. */
+  /* 포커스 링은 키보드 이동에만 */
   :focus-visible {
     outline: none;
   }
@@ -367,8 +357,8 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
-      /* 지연도 0 으로. 지속 시간만 없애면 차트 막대의 지연이 그대로 남아서
-         내용이 잠깐 안 보이는 시간으로만 나타난다. */
+      /* 지연도 0. 지속 시간만 없애면 차트 막대의 지연이 남아
+         내용이 잠깐 안 보이는 시간으로만 나타남 */
       animation-delay: 0ms !important;
       transition-delay: 0ms !important;
     }
@@ -376,10 +366,10 @@
 }
 
 @layer components {
-  /* 폼이 자리를 밀어내며 펼쳐진다. height 대신 grid-template-rows 0fr→1fr 을 쓰는 이유는
-   * height 는 내용 높이를 JS 로 재야 하고 창 크기가 바뀔 때마다 다시 재야 하기 때문.
-   * 안쪽 내용은 0.12s 늦게 들어온다. 동시에 나타나면 글자가 늘어나는 것처럼 보인다.
-   * 미지원 브라우저에서는 높이만 즉시 바뀌고 페이드는 남는다. */
+  /* 폼 펼침. height 대신 grid-template-rows 0fr→1fr — height 는 내용 높이를 JS 로 재야 하고
+   * 창 크기가 바뀔 때마다 다시 재야 함
+   * 안쪽 내용은 0.12s 지연 — 동시면 글자가 늘어나는 것처럼 보임
+   * 미지원 브라우저는 높이만 즉시 바뀌고 페이드는 유지 */
   .form-open {
     display: grid;
     animation: form-open 0.36s var(--ease-out-apple) both;
@@ -390,11 +380,8 @@
     animation: fade 0.3s var(--ease-out-apple) 0.12s both;
   }
 
-  /*
-   * 터치 기기에서는 작은 버튼도 최소 44px 높이로 누를 수 있게 한다.
-   * 보이는 크기는 그대로 두고 ::after 로 판정 영역만 위아래로 넓힌다. 버튼 자체를 키우면
-   * 목록 행의 리듬이 무너진다. 마우스에서는 이 규칙이 아예 적용되지 않는다.
-   */
+  /* 터치 기기 최소 판정 영역 44px
+   * 보이는 크기는 그대로 두고 ::after 로 판정 영역만 확대 — 버튼을 키우면 목록 행의 리듬이 무너짐 */
   @media (pointer: coarse) {
     [data-slot="button"]::after {
       content: "";
@@ -406,8 +393,8 @@
     }
   }
 
-  /* 괘선 그리기. 왼쪽을 축으로 고정해야 '그어진다'로 보인다.
-     기본값(가운데)이면 양쪽으로 벌어져 '펼쳐진다'가 된다. */
+  /* 괘선 그리기. 축을 왼쪽에 고정해야 '그어짐'으로 보임
+     기본값(가운데)이면 양쪽으로 벌어져 '펼쳐짐'이 됨 */
   .rule-draw {
     transform-origin: left;
     animation: var(--animate-draw);
@@ -417,9 +404,9 @@
 /* ============================================================================
    테마 전환 (View Transitions API)
 
-   기본 교차 페이드를 끄고(animation: none) 새 화면만 누른 버튼 자리에서 원형으로
-   펼쳐지게 한다. 좌표와 반지름은 ThemeProvider 가 버튼 위치를 재서 넣는다.
-   미지원 브라우저에서는 연출 없이 즉시 바뀐다.
+   기본 교차 페이드를 끄고 새 화면만 누른 버튼 자리에서 원형으로 펼침
+   좌표와 반지름은 ThemeProvider 가 버튼 위치를 재서 주입
+   미지원 브라우저는 연출 없이 즉시 전환
    ============================================================================ */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -427,7 +414,7 @@
   mix-blend-mode: normal;
 }
 
-/* 옛 화면을 아래, 새 화면을 위에 둬야 새 화면이 그 위로 펼쳐진다. */
+/* 옛 화면 아래, 새 화면 위 — 그래야 새 화면이 위로 펼쳐짐 */
 ::view-transition-old(root) {
   z-index: 1;
 }

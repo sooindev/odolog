@@ -3,8 +3,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/shared/ui/base/button'
 
 /**
- * 목록 페이지 이동. 차량 목록과 정비 이력이 함께 쓴다.
- * 숫자에 tabular-nums 를 준다. 페이지가 1 → 2 로 바뀔 때 "1 / 12" 전체가 흔들린다.
+ * 목록 페이지 이동. 목록 화면들이 공유
+ * 숫자에 tabular-nums — 없으면 1 → 2 로 바뀔 때 "1 / 12" 전체가 흔들림
  */
 export function Pagination({
   page,
@@ -17,7 +17,7 @@ export function Pagination({
   hasNext: boolean
   onChange: (updater: (current: number) => number) => void
 }) {
-  // 페이지가 1장뿐이면 이동 UI 자체를 보여주지 않는다.
+  // 1장뿐이면 이동 UI 자체를 숨김
   if (totalPages <= 1) {
     return null
   }

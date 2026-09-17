@@ -40,10 +40,7 @@ public class FuelRecordController {
         return ResponseEntity.status(HttpStatus.CREATED).body(record);
     }
 
-    /**
-     * 다른 목록 API 와 달리 sort 를 받지 않는다. 정렬이 곧 연비 계산의 전제라 서비스가 고정한다
-     * (자세한 이유는 FuelRecordService.FIXED_SORT 주석에).
-     */
+    /** sort 없음. 정렬이 곧 연비 계산의 전제라 서비스가 고정 (FuelRecordService.FIXED_SORT) */
     @GetMapping
     public ResponseEntity<PageResponse<FuelRecordResponse>> findByVehicle(
             @PathVariable Long vehicleId,
@@ -54,7 +51,7 @@ public class FuelRecordController {
                 fuelRecordService.findByVehicle(requesterId, vehicleId, pageable)));
     }
 
-    // 리터럴 경로가 {recordId} 보다 먼저 매칭된다 — maintenance 의 /next-service 와 같다.
+    // 리터럴 경로가 {recordId} 보다 우선 매칭
     @GetMapping("/summary")
     public ResponseEntity<FuelSummaryResponse> summary(@PathVariable Long vehicleId,
                                                          @LoginUser Long requesterId) {

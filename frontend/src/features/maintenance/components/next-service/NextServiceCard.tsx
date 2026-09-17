@@ -9,16 +9,10 @@ import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import type { NextServiceResponse } from '@/features/maintenance/api/types/types'
 
 /**
- * 다음 정비 시점을 종류별로 보여준다.
- *
- * <p>전에는 종류마다 요청을 보내 Promise.all 로 묶었다(5종 = 5요청). 종류가 15개가 되면서
- * 그 방식을 버리고 서버가 한 번에 돌려주는 /next-services 로 바꿨다 — 요청 1번이다.
- * 덤으로 "5개 중 3개만 뜨는" 부분 실패 상태가 원리적으로 사라졌다.
- *
- * <p><b>이력이 있는 종류만 온다.</b> "다음 정비 시점"은 마지막 정비가 있어야 나오는 값이라,
- * 15줄 중 13줄이 "이력 없음"이면 카드가 빈칸 목록이 된다.
- *
- * 이력이 바뀌면 부모가 key 를 바꿔 이 컴포넌트를 새로 만든다. 그래서 여기엔 재조회 장치가 없다.
+ * 종류별 다음 정비 시점. 요청 1번
+ * 종류마다 요청하던 방식(15요청)을 버리며 "일부만 뜨는" 부분 실패 상태도 사라짐
+ * 이력 있는 종류만 옴 — 15줄 중 13줄이 "이력 없음"이면 빈칸 목록이 됨
+ * 재조회 장치가 없는 이유 — 부모가 key 를 바꿔 새로 만듦
  */
 export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
   const load = useCallback(() => fetchNextServices(vehicleId), [vehicleId])
@@ -28,7 +22,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
     error,
   } = useAsyncData(load, '다음 정비 시점을 불러오지 못했습니다.')
 
-  // 카드 껍데기는 항상 그린다. 상태에 따라 카드가 통째로 사라지면 아래 내용이 위로 튄다.
+  // 껍데기는 항상 렌더. 카드가 통째로 사라지면 아래 내용이 위로 튐
   return (
     <Card>
       <CardHeader>
@@ -54,17 +48,13 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
         )}
 
         {!loading && error === null && results !== null && results.length > 0 && (
-          // divide-y: 항목마다 테두리를 직접 붙이지 않고 "사이"에만 선을 넣는다.
-          // 첫 줄 위와 마지막 줄 아래에 선이 생기지 않아 카드 안쪽이 깔끔하다.
+          // divide-y — 항목마다 테두리를 붙이지 않고 "사이"에만. 첫 줄 위·마지막 줄 아래에 선이 안 생김
           <ul className="divide-y divide-border">
             {results.map((result) => (
               /*
-                넓은 화면에서는 3열(종류 / 마지막 정비 / 다음 정비), 좁으면 2열로 접힌다.
-                가운데 "마지막 정비"는 sm 미만에서 숨긴다 — 근거 없이 결과만 보여주는 게
-                아니라, 좁은 화면에서는 결론만 남기는 것이다.
-
-                `lastServiceOdometer` 는 백엔드가 계속 내려주고 있었는데 화면이 한 번도
-                쓰지 않던 값이다. 열이 하나 늘면서 비로소 자리를 찾았다.
+                넓은 화면 3열(종류 / 마지막 정비 / 다음 정비), 좁으면 2열
+                가운데 "마지막 정비"는 sm 미만에서 숨김 — 좁은 화면에서는 결론만
+                lastServiceOdometer 는 백엔드가 계속 주고 있었으나 화면이 안 쓰던 값
               */
               <li
                 key={result.type}
@@ -90,7 +80,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
   )
 }
 
-/** 근거: 마지막으로 이 정비를 한 시점. */
+/** 근거 — 마지막으로 이 정비를 한 시점 */
 function describeLast(result: NextServiceResponse) {
   if (result.lastServiceDate === null) {
     return ''
@@ -104,8 +94,8 @@ function describeLast(result: NextServiceResponse) {
   return `마지막 ${parts.join(' · ')}`
 }
 
-/** 결론: 권장 주기 없음(OTHER) / 정상 계산됨 두 경우.
- *  이력 없는 종류는 서버가 아예 안 보내므로 여기서 다룰 필요가 없다. */
+/** 결론 — 권장 주기 없음(OTHER) / 정상 계산 두 경우
+ *  이력 없는 종류는 서버가 안 보내므로 여기서 다룰 필요 없음 */
 function describeNext(result: NextServiceResponse) {
   const parts: string[] = []
   if (result.nextServiceOdometer !== null) {

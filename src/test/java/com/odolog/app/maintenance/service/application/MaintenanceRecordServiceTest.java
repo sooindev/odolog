@@ -112,7 +112,7 @@ class MaintenanceRecordServiceTest {
     void calculateAllNextServices() {
         Vehicle vehicle = createVehicle(10L);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
-        // 정렬된 목록이라 같은 종류는 앞에 있는 것이 최신이다.
+        // 정렬된 목록이라 같은 종류는 앞이 최신
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of(
                         record(3L, vehicle, ServiceType.ENGINE_OIL, 20000, LocalDate.of(2026, 9, 1)),
@@ -122,12 +122,12 @@ class MaintenanceRecordServiceTest {
         List<NextServiceResponse> responses =
                 maintenanceRecordService.calculateAllNextServices(1L, 10L);
 
-        // 15개 종류 중 이력이 있는 2개만. 없는 종류로 빈 줄을 채우지 않는다.
+        // 15개 중 이력 있는 2개만. 빈 줄 제외
         assertThat(responses).hasSize(2);
-        // enum 선언 순서대로 — ENGINE_OIL 이 TRANSMISSION_FLUID 보다 앞이다.
+        // enum 선언 순서 — ENGINE_OIL 이 TRANSMISSION_FLUID 보다 앞
         assertThat(responses).extracting(NextServiceResponse::type)
                 .containsExactly(ServiceType.ENGINE_OIL, ServiceType.TRANSMISSION_FLUID);
-        // 엔진오일은 나중 것(20000)이 잡혀야 한다. 10000 이 잡히면 정렬 전제가 깨진 것이다.
+        // 나중 것(20000)이 잡혀야 함. 10000 이면 정렬 전제가 깨진 것
         assertThat(responses.get(0).lastServiceOdometer()).isEqualTo(20000);
         assertThat(responses.get(0).nextServiceOdometer()).isEqualTo(25000);
     }
@@ -143,7 +143,7 @@ class MaintenanceRecordServiceTest {
         assertThat(maintenanceRecordService.calculateAllNextServices(1L, 10L)).isEmpty();
     }
 
-    /** 종류 하나만 담긴 목록을 돌려주는 헬퍼. 일괄 조회로 개별 종류의 계산을 확인한다. */
+    /** 종류 하나짜리 목록 헬퍼. 일괄 조회로 개별 종류 계산 검증 */
     private NextServiceResponse onlyType(Vehicle vehicle, MaintenanceRecord record) {
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
@@ -207,7 +207,7 @@ class MaintenanceRecordServiceTest {
         NextServiceResponse response = onlyType(vehicle,
                 record(1L, vehicle, ServiceType.ENGINE_OIL, 10000, LocalDate.of(2026, 1, 31)));
 
-        // plusMonths 는 달 길이를 알아서 맞춘다. plusDays(30 * n) 이었다면 어긋난다.
+        // plusMonths 는 달 길이를 알아서 맞춤. plusDays(30 * n) 이면 어긋남
         assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2026, 7, 31));
     }
 
@@ -223,7 +223,7 @@ class MaintenanceRecordServiceTest {
         maintenanceRecordService.register(1L, 10L, new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, null, 80000, 50000, LocalDate.of(2026, 9, 1)));
 
-        // 같은 숫자를 주행거리 갱신에 한 번 더 입력하게 하지 않는다.
+        // 같은 숫자를 주행거리 갱신에 다시 넣지 않아도 됨
         assertThat(vehicle.getOdometer()).isEqualTo(50000);
     }
 
@@ -236,7 +236,7 @@ class MaintenanceRecordServiceTest {
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        // 작은 값이라고 예외를 던지면 안 된다 — 과거 기록을 넣는 것 자체가 막힌다.
+        // 작은 값에 예외를 던지면 과거 기록 입력 자체가 막힘
         maintenanceRecordService.register(1L, 10L, new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, null, 80000, 20000, LocalDate.of(2026, 1, 1)));
 
@@ -254,7 +254,7 @@ class MaintenanceRecordServiceTest {
         when(maintenanceRecordRepository.findByIdAndVehicleId(100L, 10L))
                 .thenReturn(Optional.of(existing));
 
-        // 자리수를 잘못 넣었다가 고치는 흔한 경우.
+        // 자리수 오타 정정
         maintenanceRecordService.update(1L, 10L, 100L, new MaintenanceRecordUpdateRequest(
                 null, null, null, 60000, null));
 

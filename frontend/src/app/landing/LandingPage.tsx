@@ -5,10 +5,8 @@ import { Button } from '@/shared/ui/base/button'
 import { GaugeMark } from '@/shared/ui/brand/mark'
 
 /*
- * 로그인 전에 처음 만나는 화면. 비로그인일 때만 렌더되므로 여기엔 로그인 여부를
- * 따지는 코드가 없다. 갈림은 HomePage 가 한다.
- *
- * API 도 상태도 없이 shared/ui 조각을 엮기만 해서 features/ 가 아니라 app/ 에 둔다.
+ * 소개 화면. 비로그인일 때만 렌더되므로 여기에 로그인 여부를 따지는 코드가 없음 (갈림은 HomePage)
+ * API 도 상태도 없이 shared/ui 조립만 하는 화면이라 features/ 가 아니라 app/ 소속
  */
 export function LandingPage() {
   return (
@@ -23,15 +21,13 @@ export function LandingPage() {
 
 function Hero() {
   return (
-    // 가운데 정렬은 랜딩에서만 쓴다. 앱 화면은 전부 왼쪽 정렬인데, 이 대비 자체가
-    // "여기는 아직 앱 바깥"이라는 신호가 된다.
+    // 가운데 정렬은 랜딩 전용. 앱 화면은 전부 왼쪽 정렬이라 이 대비가 "앱 바깥"이라는 신호
     <section className="flex flex-col items-center gap-8 pt-2 text-center sm:gap-10 sm:pt-20">
       <GaugeMark className="size-11 text-strong" />
 
-      {/* 줄바꿈을 브라우저에 맡기지 않는다(<br/>). 큰 글씨일수록 창 너비에 따라
-          끊기는 자리가 달라지는 게 눈에 띈다. 좁은 화면에서는 br 을 숨겨 자연스럽게 흐르게 둔다.
-          크기는 화면 제목(text-title)보다 한 단 위다 — 랜딩은 앱 화면이 아니라 표지이고,
-          표지의 제목은 본문 지면의 제목보다 커야 표지로 읽힌다. */}
+      {/* 줄바꿈을 직접 지정. 큰 글씨일수록 창 너비에 따라 끊기는 자리가 달라지는 게 눈에 띔
+          좁은 화면에서는 br 을 숨겨 자연스럽게 흐르게
+          크기는 화면 제목보다 한 단 위 — 랜딩은 앱 화면이 아니라 표지 */}
       <h1 className="max-w-4xl text-[clamp(2.5rem,1.5rem+4.4vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.045em] text-strong">
         마지막 정비가 언제였는지,
         <br className="hidden sm:block" /> 다음은 언제인지.
@@ -79,10 +75,8 @@ const HIGHLIGHTS = [
 function Highlights() {
   return (
     /*
-      gap-px + 바깥 배경을 선 색으로: 칸 사이에 1px 틈만 남기고 그 틈으로 뒷배경(선 색)이
-      비쳐 보이게 하는 방식이다. 칸마다 border 를 붙이면 맞닿는 자리에서 선이 두 겹이 되어
-      1px 이 2px 로 보이는데, 이 방법은 어디서나 정확히 1px 다.
-      칸이 4개라 sm 에서 2×2, lg 에서 한 줄이다. sm:grid-cols-3 으로 두면 마지막 칸만 홀로 남는다.
+      gap-px + 바깥 배경을 선 색으로. 칸마다 border 면 맞닿는 자리가 2px 이 되지만 이 방식은 언제나 1px
+      칸이 4개라 sm 에서 2×2, lg 에서 한 줄 — sm:grid-cols-3 이면 마지막 칸만 홀로 남음
     */
     <section className="reveal grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {HIGHLIGHTS.map(({ Icon, title, body }) => (
@@ -109,9 +103,8 @@ function Preview() {
       </div>
 
       {/*
-        실제 화면을 캡처해 넣지 않고 같은 토큰으로 다시 그린다. 스크린샷은 디자인이 바뀌는
-        순간 옛날 화면이 되어 버리는데, 이건 테마를 바꾸면 이것도 같이 바뀐다.
-        카드 안에 카드를 넣어 기기 프레임처럼 보이게 했다.
+        캡처가 아니라 같은 토큰으로 다시 그린 것. 스크린샷은 디자인이 바뀌는 순간 옛 화면이 됨
+        카드 안에 카드를 넣어 기기 프레임처럼
       */}
       <div className="mx-auto w-full max-w-2xl border border-border bg-card p-3 sm:p-4">
         <div className="flex flex-col gap-8 border border-border bg-sunken p-6 sm:p-8">
@@ -131,9 +124,8 @@ function Preview() {
             <span className="text-sm text-muted-foreground">km</span>
           </div>
 
-          {/* 실제 화면은 이력이 있는 종류만 보여준다. 전에는 여기에 '타이어 · 이력 없음' 이
-              있었는데, 일괄 조회로 바꾸면서 그런 줄이 나오지 않게 되어 미리보기가 거짓말을
-              하고 있었다. */}
+          {/* 실제 화면은 이력 있는 종류만 표시
+              전에 있던 '타이어 · 이력 없음' 줄은 일괄 조회 이후 나오지 않아 미리보기가 거짓말이 됐었음 */}
           <ul className="divide-y divide-border border-t border-border">
             {[
               ['평균 연비', '13.4 km/L'],

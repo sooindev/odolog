@@ -17,8 +17,8 @@ import {
 import type { FuelRecordResponse } from '@/features/fuel/api/types/types'
 
 /**
- * 등록·수정 겸용. record 가 null 이면 등록이다.
- * 필드 구성이 같은데 파일을 둘로 나누면 한쪽만 고치는 실수가 생긴다 (MaintenanceForm 과 같은 이유).
+ * 등록·수정 겸용. record 가 null 이면 등록
+ * 필드 구성이 같은데 파일을 나누면 한쪽만 고치게 됨 (MaintenanceForm 과 같은 이유)
  */
 export function FuelForm({
   vehicleId,
@@ -33,7 +33,7 @@ export function FuelForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  // 숫자도 문자열로 들고 있는다. 입력 도중의 빈 문자열을 숫자로 표현할 방법이 없다.
+  // 숫자도 문자열 보관 — 입력 도중의 빈 문자열을 숫자로 표현할 수 없음
   const [fueledAt, setFueledAt] = useState(record?.fueledAt ?? todayString())
   const [odometer, setOdometer] = useState(String(record?.odometer ?? defaultOdometer))
   const [liters, setLiters] = useState(record === null ? '' : String(record.liters))
@@ -42,7 +42,7 @@ export function FuelForm({
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // 입력 중에도 단가를 보여준다. 영수증과 대조할 수 있어 오타를 그 자리에서 잡는다.
+  // 입력 중 단가 표시. 영수증과 대조해 오타를 그 자리에서 잡기 위함
   const litersValue = Number(liters)
   const costValue = Number(totalCost)
   const pricePerLiter =
@@ -50,14 +50,9 @@ export function FuelForm({
       ? Math.round(costValue / litersValue)
       : null
 
-  /*
-   * 입력한 주행거리가 차량의 현재값보다 작으면 과거 기록이다.
-   * 차량 주행거리는 liftOdometerTo 때문에 **지금까지 기록된 최댓값**이라, 이 비교 하나로
-   * "계기판을 잘못 봤거나 자리수를 틀린" 경우 대부분이 걸린다. 새 API 가 필요 없다.
-   *
-   * **막지 않고 알려만 준다.** 지난달 영수증을 정리하는 건 정상적인 사용이고,
-   * 계기판을 교체했을 수도 있다. 사용자가 옳을 수 있는 자리에서 길을 막지 않는다.
-   */
+  // 차량 주행거리보다 작으면 과거 기록
+  // liftOdometerTo 덕에 그 값이 "지금까지 기록된 최댓값"이라 비교 하나로 자리수 오타가 걸림 (새 API 불필요)
+  // 막지 않고 안내만 — 지난달 영수증 정리는 정상적인 사용이고 계기판 교체도 있음
   const odometerValue = Number(odometer)
   const looksPast =
     odometer !== '' && Number.isFinite(odometerValue) && odometerValue < defaultOdometer
@@ -77,8 +72,7 @@ export function FuelForm({
           memo: memo === '' ? undefined : memo,
         })
       } else {
-        // 바뀐 필드만 보낸다. 값 비교로 판단하는 이유: 비용을 0으로 바꾸는 것과
-        // 안 보내는 것은 다르다.
+        // 바뀐 필드만. 값 비교로 판단하는 이유 — 0 으로 바꾸는 것과 안 보내는 것은 다름
         await updateFuelRecord(vehicleId, record.id, {
           fueledAt: fueledAt === record.fueledAt ? undefined : fueledAt,
           odometer: Number(odometer) === record.odometer ? undefined : Number(odometer),
@@ -124,7 +118,7 @@ export function FuelForm({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        {/* step 0.01 — 백엔드가 소수 둘째 자리까지만 받는다(@Digits fraction = 2). */}
+        {/* step 0.01 — 백엔드가 소수 2자리까지만 받음 */}
         <Field label="주유량 (L)" htmlFor="fuel-liters">
           <Input
             id="fuel-liters"

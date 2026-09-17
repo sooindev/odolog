@@ -1,4 +1,4 @@
-/** 45000 → "45,000". 값과 단위를 따로 배치할 때 쓴다. */
+/** 45000 → "45,000". 값과 단위를 따로 배치할 때 */
 export function formatNumber(value: number) {
   return value.toLocaleString('ko-KR')
 }
@@ -14,8 +14,8 @@ export function formatWon(value: number) {
 }
 
 /**
- * 320000 → "32만". 축 눈금처럼 자리가 좁은 곳에만 쓴다.
- * 본문에서는 전체 자릿수를 보여준다. 요약한 숫자를 근거로 계산하게 두면 안 된다.
+ * 320000 → "32만". 축 눈금처럼 자리가 좁은 곳 전용
+ * 본문은 전체 자릿수 — 요약한 숫자를 근거로 계산하게 두면 안 됨
  */
 export function formatCompact(value: number) {
   if (value >= 100_000_000) return `${trimZero(value / 100_000_000)}억`
@@ -24,7 +24,7 @@ export function formatCompact(value: number) {
   return formatNumber(value)
 }
 
-/** 1.0 → "1", 1.5 → "1.5". 소수점 아래가 0이면 떼어 낸다. */
+/** 1.0 → "1", 1.5 → "1.5". 소수점 아래가 0 이면 제거 */
 function trimZero(value: number) {
   return String(Math.round(value * 10) / 10)
 }
@@ -43,10 +43,7 @@ export function formatDate(value: string) {
   return `${year}. ${Number(month)}. ${Number(day)}.`
 }
 
-/**
- * 오늘 날짜를 YYYY-MM-DD 로. toISOString() 은 UTC 기준이라 한국 시간 오전 9시 이전에는
- * 하루 전 날짜가 나온다.
- */
+/** 오늘 날짜. toISOString() 은 UTC 기준이라 오전 9시 이전에 하루 전 날짜가 나옴 */
 export function todayString() {
   const now = new Date()
   const month = String(now.getMonth() + 1).padStart(2, '0')

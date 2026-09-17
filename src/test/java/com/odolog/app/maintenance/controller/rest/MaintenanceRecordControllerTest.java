@@ -72,9 +72,8 @@ class MaintenanceRecordControllerTest {
     @Test
     @DisplayName("경로 변수 타입이 안 맞으면 500이 아니라 400")
     void invalidPathVariableType() throws Exception {
-        // MethodArgumentTypeMismatchException 핸들러를 확인한다. 전에는 /next-service 의
-        // ServiceType 파라미터로 확인했는데 그 엔드포인트를 걷어내면서 경로 변수로 옮겼다.
-        // 핸들러 자체는 타입 변환이 필요한 모든 파라미터에 적용되는 범용이다.
+        // MethodArgumentTypeMismatchException 핸들러 검증
+        // 겨냥하던 /next-service 를 걷어내며 경로 변수로 옮김 — 핸들러 자체는 범용
         mockMvc.perform(get("/api/vehicles/abc/maintenance-records")
                         .session(loginSessionOf(1L)))
                 .andExpect(status().isBadRequest());

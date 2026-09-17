@@ -77,7 +77,7 @@ class FuelRecordServiceTest {
 
         assertThat(response.distance()).isNull();
         assertThat(response.efficiency()).isNull();
-        // 단가는 직전과 무관하게 언제나 나온다. 60000 / 30 = 2000
+        // 단가는 직전과 무관. 60000 / 30 = 2000
         assertThat(response.pricePerLiter()).isEqualTo(2000);
     }
 
@@ -135,7 +135,7 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(11000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
 
-        // 내림차순: 11000 → 10500 이 한 페이지. 10500 의 짝(10000)은 다음 페이지에 있다.
+        // 내림차순 11000 → 10500 이 한 페이지. 10500 의 짝(10000)은 다음 페이지
         List<FuelRecord> items = List.of(
                 record(3L, vehicle, 11000, "25.00", 50000),
                 record(2L, vehicle, 10500, "25.00", 50000));
@@ -147,12 +147,12 @@ class FuelRecordServiceTest {
 
         Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, 10L, pageable);
 
-        // 첫 행은 페이지 안쪽 행끼리 짝이 맞는다 (11000 - 10500) / 25
+        // 첫 행은 페이지 안쪽끼리 짝 (11000 - 10500) / 25
         assertThat(page.getContent().get(0).efficiency()).isEqualByComparingTo("20.00");
         // 마지막 행은 페이지 밖에서 가져온 짝 (10500 - 10000) / 25
         assertThat(page.getContent().get(1).efficiency()).isEqualByComparingTo("20.00");
 
-        // 직전 조회는 딱 한 번 — 행마다 부르면 N+1 이다.
+        // 직전 조회는 한 번뿐 — 행마다면 N+1
         verify(fuelRecordRepository)
                 .findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(anyLong(), anyInt());
     }
@@ -173,7 +173,7 @@ class FuelRecordServiceTest {
         assertThat(summary.totalCost()).isEqualTo(160000);
         assertThat(summary.totalLiters()).isEqualByComparingTo("80.00");
         assertThat(summary.totalDistance()).isEqualTo(1000);
-        // 1000km ÷ (80 - 30)L = 20.00 km/L. 첫 30L 를 안 빼면 12.50 이 나온다.
+        // 1000km ÷ (80 - 30)L = 20.00. 첫 30L 를 안 빼면 12.50
         assertThat(summary.averageEfficiency()).isEqualByComparingTo("20.00");
     }
 
@@ -202,7 +202,7 @@ class FuelRecordServiceTest {
         when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
                 eq(10L), anyInt())).thenReturn(Optional.empty());
 
-        // 자리수를 잘못 넣었다가 고치는 흔한 경우.
+        // 자리수 오타 정정
         fuelRecordService.update(1L, 10L, 1L,
                 new FuelRecordUpdateRequest(null, 100000, null, null, null, null));
 
@@ -239,27 +239,26 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(30000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
-                // 초기화 이전 — 주행거리를 잘못 넣어 연비가 엉망이 된 구간
+                // 초기화 이전 — 주행거리 오입력으로 연비가 엉망인 구간
                 record(1L, vehicle, 10000, "90.00", 180000),
                 record(2L, vehicle, 10100, "90.00", 180000),
-                // 여기서부터 다시
+                // 기준점
                 resetPointAt(3L, vehicle, 20000, "30.00", 60000),
                 record(4L, vehicle, 20500, "25.00", 50000),
                 record(5L, vehicle, 21000, "25.00", 50000)));
 
         FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
 
-        // 1000km ÷ (80 - 30)L = 20.00. 초기화를 무시하면 11,000km 구간이 끼어들어 값이 달라진다.
+        // 1000km ÷ (80 - 30)L = 20.00. 초기화를 무시하면 11,000km 구간이 끼어듦
         assertThat(summary.totalDistance()).isEqualTo(1000);
         assertThat(summary.averageEfficiency()).isEqualByComparingTo("20.00");
 
-        // 건수·비용·주유량은 **전체**다. 초기화는 연비를 다시 세는 것이지
-        // 지출을 없던 일로 만드는 게 아니다.
+        // 건수·비용·주유량은 전체 기준. 초기화 대상은 연비뿐
         assertThat(summary.recordCount()).isEqualTo(5);
         assertThat(summary.totalCost()).isEqualTo(520000);
         assertThat(summary.totalLiters()).isEqualByComparingTo("260.00");
 
-        // 화면이 목록을 한 번 더 받지 않아도 되도록 요약이 두 id 를 함께 준다.
+        // 요약이 두 id 를 함께 줌 — 없으면 화면이 목록을 한 번 더 받아야 함
         assertThat(summary.latestRecordId()).isEqualTo(5L);
         assertThat(summary.resetPointId()).isEqualTo(3L);
     }
@@ -289,7 +288,7 @@ class FuelRecordServiceTest {
         when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
                 eq(10L), anyInt())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));
 
-        // 끄기 전에는 500km ÷ 25L = 20.00 이 나온다.
+        // 끄기 전 500km ÷ 25L = 20.00
         FuelRecordResponse before = fuelRecordService.update(1L, 10L, 2L,
                 new FuelRecordUpdateRequest(null, null, null, null, null, false));
         assertThat(before.efficiency()).isEqualByComparingTo("20.00");

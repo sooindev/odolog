@@ -1,12 +1,11 @@
 /**
- * 백엔드 com.odolog.app.maintenance.dto 에 대응하는 타입.
- * 백엔드 DTO를 고치면 이 파일도 같이 고쳐야 한다 (자동 동기화되지 않음).
+ * 백엔드 com.odolog.app.maintenance.dto 대응
+ * 자동 동기화가 아니므로 백엔드 DTO 를 고치면 여기도 함께
  */
 
 /**
- * 순서가 백엔드 enum 선언 순서와 같아야 한다 — 선택 목록이 이 순서로 그려지고,
- * `/next-services` 응답도 서버가 같은 순서로 담아 준다.
- * 알파벳순이 아니라 정비 부위별로 묶여 있다(엔진·구동 / 제동 / 타이어·조향 / 소모품).
+ * 백엔드 enum 과 순서까지 같아야 함 — 선택 목록이 이 순서로 그려지고 응답도 같은 순서
+ * 알파벳순이 아니라 정비 부위별 (엔진·구동 / 제동 / 타이어·조향 / 소모품)
  */
 export const SERVICE_TYPES = [
   'ENGINE_OIL',
@@ -46,7 +45,7 @@ export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   OTHER: '기타',
 }
 
-/** 선택 목록을 구역으로 나눈다. 15개를 한 줄로 늘어놓으면 찾는 데 시간이 걸린다. */
+/** 선택 목록 구역 나누기. 15개를 평평하게 늘어놓으면 훑어 찾기 어려움 */
 export const SERVICE_TYPE_GROUPS: { label: string; types: readonly ServiceType[] }[] = [
   { label: '엔진·구동', types: ['ENGINE_OIL', 'TRANSMISSION_FLUID', 'SPARK_PLUG', 'TIMING_BELT', 'COOLANT'] },
   { label: '제동', types: ['BRAKE_PAD', 'BRAKE_FLUID'] },
@@ -84,7 +83,7 @@ export interface MaintenanceRecordResponse {
 
 export interface NextServiceResponse {
   type: ServiceType
-  /** 해당 종류의 이력이 없으면 null */
+  /** 그 종류의 이력이 없으면 null */
   lastServiceOdometer: number | null
   /** 이력이 없거나 권장 주기가 없는 종류(OTHER)면 null */
   nextServiceOdometer: number | null

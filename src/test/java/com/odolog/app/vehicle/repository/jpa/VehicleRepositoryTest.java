@@ -23,8 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-// @DataJpaTest 는 JPA 와 무관한 @Configuration 을 걸러내므로 Auditing 이 자동으로
-// 켜지지 않는다. 없으면 created_at 이 null 인 채로 INSERT 되어 NOT NULL 위반이 난다.
+// DataJpaTest 는 JPA 와 무관한 Configuration 을 걸러내 Auditing 이 안 켜짐
+// 빠뜨리면 created_at null → NOT NULL 위반
 @Import(JpaAuditingConfig.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class VehicleRepositoryTest {
@@ -84,7 +84,7 @@ class VehicleRepositoryTest {
 
         assertThat(vehicleRepository.existsByOwnerIdAndPlateNumber(owner.getId(), "12가3456")).isTrue();
         assertThat(vehicleRepository.existsByOwnerIdAndPlateNumber(owner.getId(), "99하9999")).isFalse();
-        // 같은 번호판이라도 주인이 다르면 중복이 아니다 (중고차 이전 / 가족 공유 차량)
+        // 주인이 다르면 중복 아님 (중고차 이전 / 가족 공유)
         assertThat(vehicleRepository.existsByOwnerIdAndPlateNumber(another.getId(), "12가3456")).isFalse();
     }
 
@@ -97,7 +97,7 @@ class VehicleRepositoryTest {
         em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
         em.persist(new Vehicle(another, "12가3456", "현대", "아반떼", 2020));
 
-        // 전역 유니크였다면 여기서 제약 위반으로 터진다
+        // 전역 유니크였다면 여기서 제약 위반
         em.flush();
 
         assertThat(vehicleRepository.count()).isEqualTo(2);

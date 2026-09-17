@@ -9,10 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 
-/**
- * 경로가 /api/vehicles/summary 가 아니라 /api/summary 인 이유:
- * 이 응답은 차량뿐 아니라 정비 이력과 주유 기록까지 담는다. 차량의 하위 자원이 아니다.
- */
+/** /api/vehicles/summary 가 아닌 이유 — 정비·주유까지 담아 차량의 하위 자원이 아님 */
 @RestController
 public class GarageSummaryController {
 
@@ -24,8 +21,7 @@ public class GarageSummaryController {
 
     @GetMapping("/api/summary")
     public ResponseEntity<GarageSummaryResponse> summary(@LoginUser Long userId) {
-        // "오늘"을 서비스 밖에서 정한다. 안에서 LocalDate.now() 를 부르면 월별 12칸이
-        // 실행 시각에 좌우되어 테스트에서 고정할 수가 없다.
+        // "오늘"은 서비스 밖에서 주입. 안에서 now() 를 부르면 월별 12칸을 테스트에서 못 고정
         return ResponseEntity.ok(garageSummaryService.summarize(userId, LocalDate.now()));
     }
 }

@@ -5,10 +5,9 @@ import { useTheme } from '@/shared/theme/context/ThemeContext'
 import type { Theme } from '@/shared/theme/context/ThemeContext'
 
 /*
- * macOS 시스템 설정의 '외관' 과 같은 형태. 해/모니터/달 세 칸에 블록 하나가 미끄러진다.
- *
- * 아이콘 하나짜리 토글을 쓰지 않은 이유는 둘이다. 'system' 을 표현할 자리가 없고,
- * "지금이 다크라는 뜻인지 누르면 다크가 된다는 뜻인지"가 늘 헷갈린다.
+ * macOS 시스템 설정의 '외관' 과 같은 형태. 해/모니터/달 세 칸에 블록 하나가 미끄러짐
+ * 아이콘 하나짜리 토글을 안 쓰는 이유 — system 을 표현할 자리가 없고,
+ * "지금이 다크"인지 "누르면 다크"인지가 늘 헷갈림
  */
 const OPTIONS = [
   { value: 'light', label: '라이트 모드', Icon: Sun },
@@ -16,7 +15,7 @@ const OPTIONS = [
   { value: 'dark', label: '다크 모드', Icon: Moon },
 ] as const satisfies readonly { value: Theme; label: string; Icon: typeof Sun }[]
 
-/** 칸 하나의 크기(px). 블록을 몇 px 옮길지 계산하는 데 그대로 쓰인다. */
+/** 칸 하나의 크기(px). 블록 이동 거리 계산의 기준 */
 const CELL = 28
 
 export function ThemeToggle({ className }: { className?: string }) {
@@ -25,7 +24,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   const index = OPTIONS.findIndex((option) => option.value === theme)
 
   return (
-    // 스크린리더가 버튼 셋을 "화면 모드"라는 한 덩어리로 읽게 한다.
+    // 버튼 셋을 "화면 모드" 한 덩어리로 읽히게
     <div
       role="group"
       aria-label="화면 모드"
@@ -35,9 +34,8 @@ export function ThemeToggle({ className }: { className?: string }) {
       )}
     >
       {/*
-        움직이는 블록. 버튼마다 배경을 켜고 끄는 대신 하나짜리 요소를 옮긴다.
-        배경을 켜고 끄면 "꺼짐 → 켜짐" 두 애니메이션이 따로 돌아 툭 끊기는데,
-        하나를 옮기면 선택이 한 덩어리로 이어져 움직인다.
+        움직이는 블록. 버튼마다 배경을 켜고 끄는 대신 요소 하나를 이동
+        켜고 끄면 두 애니메이션이 따로 돌아 끊겨 보임
       */}
       <span
         aria-hidden="true"
@@ -49,14 +47,14 @@ export function ThemeToggle({ className }: { className?: string }) {
         <button
           key={value}
           type="button"
-          // 셋 중 하나만 true 다.
+          // 셋 중 하나만 true
           aria-pressed={theme === value}
           aria-label={label}
           title={label}
-          // 누른 버튼의 좌표에서 테마가 원형으로 번진다.
+          // 누른 버튼 좌표에서 원형으로 번짐
           onClick={(event) => setTheme(value, event.currentTarget)}
           className={cn(
-            // z-10: 위의 블록보다 위에 있어야 클릭이 버튼에 닿는다.
+            // z-10 — 블록보다 위에 있어야 클릭이 버튼에 닿음
             'relative z-10 grid place-items-center transition-colors duration-200 ease-apple focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             theme === value ? 'text-strong' : 'text-muted-foreground hover:text-strong',
           )}

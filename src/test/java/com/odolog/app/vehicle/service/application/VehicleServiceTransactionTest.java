@@ -16,13 +16,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 트랜잭션 경계가 실제로 동작하는지 확인한다.
- *
- * 다른 서비스 테스트는 Mockito 라 스프링 프록시를 안 거쳐서 @Transactional 이 적용되지 않는다.
- * readOnly = true 를 잘못 붙여도 초록불이 뜬다. 여기만 진짜 컨테이너를 띄운다.
- *
- * 테스트 클래스에 @Transactional 을 붙이면 안 된다. 서비스가 테스트의 트랜잭션에 참여해서
- * 자신의 readOnly 설정이 무시된다.
+ * 트랜잭션 경계 검증. 유일하게 진짜 컨테이너를 띄우는 테스트
+ * Mockito 는 스프링 프록시를 안 거쳐 Transactional 이 적용되지 않음 — readOnly 오설정도 초록불
+ * 이 클래스에 Transactional 금지 — 서비스가 테스트 트랜잭션에 참여해 자기 설정이 무시됨
  */
 @SpringBootTest
 class VehicleServiceTransactionTest {
@@ -52,7 +48,7 @@ class VehicleServiceTransactionTest {
 
     @AfterEach
     void tearDown() {
-        // 트랜잭션 롤백에 기댈 수 없으므로(@Transactional 을 못 쓴다) 직접 지운다.
+        // 롤백에 기댈 수 없어 직접 삭제
         maintenanceRecordRepository.deleteAll();
         vehicleRepository.deleteAll();
         userRepository.deleteAll();
@@ -63,8 +59,7 @@ class VehicleServiceTransactionTest {
     void updateOdometerIsFlushedToDatabase() {
         vehicleService.updateOdometer(ownerId, vehicleId, new UpdateOdometerRequest(45000));
 
-        // 서비스의 트랜잭션이 끝난 뒤 새로 읽는다.
-        // readOnly = true 였다면 UPDATE 가 나가지 않아 등록 직후 값인 0 이 남아 있다.
+        // 서비스 트랜잭션이 끝난 뒤 새로 읽기. readOnly 였다면 UPDATE 가 안 나가 0 이 남음
         assertThat(vehicleRepository.findById(vehicleId).orElseThrow().getOdometer())
                 .isEqualTo(45000);
     }

@@ -18,7 +18,7 @@ export function VehicleNewPage() {
   const [plateNumber, setPlateNumber] = useState('')
   const [manufacturer, setManufacturer] = useState('')
   const [modelName, setModelName] = useState('')
-  // 숫자 입력도 상태는 문자열로 둔다. 입력 도중의 빈 문자열을 숫자로 표현할 방법이 없기 때문.
+  // 숫자도 문자열 보관 — 입력 도중의 빈 문자열을 숫자로 표현할 수 없음
   const [modelYear, setModelYear] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -33,12 +33,12 @@ export function VehicleNewPage() {
         plateNumber,
         manufacturer,
         modelName,
-        // 보낼 때 숫자로 변환한다. 문자열 "2023"을 보내면 백엔드가 400을 준다.
+        // 전송 직전 숫자 변환. 문자열이면 백엔드가 400
         modelYear: Number(modelYear),
       })
       navigate(`/vehicles/${vehicle.id}`, { replace: true })
     } catch (caught) {
-      // 409면 이미 등록된 번호판.
+      // 409 = 이미 등록된 번호판
       setError(caught instanceof ApiError ? caught.message : '차량 등록에 실패했습니다.')
     } finally {
       setPending(false)
@@ -46,11 +46,11 @@ export function VehicleNewPage() {
   }
 
   return (
-    // back: 목록에서 파고 들어온 화면이므로 되돌아갈 길을 머리에 둔다.
-    // 폼 아래 "취소" 와 역할이 다르다. 취소는 입력을 버리는 것이고 이건 그냥 이동이다.
+    // back — 목록에서 파고든 화면이라 돌아갈 길을 머리말에
+    // 폼 아래 "취소" 와 역할이 다름. 취소는 입력을 버리는 것, 이건 단순 이동
     <Page back={{ to: '/vehicles', label: '내 차량' }} eyebrow="Garage" title="차량 등록">
-      {/* 넓은 화면에서 폼만 가운데 좁게 두면 양옆이 비어 허전하다.
-          설명을 왼쪽 열로 빼면 남는 폭이 여백이 아니라 정보로 채워진다. */}
+      {/* 폼만 가운데 좁게 두면 양옆이 빔
+          설명을 왼쪽 열로 빼 남는 폭을 여백이 아니라 정보로 */}
       <Section
         title="차량 정보"
         description="번호판은 내 차량 안에서만 중복되지 않으면 됩니다. 다른 사람이 같은 번호판을 등록해 두었더라도 상관없습니다."
@@ -68,7 +68,7 @@ export function VehicleNewPage() {
                 />
               </Field>
 
-              {/* 제조사와 모델명은 함께 읽히는 한 쌍이라 좁은 화면에서만 위아래로 쌓는다. */}
+              {/* 제조사와 모델명은 함께 읽히는 한 쌍. 좁은 화면에서만 위아래로 */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="제조사" htmlFor="manufacturer">
                   <Input
@@ -99,7 +99,7 @@ export function VehicleNewPage() {
                   min={1900}
                   max={2100}
                   placeholder="2023"
-                  // tabular-nums: 숫자 폭을 고정해 입력 중에 글자가 흔들리지 않게 한다.
+                  // tabular-nums — 입력 중 글자 흔들림 방지
                   className="tabular-nums"
                   value={modelYear}
                   onChange={(event) => setModelYear(event.target.value)}

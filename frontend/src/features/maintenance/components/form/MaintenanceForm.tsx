@@ -23,9 +23,9 @@ import type {
 
 interface Props {
   vehicleId: number
-  /** null이면 새 이력 등록, 값이 있으면 그 이력 수정 */
+  /** null 이면 등록, 값이 있으면 그 이력 수정 */
   record: MaintenanceRecordResponse | null
-  /** 등록 폼의 주행거리 기본값 (차량의 현재 주행거리) */
+  /** 등록 시 주행거리 기본값 (차량의 현재 주행거리) */
   defaultOdometer: number
   onSaved: () => void
   onCancel: () => void
@@ -42,11 +42,8 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  /*
-   * 주유 폼과 같은 안내. 차량 주행거리는 liftOdometerTo 때문에 지금까지 기록된 최댓값이라,
-   * 그보다 작으면 과거 기록이라는 뜻이다. **막지 않고 알려만 준다** —
-   * 지난달 영수증을 정리하는 건 정상적인 사용이다.
-   */
+  // 주유 폼과 같은 안내. 차량 주행거리는 지금까지 기록된 최댓값이라 그보다 작으면 과거 기록
+  // 막지 않고 안내만
   const odometerValue = Number(serviceOdometer)
   const looksPast =
     serviceOdometer !== '' &&
@@ -68,8 +65,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
           serviceDate,
         })
       } else {
-        // 백엔드가 "보낸 필드만 변경"이므로 바뀐 것만 담는다.
-        // cost를 0으로 바꾸는 것과 안 보내는 것은 다르므로 값 비교로 판단한다.
+        // 바뀐 필드만. 0 으로 바꾸는 것과 안 보내는 것이 달라 값 비교로 판단
         const request: MaintenanceRecordUpdateRequest = {}
         if (type !== record.type) request.type = type
         if (description !== (record.description ?? '')) request.description = description
@@ -91,38 +87,33 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   }
 
   return (
-    // 폼은 목록과 같은 평면에 두지 않고 한 겹 안쪽 면으로 내린다.
-    // 카드 안에 또 카드를 넣는 대신 배경 농도만 낮춰, 선을 늘리지 않고 층을 만든다.
+    // 폼은 한 겹 안쪽 면. 카드 안에 카드 대신 배경 농도만 낮춰 선을 늘리지 않고 층을 만듦
     <form
       className="flex flex-col gap-5 border border-border bg-sunken p-4 sm:gap-6 sm:p-6"
       onSubmit={handleSubmit}
     >
-      {/* 넓은 열에서 필드를 한 줄에 하나씩 쌓으면 폼이 실제보다 길어 보이고 오른쪽이 빈다.
-          짝이 되는 값끼리 2열로 묶는다. sm 미만에서는 자동으로 한 줄씩 풀린다. */}
+      {/* 한 줄에 하나씩 쌓으면 폼이 실제보다 길어 보이고 오른쪽이 빔
+          짝이 되는 값끼리 2열로. sm 미만에서는 자동으로 풀림 */}
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="정비 종류" htmlFor="type">
           {/*
-            shadcn Select 대신 브라우저 기본 <select>를 쓴다.
-            선택지가 5개뿐이라 커스텀 드롭다운의 복잡한 구조가 필요 없고,
-            모바일에서는 OS 기본 선택 UI가 뜨는 게 오히려 편하다.
-
-            <input>과 같은 controlClassName 을 씌워 높이·곡률·포커스 반응을 맞춘다.
-            펼쳐지는 목록의 색은 CSS로 못 건드리지만, index.css 가 테마마다 color-scheme 을
-            지정해 두어서 브라우저가 알아서 라이트/다크 목록을 그려 준다.
+            shadcn Select 대신 브라우저 기본 select
+            커스텀 드롭다운의 구조가 필요 없고, 모바일에서 OS 기본 선택 UI 가 뜨는 편이 나음
+            input 과 같은 controlClassName 으로 높이·포커스 반응을 맞춤
+            펼침 목록 색은 CSS 로 못 건드리지만 color-scheme 덕에 브라우저가 테마에 맞게 그림
           */}
           <div className="relative">
             <select
               id="type"
-              // appearance-none: OS가 그려 주는 기본 화살표를 지운다. 그 화살표는 색을 바꿀 수
-              // 없어서 테마와 따로 논다. 대신 아래에 같은 톤의 화살표를 직접 얹는다.
+              // appearance-none — OS 기본 화살표 제거. 색을 못 바꿔 테마와 따로 놀아서
+              // 같은 톤의 화살표를 직접 얹음
               className={cn(controlClassName, 'appearance-none pr-10')}
               value={type}
               onChange={(event) => setType(event.target.value as ServiceType)}
             >
               {/*
-                optgroup 으로 묶는다. 종류가 5개일 때는 평평한 목록으로 충분했지만 15개가
-                되면서 훑어 찾기 어려워졌다. 브라우저·OS 기본 목록이라 구역 제목의 생김새는
-                제각각이지만, 모바일에서 OS 기본 선택 UI 가 뜨는 이점이 그보다 크다.
+                optgroup 으로 묶기. 15개는 평평한 목록으로 훑어 찾기 어려움
+                구역 제목 생김새는 브라우저·OS 마다 다르지만 기본 선택 UI 의 이점이 더 큼
               */}
               {SERVICE_TYPE_GROUPS.map((group) => (
                 <optgroup key={group.label} label={group.label}>
@@ -135,7 +126,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
               ))}
             </select>
 
-            {/* pointer-events-none: 아이콘이 클릭을 가로채면 select가 열리지 않는다. */}
+            {/* pointer-events-none — 아이콘이 클릭을 가로채면 select 가 안 열림 */}
             <ChevronDown
               className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
@@ -144,8 +135,8 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         </Field>
 
         <Field label="정비 날짜" htmlFor="serviceDate">
-          {/* 값은 어느 쪽이든 YYYY-MM-DD 문자열이다. 백엔드 LocalDate 와 그대로 맞는다.
-              터치 기기에서는 드럼 휠, 그 외에는 네이티브 date 입력으로 갈린다. */}
+          {/* 값은 어느 쪽이든 YYYY-MM-DD 문자열이라 백엔드 LocalDate 와 그대로 맞음
+              터치면 드럼 휠, 아니면 네이티브 date */}
           <DateInput id="serviceDate" required value={serviceDate} onChange={setServiceDate} />
         </Field>
       </div>

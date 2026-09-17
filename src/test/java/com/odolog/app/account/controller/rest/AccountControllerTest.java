@@ -44,7 +44,7 @@ class AccountControllerTest {
                         .content(objectMapper.writeValueAsString(new WithdrawRequest("password1234"))))
                 .andExpect(status().isNoContent());
 
-        // 세션이 살아 있으면 없는 사용자 id 를 든 채로 다음 요청이 500 이 된다.
+        // 세션이 살아 있으면 없는 사용자 id 로 다음 요청이 500
         assertThat(session.isInvalid()).isTrue();
     }
 

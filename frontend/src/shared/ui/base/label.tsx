@@ -2,8 +2,8 @@ import * as React from "react"
 import { cn } from "cn"
 
 /*
- * 라벨은 입력값보다 한 단계 어둡게(45%) 둔다. 라벨과 값이 같은 밝기면
- * 눈이 무엇을 먼저 읽어야 할지 모르고, 폼 전체가 웅성거린다.
+ * 라벨은 입력값보다 한 단계 어둡게(45%)
+ * 같은 밝기면 무엇을 먼저 읽어야 할지 모르고 폼 전체가 웅성거림
  */
 function Label({ className, ...props }: React.ComponentProps<"label">) {
   return (

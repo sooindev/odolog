@@ -59,9 +59,7 @@ public class VehicleController {
         return ResponseEntity.ok(VehicleResponse.from(vehicle));
     }
 
-    // PATCH /{vehicleId} 와 PATCH /{vehicleId}/odometer 는 경로가 달라 충돌하지 않는다.
-    // 주행거리를 여기 합치지 않은 이유: 감소 금지라는 규칙이 붙어 있어 성격이 다르고,
-    // 화면에서도 "차량 정보 고치기"와 "주행거리 갱신"은 서로 다른 순간에 일어난다.
+    // 주행거리는 별도 엔드포인트 — 감소 금지 규칙이 붙어 성격이 다르고 쓰는 순간도 다름
     @PatchMapping("/{vehicleId}")
     public ResponseEntity<VehicleResponse> update(@PathVariable Long vehicleId,
                                                     @Valid @RequestBody VehicleUpdateRequest request,

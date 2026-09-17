@@ -8,17 +8,15 @@ import java.util.Arrays;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 값 하나하나를 다시 적는 테스트는 두지 않는다 — enum 을 그대로 베끼는 꼴이라
- * 값을 고치면 테스트도 같이 고치게 되어 아무것도 못 잡는다.
- * 대신 <b>종류를 추가할 때 깨지기 쉬운 약속</b>만 못박는다.
+ * 값을 다시 적지 않고 약속만 고정
+ * enum 을 베끼면 값을 고칠 때 테스트도 같이 고치게 되어 아무것도 못 잡음
  */
 class ServiceTypeTest {
 
     @Test
     @DisplayName("OTHER 를 뺀 모든 종류는 주기가 최소 하나는 있다")
     void everyTypeExceptOtherHasAnInterval() {
-        // 새 종류를 넣으면서 주기를 빠뜨리면 화면에 "다음 정비 시점"이 영영 안 뜬다.
-        // 계산이 조용히 null 을 돌려주므로 에러도 안 난다 — 그래서 여기서 잡는다.
+        // 주기를 빠뜨리면 다음 정비 시점이 영영 안 뜸. 계산이 조용히 null 을 주므로 에러도 없음
         assertThat(Arrays.stream(ServiceType.values())
                 .filter(type -> type != ServiceType.OTHER)
                 .filter(type -> type.getRecommendedIntervalKm() == null

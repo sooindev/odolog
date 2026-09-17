@@ -98,7 +98,7 @@ class GarageSummaryServiceTest {
         List<GarageSummaryResponse.MonthlyCost> monthly = garageSummaryService.summarize(1L, TODAY).monthly();
 
         assertThat(monthly).hasSize(12);
-        // 2026-09 기준 12칸이면 2025-10 부터다.
+        // 2026-09 기준 12칸이면 2025-10 시작
         assertThat(monthly.get(0).month()).isEqualTo("2025-10");
         assertThat(monthly.get(11).month()).isEqualTo("2026-09");
 
@@ -123,7 +123,7 @@ class GarageSummaryServiceTest {
 
         List<GarageSummaryResponse.TypeCost> byType = garageSummaryService.summarize(1L, TODAY).byType();
 
-        // 15종 중 기록이 있는 2종만. 0원짜리 줄로 화면을 채우지 않는다.
+        // 15종 중 기록 있는 2종만
         assertThat(byType).hasSize(2);
         assertThat(byType.get(0).type()).isEqualTo(ServiceType.TRANSMISSION_FLUID);
         assertThat(byType.get(0).cost()).isEqualTo(200000);
@@ -143,7 +143,7 @@ class GarageSummaryServiceTest {
 
         GarageSummaryResponse.VehicleLine line = garageSummaryService.summarize(1L, TODAY).vehicles().get(0);
 
-        // 1000km ÷ (80 - 30)L = 20.00. 첫 30L 를 안 빼면 12.50 이 나온다.
+        // 1000km ÷ (80 - 30)L = 20.00. 첫 30L 를 안 빼면 12.50
         assertThat(line.averageEfficiency()).isEqualByComparingTo("20.00");
     }
 
@@ -173,10 +173,10 @@ class GarageSummaryServiceTest {
 
         assertThat(recent).extracting(GarageSummaryResponse.RecentActivity::kind)
                 .containsExactly("FUEL", "MAINTENANCE", "MAINTENANCE", "FUEL");
-        // 같은 날짜 안에서 정비가 먼저. kind 를 문자열로 정렬하면 FUEL 이 앞서 이 순서가 깨진다.
+        // 같은 날짜면 정비 먼저. 문자열 정렬이면 FUEL 이 앞서 깨짐
         assertThat(recent.get(1).recordId()).isEqualTo(9L);
         assertThat(recent.get(2).recordId()).isEqualTo(7L);
-        // 차량 이름은 이미 읽어 둔 차량에서 채운다.
+        // 차량 이름은 이미 읽어 둔 목록에서
         assertThat(recent.get(0).vehicleName()).isEqualTo("현대 아반떼");
     }
 

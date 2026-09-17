@@ -8,14 +8,9 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 
 /**
- * 저장된 값(위 5개)과 계산된 값(아래 3개)이 한 응답에 섞여 있다.
- *
- * <p>계산 값을 DB 에 저장하지 않는 이유: 직전 기록이 수정되거나 삭제되면 연비가 달라지는데,
- * 저장해 두면 그때마다 뒤따르는 기록을 전부 다시 써야 한다. 읽을 때 계산하면 언제나 맞다.
- *
- * <p>distance / efficiency 가 null 인 경우는 셋이다: 첫 기록이라 직전이 없을 때,
- * 주행거리가 직전보다 작거나 같아 구간이 성립하지 않을 때(잘못 입력한 데이터),
- * 그리고 그 둘의 결과로 거리를 못 구했을 때.
+ * 저장값 + 계산값
+ * 계산값을 저장하지 않는 이유 — 직전 기록이 바뀌면 뒤따르는 기록을 전부 다시 써야 함
+ * distance / efficiency 가 null 인 경우: 첫 기록, 기준점, 구간 미성립
  */
 public record FuelRecordResponse(
         Long id,
@@ -24,19 +19,18 @@ public record FuelRecordResponse(
         BigDecimal liters,
         int totalCost,
         String memo,
-        /** 연비를 여기서부터 다시 세는 기준점인지. */
+        /** 연비 재계산 기준점인지 */
         boolean resetPoint,
 
-        /** 리터당 단가(원). 총액 ÷ 리터를 반올림한 표시용 값이다. */
+        /** 리터당 단가(원). 총액 ÷ 리터, 표시용 반올림 */
         int pricePerLiter,
-        /** 직전 주유 이후 달린 거리(km). 직전 기록이 없으면 null. */
+        /** 직전 주유 이후 거리(km). 직전 없으면 null */
         Integer distance,
-        /** 연비(km/L), 소수 둘째 자리까지. 구간이 성립하지 않으면 null. */
+        /** 연비(km/L), 소수 2자리. 구간 미성립이면 null */
         BigDecimal efficiency,
         /**
-         * 연비가 물리적으로 말이 안 되는 값인지(50 초과 또는 2 미만).
-         * 주행거리나 주유량을 잘못 적은 경우다. "기록이 빠졌다"는 이것으로 못 잡는다 —
-         * 그건 요약의 longSegmentCount 가 본다.
+         * 물리적으로 불가능한 연비인지(50 초과 · 2 미만) = 입력 오류
+         * 빠진 기록은 여기서 못 잡음 — 요약의 longSegmentCount 담당
          */
         boolean efficiencySuspicious
 ) {
@@ -45,13 +39,11 @@ public record FuelRecordResponse(
         Integer distance = null;
         BigDecimal efficiency = null;
 
-        // 기준점은 직전과의 연결을 끊는다. "여기서부터 다시"라는 뜻이므로 이 기록 자체의
-        // 구간 연비도 없다 — 첫 기록과 같은 처지가 된다.
+        // 기준점은 직전과의 연결을 끊으므로 자기 구간 연비도 없음 (첫 기록과 같은 처지)
         if (!record.isResetPoint() && previous != null
                 && record.getOdometer() > previous.getOdometer()) {
             distance = record.getOdometer() - previous.getOdometer();
-            // 단순법: 이번에 넣은 양으로 이번 구간을 나눈다.
-            // 가득 채우지 않은 주유가 섞이면 그 구간만 실제보다 높게 나온다.
+            // 단순법. 가득 채우지 않은 주유가 섞이면 그 구간만 높게 나옴
             efficiency = BigDecimal.valueOf(distance)
                     .divide(record.getLiters(), 2, RoundingMode.HALF_UP);
         }

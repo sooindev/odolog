@@ -40,8 +40,7 @@ public class MaintenanceRecordService {
         MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(), request.description(),
                 request.cost(), request.serviceOdometer(), request.serviceDate());
 
-        // 정비소에서 5만km 에 갈았다고 적었으면 차량도 최소 5만km 는 달린 것이다.
-        // 같은 숫자를 두 번 입력하게 하지 않는다. 주유 기록과 같은 규칙이다.
+        // 정비 시점 주행거리가 더 크면 차량도 갱신. 주유와 같은 규칙
         vehicle.liftOdometerTo(request.serviceOdometer());
 
         return maintenanceRecordRepository.save(record);
@@ -53,26 +52,20 @@ public class MaintenanceRecordService {
     }
 
     /**
-     * 모든 종류의 다음 정비 시점을 한 번에 돌려준다.
-     *
-     * <p>화면이 종류마다 요청을 보내면 종류 수만큼 왕복이 생긴다. 종류가 5개일 때는 견뎠지만
-     * 15개가 되면서 못 견디게 됐다 — 기능이 늘면서 원래 알던 비용이 임계를 넘은 경우다.
-     *
-     * <p>이력이 하나도 없는 종류는 <b>빼고</b> 준다. "다음 정비 시점"은 마지막 정비가 있어야
-     * 나오는 값이고, 15줄 중 13줄이 "기록 없음"이면 화면이 빈칸 목록이 된다.
+     * 전체 종류의 다음 정비 시점을 한 번에. 종류마다 요청하면 15왕복
+     * 이력 없는 종류는 제외 — 15줄 중 13줄이 "기록 없음"이면 빈칸 목록이 됨
      */
     public List<NextServiceResponse> calculateAllNextServices(Long requesterId, Long vehicleId) {
         vehicleService.findOwnedVehicle(requesterId, vehicleId);
 
-        // 정렬된 목록에서 종류별로 처음 만나는 것이 그 종류의 최신 이력이다.
+        // 정렬된 목록에서 종류별 첫 줄 = 그 종류의 최신 이력
         Map<ServiceType, MaintenanceRecord> latest = new EnumMap<>(ServiceType.class);
         for (MaintenanceRecord record : maintenanceRecordRepository
                 .findByVehicleIdOrderByServiceDateDescIdDesc(vehicleId)) {
             latest.putIfAbsent(record.getType(), record);
         }
 
-        // enum 선언 순서대로 담는다. 화면의 순서를 서버가 정해 주는 편이
-        // 클라이언트마다 다르게 정렬하는 것보다 어긋날 여지가 적다.
+        // enum 선언 순서 유지. 화면 순서를 서버가 정하는 편이 어긋날 여지가 적음
         List<NextServiceResponse> responses = new ArrayList<>(latest.size());
         for (ServiceType type : ServiceType.values()) {
             MaintenanceRecord record = latest.get(type);
@@ -115,7 +108,7 @@ public class MaintenanceRecordService {
         }
         if (request.serviceOdometer() != null) {
             record.changeServiceOdometer(request.serviceOdometer());
-            // 등록과 같은 규칙. 자리수를 잘못 넣었다가 고치는 건 흔한 일이다.
+            // 수정에도 같은 규칙. 자리수 오타 정정이 흔함
             record.getVehicle().liftOdometerTo(request.serviceOdometer());
         }
         if (request.serviceDate() != null) {

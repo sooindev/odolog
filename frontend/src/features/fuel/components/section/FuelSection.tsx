@@ -14,7 +14,7 @@ import type { FuelRecordResponse } from '@/features/fuel/api/types/types'
 interface Props {
   vehicleId: number
   currentOdometer: number
-  /** 기록이 바뀌면 부모에게 알려 연비 요약과 차량 주행거리를 다시 받게 한다. */
+  /** 기록이 바뀌면 부모에게 알려 연비 요약과 차량 주행거리 재조회 */
   onChanged: () => void
 }
 
@@ -27,7 +27,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   const load = useCallback(() => fetchFuelRecords(vehicleId, page), [vehicleId, page])
   const { data, loading, error, reload } = useAsyncData(load, '주유 기록을 불러오지 못했습니다.')
 
-  // 변수로 받아야 타입이 좁혀진다. JSX 에서 같은 식을 두 번 쓰면 매번 새 식으로 본다.
+  // 변수로 받아야 타입이 좁혀짐. JSX 에서 같은 식을 두 번 쓰면 매번 새 식
   const errorMessage = error ?? actionError
 
   function refresh() {
@@ -47,8 +47,8 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
     try {
       await deleteFuelRecord(vehicleId, recordId)
 
-      // 이 페이지의 마지막 한 건을 지웠으면 한 장 물러난다. page 만 바꾸면
-      // useAsyncData 가 알아서 다시 조회한다 — reload() 까지 부르면 요청이 두 번 나간다.
+      // 이 페이지의 마지막 한 건이었으면 한 장 뒤로
+      // page 만 바꾸면 useAsyncData 가 재조회 — reload() 까지 부르면 두 번 나감
       if (data !== null && data.items.length === 1 && page > 0) {
         setEditing('closed')
         setActionError(null)
@@ -77,7 +77,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
 
       <CardContent className="flex flex-col gap-6">
         {editing !== 'closed' && (
-          // 칸이 열리고 폼이 0.12s 늦게 들어온다. 닫을 때는 연출하지 않는다.
+          // 칸이 열리고 폼은 0.12s 지연. 닫을 때는 연출 없음
           <div className="form-open">
             <div>
               <FuelForm
@@ -108,16 +108,15 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
             <ul className="border-t border-border">
               {data.items.map((record) => (
                 <li key={record.id} className="border-b border-border">
-                  {/* 좁은 화면에서는 두 줄로 접는다. 한 줄에 다 넣으면 왼쪽에 100px 남짓만 남는다. */}
+                  {/* 좁은 화면에서는 두 줄로. 한 줄이면 왼쪽에 100px 남짓만 남음 */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
                     <div className="flex min-w-0 basis-full flex-col gap-1 sm:basis-auto sm:flex-1">
                       <div className="flex items-baseline gap-2">
-                        {/* 연비가 이 행에서 가장 중요한 값이라 맨 앞에 둔다. */}
+                        {/* 이 행에서 가장 중요한 값이라 맨 앞 */}
                         {record.efficiency === null ? (
                           /*
-                            연비가 없는 이유는 둘 중 하나다 — 직전 기록이 없거나(첫 기록),
-                            여기서부터 다시 세라고 찍어 둔 기준점이거나.
-                            "—" 만 두면 왜 없는지 알 수 없어서 이유를 적는다.
+                            연비가 없는 이유는 둘 — 첫 기록이거나 기준점이거나
+                            "—" 만 두면 왜 없는지 알 수 없어 이유를 명시
                           */
                           <span className="text-[0.8125rem] text-muted-foreground">
                             {record.resetPoint ? '연비 기준점' : '기준 기록'}
@@ -129,8 +128,8 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                               {record.efficiency.toFixed(2)}
                               <span className="ml-1 text-sm text-muted-foreground">km/L</span>
                             </span>
-                            {/* 물리적으로 말이 안 되는 값. 숫자를 지우지 않고 옆에 붙인다 —
-                                사용자가 무엇을 잘못 적었는지 보려면 그 값이 남아 있어야 한다. */}
+                            {/* 물리적으로 불가능한 값. 숫자를 지우지 않고 옆에 붙임 —
+                                무엇을 잘못 적었는지 보려면 그 값이 남아 있어야 함 */}
                             {record.efficiencySuspicious && (
                               <span className="text-xs text-destructive">확인 필요</span>
                             )}

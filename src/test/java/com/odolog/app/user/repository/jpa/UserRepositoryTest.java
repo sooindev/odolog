@@ -19,8 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-// @DataJpaTest 는 JPA 와 무관한 @Configuration 을 걸러내므로 Auditing 이 자동으로
-// 켜지지 않는다. 없으면 created_at 이 null 인 채로 INSERT 되어 NOT NULL 위반이 난다.
+// DataJpaTest 는 JPA 와 무관한 Configuration 을 걸러내 Auditing 이 안 켜짐
+// 빠뜨리면 created_at null → NOT NULL 위반
 @Import(JpaAuditingConfig.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class UserRepositoryTest {
@@ -73,8 +73,7 @@ class UserRepositoryTest {
     void duplicateEmailHitsUniqueConstraint() {
         userRepository.saveAndFlush(new User("dup@odolog.com", "encoded-pw", "차주A", null));
 
-        // GlobalExceptionHandler 가 이 예외의 모양(cause 가 ConstraintViolationException 이고
-        // kind 가 UNIQUE)에 기대어 409 를 판정한다. 그 가정을 여기서 고정한다.
+        // 핸들러가 이 예외의 모양(cause = ConstraintViolationException, kind = UNIQUE)에 기대므로 고정
         assertThatThrownBy(() -> userRepository.saveAndFlush(
                 new User("dup@odolog.com", "encoded-pw", "차주B", null)))
                 .isInstanceOf(DataIntegrityViolationException.class)

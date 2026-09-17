@@ -9,15 +9,15 @@ import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { fetchFuelSummary, updateFuelRecord } from '@/features/fuel/api/endpoints/endpoints'
 
 /**
- * 평균 연비를 화면의 주인공으로 둔다. 이 앱이 주유 기록을 받는 이유가 이 숫자 하나다.
- * 재조회는 부모가 key 를 바꿔 컴포넌트를 재생성한다 (NextServiceCard 와 같은 방식).
+ * 평균 연비가 주인공. 이 앱이 주유 기록을 받는 이유가 이 숫자 하나
+ * 재조회는 부모가 key 를 바꿔 재생성 (NextServiceCard 와 같은 방식)
  */
 export function FuelSummaryCard({
   vehicleId,
   onChanged,
 }: {
   vehicleId: number
-  /** 기준점을 바꾸면 목록의 구간 연비도 달라지므로 부모에게 알린다. */
+  /** 기준점이 바뀌면 목록의 구간 연비도 달라지므로 부모에게 알림 */
   onChanged: () => void
 }) {
   const load = useCallback(() => fetchFuelSummary(vehicleId), [vehicleId])
@@ -34,7 +34,7 @@ export function FuelSummaryCard({
       onChanged()
     } catch (caught) {
       setActionError(caught instanceof ApiError ? caught.message : '연비 초기화에 실패했습니다.')
-      // 성공하면 부모가 이 컴포넌트를 새로 만들므로 실패했을 때만 되돌린다.
+      // 성공하면 부모가 새로 만드므로 실패했을 때만 복구
       setPending(false)
     }
   }
@@ -51,7 +51,7 @@ export function FuelSummaryCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>연비</CardTitle>
-        {/* 기록이 없으면 초기화할 것도 없다. 눌러도 아무 일 없는 버튼을 두지 않는다. */}
+        {/* 기록이 없으면 초기화할 것도 없음. 눌러도 아무 일 없는 버튼을 두지 않음 */}
         {data.latestRecordId !== null &&
           (data.resetPointId === null ? (
             <Button
@@ -59,7 +59,7 @@ export function FuelSummaryCard({
               variant="ghost"
               disabled={pending}
               onClick={() => {
-                // 되돌릴 수 있는 동작이지만(해제 버튼이 생긴다) 숫자가 크게 바뀌므로 한 번 묻는다.
+                // 되돌릴 수 있지만(해제 버튼) 숫자가 크게 바뀌므로 한 번 확인
                 if (window.confirm('지금까지의 기록을 연비 계산에서 빼고 다시 셉니다. 계속할까요?')) {
                   void setResetPoint(data.latestRecordId as number, true)
                 }
@@ -92,21 +92,20 @@ export function FuelSummaryCard({
           </p>
         ) : (
           <div className="flex items-baseline gap-3">
-            {/* 히어로 숫자에는 tabular-nums 를 붙이지 않는다 — 세로로 줄 맞출 상대가 없다. */}
+            {/* 히어로 숫자에는 tabular-nums 금지 — 세로로 줄 맞출 상대가 없음 */}
             <span className="text-display text-strong">{data.averageEfficiency.toFixed(2)}</span>
             <span className="text-muted-foreground">km/L</span>
           </div>
         )}
 
-        {/* 초기화 이후 구간만 센 값이라는 걸 밝힌다. 안 적으면 전체 평균으로 오해한다. */}
+        {/* 초기화 이후 구간만 센 값임을 명시. 안 적으면 전체 평균으로 오해함 */}
         {data.resetPointId !== null && data.averageEfficiency !== null && (
           <p className="text-xs text-muted-foreground">연비 초기화 이후 구간만 계산한 값입니다.</p>
         )}
 
         {/*
-          기록을 빼먹었을 가능성. 주유 한 번을 안 적으면 그 구간 거리가 두 배가 되고
-          연비도 두 배로 뻥튀기된다 — 그 값이 평균에도 섞인다.
-          숨기지 않고 말해 주면 사용자가 빠진 기록을 채워 넣게 되고, 그러면 저절로 맞아진다.
+          기록 누락 가능성. 한 번 안 적으면 그 구간 거리가 두 배가 되고 연비도 두 배가 되어 평균에 섞임
+          말해 주면 빠진 기록을 채워 넣게 되고 그러면 저절로 맞아짐
         */}
         {data.longSegmentCount > 0 && (
           <p className="text-xs leading-relaxed text-muted-foreground">
@@ -115,7 +114,7 @@ export function FuelSummaryCard({
           </p>
         )}
 
-        {/* 격자 사이로 부모의 선 색이 비치게 한다. 칸마다 border 를 주면 맞닿는 자리가 2px 이 된다. */}
+        {/* 격자 사이로 부모의 선 색이 비침. 칸마다 border 면 맞닿는 자리가 2px */}
         <dl className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border sm:grid-cols-4">
           <Stat label="기록" value={`${formatNumber(data.recordCount)}건`} />
           <Stat

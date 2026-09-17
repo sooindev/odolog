@@ -26,8 +26,8 @@ public class VehicleService {
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
     private final MaintenanceRecordRepository maintenanceRecordRepository;
-    // 서비스가 아니라 리포지토리를 주입받는다. 서비스끼리 주입하면 스프링이 잡아내는
-    // 진짜 순환 참조가 된다 (FuelRecordService 가 VehicleService 를 이미 쓰고 있다).
+    // 서비스가 아니라 리포지토리 주입 — 서비스끼리면 진짜 순환 참조
+    // (FuelRecordService 가 VehicleService 를 이미 씀)
     private final FuelRecordRepository fuelRecordRepository;
 
     public VehicleService(VehicleRepository vehicleRepository, UserRepository userRepository,
@@ -62,14 +62,11 @@ public class VehicleService {
     public Vehicle update(Long requesterId, Long vehicleId, VehicleUpdateRequest request) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
 
-        // 번호판을 가장 먼저 처리한다. 다른 필드를 먼저 바꿔 두면 엔티티가 더러워진(dirty) 상태가
-        // 되고, 아래 exists 쿼리 직전에 Hibernate 가 그걸 자동으로 flush 해 버릴 수 있다.
-        // 그러면 방금 쓴 값을 내가 다시 조회해서 "중복"이라고 판정하는 일이 생긴다.
+        // 번호판 먼저. 다른 필드를 먼저 바꾸면 dirty 상태가 되고 exists 직전에 자동 flush —
+        // 방금 쓴 값을 다시 조회해 자기를 중복으로 판정
         if (request.plateNumber() != null && !request.plateNumber().equals(vehicle.getPlateNumber())) {
-            // 값이 실제로 바뀔 때만 검사한다. 이 조건이 없으면 번호판을 그대로 두고 제조사만
-            // 고쳐도 자기 자신이 검색되어 409 가 난다 — 등록 때 쓰던 검사를 그대로 가져오면
-            // 반드시 밟는 함정이다. id 로 자기를 빼는 쿼리(...AndIdNot)를 새로 만드는 방법도
-            // 있지만, "안 바뀌었으면 검사할 것도 없다"가 더 단순하고 리포지토리도 안 늘어난다.
+            // 값이 실제로 바뀔 때만 검사. 없으면 제조사만 고쳐도 자기가 중복으로 잡혀 409
+            // ...AndIdNot 쿼리를 새로 만드는 대신 조건으로 해결 — 리포지토리가 안 늘어남
             if (vehicleRepository.existsByOwnerIdAndPlateNumber(requesterId, request.plateNumber())) {
                 throw new ConflictException("이미 등록하신 차량 번호입니다: " + request.plateNumber());
             }
@@ -85,7 +82,7 @@ public class VehicleService {
             vehicle.changeModelYear(request.modelYear());
         }
 
-        // save() 를 부르지 않는다. 영속 상태라 dirty checking 이 UPDATE 를 만들어 준다.
+        // save() 불필요. 영속 상태라 dirty checking 이 UPDATE 생성
         return vehicle;
     }
 
@@ -100,23 +97,21 @@ public class VehicleService {
     @Transactional
     public void delete(Long requesterId, Long vehicleId) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
-        // 자식 먼저, 차량 나중. 순서를 바꾸면 FK 제약 위반이다.
+        // 자식 먼저, 차량 나중 — 바꾸면 FK 제약 위반
         maintenanceRecordRepository.deleteByVehicleId(vehicle.getId());
         fuelRecordRepository.deleteByVehicleId(vehicle.getId());
         vehicleRepository.delete(vehicle);
     }
 
     /**
-     * 한 사용자의 차량을 이력까지 전부 지운다. 회원 탈퇴에서만 쓴다.
-     *
-     * delete() 를 차량 수만큼 부르지 않는 이유: 그러면 차량마다 findById 가 한 번씩 더 나가고
-     * 소유권 검사도 매번 반복된다. 여기서는 ownerId 로 조회한 것이라 이미 전부 내 차량이다.
+     * 한 사용자의 차량을 이력까지 일괄 삭제. 회원 탈퇴 전용
+     * delete() 반복 대신 — 차량마다 findById 와 소유권 검사가 반복됨 (이미 ownerId 로 조회한 것)
      */
     @Transactional
     public void deleteAllOwnedBy(Long ownerId) {
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(ownerId);
 
-        // 순서가 중요하다. 차량을 먼저 지우면 이력이 붙잡고 있어 FK 제약에 걸린다.
+        // 차량을 먼저 지우면 이력이 붙잡고 있어 FK 제약 위반
         for (Vehicle vehicle : vehicles) {
             maintenanceRecordRepository.deleteByVehicleId(vehicle.getId());
             fuelRecordRepository.deleteByVehicleId(vehicle.getId());

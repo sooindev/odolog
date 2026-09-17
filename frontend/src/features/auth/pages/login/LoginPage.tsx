@@ -21,7 +21,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // ProtectedRoute가 기억해 둔 "원래 가려던 곳". 없으면 차량 목록으로.
+  // ProtectedRoute 가 기억해 둔 목적지. 없으면 차량 목록
   const from = (location.state as { from?: string } | null)?.from ?? '/vehicles'
 
   if (user !== null) {
@@ -29,7 +29,7 @@ export function LoginPage() {
   }
 
   async function handleSubmit(event: FormEvent) {
-    // 폼 기본 동작(페이지 전체 새로고침)을 막는다. 안 막으면 React 상태가 다 날아간다.
+    // 폼 기본 동작(전체 새로고침) 차단. 안 막으면 React 상태가 날아감
     event.preventDefault()
     setError(null)
     setPending(true)
@@ -38,7 +38,7 @@ export function LoginPage() {
       await login({ email, password })
       navigate(from, { replace: true })
     } catch (caught) {
-      // 백엔드가 401에 "이메일 또는 비밀번호가 올바르지 않습니다"로 사유를 통일해 내려준다.
+      // 백엔드가 401 사유를 통일해 내려줌 (user enumeration 방지)
       setError(caught instanceof ApiError ? caught.message : '로그인에 실패했습니다.')
     } finally {
       setPending(false)
@@ -47,7 +47,7 @@ export function LoginPage() {
 
   return (
     <Page title="로그인" description="기록해 둔 차량을 이어서 관리합니다.">
-      {/* 폼 + 아래 안내 문구는 한 덩어리다. 가로 폭(22rem)은 AuthLayout이 정한다. */}
+      {/* 폼 + 안내 문구가 한 덩어리. 가로 폭은 AuthLayout 담당 */}
       <div className="flex flex-col gap-6">
         <Card>
           <CardContent>

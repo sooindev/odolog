@@ -15,13 +15,9 @@ import type {
 } from '@/features/vehicles/api/types/types'
 
 /**
- * 차량 정보(번호판·제조사·모델·연식) 수정.
- *
- * 주행거리는 여기 없다. 감소 금지 규칙이 붙어 있어 백엔드도 엔드포인트가 따로고,
- * 화면에서도 "정보를 고치는 순간"과 "주행거리를 적는 순간"은 서로 다르다.
- *
- * 닫힌 동안에는 값을 그대로 보여준다. 머리말에도 같은 값이 있지만 거기서는 제목·분류로
- * 흩어져 있고, 여기서는 "고칠 수 있는 항목 넷"으로 나란히 선다.
+ * 차량 정보(번호판·제조사·모델·연식) 수정
+ * 주행거리 제외 — 감소 금지 규칙이 붙어 엔드포인트가 따로고 쓰는 순간도 다름
+ * 닫힌 동안에는 값 4개를 그대로 표시. 머리말에도 같은 값이 있지만 거기서는 제목·분류로 흩어져 있음
  */
 export function VehicleInfoForm({
   vehicle,
@@ -45,7 +41,7 @@ export function VehicleInfoForm({
 
       <CardContent>
         {open ? (
-          // 칸이 열리고 안쪽 내용이 0.12s 늦게 들어온다. 닫을 때는 연출하지 않는다.
+          // 칸이 열리고 안쪽 내용은 0.12s 지연. 닫을 때는 연출 없음
           <div className="form-open">
             <div>
               <EditForm
@@ -78,7 +74,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
       <dt className="text-muted-foreground">{label}</dt>
-      {/* min-w-0 + truncate: 긴 모델명 한 줄이 라벨을 밀어내지 않게 한다. */}
+      {/* min-w-0 + truncate — 긴 모델명이 라벨을 밀어내지 않게 */}
       <dd className="min-w-0 truncate text-right text-strong">{value}</dd>
     </div>
   )
@@ -93,7 +89,7 @@ function EditForm({
   onUpdated: (vehicle: VehicleResponse) => void
   onCancel: () => void
 }) {
-  // 숫자도 문자열로 들고 있는다. 입력 도중의 빈 문자열을 숫자로 표현할 방법이 없다.
+  // 숫자도 문자열 보관 — 입력 도중의 빈 문자열을 숫자로 표현할 수 없음
   const [plateNumber, setPlateNumber] = useState(vehicle.plateNumber)
   const [manufacturer, setManufacturer] = useState(vehicle.manufacturer)
   const [modelName, setModelName] = useState(vehicle.modelName)
@@ -107,8 +103,7 @@ function EditForm({
     event.preventDefault()
     setError(null)
 
-    // 바뀐 필드만 담는다. 백엔드가 "보낸 필드만 변경"이라 안 바뀐 값을 같이 보낼 이유가 없고,
-    // 번호판을 그대로 다시 보내면 중복 검사를 한 번 더 돌게 만든다.
+    // 바뀐 필드만. 번호판을 그대로 다시 보내면 중복 검사가 한 번 더 돎
     const request: VehicleUpdateRequest = {}
     if (plateNumber !== vehicle.plateNumber) request.plateNumber = plateNumber
     if (manufacturer !== vehicle.manufacturer) request.manufacturer = manufacturer
@@ -117,7 +112,7 @@ function EditForm({
       request.modelYear = Number(modelYear)
     }
 
-    // 아무것도 안 바꿨으면 요청을 보내지 않는다. 빈 PATCH 는 서버가 할 일이 없다.
+    // 변경이 없으면 요청 생략
     if (Object.keys(request).length === 0) {
       onCancel()
       return
@@ -128,7 +123,7 @@ function EditForm({
     try {
       onUpdated(await updateVehicle(vehicle.id, request))
     } catch (caught) {
-      // 409 는 같은 번호판을 이미 등록한 경우. 소유자별 유니크라 남의 차량은 걸리지 않는다.
+      // 409 = 내가 이미 등록한 번호판. 소유자별 유니크라 남의 차량은 안 걸림
       setError(
         caught instanceof ApiError ? caught.message : '차량 정보 수정에 실패했습니다.',
       )
@@ -172,9 +167,9 @@ function EditForm({
       </div>
 
       {/*
-        required 를 뺐다. 연식이 없는 차량(등록 API 에 @NotNull 이 붙기 전 데이터)은 이 칸이
-        비어서 시작하는데, required 면 **모르는 연식을 지어내야만 제조사 오타를 고칠 수 있었다.**
-        비워 두면 request 에 안 담기고, 부분 수정에서 "안 보냄"은 "그대로 둠"이다.
+        required 제외. 연식이 없는 차량(@NotNull 이전 데이터)은 이 칸이 비어서 시작하는데,
+        required 면 모르는 연식을 지어내야만 제조사 오타를 고칠 수 있음
+        비워 두면 request 에 안 담기고, 부분 수정에서 "안 보냄"은 "그대로 둠"
       */}
       <Field label="연식" htmlFor="edit-model-year" hint="비워 두면 바꾸지 않습니다">
         <Input

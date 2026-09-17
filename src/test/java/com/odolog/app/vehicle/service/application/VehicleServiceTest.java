@@ -139,7 +139,7 @@ class VehicleServiceTest {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
 
-        // 번호판을 지금과 같은 값으로 보낸다. 자기 자신을 빼지 않고 검사하면 여기서 409 가 난다.
+        // 번호판을 같은 값으로 전송. 자기를 빼지 않고 검사하면 409
         vehicleService.update(1L, 10L, new VehicleUpdateRequest("12가3456", "기아", null, null));
 
         verify(vehicleRepository, never()).existsByOwnerIdAndPlateNumber(any(), any());
@@ -179,7 +179,7 @@ class VehicleServiceTest {
 
         vehicleService.delete(1L, 10L);
 
-        // 자식(정비 이력·주유 기록)이 전부 먼저, 차량이 마지막.
+        // 자식(정비·주유) 먼저, 차량 마지막
         InOrder order = inOrder(maintenanceRecordRepository, fuelRecordRepository, vehicleRepository);
         order.verify(maintenanceRecordRepository).deleteByVehicleId(10L);
         order.verify(fuelRecordRepository).deleteByVehicleId(10L);

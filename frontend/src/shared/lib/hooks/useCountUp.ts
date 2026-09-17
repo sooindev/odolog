@@ -1,23 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * 숫자가 직전 값에서 새 값으로 굴러간다.
- *
- * 처음 그릴 때는 움직이지 않는다. 아무 일도 없었는데 움직이는 셈이고, 화면을 열 때마다
- * 0부터 세면 값을 읽기까지 기다려야 한다. 값이 실제로 바뀌었을 때만 움직인다.
- * 그때는 그 움직임 자체가 "얼마나 올랐는지"를 말해 준다.
- *
- * 지속 시간은 변화 폭에 비례시킨다. 10km 와 20,000km 가 같은 시간이면 작은 변화는
- * 굼뜨고 큰 변화는 순식간에 지나간다.
- *
- * running 은 글자 폭 때문에 돌려준다. 매 프레임 값이 바뀌는 동안 글자 폭이 다르면
- * 숫자가 떨려서, 움직이는 동안에만 tabular-nums 를 붙인다.
+ * 직전 값에서 새 값으로 굴러가는 숫자
+ * 첫 렌더에서는 정지 — 0 부터 세면 값을 읽기까지 기다려야 함. 값이 실제로 바뀐 순간에만 동작
+ * 지속 시간은 변화 폭에 비례. 10km 와 20,000km 가 같은 시간이면 작은 변화는 굼뜸
+ * running 은 글자 폭용 — 매 프레임 폭이 다르면 떨려서 움직이는 동안만 tabular-nums
  */
 export function useCountUp(target: number): { value: number; running: boolean } {
   const [value, setValue] = useState(target)
   const [running, setRunning] = useState(false)
 
-  // 직전에 떠 있던 값. 첫 렌더에서는 target 과 같아서 아무 일도 일어나지 않는다.
+  // 직전 값. 첫 렌더에서는 target 과 같아 무동작
   const fromRef = useRef(target)
 
   useEffect(() => {
@@ -26,7 +19,7 @@ export function useCountUp(target: number): { value: number; running: boolean } 
       return
     }
 
-    // 1,000 당 약 0.1초, 0.45~1.4초 사이로 묶는다.
+    // 1,000 당 약 0.1초, 0.45~1.4초로 제한
     const distance = Math.abs(target - from)
     const duration = Math.min(1400, Math.max(450, (distance / 1000) * 100 + 400))
 
@@ -35,7 +28,7 @@ export function useCountUp(target: number): { value: number; running: boolean } 
 
     function tick(now: number) {
       const progress = Math.min(1, (now - start) / duration)
-      // ease-out quart. CSS 의 ease-apple 과 같은 성격이라 한 몸으로 보인다.
+      // ease-out quart. CSS 의 ease-apple 과 같은 성격
       const eased = 1 - (1 - progress) ** 4
 
       setValue(Math.round(from + (target - from) * eased))
@@ -48,10 +41,9 @@ export function useCountUp(target: number): { value: number; running: boolean } 
       }
     }
 
-    // effect 안에서 동기적으로 setState 하지 않는다. 렌더가 한 번 더 돌고
-    // oxlint react(set-state-in-effect) 에 걸린다. 첫 프레임에서 시작한다.
+    // effect 안에서 동기 setState 금지 — 렌더가 한 번 더 돌고 린터에 걸림. 첫 프레임에서 시작
     frame = requestAnimationFrame((now) => {
-      // 연출을 끈 사용자에게는 결과만 준다.
+      // 연출을 끈 사용자에게는 결과만
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         fromRef.current = target
         setValue(target)
