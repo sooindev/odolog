@@ -171,11 +171,15 @@ function EditForm({
         </Field>
       </div>
 
-      <Field label="연식" htmlFor="edit-model-year">
+      {/*
+        required 를 뺐다. 연식이 없는 차량(등록 API 에 @NotNull 이 붙기 전 데이터)은 이 칸이
+        비어서 시작하는데, required 면 **모르는 연식을 지어내야만 제조사 오타를 고칠 수 있었다.**
+        비워 두면 request 에 안 담기고, 부분 수정에서 "안 보냄"은 "그대로 둠"이다.
+      */}
+      <Field label="연식" htmlFor="edit-model-year" hint="비워 두면 바꾸지 않습니다">
         <Input
           id="edit-model-year"
           type="number"
-          required
           min={1900}
           max={2100}
           className="tabular-nums"

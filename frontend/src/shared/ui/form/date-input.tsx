@@ -17,8 +17,22 @@ function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate()
 }
 
+function todayParts() {
+  const now = new Date()
+  return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() }
+}
+
+/**
+ * 'YYYY-MM-DD' 를 쪼갠다. 빈 값이나 깨진 값이면 오늘로 돌린다.
+ *
+ * <p>네이티브 date 입력은 사용자가 지우면 빈 문자열을 준다. 그 상태로 화면을 돌리거나
+ * 태블릿을 키보드에서 빼면 휠이 그 값을 받는데, 그대로 두면 NaN 이 화면에 찍힌다.
+ */
 function parse(value: string) {
   const [year, month, day] = value.split('-').map(Number)
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return todayParts()
+  }
   return { year, month, day }
 }
 
@@ -48,7 +62,18 @@ function DateWheel({
   onChange: (value: string) => void
 }) {
   const [open, setOpen] = useState(false)
+  const wheelRef = useRef<HTMLDivElement>(null)
   const { year, month, day } = parse(value)
+
+  /*
+   * 펼쳐진 휠이 화면 밖이면 아무 일도 안 일어난 것처럼 보인다. 정비 폼은 필드가 다섯 개라
+   * 맨 아래 날짜 칸에서 누르면 실제로 그렇게 된다.
+   * block: 'nearest' — 이미 보이면 가만두고, 잘렸을 때만 그만큼만 따라간다.
+   */
+  useEffect(() => {
+    if (!open) return
+    wheelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [open])
 
   const thisYear = new Date().getFullYear()
   const years = Array.from({ length: YEARS_BACK + 1 }, (_, i) => thisYear - YEARS_BACK + i)
@@ -74,7 +99,7 @@ function DateWheel({
         // 정비 폼이 펼쳐질 때와 같은 연출. 닫을 때는 연출하지 않는다.
         <div className="form-open">
           <div>
-            <div className="relative mt-2 flex border border-border bg-fill">
+            <div ref={wheelRef} className="relative mt-2 flex border border-border bg-fill">
               {/* 가운데 선택 띠. 칸들 뒤에 깔고 pointer-events 를 꺼서 스크롤을 막지 않는다. */}
               <div
                 aria-hidden="true"
@@ -187,7 +212,13 @@ function WheelColumn({
       aria-label={label}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className="flex-1 snap-y snap-mandatory overflow-y-scroll outline-none [scrollbar-width:none] focus-visible:ring-[3px] focus-visible:ring-ring/15 [&::-webkit-scrollbar]:hidden"
+      /*
+       * overscroll-contain 이 핵심이다. 없으면 칸을 끝까지 굴렸을 때 남은 관성이 바깥
+       * 페이지로 넘어가(scroll chaining) 화면이 통째로 스크롤된다 — 폼 중간에서 날짜를
+       * 고르다 화면이 저 아래로 날아간다. 네이티브 스크롤을 쓰면 관성·스냅은 공짜로 얻지만
+       * **연쇄만은 명시적으로 꺼야 한다.**
+       */
+      className="flex-1 snap-y snap-mandatory overflow-y-scroll overscroll-contain outline-none [scrollbar-width:none] focus-visible:ring-[3px] focus-visible:ring-ring/15 [&::-webkit-scrollbar]:hidden"
       style={{ height: VISIBLE * ITEM_HEIGHT, paddingBlock: PAD }}
     >
       {values.map((entry) => (
@@ -227,6 +258,10 @@ export function DateInput({
   id: string
   value: string
   onChange: (value: string) => void
+  /**
+   * 네이티브 date 입력에만 붙는다. 사용자가 값을 지울 수 있는 건 그쪽뿐이라
+   * 막을 것도 그쪽뿐이다 — 휠은 join() 이 언제나 완전한 날짜를 만들어 빈 값이 될 수 없다.
+   */
   required?: boolean
 }) {
   // 초기값을 effect 에서 setState 로 채우면 첫 프레임에 네이티브 입력이 보였다가 휠로

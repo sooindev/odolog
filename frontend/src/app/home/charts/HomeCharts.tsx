@@ -101,7 +101,9 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
           </summary>
           {/* 열이 5개라 좁은 화면에서는 넘친다. 표는 가로 스크롤을 허용하는 예외다 —
               글이 담긴 열을 좁히는 것보다 옆으로 미는 편이 읽기 낫다. */}
-          <div className="mt-4 overflow-x-auto">
+          {/* overscroll-x-contain: iOS 사파리에서 가로 스크롤이 끝에 닿으면 뒤로가기
+              제스처로 넘어갈 수 있다. 표를 밀다가 화면이 바뀌면 안 된다. */}
+          <div className="mt-4 overflow-x-auto overscroll-x-contain">
             <table className="w-full min-w-[26rem] text-[0.8125rem]">
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
