@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { cn } from 'cn'
 import { controlClassName } from '@/shared/ui/form/control'
-import { formatDate } from '@/shared/lib/format/format'
+import { formatDate, todayString } from '@/shared/lib/format/format'
 
 /** 한 칸 높이(px). 스크롤 위치 ↔ 선택 인덱스 변환의 기준 */
 const ITEM_HEIGHT = 40
@@ -258,6 +258,8 @@ export function DateInput({
         id={id}
         type="date"
         required={required}
+        // 휠은 미래 년도를 아예 안 만든다. 이쪽도 같은 선을 그어야 기기마다 다르게 동작하지 않음
+        max={todayString()}
         className={controlClassName}
         value={value}
         onChange={(event) => onChange(event.target.value)}

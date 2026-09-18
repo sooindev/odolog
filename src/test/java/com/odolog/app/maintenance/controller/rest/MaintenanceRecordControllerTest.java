@@ -70,6 +70,37 @@ class MaintenanceRecordControllerTest {
 
 
     @Test
+    @DisplayName("미래 날짜로 정비 이력을 등록하면 400")
+    void registerFutureDateRejected() throws Exception {
+        // 날짜를 잘못 치면 그 기록이 목록 맨 위에 고정되고 다음 정비 시점까지 그 값으로 계산된다
+        MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
+                ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.now().plusDays(1));
+
+        mockMvc.perform(post("/api/vehicles/10/maintenance-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("오늘 날짜는 통과한다")
+    void registerTodayAccepted() throws Exception {
+        MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
+                ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.now());
+
+        when(maintenanceRecordService.register(anyLong(), anyLong(), any(MaintenanceRecordRegisterRequest.class)))
+                .thenReturn(new MaintenanceRecord(null, ServiceType.ENGINE_OIL, "정기 교체",
+                        50000, 40000, LocalDate.now()));
+
+        mockMvc.perform(post("/api/vehicles/10/maintenance-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     @DisplayName("경로 변수 타입이 안 맞으면 500이 아니라 400")
     void invalidPathVariableType() throws Exception {
         // MethodArgumentTypeMismatchException 핸들러 검증

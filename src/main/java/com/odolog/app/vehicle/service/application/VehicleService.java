@@ -89,7 +89,13 @@ public class VehicleService {
     @Transactional
     public Vehicle updateOdometer(Long requesterId, Long vehicleId, UpdateOdometerRequest request) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
-        vehicle.updateOdometer(request.odometer());
+
+        // 기본은 감소 금지. force 를 실어야만 정정 경로로 간다
+        if (request.forced()) {
+            vehicle.correctOdometer(request.odometer());
+        } else {
+            vehicle.updateOdometer(request.odometer());
+        }
 
         return vehicle;
     }

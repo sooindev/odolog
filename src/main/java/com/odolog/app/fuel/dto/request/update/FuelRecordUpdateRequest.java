@@ -3,6 +3,7 @@ package com.odolog.app.fuel.dto.request.update;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 /** 부분 수정이라 전부 nullable — 보낸 필드만 변경 */
 public record FuelRecordUpdateRequest(
 
+        @PastOrPresent
         LocalDate fueledAt,
 
         @PositiveOrZero

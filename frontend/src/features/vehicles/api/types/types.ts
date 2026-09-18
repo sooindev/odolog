@@ -23,6 +23,11 @@ export interface VehicleUpdateRequest {
 
 export interface UpdateOdometerRequest {
   odometer: number
+  /**
+   * 감소를 허용할지. 안 보내면 서버가 막음
+   * 계기판 교체·자리수 오타 정정에만 실어 보냄 — 실수로 낮추는 것은 그대로 걸려야 함
+   */
+  force?: boolean
 }
 
 export interface VehicleResponse {

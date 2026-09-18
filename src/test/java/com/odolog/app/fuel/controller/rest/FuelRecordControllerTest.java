@@ -106,6 +106,20 @@ class FuelRecordControllerTest {
     }
 
     @Test
+    @DisplayName("미래 날짜로 주유를 등록하면 400")
+    void registerFutureDateRejected() throws Exception {
+        // 드럼 휠은 미래 년도를 아예 안 만들지만 네이티브 date 와 API 는 그대로 받고 있었다
+        String tomorrow = LocalDate.now().plusDays(1).toString();
+
+        mockMvc.perform(post("/api/vehicles/10/fuel-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fueledAt\":\"" + tomorrow
+                                + "\",\"odometer\":10500,\"liters\":25,\"totalCost\":50000}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("주유량 소수점이 셋째 자리까지 가면 400")
     void registerTooManyDecimals() throws Exception {
         mockMvc.perform(post("/api/vehicles/10/fuel-records")

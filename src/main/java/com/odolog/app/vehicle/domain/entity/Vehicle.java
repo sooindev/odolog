@@ -76,6 +76,15 @@ public class Vehicle extends BaseTimeEntity {
     }
 
     /**
+     * 정정. 감소도 그대로 반영
+     * 계기판 교체와 자리수 오타를 위한 경로 — 둘 다 "지금 계기판이 이 값"이 진실
+     * updateOdometer 와 나눠 둔 이유 — 실수로 낮추는 것은 여전히 막고, 낮추려면 의도를 밝혀야 함
+     */
+    public void correctOdometer(int odometer) {
+        this.odometer = odometer;
+    }
+
+    /**
      * 기록 따라 올리기. 작으면 무시
      * updateOdometer 와 달리 예외 없음 — 과거 기록을 뒤늦게 넣는 것이 정상적인 사용
      */

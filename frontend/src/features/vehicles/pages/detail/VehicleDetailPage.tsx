@@ -224,12 +224,32 @@ function OdometerForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+
+    const next = Number(odometer)
+
+    /*
+     * 낮추는 것은 기본적으로 막혀 있다. 다만 막기만 하면 자리수를 잘못 넣었을 때
+     * 되돌릴 방법이 아예 없어진다 — 기록을 고쳐도 차량 값은 따라 내려오지 않기 때문이다.
+     * 계기판 교체도 실제로 일어나는 일이라, 묻고 나서 force 를 실어 보낸다.
+     */
+    let force = false
+    if (next < vehicle.odometer) {
+      const confirmed = window.confirm(
+        `현재 기록된 ${formatKm(vehicle.odometer)} 보다 낮습니다.\n` +
+          '계기판을 교체했거나 잘못 입력한 값을 고치는 경우에만 진행하세요.',
+      )
+      if (!confirmed) {
+        return
+      }
+      force = true
+    }
+
     setPending(true)
 
     try {
-      onUpdated(await updateOdometer(vehicle.id, { odometer: Number(odometer) }))
+      onUpdated(await updateOdometer(vehicle.id, { odometer: next, force }))
     } catch (caught) {
-      // 감소 시 409. 현재 값을 같이 보여줘야 무엇이 잘못됐는지 앎
+      // 409 는 다른 탭에서 값이 오른 경우. 현재 값을 같이 보여줘야 무엇이 잘못됐는지 앎
       const message =
         caught instanceof ApiError && caught.status === 409
           ? `${caught.message} (현재 ${formatKm(vehicle.odometer)})`

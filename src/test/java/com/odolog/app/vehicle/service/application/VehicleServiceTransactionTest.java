@@ -57,7 +57,7 @@ class VehicleServiceTransactionTest {
     @Test
     @DisplayName("updateOdometer 는 save() 호출 없이 dirty checking 으로 DB 까지 반영된다")
     void updateOdometerIsFlushedToDatabase() {
-        vehicleService.updateOdometer(ownerId, vehicleId, new UpdateOdometerRequest(45000));
+        vehicleService.updateOdometer(ownerId, vehicleId, new UpdateOdometerRequest(45000, null));
 
         // 서비스 트랜잭션이 끝난 뒤 새로 읽기. readOnly 였다면 UPDATE 가 안 나가 0 이 남음
         assertThat(vehicleRepository.findById(vehicleId).orElseThrow().getOdometer())

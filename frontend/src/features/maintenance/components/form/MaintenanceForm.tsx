@@ -178,7 +178,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         <Textarea
           id="description"
           rows={2}
-          maxLength={200}
+          maxLength={255}
           placeholder="교체한 부품, 정비소 이름 등"
           value={description}
           onChange={(event) => setDescription(event.target.value)}

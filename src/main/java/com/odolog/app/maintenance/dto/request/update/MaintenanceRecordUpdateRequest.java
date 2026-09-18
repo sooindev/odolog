@@ -1,6 +1,7 @@
 package com.odolog.app.maintenance.dto.request.update;
 
 import com.odolog.app.maintenance.domain.type.ServiceType;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
@@ -19,6 +20,7 @@ public record MaintenanceRecordUpdateRequest(
         @PositiveOrZero
         Integer serviceOdometer,
 
+        @PastOrPresent
         LocalDate serviceDate
 ) {
 }

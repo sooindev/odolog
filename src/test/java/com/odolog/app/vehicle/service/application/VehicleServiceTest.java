@@ -115,8 +115,44 @@ class VehicleServiceTest {
         vehicle.updateOdometer(50000);
         when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
 
-        assertThatThrownBy(() -> vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(40000)))
+        assertThatThrownBy(() -> vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(40000, null)))
                 .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    @DisplayName("force 를 실으면 주행거리를 낮출 수 있다")
+    void updateOdometerForcedDecrease() {
+        Vehicle vehicle = createVehicle(10L, createOwner(1L));
+        vehicle.updateOdometer(5000000);
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+
+        // 자리수를 잘못 넣은 뒤 고치는 경로. 이게 없으면 되돌릴 방법이 아예 없다
+        vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(500000, true));
+
+        assertThat(vehicle.getOdometer()).isEqualTo(500000);
+    }
+
+    @Test
+    @DisplayName("force 가 false 면 여전히 감소를 막는다")
+    void updateOdometerForceFalseStillBlocks() {
+        Vehicle vehicle = createVehicle(10L, createOwner(1L));
+        vehicle.updateOdometer(50000);
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+
+        assertThatThrownBy(() -> vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(40000, false)))
+                .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    @DisplayName("force 를 실어도 증가는 그대로 동작한다")
+    void updateOdometerForcedIncrease() {
+        Vehicle vehicle = createVehicle(10L, createOwner(1L));
+        vehicle.updateOdometer(50000);
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+
+        vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(60000, true));
+
+        assertThat(vehicle.getOdometer()).isEqualTo(60000);
     }
 
     @Test
