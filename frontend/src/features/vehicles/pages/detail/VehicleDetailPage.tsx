@@ -122,8 +122,15 @@ export function VehicleDetailPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-10">
-          {/* key 가 바뀌면 React 가 새로 만들어 다음 정비 시점 재계산 */}
-          <NextServiceCard key={maintenanceVersion} vehicleId={vehicle.id} />
+          {/*
+            key 가 바뀌면 React 가 새로 만들어 다음 정비 시점 재계산
+
+            ⚠️ key 에 접두사가 붙어 있는 이유. 세 버전 값이 모두 0 에서 시작하는데,
+            숫자만 쓰면 이 열의 형제 셋이 같은 key 를 갖는다. React 는 같은 부모 안에서
+            key 로 자식을 짝짓기 때문에 그 순간 엉뚱한 컴포넌트를 재사용하거나 남겨 둔다 —
+            주유 기록을 수정했을 때 연비 카드가 둘로 보이던 원인이 이것이다.
+          */}
+          <NextServiceCard key={`next-service-${maintenanceVersion}`} vehicleId={vehicle.id} />
 
           <MaintenanceSection
             vehicleId={vehicle.id}
@@ -137,7 +144,7 @@ export function VehicleDetailPage() {
           />
 
           <FuelSummaryCard
-            key={fuelVersion}
+            key={`fuel-summary-${fuelVersion}`}
             vehicleId={vehicle.id}
             onChanged={() => {
               setFuelVersion((current) => current + 1)
@@ -146,7 +153,7 @@ export function VehicleDetailPage() {
           />
 
           <FuelSection
-            key={fuelListVersion}
+            key={`fuel-list-${fuelListVersion}`}
             vehicleId={vehicle.id}
             currentOdometer={vehicle.odometer}
             onChanged={() => {

@@ -166,6 +166,7 @@ Phase 6 이후에 기능이 더 붙었다.
 | 빠진 기록 감지 | 평소보다 긴 구간을 중앙값으로 찾아 알려 준다 + 과거 기록 입력 안내 | 2026-09-17 |
 | 점검 결함 3건 수정 | 주행거리 정정 경로, 미래 날짜 차단, 정비 메모 길이 | 2026-09-18 |
 | 평균 연비 오염 수정 | 불가능한 구간을 평균에서 빼고 뺀 개수를 알린다 | 2026-09-18 |
+| 연비 카드 중복 수정 | 형제 `key` 충돌. 아래 트러블슈팅 참고 | 2026-09-18 |
 
 Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않는다.
 
@@ -223,8 +224,8 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 백엔드(IntelliJ `OdoLogApplication`)와 프론트(`cd frontend && npm run dev`)를 함께 띄우고
 `http://localhost:5173` 에서 확인한다.
 
-아래는 요약이다. **항목별로 "무엇을 봐야 하는지"까지 쪼갠 155개짜리 전체 목록은
-`CLAUDE.md` 의 Phase 6** 에 있다 (준비 6 · 기능 한 바퀴 109 · 폭 22 · 테마 10 · 접근성 8).
+아래는 요약이다. **항목별로 "무엇을 봐야 하는지"까지 쪼갠 156개짜리 전체 목록은
+`CLAUDE.md` 의 Phase 6** 에 있다 (준비 6 · 기능 한 바퀴 110 · 폭 22 · 테마 10 · 접근성 8).
 
 기능:
 
@@ -352,6 +353,49 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 배포(서버 인프라, 도메인, CI/CD)는 이 프로젝트의 범위 밖이며, **로컬에서 완전히 동작하는 것**까지가 목표다.
 
 ## 트러블슈팅
+
+### 주유 기록을 수정하면 연비 카드가 두 개로 보인다
+
+차량 상세에서 주유 기록을 수정하고 저장하면 `연비` 카드가 화면에 둘 나타났다.
+새로고침하면 하나로 돌아왔다.
+
+**원인**: 오른쪽 열의 형제 셋이 **같은 `key` 를 갖고 있었다.**
+
+```tsx
+const [maintenanceVersion, setMaintenanceVersion] = useState(0)
+const [fuelVersion, setFuelVersion] = useState(0)
+const [fuelListVersion, setFuelListVersion] = useState(0)
+
+<NextServiceCard  key={maintenanceVersion} />   // 0
+<MaintenanceSection />
+<FuelSummaryCard  key={fuelVersion} />          // 0  ← 충돌
+<FuelSection      key={fuelListVersion} />      // 0  ← 충돌
+```
+
+이 앱은 "다시 계산시켜야 하는 카드"를 `key` 를 바꿔 재생성하는 방식으로 갱신한다.
+그런데 버전 값이 전부 `0` 에서 시작하다 보니, 같은 부모 안의 세 자식이 같은 key 를 갖게 됐다.
+React 는 **같은 부모 안에서 key 로 자식을 짝짓기** 때문에 이 상태에서 어느 컴포넌트를
+재사용할지가 어긋난다. 주유 기록을 수정해 `fuelVersion` 만 `0 → 1` 이 되는 순간
+짝이 밀리면서 카드가 둘로 남았다.
+
+브라우저 콘솔에 아래 경고가 함께 떠 있었다.
+
+```
+Warning: Encountered two children with the same key, `0`.
+Keys should be unique so that components maintain their identity across updates.
+```
+
+**해결**: key 에 접두사를 붙여 형제 사이에서 유일하게 만들었다.
+
+```tsx
+<NextServiceCard  key={`next-service-${maintenanceVersion}`} />
+<FuelSummaryCard  key={`fuel-summary-${fuelVersion}`} />
+<FuelSection      key={`fuel-list-${fuelListVersion}`} />
+```
+
+**`key` 를 재생성 장치로 쓸 때는 값이 아니라 "형제 사이에서 유일한 문자열"이어야 한다.**
+숫자 카운터를 그대로 쓰면 서로 다른 컴포넌트의 카운터가 같은 값에서 만나는 순간 충돌한다.
+타입 검사·린트·빌드는 이걸 잡지 못한다 — 화면을 봐야만 드러난다.
 
 ### `@EnableJpaAuditing` 을 어디에 두느냐로 테스트가 두 번 깨졌다
 
