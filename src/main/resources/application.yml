@@ -18,6 +18,19 @@ spring:
         format_sql: true
         default_batch_fetch_size: 100
 
+# 세션 쿠키 속성을 명시한다. 브라우저 기본값(SameSite=Lax)에 기대지 않는 이유는
+# 그 기본값이 브라우저마다·버전마다 달라서다. secure 는 로컬이 http 라 켜지 않는다 —
+# 배포할 때 켜야 하고, 그러면 SameSite=None 조합도 함께 따져야 한다.
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+
+# ⚠️ 아래 두 줄은 개발 전용이다.
+# bind: trace 는 쿼리에 들어가는 값을 전부 찍는다 — 이메일·닉네임·전화번호와
+# BCrypt 해시가 그대로 로그에 남는다. 배포 환경에서는 반드시 꺼야 한다.
 logging:
   level:
     org.hibernate.SQL: debug

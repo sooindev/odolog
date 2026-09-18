@@ -62,4 +62,6 @@ export interface FuelSummaryResponse {
   resetPointId: number | null
   /** 평소보다 긴 구간 수 = 기록을 빼먹었을 가능성 */
   longSegmentCount: number
+  /** 물리적으로 불가능해서 평균에서 뺀 구간 수. 뺐으면 화면이 말해야 함 */
+  excludedSegmentCount: number
 }

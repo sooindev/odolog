@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 하는 일은 순서 결정뿐 — 리포지토리를 직접 부르면 남의 테이블 구조를 알게 됨
  */
 @Service
+@Transactional(readOnly = true)
 public class AccountWithdrawalService {
 
     private final UserService userService;

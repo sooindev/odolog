@@ -104,6 +104,17 @@ export function FuelSummaryCard({
         )}
 
         {/*
+          물리적으로 불가능한 구간은 평균에서 뺐다. 말없이 빼면 그것도 거짓말이라 개수를 밝힌다
+          목록에서는 그 행에 "확인 필요"가 붙어 있어 어느 기록인지 찾아갈 수 있다
+        */}
+        {data.excludedSegmentCount > 0 && (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            계산할 수 없는 구간 {data.excludedSegmentCount}곳을 평균에서 뺐습니다. 목록에서 `확인
+            필요` 가 붙은 기록의 주행거리나 주유량을 확인해 주세요.
+          </p>
+        )}
+
+        {/*
           기록 누락 가능성. 한 번 안 적으면 그 구간 거리가 두 배가 되고 연비도 두 배가 되어 평균에 섞임
           말해 주면 빠진 기록을 채워 넣게 되고 그러면 저절로 맞아짐
         */}

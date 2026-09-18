@@ -135,7 +135,7 @@ public class FuelRecordService {
 
         return new FuelSummaryResponse(records.size(), totalCost, totalLiters,
                 efficiency.distance(), efficiency.average(), latestId, resetPointId,
-                FuelAnomaly.longSegmentCount(records));
+                FuelAnomaly.longSegmentCount(records), efficiency.excludedSegments());
     }
 
 
