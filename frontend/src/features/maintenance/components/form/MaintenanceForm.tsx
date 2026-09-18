@@ -166,6 +166,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
           <Input
             id="cost"
             type="number"
+            required
             min={0}
             className="tabular-nums"
             value={cost}
@@ -174,7 +175,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         </Field>
       </div>
 
-      <Field label="메모" htmlFor="description" hint="최대 200자">
+      <Field label="메모" htmlFor="description" hint="선택">
         <Textarea
           id="description"
           rows={2}
