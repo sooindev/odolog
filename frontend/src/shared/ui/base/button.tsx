@@ -21,11 +21,20 @@ const buttonVariants = cva(
         destructive: "text-destructive hover:bg-destructive/10",
         link: "px-0 text-strong underline-offset-4 hover:underline",
       },
+      /*
+       * ⚠️ 여기만 타입 스케일 토큰(text-body / text-caption)을 쓰지 않는다.
+       * cva 는 클래스를 이어 붙이기만 하고 충돌을 해결하지 않아서, 위 base 의
+       * text-[0.875rem] 과 여기의 크기가 **둘 다** 최종 class 에 남는다.
+       * 그러면 승자는 Tailwind 가 CSS 를 배치한 순서로 정해지는데,
+       * **토큰 유틸리티가 임의 값보다 먼저 배치된다** — 즉 토큰을 쓰면 base 의 14px 이 이겨
+       * size="lg" 버튼이 15px 이 아니라 14px 로 렌더된다(2026-09-19 에 실제로 그렇게 깨졌다).
+       * 임의 값끼리는 나중에 오는 쪽이 이기므로 여기서는 임의 값을 유지한다.
+       */
       size: {
         default: "h-11 px-6",
         xs: "h-7 px-3 text-xs",
-        sm: "h-8 px-3.5 text-caption",
-        lg: "h-13 px-8 text-body",
+        sm: "h-8 px-3.5 text-[0.8125rem]",
+        lg: "h-13 px-8 text-[0.9375rem]",
         icon: "size-10",
         "icon-xs": "size-7",
         "icon-sm": "size-8",
