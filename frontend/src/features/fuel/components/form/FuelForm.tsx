@@ -9,7 +9,7 @@ import { Textarea } from '@/shared/ui/base/textarea'
 import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
-import { todayString } from '@/shared/lib/format/format'
+import { formatKm, todayString } from '@/shared/lib/format/format'
 import {
   registerFuelRecord,
   updateFuelRecord,
@@ -60,6 +60,26 @@ export function FuelForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+
+    /*
+     * 등록 폼은 주행거리를 차량의 현재 값으로 미리 채운다. 계기판을 보고 고쳐 쓰라는 뜻인데,
+     * 그대로 두고 저장하면 **아무 계산도 일어나지 않는다**:
+     *   · 차량 주행거리는 liftOdometerTo 때문에 "지금까지 기록된 최댓값"이라 구간 거리가 0 →
+     *     이번 구간의 연비가 나오지 않는다
+     *   · liftOdometerTo 도 같은 값이면 올리지 않으므로 차량 쪽도 그대로다
+     * 막지는 않는다 — 주행거리를 정말 모르고 지출만 남기려는 경우도 있다. 대신 묻는다.
+     */
+    if (record === null && Number(odometer) === defaultOdometer) {
+      const confirmed = window.confirm(
+        `주행거리가 차량의 현재 값(${formatKm(defaultOdometer)})과 같습니다.\n` +
+          '이대로 저장하면 이번 구간의 연비가 계산되지 않고, 차량 주행거리도 올라가지 않습니다.\n\n' +
+          '계기판 숫자로 고치지 않고 계속할까요?',
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+
     setPending(true)
 
     try {
