@@ -93,7 +93,18 @@ export function VehicleDetailPage() {
         <div className="flex flex-col gap-8 lg:sticky lg:top-28 lg:self-start lg:gap-10">
           <OdometerHero odometer={vehicle.odometer} />
 
-          <OdometerForm vehicle={vehicle} onUpdated={setVehicle} />
+          {/*
+            ⚠️ key 로 차량 주행거리를 건다. 정비·주유를 기록하면 서버가 차량 쪽도 올리는데,
+            이 폼의 입력칸은 useState 초기값이라 **옛 값에 머문다.** 그대로 저장하면
+            감소 확인 창을 거쳐 주행거리가 되돌아갈 수 있다.
+            props 로 state 를 파생시키는 대신 값이 바뀌면 폼을 새로 만든다.
+            접두사는 형제 사이 key 충돌을 피하기 위한 것 — 숫자만 쓰면 다른 카운터와 만난다.
+          */}
+          <OdometerForm
+            key={`odometer-form-${vehicle.odometer}`}
+            vehicle={vehicle}
+            onUpdated={setVehicle}
+          />
 
           {/* setVehicle 을 그대로 전달 — 응답이 곧 최신 상태라 재조회 불필요
               머리말도 같은 객체를 보므로 함께 갱신됨 */}
