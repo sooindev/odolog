@@ -145,10 +145,17 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         <Field
           label="정비 시 주행거리 (km)"
           htmlFor="serviceOdometer"
+          /*
+            주유 폼과 같은 방식. 비었을 때를 맨 앞에 둔다 — 이 값은 다음 정비 시점의 재료라
+            없으면 그 종류의 주기 계산이 아예 안 된다.
+            required 가 저장을 막지만 브라우저 기본 문구는 왜 필요한지 말해 주지 않는다.
+          */
           hint={
-            looksPast
-              ? `차량에 기록된 ${defaultOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
-              : undefined
+            serviceOdometer === ''
+              ? '주행거리를 적지 않으면 다음 정비 시점을 계산할 수 없습니다.'
+              : looksPast
+                ? `차량에 기록된 ${defaultOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
+                : undefined
           }
         >
           <Input
