@@ -49,7 +49,13 @@ function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {
     <h2
       data-slot="card-title"
       className={cn(
-        "font-heading text-section text-strong",
+        /*
+         * ⚠️ 타입 스케일 토큰(text-section)을 쓸 수 없는 자리다.
+         * cn 은 커스텀 테마 이름을 **색 유틸리티로 오해**해서 text-strong 과 같은 그룹으로
+         * 묶고 하나만 남긴다 — 여기서는 크기·굵기·자간이 통째로 사라져 있었다.
+         * 임의 값은 크기로 정확히 인식하므로 토큰 값을 그대로 풀어 쓴다(--text-section 과 동일).
+         */
+        "font-heading text-[1.0625rem] leading-[1.35] font-semibold tracking-[-0.022em] text-strong",
         className
       )}
       {...props}

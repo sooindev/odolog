@@ -28,7 +28,8 @@ export function ErrorText({ message, className }: { message: string; className?:
     <p
       role="alert"
       className={cn(
-        'animate-alert border border-destructive/20 bg-destructive/[0.07] px-3.5 py-2.5 text-caption leading-relaxed text-destructive',
+        // 크기는 임의 값으로. cn 이 커스텀 토큰을 색으로 오해해 지운다 (card.tsx 주석 참고)
+        'animate-alert border border-destructive/20 bg-destructive/[0.07] px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-destructive',
         className,
       )}
     >
@@ -46,7 +47,7 @@ export function NoticeText({ message, className }: { message: string; className?
     <p
       role="status"
       className={cn(
-        'animate-alert border border-border bg-sunken px-3.5 py-2.5 text-caption leading-relaxed text-muted-foreground',
+        'animate-alert border border-border bg-sunken px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-muted-foreground',
         className,
       )}
     >
