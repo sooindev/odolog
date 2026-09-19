@@ -137,6 +137,8 @@ function EditForm({
       <Field label="번호판" htmlFor="edit-plate-number">
         <Input
           id="edit-plate-number"
+          // 수정을 누르면 번호판부터. 이 폼에서 가장 자주 고치는 값이다
+          autoFocus
           required
           maxLength={20}
           value={plateNumber}

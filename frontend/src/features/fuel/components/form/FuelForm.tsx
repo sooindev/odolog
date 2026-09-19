@@ -33,6 +33,14 @@ export function FuelForm({
   onSaved: () => void
   onCancel: () => void
 }) {
+  /*
+   * 폼이 열린 시점의 차량 주행거리를 붙잡아 둔다.
+   * props 를 그대로 쓰면 입력칸(state)은 열 때의 값인데 판정 기준만 최신으로 갱신되어,
+   * 폼이 열려 있는 동안 다른 카드에서 차량 값이 오르면 경고가 어긋난다.
+   * key 로 폼을 재생성하는 방법은 쓸 수 없다 — 입력 중인 내용이 날아간다.
+   */
+  const [baseOdometer] = useState(defaultOdometer)
+
   // 숫자도 문자열 보관 — 입력 도중의 빈 문자열을 숫자로 표현할 수 없음
   const [fueledAt, setFueledAt] = useState(record?.fueledAt ?? todayString())
   const [odometer, setOdometer] = useState(String(record?.odometer ?? defaultOdometer))
@@ -55,7 +63,7 @@ export function FuelForm({
   // 막지 않고 안내만 — 지난달 영수증 정리는 정상적인 사용이고 계기판 교체도 있음
   const odometerValue = Number(odometer)
   const looksPast =
-    odometer !== '' && Number.isFinite(odometerValue) && odometerValue < defaultOdometer
+    odometer !== '' && Number.isFinite(odometerValue) && odometerValue < baseOdometer
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -69,9 +77,9 @@ export function FuelForm({
      *   · liftOdometerTo 도 같은 값이면 올리지 않으므로 차량 쪽도 그대로다
      * 막지는 않는다 — 주행거리를 정말 모르고 지출만 남기려는 경우도 있다. 대신 묻는다.
      */
-    if (record === null && Number(odometer) === defaultOdometer) {
+    if (record === null && Number(odometer) === baseOdometer) {
       const confirmed = window.confirm(
-        `주행거리가 차량의 현재 값(${formatKm(defaultOdometer)})과 같습니다.\n` +
+        `주행거리가 차량의 현재 값(${formatKm(baseOdometer)})과 같습니다.\n` +
           '이대로 저장하면 이번 구간의 연비가 계산되지 않고, 차량 주행거리도 올라가지 않습니다.\n\n' +
           '계기판 숫자로 고치지 않고 계속할까요?',
       )
@@ -129,13 +137,15 @@ export function FuelForm({
             odometer === ''
               ? '주행거리를 적지 않으면 연비를 계산할 수 없습니다.'
               : looksPast
-                ? `차량에 기록된 ${defaultOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
+                ? `차량에 기록된 ${baseOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
                 : '계기판 숫자. 이 값이 차량 주행거리보다 크면 차량 쪽도 함께 올라갑니다.'
           }
         >
           <Input
             id="fuel-odometer"
             type="number"
+            // 폼을 열면 여기부터 고친다. 날짜는 오늘로 채워져 있고, 계기판 값이 이 폼의 첫 할 일이다
+            autoFocus
             required
             min={0}
             className="tabular-nums"

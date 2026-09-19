@@ -181,7 +181,12 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
               page={data.page}
               totalPages={data.totalPages}
               hasNext={data.hasNext}
-              onChange={setPage}
+              /* 수정 중인 행이 이 페이지에 없어지므로 폼을 닫는다. 이전 에러도 함께 지운다 */
+              onChange={(next) => {
+                setPage(next)
+                setEditing('closed')
+                setActionError(null)
+              }}
             />
           </>
         )}

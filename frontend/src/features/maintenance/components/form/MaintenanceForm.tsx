@@ -32,6 +32,14 @@ interface Props {
 }
 
 export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, onCancel }: Props) {
+  /*
+   * 폼이 열린 시점의 차량 주행거리를 붙잡아 둔다.
+   * props 를 그대로 쓰면 입력칸(state)은 열 때의 값인데 판정 기준만 최신으로 갱신되어,
+   * 폼이 열려 있는 동안 다른 카드에서 차량 값이 오르면 경고가 어긋난다.
+   * key 로 폼을 재생성하는 방법은 쓸 수 없다 — 입력 중인 내용이 날아간다.
+   */
+  const [baseOdometer] = useState(defaultOdometer)
+
   const [type, setType] = useState<ServiceType>(record?.type ?? 'ENGINE_OIL')
   const [description, setDescription] = useState(record?.description ?? '')
   const [cost, setCost] = useState(String(record?.cost ?? 0))
@@ -48,7 +56,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   const looksPast =
     serviceOdometer !== '' &&
     Number.isFinite(odometerValue) &&
-    odometerValue < defaultOdometer
+    odometerValue < baseOdometer
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -105,6 +113,8 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
           <div className="relative">
             <select
               id="type"
+              // 폼을 열면 종류부터 고른다. 나머지 칸은 기본값이 쓸 만하게 채워져 있다
+              autoFocus
               // appearance-none — OS 기본 화살표 제거. 색을 못 바꿔 테마와 따로 놀아서
               // 같은 톤의 화살표를 직접 얹음
               className={cn(controlClassName, 'appearance-none pr-10')}
@@ -154,7 +164,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
             serviceOdometer === ''
               ? '주행거리를 적지 않으면 다음 정비 시점을 계산할 수 없습니다.'
               : looksPast
-                ? `차량에 기록된 ${defaultOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
+                ? `차량에 기록된 ${baseOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
                 : undefined
           }
         >

@@ -216,13 +216,23 @@ function OdometerHero({ odometer }: { odometer: number }) {
   return (
     <div className="flex flex-col gap-4 border-b border-border pb-8">
       <p className="text-eyebrow text-muted-foreground uppercase">Odometer</p>
+      {/*
+        굴러가는 숫자는 aria-hidden 으로 가린다. 매 프레임 값이 바뀌므로 그대로 읽히게 두면
+        스크린리더가 지나가는 숫자를 수십 번 읽는다.
+        대신 아래에 확정된 값만 aria-live 로 한 번 알린다 — 주행거리가 올랐다는 사실은
+        화면에서는 움직임이 나르지만, 소리로는 아무 일도 없던 자리였다.
+      */}
       <p
+        aria-hidden="true"
         className={`flex items-baseline gap-3 text-display text-strong ${
           running ? 'tabular-nums' : ''
         }`}
       >
         {formatNumber(value)}
         <span className="text-eyebrow text-muted-foreground uppercase">km</span>
+      </p>
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        주행거리 {formatKm(odometer)}
       </p>
     </div>
   )
