@@ -99,10 +99,18 @@ export function FuelForm({
         <Field
           label="주행거리 (km)"
           htmlFor="fuel-odometer"
+          /*
+            도움말이 상태에 따라 셋으로 갈린다. 비었을 때를 맨 앞에 두는 이유 —
+            주행거리는 이 앱에서 연비의 재료이지 기록의 장식이 아니다.
+            required 가 저장을 막아 주기는 하지만, 브라우저 기본 문구("이 입력란을
+            작성하세요")는 **왜 필요한지** 말해 주지 않는다. 그 이유를 여기서 말한다.
+          */
           hint={
-            looksPast
-              ? `차량에 기록된 ${defaultOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
-              : '계기판 숫자. 이 값이 차량 주행거리보다 크면 차량 쪽도 함께 올라갑니다.'
+            odometer === ''
+              ? '주행거리를 적지 않으면 연비를 계산할 수 없습니다.'
+              : looksPast
+                ? `차량에 기록된 ${defaultOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
+                : '계기판 숫자. 이 값이 차량 주행거리보다 크면 차량 쪽도 함께 올라갑니다.'
           }
         >
           <Input
