@@ -107,7 +107,7 @@ function StatTiles({ data }: { data: HomeData }) {
               굵기도 낮춤. 굵게 키우면 숫자가 뭉쳐 보임 */}
           <dd className="flex items-baseline gap-1.5 text-[clamp(2rem,1.2rem+3.2vw,2.75rem)] leading-[0.95] font-light tracking-[-0.045em] text-strong">
             {value}
-            <span className="text-[0.8125rem] font-normal tracking-normal text-muted-foreground">
+            <span className="text-caption font-normal tracking-normal text-muted-foreground">
               {unit}
             </span>
           </dd>
@@ -134,7 +134,7 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                 className="flex items-center justify-between gap-4 transition-opacity duration-200 ease-apple hover:opacity-70"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <p className="truncate text-[0.9375rem] tracking-[-0.01em] text-strong">
+                  <p className="truncate text-body text-strong">
                     {line.manufacturer} {line.modelName}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
@@ -147,7 +147,7 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <p className="text-[0.9375rem] tabular-nums text-strong">
+                  <p className="text-body tabular-nums text-strong">
                     {formatKm(line.odometer)}
                   </p>
                   <p className="text-xs tabular-nums text-muted-foreground">
@@ -183,7 +183,7 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
                 className="flex items-start justify-between gap-4 py-5 first:pt-0 last:pb-0"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <p className="text-[0.9375rem] tracking-[-0.01em] text-strong">
+                  <p className="text-body text-strong">
                     {item.type === null ? '주유' : SERVICE_TYPE_LABELS[item.type]}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
@@ -195,7 +195,7 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <p className="text-[0.9375rem] tabular-nums text-strong">
+                  <p className="text-body tabular-nums text-strong">
                     {formatWon(item.cost)}
                   </p>
                   <p className="text-xs tabular-nums text-muted-foreground">

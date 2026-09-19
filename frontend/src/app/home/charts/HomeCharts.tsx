@@ -94,14 +94,14 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
         {/* 마우스를 올려야만 보이는 값은 키보드·스크린리더 사용자에게 없는 것이나 같다.
             <details> 는 접기/펴기와 키보드 조작을 브라우저가 해 준다. */}
         <details className="group">
-          <summary className="w-fit cursor-pointer list-none text-[0.8125rem] text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70">
+          <summary className="w-fit cursor-pointer list-none text-caption text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70">
             표로 보기
           </summary>
           {/* 열이 5개라 좁은 화면에서는 넘침. 표는 가로 스크롤 허용 예외 —
               글이 담긴 열을 좁히는 것보다 옆으로 미는 편이 나음 */}
           {/* overscroll-x-contain — iOS 사파리는 가로 스크롤이 끝에 닿으면 뒤로가기 제스처로 넘어감 */}
           <div className="mt-4 overflow-x-auto overscroll-x-contain">
-            <table className="w-full min-w-[26rem] text-[0.8125rem]">
+            <table className="w-full min-w-[26rem] text-caption">
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
                   <th scope="col" className="pb-2 font-medium">
@@ -196,7 +196,7 @@ function MonthColumn({
       <div
         className={`pointer-events-none absolute bottom-full z-20 mb-2 hidden border border-border bg-background px-2.5 py-1.5 whitespace-nowrap group-hover:block group-focus-visible:block ${align}`}
       >
-        <p className="text-[0.8125rem] font-medium tabular-nums text-strong">
+        <p className="text-caption font-medium tabular-nums text-strong">
           {formatWon(entry.cost)}
         </p>
         <p className="text-[0.6875rem] tabular-nums text-muted-foreground">
@@ -204,7 +204,7 @@ function MonthColumn({
         </p>
         {/* 구성은 표에도 있음. 말풍선은 정보를 보태는 장치지 감췄다 보여주는 장치가 아님 */}
         {entry.cost > 0 && (
-          <p className="text-[0.6875rem] tabular-nums text-faint">
+          <p className="text-[0.6875rem] tabular-nums text-muted-foreground">
             정비 {formatWon(entry.maintenanceCost)} · 주유 {formatWon(entry.fuelCost)}
           </p>
         )}
@@ -238,13 +238,13 @@ export function TypeCostChart({ byType }: { byType: TypeCost[] }) {
             {byType.map((entry, index) => (
               <li key={entry.type} className="flex flex-col gap-2">
                 <div className="flex items-baseline justify-between gap-4">
-                  <span className="text-[0.9375rem] tracking-[-0.01em] text-strong">
+                  <span className="text-body text-strong">
                     {SERVICE_TYPE_LABELS[entry.type]}
                     <span className="ml-2 text-xs tabular-nums text-muted-foreground">
                       {entry.count}건
                     </span>
                   </span>
-                  <span className="shrink-0 text-[0.8125rem] tabular-nums text-strong">
+                  <span className="shrink-0 text-caption tabular-nums text-strong">
                     {formatWon(entry.cost)}
                   </span>
                 </div>

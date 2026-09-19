@@ -67,7 +67,7 @@ export function VehicleListPage() {
                   <p className="truncate text-section text-strong">
                     {vehicle.manufacturer} {vehicle.modelName}
                   </p>
-                  <p className="text-[0.8125rem] text-muted-foreground">
+                  <p className="text-caption text-muted-foreground">
                     {vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
                   </p>
                 </div>
@@ -79,7 +79,7 @@ export function VehicleListPage() {
                   <p className="hidden text-eyebrow text-faint uppercase sm:block">Odometer</p>
                   <p className="text-figure tabular-nums text-strong">
                     {formatNumber(vehicle.odometer)}
-                    <span className="ml-1.5 text-[0.8125rem] tracking-normal text-muted-foreground">
+                    <span className="ml-1.5 text-caption tracking-normal text-muted-foreground">
                       km
                     </span>
                   </p>

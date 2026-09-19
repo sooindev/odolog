@@ -116,7 +116,7 @@ export function VehicleDetailPage() {
             {actionError !== null && <ErrorText message={actionError} />}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-[0.8125rem] text-muted-foreground">
+              <p className="text-caption text-muted-foreground">
                 삭제하면 정비 이력과 주유 기록도 함께 사라집니다.
               </p>
               <Button

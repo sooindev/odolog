@@ -82,8 +82,8 @@ function Highlights() {
       {HIGHLIGHTS.map(({ Icon, title, body }) => (
         <div key={title} className="flex flex-col gap-4 bg-background p-8">
           <Icon className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
-          <h2 className="text-[0.9375rem] font-semibold tracking-[-0.01em] text-strong">{title}</h2>
-          <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">{body}</p>
+          <h2 className="text-body font-semibold tracking-[-0.01em] text-strong">{title}</h2>
+          <p className="text-caption leading-relaxed text-muted-foreground">{body}</p>
         </div>
       ))}
     </section>
@@ -97,7 +97,7 @@ function Preview() {
         <h2 className="text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)] leading-[1.1] font-semibold tracking-[-0.035em] text-strong">
           차 한 대의 기록이 한 화면에
         </h2>
-        <p className="max-w-md text-[0.9375rem] leading-relaxed text-muted-foreground">
+        <p className="max-w-md text-body leading-relaxed text-muted-foreground">
           주행거리와 연비, 다음 정비 시점, 지난 이력을 따로 찾아다닐 필요가 없습니다.
         </p>
       </div>
@@ -133,8 +133,8 @@ function Preview() {
               ['미션오일', '105,000km 또는 2030. 6. 2.'],
             ].map(([type, next]) => (
               <li key={type} className="flex items-baseline justify-between gap-4 py-3.5">
-                <span className="text-[0.9375rem] tracking-[-0.01em] text-strong">{type}</span>
-                <span className="text-right text-[0.8125rem] tabular-nums text-muted-foreground">
+                <span className="text-body text-strong">{type}</span>
+                <span className="text-right text-caption tabular-nums text-muted-foreground">
                   {next}
                 </span>
               </li>

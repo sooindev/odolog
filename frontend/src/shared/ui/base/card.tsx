@@ -37,9 +37,16 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+/*
+ * shadcn 원본은 div 지만 h2 로 바꿨다. 이 앱에서 카드 제목은 곧 구역 제목이고,
+ * 차량 상세 한 화면에만 카드가 여섯이다 — div 로 두면 스크린리더의 heading 목차에
+ * 제목이 h1 하나만 잡혀 화면 전체가 한 덩어리로 보인다.
+ * 레벨을 prop 으로 열지 않은 이유: 지금 CardTitle 열 곳이 전부 Page(h1) 직속이라
+ * h2 가 맞고, Section(h2) 안에 카드를 넣는 화면이 아직 없다. 생기면 그때 연다.
+ */
+function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return (
-    <div
+    <h2
       data-slot="card-title"
       className={cn(
         "font-heading text-section text-strong",

@@ -24,7 +24,7 @@ export function AuthLayout() {
         {/* 기능 설명은 랜딩 담당. 같은 목록이 두 곳이면 한쪽만 고치게 됨 */}
         <Link
           to="/"
-          className="inline-flex w-fit items-center gap-1.5 text-[0.8125rem] text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70"
+          className="inline-flex w-fit items-center gap-1.5 text-caption text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70"
         >
           오도로그가 하는 일
           <ArrowRight className="size-3.5" aria-hidden="true" />

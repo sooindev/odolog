@@ -81,7 +81,7 @@ function DateWheel({
         onClick={() => setOpen((current) => !current)}
       >
         <span className="tabular-nums">{formatDate(value)}</span>
-        <span className="text-[0.8125rem] text-muted-foreground">{open ? '완료' : '변경'}</span>
+        <span className="text-caption text-muted-foreground">{open ? '완료' : '변경'}</span>
       </button>
 
       {open && (

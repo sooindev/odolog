@@ -225,7 +225,7 @@ function WithdrawCard() {
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3">
             {/* min-w-0 — 글이 줄어들지 못하면 버튼을 아래로 밀어냄 */}
-            <p className="min-w-0 text-[0.8125rem] text-muted-foreground">
+            <p className="min-w-0 text-caption text-muted-foreground">
               탈퇴하면 같은 이메일로 다시 가입할 수 있지만, 기록은 복구되지 않습니다.
             </p>
             {/* 빨갛게 채우지 않음. 가장 하면 안 되는 일이 화면에서 가장 강한 요소가 됨 */}
@@ -262,8 +262,8 @@ function AppearanceCard() {
       */}
       <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-[0.9375rem] tracking-[-0.01em] text-strong">화면 모드</p>
-          <p className="text-[0.8125rem] text-muted-foreground">{detail}</p>
+          <p className="text-body text-strong">화면 모드</p>
+          <p className="text-caption text-muted-foreground">{detail}</p>
         </div>
         <ThemeToggle className="shrink-0" />
       </CardContent>

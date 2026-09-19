@@ -41,7 +41,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
         {!loading && error !== null && <ErrorText message={error} />}
 
         {!loading && error === null && results !== null && results.length === 0 && (
-          <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
+          <p className="text-caption leading-relaxed text-muted-foreground">
             아직 계산할 이력이 없습니다. 정비 이력을 등록하면 그 종류의 권장 주기로 다음 시점을
             알려 드립니다.
           </p>
@@ -60,7 +60,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
                 key={result.type}
                 className="grid grid-cols-[1fr_auto] items-baseline gap-x-6 gap-y-1.5 py-5 first:pt-0 last:pb-0 sm:grid-cols-[8rem_minmax(0,1fr)_auto]"
               >
-                <span className="text-[0.9375rem] font-medium tracking-[-0.015em] text-strong">
+                <span className="text-body font-medium tracking-[-0.015em] text-strong">
                   {SERVICE_TYPE_LABELS[result.type]}
                 </span>
 
@@ -68,7 +68,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
                   {describeLast(result)}
                 </span>
 
-                <span className="text-right text-[0.8125rem] tabular-nums text-foreground">
+                <span className="text-right text-caption tabular-nums text-foreground">
                   {describeNext(result)}
                 </span>
               </li>

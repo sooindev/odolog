@@ -91,7 +91,7 @@ export function FuelSummaryCard({
         {!loading && data !== null && (
           <>
             {data.averageEfficiency === null ? (
-              <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
+              <p className="text-caption leading-relaxed text-muted-foreground">
                 {data.resetPointId !== null
                   ? '연비를 초기화했습니다. 다음 주유 기록부터 다시 계산합니다.'
                   : data.recordCount < 2

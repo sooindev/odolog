@@ -33,7 +33,7 @@ export function Page({
         {back !== undefined && (
           <Link
             to={back.to}
-            className="-ml-1 inline-flex w-fit items-center gap-1 text-[0.8125rem] text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70"
+            className="-ml-1 inline-flex w-fit items-center gap-1 text-caption text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70"
           >
             <ChevronLeft className="size-3.5" aria-hidden="true" />
             {back.label}

@@ -54,6 +54,19 @@
   --text-lede--line-height: 1.65;
   --text-lede--letter-spacing: -0.011em;
 
+  /* 본문. 목록 행의 이름, 헤더 닉네임처럼 그냥 읽는 글 */
+  --text-body: 0.9375rem;
+  --text-body--letter-spacing: -0.01em;
+
+  /* 보조. 설명·날짜·부가 정보 — 본문 아래 한 단 */
+  --text-caption: 0.8125rem;
+
+  /*
+     위 둘에는 행간을 묶지 않는다. 화면에서 `leading-relaxed` 를 붙여 쓰는 자리가 있어서,
+     토큰에 행간을 넣으면 그 자리들이 한꺼번에 달라진다.
+     제목 계열과 달리 본문은 문단 길이에 따라 행간이 달라지는 게 자연스럽다.
+  */
+
   --color-background: var(--background);
 
   /* 글자 4단계. 앞의 셋은 두 테마 모두 WCAG AA(4.5:1) 통과

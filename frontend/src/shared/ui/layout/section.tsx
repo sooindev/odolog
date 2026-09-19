@@ -21,7 +21,7 @@ export function Section({
       <div className="flex flex-col gap-3">
         <h2 className="text-[0.875rem] font-semibold tracking-[-0.01em] text-strong">{title}</h2>
         {description !== undefined && (
-          <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">{description}</p>
+          <p className="text-caption leading-relaxed text-muted-foreground">{description}</p>
         )}
       </div>
       {/* min-w-0 — grid 자식은 내용보다 작아지지 않아 긴 값 하나가 열을 밀어냄 */}

@@ -34,7 +34,7 @@ export function Header() {
           className="flex shrink-0 items-center gap-2.5 transition-opacity duration-200 ease-apple hover:opacity-70"
         >
           <GaugeMark />
-          <span className="text-[0.9375rem] font-semibold tracking-[-0.03em] text-strong">오도로그</span>
+          <span className="text-body font-semibold tracking-[-0.03em] text-strong">오도로그</span>
         </Link>
 
         <div className="flex min-w-0 items-center gap-1.5">

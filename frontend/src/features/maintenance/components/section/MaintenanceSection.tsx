@@ -120,7 +120,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                     한 줄이면 종류와 날짜가 들어갈 폭이 100px 남짓 */}
                 <div className="flex min-w-0 flex-1 basis-full flex-col gap-1 sm:basis-auto">
                   <div className="flex items-baseline gap-2.5">
-                    <span className="text-[0.9375rem] font-medium tracking-[-0.01em] text-strong">
+                    <span className="text-body font-medium tracking-[-0.01em] text-strong">
                       {SERVICE_TYPE_LABELS[record.type]}
                     </span>
                     <span className="text-xs tabular-nums text-muted-foreground">
@@ -129,7 +129,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                   </div>
 
                   {record.description !== null && record.description !== '' && (
-                    <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
+                    <p className="text-caption leading-relaxed text-muted-foreground">
                       {record.description}
                     </p>
                   )}
@@ -138,10 +138,10 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                 {/* 수치는 별도 열로 빼 오른쪽 정렬
                     왼쪽에서 시작하면 자릿수가 다른 값들이 들쭉날쭉해 세로로 훑어 읽을 수 없음 */}
                 <div className="shrink-0 sm:text-right">
-                  <p className="text-[0.9375rem] tabular-nums text-strong">
+                  <p className="text-body tabular-nums text-strong">
                     {formatKm(record.serviceOdometer)}
                   </p>
-                  <p className="text-[0.8125rem] tabular-nums text-muted-foreground">
+                  <p className="text-caption tabular-nums text-muted-foreground">
                     {formatWon(record.cost)}
                   </p>
                 </div>

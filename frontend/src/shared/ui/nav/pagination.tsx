@@ -34,7 +34,7 @@ export function Pagination({
         <ChevronLeft />
       </Button>
 
-      <span className="min-w-16 text-center text-[0.8125rem] tabular-nums text-muted-foreground">
+      <span className="min-w-16 text-center text-caption tabular-nums text-muted-foreground">
         {page + 1} / {totalPages}
       </span>
 

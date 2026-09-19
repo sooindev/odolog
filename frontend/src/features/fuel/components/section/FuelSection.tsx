@@ -100,7 +100,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
             ))}
           </div>
         ) : data === null || data.items.length === 0 ? (
-          <p className="text-[0.8125rem] text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             아직 주유 기록이 없습니다. 두 번째 기록부터 연비가 계산됩니다.
           </p>
         ) : (
@@ -118,9 +118,10 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                             연비가 없는 이유는 둘 — 첫 기록이거나 기준점이거나
                             "—" 만 두면 왜 없는지 알 수 없어 이유를 명시
                           */
-                          <span className="text-[0.8125rem] text-muted-foreground">
+                          <span className="text-caption text-muted-foreground">
                             {record.resetPoint ? '연비 기준점' : '기준 기록'}
-                            <span className="ml-1 text-faint">· 다음 주유부터 계산</span>
+                            {/* 연비가 없는 이유를 말하는 문구라 faint 를 쓰지 않는다 — 대비 3.2 라 읽어야 하는 값에는 못 쓴다 */}
+                            <span className="ml-1 text-muted-foreground">· 다음 주유부터 계산</span>
                           </span>
                         ) : (
                           <span className="flex items-baseline gap-1.5">
@@ -136,12 +137,12 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                           </span>
                         )}
                       </div>
-                      <span className="text-[0.8125rem] text-muted-foreground">
+                      <span className="text-caption text-muted-foreground">
                         {formatDate(record.fueledAt)} · {formatKm(record.odometer)}
                         {record.distance !== null && ` · +${formatKm(record.distance)}`}
                       </span>
                       {record.memo !== null && record.memo !== '' && (
-                        <span className="truncate text-[0.8125rem] text-muted-foreground">
+                        <span className="truncate text-caption text-muted-foreground">
                           {record.memo}
                         </span>
                       )}
@@ -149,7 +150,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
 
                     <div className="flex flex-col items-end gap-1 tabular-nums">
                       <span className="text-strong">{record.liters.toFixed(2)} L</span>
-                      <span className="text-[0.8125rem] text-muted-foreground">
+                      <span className="text-caption text-muted-foreground">
                         {formatWon(record.totalCost)}
                       </span>
                     </div>
