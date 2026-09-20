@@ -2,24 +2,13 @@ import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import type { MonthlyCost, TypeCost } from '@/app/home/stats/homeStats'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { formatCompact, formatMonth, formatNumber, formatWon } from '@/shared/lib/format/format'
+import { niceMax } from '@/app/home/charts/niceMax'
 
 /*
  * 홈 차트 둘. 라이브러리 없이 HTML·CSS 로만
  * 계열이 하나라 색이 구분할 것이 없음 → 범례도 없음
  * 막대는 얇게, 눈금선은 1px 실선 (점선은 "예측"이나 "임계선"으로 읽힘)
  */
-
-/** 축 눈금을 1·2·5 × 10ⁿ 로. 1,873 으로 끝나는 축은 못 읽음 */
-function niceMax(value: number) {
-  if (value <= 0) return 1
-
-  const magnitude = 10 ** Math.floor(Math.log10(value))
-  const normalized = value / magnitude
-
-  const step = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10
-
-  return step * magnitude
-}
 
 export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
   const total = monthly.reduce((acc, entry) => acc + entry.cost, 0)

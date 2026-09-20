@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* 테스트 파일은 스캔에서 뺀다. 안 빼면 테스트가 적은 클래스 이름이 운영 CSS 에 섞인다 */
+@source not "./**/*.test.ts";
+@source not "./**/*.test.tsx";
+
 /* shadcn 기본값(&:is(.dark *))은 후손만 잡아 <html class="dark"> 자체가 빠짐 */
 @custom-variant dark (&:where(.dark, .dark *));
 
