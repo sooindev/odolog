@@ -3,6 +3,7 @@ package com.odolog.app.common.exception.handler;
 import com.odolog.app.common.dto.response.error.ErrorResponse;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.common.exception.type.ConflictException;
+import com.odolog.app.common.exception.type.TooManyRequestsException;
 import com.odolog.app.common.exception.type.ForbiddenAccessException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import org.hibernate.exception.ConstraintViolationException;
@@ -70,6 +71,12 @@ public class GlobalExceptionHandler {
         String message = "sort: 정렬할 수 없는 속성입니다 (%s)".formatted(e.getPropertyName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(message));
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyRequests(TooManyRequestsException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new ErrorResponse(e.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -95,6 +95,15 @@ export function LoginPage() {
             회원가입
           </Link>
         </p>
+
+        <p className="text-center text-caption text-muted-foreground">
+          <Link
+            to="/forgot-password"
+            className="transition-opacity duration-200 ease-apple hover:opacity-70"
+          >
+            비밀번호를 잊으셨나요?
+          </Link>
+        </p>
       </div>
     </Page>
   )

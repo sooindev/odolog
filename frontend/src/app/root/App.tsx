@@ -3,6 +3,8 @@ import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { AuthLayout } from '@/app/layout/AuthLayout'
 import { HomePage } from '@/app/home/HomePage'
 import { ProtectedRoute } from '@/app/routing/ProtectedRoute'
+import { ForgotPasswordPage } from '@/features/auth/pages/forgot-password/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/features/auth/pages/reset-password/ResetPasswordPage'
 import { Header } from '@/app/layout/Header'
 import { LoginPage } from '@/features/auth/pages/login/LoginPage'
 import { ProfilePage } from '@/features/auth/pages/profile/ProfilePage'
@@ -39,6 +41,8 @@ function App() {
             <Route element={<AuthLayout />}>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
             </Route>
 
             <Route element={<ProtectedRoute />}>

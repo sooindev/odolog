@@ -14,6 +14,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // 문서가 안내하는 npm run preview 가 실제로 동작하게 한다
+  // 빌드 산출물의 BASE_URL 은 '' 라 /api 로 나가고, 그걸 백엔드로 넘겨준다
+  preview: {
+    proxy: {
+      '/api': 'http://localhost:8080',
+    },
+  },
   test: {
     // useCountUp 이 requestAnimationFrame·matchMedia 를 씀. node 환경에는 없음
     environment: 'jsdom',

@@ -18,7 +18,8 @@ npm run dev     # http://localhost:5173
 |---|---|
 | `npm run dev` | 개발 서버 |
 | `npm run build` | 타입 검사(`tsc -b`) 후 프로덕션 빌드 |
+| `npm run test` | vitest (36개) |
 | `npm run lint` | oxlint |
-| `npm run preview` | 빌드 결과 미리보기 |
+| `npm run preview` | 빌드 결과 미리보기. `/api` 를 8080 으로 넘겨주므로 백엔드가 떠 있어야 한다 |
 
 프로젝트 전체 구조와 설계 결정은 저장소 루트의 `README.md`와 `CLAUDE.md` 참고.

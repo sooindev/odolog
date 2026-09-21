@@ -162,7 +162,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
 10. **로그인한 사용자 식별은 세션에서만 한다.** 요청 바디나 URL의 사용자 ID는 클라이언트가
     조작할 수 있으므로 신뢰하지 않는다 (`SessionConst.LOGIN_USER_ID`).
 11. **예외는 의미에 맞는 상태 코드로 세분화한다**: 400(입력 검증 실패) / 401(미인증) /
-    403(권한 없음) / 404(리소스 없음) / 409(리소스 중복). 서버 쪽 불변식이 깨진 경우
+    403(권한 없음) / 404(리소스 없음) / 409(리소스 중복) / 429(시도 과다). 서버 쪽 불변식이 깨진 경우
     (예: 세션엔 있는데 DB엔 없는 사용자)는 일부러 핸들러를 만들지 않고 500으로 흘려보내
     로그에 남긴다 — 모든 예외를 친절한 응답으로 감쌀 필요는 없다.
 12. **예외는 전용 타입으로 던진다.** `IllegalArgumentException` 같은 JDK 범용 예외를 핸들러에
@@ -439,6 +439,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │                                   컨테이너를 띄운다 — H2 로 바꾸면 ddl-auto 가 만드는
     │                                   스키마가 운영과 달라져 검증이 거짓말을 한다
     ├── .gitignore                      Gradle·IntelliJ·macOS 산출물 + .env
+    ├── LICENSE                         MIT
     ├── CLAUDE.md                       설계 결정·이유·체크리스트 (작업용)
     ├── HISTORY.md                      완료한 작업과 그 근거 (작업 일지)
     ├── README.md                       소개·실행법·API 개요·트러블슈팅 (공개용)
@@ -463,11 +464,16 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     ├── user/  ────────────────────────────── 회원가입·로그인·프로필
     │   ├── domain/
     │   │   └── entity/
-    │   │       └── User.java                 @Entity(users). uk_users_email 유니크 제약.
-    │   │                                     changeNickname()/changePhone() — setter 없음
+    │   │       ├── User.java                 @Entity(users). uk_users_email 유니크 제약.
+    │   │       │                             changeNickname()/changePhone() — setter 없음
+    │   │       └── PasswordResetToken.java   @Entity. **원본이 아니라 SHA-256 해시를 저장한다** —
+    │   │                                     DB 가 새어도 그것만으로 남의 비밀번호를 못 바꾼다.
+    │   │                                     한 번 쓰면 used_at 이 찍혀 죽는다
     │   ├── repository/
     │   │   └── jpa/
-    │   │       └── UserRepository.java       findByEmail, existsByEmail
+    │   │       ├── UserRepository.java       findByEmail, existsByEmail
+    │   │       └── PasswordResetTokenRepository.java
+    │   │                                     findByTokenHash, deleteByUserId(재발급·탈퇴 공용)
     │   ├── dto/
     │   │   ├── request/
     │   │   │   ├── signup/
@@ -485,13 +491,23 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │       └── profile/
     │   │           └── UserResponse.java     from() 팩토리. password는 절대 담지 않음
     │   ├── service/
+    │   │   ├── mail/
+    │   │   │   └── PasswordResetMailer.java  링크는 백엔드가 아니라 **프런트 주소**를 가리킨다 —
+    │   │   │                                 토큰을 받아 입력받는 것은 화면의 일이다
     │   │   └── application/
+    │   │       ├── PasswordResetService.java request(메일 발송) / confirm(비밀번호 교체).
+    │   │       │                             **없는 주소도 조용히 성공**시킨다 — 응답이 갈리면
+    │   │       │                             그게 가입 여부 조회 API 가 된다.
+    │   │       │                             메일 발송 실패도 삼키고 로그로만 남긴다(같은 이유)
     │   │       └── UserService.java          signUp(중복 체크·BCrypt), login(사유 통일),
     │   │                                     findById, updateProfile(널 아닌 필드만),
     │   │                                     verifyPassword(되돌릴 수 없는 동작 앞의 관문 —
     │   │                                     changePassword 와 탈퇴가 공유), changePassword, delete
     │   └── controller/
     │       └── rest/
+    │           ├── PasswordResetController.java
+    │           │                             POST·PATCH /api/users/password-reset (둘 다 204).
+    │           │                             **로그인하지 않은 사람이 쓰는 유일한 쓰기 경로**
     │           └── UserController.java       POST /api/users, /login(+changeSessionId),
     │                                         /logout(204), GET·PATCH /api/users/me,
     │                                         PATCH /api/users/me/password(204)
@@ -616,7 +632,17 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │
     ├── account/  ─────────────────────────── 조율 층 ①. **여러 기능을 동시에 알아도 되는 자리**
     │   │                                     (프론트의 app/ 과 같은 성격 — 아래 "의존 방향" 참고).
-    │   │                                     이쪽은 **순서를 조율한다** — 그래서 서비스를 주입받는다
+    │   │                                     계정 전체에 걸친 동작 둘이 여기 있다. **거울상이다** —
+    │   │                                     한쪽은 전부 지우고(탈퇴) 한쪽은 전부 가져간다(내보내기).
+    │   │                                     그래서 주입받는 것도 다르다: 지우는 쪽은 순서를 조율해야
+    │   │                                     해서 서비스를, 내보내는 쪽은 원본만 필요해 리포지토리를
+    │   ├── dto/response/export/AccountExportResponse.java
+    │   │                                     차량 밑에 이력을 중첩한다 — 평평하게 내보내면 어느 기록이
+    │   │                                     어느 차의 것인지 우리 DB 안에서만 뜻이 있는 id 로만 안다.
+    │   │                                     **계산값(연비·단가)과 비밀번호 해시는 담지 않는다**
+    │   ├── service/application/AccountExportService.java
+    │   │                                     export(ownerId, exportedAt) — 쿼리 3번.
+    │   │                                     "언제" 를 밖에서 받는다(테스트에서 고정하려고)
     │   ├── dto/request/withdraw/WithdrawRequest.java
     │   │                                     비밀번호 @NotBlank. 체크박스로 대신하지 않는다 —
     │   │                                     그건 실수만 막고 본인 확인이 아니다
@@ -624,6 +650,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     withdraw(비밀번호 확인 → 차량·이력 → 사용자).
     │   │                                     순서만 정하고 실제 삭제는 각 기능이 한다
     │   └── controller/rest/AccountController.java
+    │                                         GET /api/users/me/export,
     │                                         DELETE /api/users/me(204) + 세션 invalidate.
     │                                         **URL 은 users 인데 패키지는 account** — UserController
     │                                         에 두면 user 가 account 를 알게 되어 순환이다.
@@ -651,6 +678,15 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │
     └── common/  ──────────────────────────── 기능 어디에도 속하지 않는 공통 인프라
         ├── auth/
+        │   ├── ratelimit/LoginAttemptLimiter.java
+        │   │                                 비밀번호 대입 방어. 10분 안에 10번 실패하면 10분 잠금.
+        │   │                                 **계정이 없어도 센다** — 없는 이메일만 빨리 답하면
+        │   │                                 그 자체가 존재 여부를 알려준다. 인메모리라 재시작하면 잊는다
+        │   ├── csrf/CsrfTokenFilter.java     쿠키의 토큰과 헤더의 토큰을 비교(double submit).
+        │   │                                 세션 보관 방식을 안 쓴 이유는 토큰을 내주려면 세션이
+        │   │                                 필요해져 비로그인 방문자에게도 세션이 생기기 때문.
+        │   │                                 **테스트에서는 꺼 둔다** — @WebMvcTest 가 Filter 빈을
+        │   │                                 같이 올려서 기존 쓰기 테스트가 전부 403 이 된다
         │   ├── annotation/LoginUser.java     @Target(PARAMETER) 커스텀 애노테이션
         │   ├── resolver/LoginUserArgumentResolver.java
         │   │                                 세션 LOGIN_USER_ID → Long 주입. 없으면 401
@@ -660,6 +696,12 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │                                     createdAt/updatedAt 을 네 엔티티가 상속받는다.
         │                                     테이블을 만들지 않고 필드만 자식에 합쳐지므로
         │                                     컬럼 이름이 그대로다(ddl-auto 가 안 건드린다)
+        ├── validation/
+        │   ├── annotation/MaxBytes.java       UTF-8 바이트 상한. @Size 는 글자 수라
+        │   │                                  한글에서 3배로 벌어진다 — BCrypt 의 72바이트
+        │   │                                  상한을 @Size(max = 100) 이 못 막았다
+        │   └── validator/MaxBytesValidator.java
+        │                                      null 은 통과시킨다 — "비었는가"는 @NotBlank 의 몫
         ├── config/
         │   ├── web/WebConfig.java            ArgumentResolver 등록 + CORS(5173, credentials)
         │   ├── jpa/JpaAuditingConfig.java    @EnableJpaAuditing 스위치.
@@ -678,6 +720,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
             │                                   의존이 생긴다
             ├── type/                         예외 타입만 모아 둔다 (상태 코드 하나당 하나)
             │   ├── ConflictException.java              409 전용
+            │   ├── TooManyRequestsException.java       429 전용 (로그인 시도 제한)
             │   ├── AuthenticationFailedException.java  401 전용
             │   ├── ForbiddenAccessException.java       403 전용
             │   └── ResourceNotFoundException.java      404 전용
@@ -701,16 +744,43 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     src/main/resources/application.yml   MariaDB 접속(${DB_USERNAME}/${DB_PASSWORD}),
                                          ddl-auto=update, open-in-view=false.
                                          세션 쿠키 http-only + same-site=lax (브라우저 기본값에
-                                         기대지 않는다. secure 는 로컬이 http 라 꺼 둔다).
+                                         기대지 않는다). secure 는 ${SESSION_COOKIE_SECURE:false} —
+                                         로컬이 http 라 기본은 꺼짐이고 배포에서 환경변수로 켠다.
+                                         springdoc.swagger-ui.csrf 로 Swagger 가 토큰을 실어 보낸다
+                                         (없으면 문서에서 쓰기 요청을 못 쏜다).
+                                         spring.mail.* 은 재설정 메일용 — 자격증명은 DB 와 같이
+                                         환경변수로만 받는다. 안 넣으면 발송만 실패하고 앱은 뜬다.
+                                         odolog.app.base-url 은 메일 본문의 링크가 가리킬
+                                         **프런트** 주소다(백엔드가 아니다)
                                          **SQL 로깅은 개발 전용** — bind:trace 가 이메일·닉네임과
                                          BCrypt 해시까지 찍는다. 배포하면 반드시 꺼야 한다
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
-                                         계정이 이 스키마 전용이라 파일에 그대로 적혀 있음
+                                         계정이 이 스키마 전용이라 파일에 그대로 적혀 있음.
+                                         odolog.csrf.enabled=false — 켜 두면 @WebMvcTest 가 Filter 빈을
+                                         함께 올려 기존 쓰기 테스트 30여 개가 토큰 없이 403 이 된다.
+                                         spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
+                                         안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 147개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 188개.
 
     src/test/java/com/odolog/app/
+    ├── common/
+    │   └── auth/
+    │       ├── ratelimit/LoginAttemptLimiterTest.java
+    │       │                                   시계를 밖에서 넣는다 — 안에서 now() 를 부르면
+    │       │                                   잠금 만료를 테스트할 수 없다. 대소문자 우회도 본다
+    │       └── csrf/CsrfTokenFilterTest.java   필터를 직접 호출한다. @WebMvcTest 로 하면
+    │                                           Filter 빈이 같이 올라와 기존 테스트가 전부 403
     ├── user/
+    │   ├── repository/jpa/PasswordResetTokenRepositoryTest.java
+    │   │                                              @DataJpaTest — 해시 조회, 해시 유니크,
+    │   │                                              일괄 삭제. IDENTITY 라 save() 시점에 터진다
+    │   ├── service/application/PasswordResetServiceTest.java
+    │   │                                              Mockito — 없는 주소는 조용히, 저장은 해시로,
+    │   │                                              만료·재사용 거절, **메일 실패해도 성공**
+    │   ├── controller/rest/PasswordResetControllerTest.java
+    │   │                                              @WebMvcTest — 204/400/401/429.
+    │   │                                              가입 여부와 무관하게 같은 응답인지
     │   ├── repository/jpa/UserRepositoryTest.java      @DataJpaTest — save/findByEmail/
     │   │                                              existsByEmail + 이메일 유니크 위반 시
     │   │                                              올라오는 예외의 "모양" 고정
@@ -742,6 +812,9 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │                                               @WebMvcTest — 201/401/400(0L·누락·소수 3자리·
     │                                               미래 날짜), /summary 라우팅, 목록 페이지
     ├── account/
+    │   ├── service/application/AccountExportServiceTest.java
+    │   │                                           Mockito — 이력을 각 차량 밑으로 나누는지,
+    │   │                                           비밀번호 해시가 안 담기는지, 빈 계정
     │   ├── service/application/AccountWithdrawalServiceTest.java
     │   │                                           Mockito — 삭제 순서(InOrder),
     │   │                                           비밀번호 틀리면 아무것도 안 지움
@@ -777,6 +850,8 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 `api` 는 `endpoints/` 와 `types/` 로, `shared/ui` 는 성격별로.
 
     frontend/
+    ├── .nvmrc                        Node 26. Java 는 Gradle toolchain 이 박아 두는데
+    │                                 Node 는 고정하는 곳이 CI 뿐이었다
     ├── package.json                  스크립트: dev / build / test / lint / preview
     ├── package-lock.json             설치된 정확한 버전 고정 — 반드시 커밋
     ├── vite.config.ts                react + tailwindcss 플러그인, '@' → ./src 별칭.
@@ -808,7 +883,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         ├── env.d.ts                  import.meta.env 타입 선언
         │
         ├── app/  ──────────────────── 조립층. **여러 기능을 동시에 알아도 되는 유일한 자리**
-        │   ├── root/App.tsx          라우트 8개 정의 + Header 배치. 본문 폭 76rem
+        │   ├── root/App.tsx          라우트 10개 정의 + Header 배치. 본문 폭 76rem
         │   ├── routing/ProtectedRoute.tsx
         │   │                         로그인 안 했으면 /login으로. loading 중엔 대기
         │   ├── layout/
@@ -841,11 +916,19 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         │   │   │   └── provider/AuthProvider.tsx
         │   │   │                         세션 복구(/me 1회)·login·logout·401 핸들러 등록
         │   │   └── pages/
+        │   │       ├── forgot-password/ForgotPasswordPage.tsx
+        │   │       │                         재설정 링크 요청. **보냈는지 여부를 말하지 않는다** —
+        │   │       │                         "가입된 주소라면 보냈습니다" 하나로 끝낸다
+        │   │       ├── reset-password/ResetPasswordPage.tsx
+        │   │       │                         ?token= 을 읽어 새 비밀번호를 받는다. 토큰이 없으면
+        │   │       │                         폼 대신 안내. **성공해도 자동 로그인시키지 않는다**
         │   │       ├── login/LoginPage.tsx    401 → 폼 에러. 원래 가려던 곳으로 복귀
         │   │       ├── signup/SignUpPage.tsx  가입 후 이어서 로그인까지. 409 → 폼 에러
         │   │       └── profile/ProfilePage.tsx
-        │   │                                  Section 2개(계정 / 화면). 바뀐 필드만 PATCH.
-        │   │                                  null 걸러내는 겉 + 폼 2단 구조
+        │   │                                  Section 5개(계정 / 비밀번호 / 화면 / 내 기록 / 탈퇴).
+        │   │                                  바뀐 필드만 PATCH. null 걸러내는 겉 + 폼 2단 구조.
+        │   │                                  내보내기는 받아 온 JSON 을 Blob 으로 만들어 내려준다 —
+        │   │                                  <a href> 로 바로 받으면 세션·CSRF 헤더가 빠진다
         │   ├── vehicles/
         │   │   ├── components/
         │   │   │   └── info-form/VehicleInfoForm.tsx
@@ -886,6 +969,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         │
         └── shared/  ───────────────── 어느 기능에도 속하지 않는 것. 백엔드의 common과 같은 자리
             ├── api/
+            │   ├── client/client.test.ts BASE_URL 대비책과 네트워크 실패 변환을 고정한다
             │   ├── client/client.ts      fetch 래퍼. credentials:'include' / ApiError /
             │   │                         204 처리 / 401 전역 핸들러 등록 창구
             │   └── types/types.ts        PageResponse<T> / ErrorResponse 둘뿐.
@@ -1125,12 +1209,14 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 **Phase 2~5 에 흩어져 있던 "브라우저에서 확인" 네 줄을 여기로 합쳤다.** 같은 말이 네 군데
 있으면 어디까지 봤는지 알 수가 없다.
 
-### 볼 화면은 8개가 아니라 10개다
+### 볼 화면은 10개가 아니라 13개다
 
-라우트는 8개지만(`/` `/login` `/signup` `/vehicles` `/vehicles/new` `/vehicles/:vehicleId`
-`/me` `*`), **`/` 가 세 얼굴을 갖는다** — 비로그인 랜딩 / 로그인+0대 등록 권유 /
-로그인+차량 있음 통계. `*` 는 화면이 아니라 `/` 로 보내는 리다이렉트다.
-그래서 눈으로 볼 상태는 **10개**이고, 여기에 각 화면의 로딩·빈 상태·에러가 더 붙는다.
+라우트는 10개지만(`/` `/login` `/signup` `/forgot-password` `/reset-password` `/vehicles`
+`/vehicles/new` `/vehicles/:vehicleId` `/me` `*`), **`/` 가 세 얼굴을 갖는다** —
+비로그인 랜딩 / 로그인+0대 등록 권유 / 로그인+차량 있음 통계.
+`/forgot-password` 도 **보내기 전과 보낸 뒤 둘**이고, `/reset-password` 는 **토큰이 있을 때와
+없을 때 둘**이다. `*` 는 화면이 아니라 `/` 로 보내는 리다이렉트다.
+그래서 눈으로 볼 상태는 **13개**이고, 여기에 각 화면의 로딩·빈 상태·에러가 더 붙는다.
 
 ※ 프로필 경로는 `/profile` 이 아니라 **`/me`** 다.
 
@@ -1184,12 +1270,35 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] **B-06** `AuthLayout` — 왼쪽 문장 + "오도로그가 하는 일 →", **가운데 세로 괘선**,
       오른쪽 폼이 Card 안. 선 기준 좌우 여백이 **같아 보이는지**(둘 다 64px 로 맞춰 뒀다)
 - [ ] **B-07** eyebrow 가 **비어 있는지** — 로그인 전에는 아직 아무 데도 속하지 않는다
+- [ ] **B-07-1** ⚠️ **DevTools > Application > Cookies 에 `XSRF-TOKEN` 이 있는지.**
+      없으면 이후 모든 저장·삭제가 403 이 된다. `HttpOnly` 가 **체크 안 되어** 있어야 한다 —
+      화면이 읽어 헤더에 실어야 하는 값이다(`JSESSIONID` 는 반대로 체크돼 있어야 한다)
 - [ ] **B-08** 없는 계정으로 로그인 → 401 → **폼 안 인라인 에러**. 0.24s / 4px 로 **짧고 가깝게**
       나타나는지(다른 연출처럼 길게 감속하면 급한 소식으로 안 읽힌다)
+      → ⚠️ **백엔드를 끄고 로그인해 본다.** `서버에 연결하지 못했습니다…` 가 떠야 한다.
+        `로그인에 실패했습니다` 가 뜨면 옛 코드다 — 그러면 서버가 죽은 줄 모르고
+        비밀번호만 계속 다시 치게 된다
 
 #### 6-B-2. 가입과 세션
 
+- [ ] **B-08-1** 로그인 화면 아래 `비밀번호를 잊으셨나요?` → `/forgot-password` 로 가는지.
+      머리말이 다른 화면과 같은 자리·크기인지(`Page` 를 쓰는지), eyebrow 가 **비어 있는지**
+- [ ] **B-08-2** ⚠️ **없는 주소로 재설정 요청** → 에러가 아니라 **"가입된 주소라면 보냈습니다"**.
+      가입된 주소로 요청했을 때와 **화면이 똑같아야 한다** — 다르면 그게 가입 여부 조회가 된다
+- [ ] **B-08-3** 서버 로그에 재설정 링크가 찍히는지(메일 설정을 안 했다면 `발송 실패` ERROR).
+      `MAIL_USERNAME`/`MAIL_PASSWORD` 를 넣었다면 **실제 메일함**에 링크가 오는지
+- [ ] **B-08-4** 링크를 눌러 `/reset-password?token=…` → 새 비밀번호 두 칸.
+      **서로 다르게 넣으면 폼 안에서 막히는지**(서버로 안 보낸다)
+- [ ] **B-08-5** ⚠️ 변경 성공 → **자동 로그인되지 않고 `/login` 으로 가는지**.
+      메일 링크를 누른 사람이 곧 계정 주인이라고 믿지 않는다는 뜻이다.
+      **새 비밀번호로 로그인되고 옛 비밀번호로는 안 되는지**
+- [ ] **B-08-6** **같은 링크를 한 번 더** 누르고 저장 → `링크가 만료되었거나 이미 사용되었습니다`
+- [ ] **B-08-7** `token=` 없이 `/reset-password` 를 직접 열면 폼 대신 안내 + `다시 받기` 버튼인지
 - [ ] **B-09** `/signup` → 비밀번호 7자로 제출 → 400. 가입 폼도 인라인 에러인지
+      → 도움말이 `8자 이상 · 한글은 24자까지` 인지
+      → ⚠️ **한글 25자 비밀번호로 가입** → 500 이 아니라 **400 + 72바이트 안내**인지.
+        BCrypt 는 72바이트가 상한인데 `@Size` 는 글자 수라 한글에서 3배로 벌어진다.
+        한글 24자(=72바이트)는 **통과해야** 한다
 - [ ] **B-10** 정상 가입 → **이어서 로그인까지 자동으로** 되는지(가입 API 는 세션을 안 만든다)
 - [ ] **B-11** 헤더가 `닉네임 + 로그아웃` 으로 바뀌는지. 닉네임은 `max-w-24 truncate`
 - [ ] **B-12** **새로고침** → 로그인이 유지되는지.
@@ -1409,9 +1518,14 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] **B-100** '비밀번호' 구역 — 새 비밀번호 두 칸이 **서로 다르게** 입력되면 폼 안에서 막히는지
       (서버로 보내지 않는다. 확인란은 오타 방지 장치일 뿐이다)
 - [ ] **B-101** 새 비밀번호를 7자로 → 400. 가입 때와 같은 제한인지
+      → 한글 25자로도 → **400**. 가입만 막으면 가입으로 못 만드는 비밀번호가 변경으로 통과한다
 - [ ] **B-102** ⚠️ **현재 비밀번호를 틀리게 입력 → 401 이 폼 안에 뜨는데 로그아웃되지 않는지.**
       작업 중 실제로 냈던 버그다 — 전역 401 핸들러가 돌면 오타 한 번에 `/login` 으로 쫓겨난다
 - [ ] **B-103** 변경 성공 → 안내 문구 + **입력칸 3개가 비워지는지** + **로그인이 유지되는지**
+- [ ] **B-103-1** ⚠️ **비밀번호를 11번 연속 틀려 본다** → 11번째에 401 이 아니라
+      **429 + `로그인 시도가 너무 많습니다. 10분 후…`** 인지. 그 뒤 **올바른 비밀번호로도
+      막히는지**(잠긴 동안에는 맞혀도 안 들어간다). 다른 계정은 멀쩡한지.
+      → 확인했으면 앱을 재시작해 푼다 — 잠금은 인메모리라 재시작하면 사라진다
 - [ ] **B-104** 로그아웃 후 **새 비밀번호로** 로그인되는지. 옛 비밀번호로는 안 되는지
 - [ ] **B-105** 비밀번호 관리자를 쓴다면 '현재'와 '새것'을 구분해 채우는지(`autoComplete`)
 - [ ] **B-106** 로그아웃 → 헤더가 `로그인` 버튼으로 돌아가는지
@@ -1425,6 +1539,9 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       "주유 기록은 남겠지" 하고 누른 사용자가 유류비와 연비를 통째로 잃는다 →
       **이력과 주유 기록이 같이 사라졌는지 DB 로 확인**:
       `/opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SELECT COUNT(*) FROM maintenance_records; SELECT COUNT(*) FROM fuel_records;"`
+- [ ] **B-110-1** '내 기록' 구역에서 `JSON 내려받기` → `odolog-2026-09-21.json` 이 받아지는지.
+      열어서 **차량 밑에 정비·주유가 중첩**돼 있는지, **비밀번호 해시가 없는지**,
+      연비·단가 같은 계산값이 없는지(백업이라 원본만 담는다)
 - [ ] **B-111** '회원 탈퇴' 구역이 **접힌 채로** 시작하는지. 버튼이 빨갛게 **채워져 있지 않은지**
 - [ ] **B-112** 탈퇴에서 비밀번호를 **틀리게** → 401 이 폼 안에 뜨고 **로그인이 유지되는지**
 - [ ] **B-113** 탈퇴 성공 → `/` 로 이동하고 헤더가 로그아웃 상태인지.
@@ -1586,11 +1703,14 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 불가능한 연비가 평균을 오염시키지 않고, 뺐다는 사실을 밝힘 — B-71
 - [ ] 빠진 주유 기록을 평소 구간과 견줘 알려 줌 — B-72
 - [ ] 비밀번호 변경, 현재 비밀번호를 틀려도 로그아웃되지 않음 — B-101, B-102
+- [ ] 비밀번호를 잊어도 메일로 재설정할 수 있음 — B-08-2, B-08-5, B-08-6
+- [ ] 탈퇴 전에 기록을 JSON 으로 챙겨 갈 수 있음 — B-110-1
 - [ ] 회원 탈퇴 후 그 계정의 데이터가 남지 않음 — B-113, B-114
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (147개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (188개)
+- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (39개)
 
 ---
 
@@ -1620,12 +1740,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 로그인 실패 응답 시간이 계정 존재 여부에 따라 다르다
       → 이메일이 없으면 BCrypt 검증을 건너뛰어 빨리 답한다. 실패 메시지를 일부러 통일해 둔
         방침(user enumeration 방지)과 어긋나는 지점이라 언젠가 따져 볼 것.
-- [ ] **배포한다면 먼저 따질 것 셋** (2026-09-18 점검에서 확인. 로컬에서는 문제가 아니다)
-      → **CSRF 토큰이 없다.** 세션 쿠키 인증인데 Spring Security 를 안 써서 보호 장치가 없다.
-        지금은 CORS 가 `localhost:5173` 만 허용하고 쿠키가 `SameSite=Lax` 라 브라우저가 막아 준다.
-      → **로그인 시도 제한이 없다.** 브루트포스를 막는 것이 아무것도 없다.
-      → **쿠키에 `secure` 가 없다.** 로컬이 http 라 켜지 않았다 — HTTPS 로 올리면 켜야 하고,
-        그때 `SameSite=None` 조합까지 함께 따져야 한다(`application.yml` 주석 참고).
+- [x] ~~배포한다면 먼저 따질 것 셋~~ — **2026-09-21 완료.** CSRF(double submit 쿠키),
+      로그인 시도 제한(10분/10회), 쿠키 `secure`(환경변수 스위치). 자세한 내용은 `HISTORY.md` 에.
 
 **PWA 는 여기 없다** — 할지 말지를 눈 확인 뒤에 정하기로 해서 **6-G** 에 뒀다.
 

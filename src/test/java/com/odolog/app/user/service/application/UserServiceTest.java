@@ -2,7 +2,9 @@ package com.odolog.app.user.service.application;
 
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
+import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
 import com.odolog.app.user.domain.entity.User;
+import com.odolog.app.user.repository.jpa.PasswordResetTokenRepository;
 import com.odolog.app.user.dto.request.login.LoginRequest;
 import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
 import com.odolog.app.user.dto.request.signup.SignUpRequest;
@@ -30,6 +32,12 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Mock
+    private LoginAttemptLimiter loginAttemptLimiter;
 
     @InjectMocks
     private UserService userService;

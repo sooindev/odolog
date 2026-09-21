@@ -1,6 +1,9 @@
 import { api } from '@/shared/api/client/client'
 import type {
+  AccountExport,
   ChangePasswordRequest,
+  PasswordResetConfirmRequest,
+  PasswordResetRequest,
   LoginRequest,
   SignUpRequest,
   UpdateProfileRequest,
@@ -43,4 +46,19 @@ export function changePassword(request: ChangePasswordRequest) {
 // 204. 서버가 세션까지 끊으므로 로그아웃 호출 불필요
 export function withdraw(request: WithdrawRequest) {
   return api.del<void>('/api/users/me', request)
+}
+
+/** 탈퇴 전에 챙겨 갈 수 있어야 한다. 파일로 만드는 일은 화면이 한다 */
+export function exportAccount() {
+  return api.get<AccountExport>('/api/users/me/export')
+}
+
+// 204. 가입되지 않은 주소여도 똑같이 204 다 — 응답이 갈리면 가입 여부 조회가 된다
+export function requestPasswordReset(request: PasswordResetRequest) {
+  return api.post<void>('/api/users/password-reset', request)
+}
+
+// 204. 성공하면 그 토큰은 즉시 죽는다
+export function confirmPasswordReset(request: PasswordResetConfirmRequest) {
+  return api.patch<void>('/api/users/password-reset', request)
 }

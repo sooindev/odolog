@@ -6,7 +6,9 @@ import com.odolog.app.user.dto.request.login.LoginRequest;
 import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
 import com.odolog.app.user.dto.request.signup.SignUpRequest;
 import com.odolog.app.user.dto.request.profile.UpdateProfileRequest;
+import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
+import com.odolog.app.user.repository.jpa.PasswordResetTokenRepository;
 import com.odolog.app.user.repository.jpa.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,10 +20,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final LoginAttemptLimiter loginAttemptLimiter;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository,
+                       PasswordResetTokenRepository passwordResetTokenRepository,
+                       LoginAttemptLimiter loginAttemptLimiter) {
         this.userRepository = userRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.loginAttemptLimiter = loginAttemptLimiter;
     }
 
     @Transactional
@@ -37,14 +45,24 @@ public class UserService {
     }
 
     public User login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new AuthenticationFailedException("이메일 또는 비밀번호가 올바르지 않습니다."));
+        // 검증보다 먼저. 잠긴 동안에는 비밀번호를 맞혀도 들여보내지 않는다
+        loginAttemptLimiter.checkNotLocked(request.email());
 
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new AuthenticationFailedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        try {
+            User user = userRepository.findByEmail(request.email())
+                    .orElseThrow(() -> new AuthenticationFailedException("이메일 또는 비밀번호가 올바르지 않습니다."));
+
+            if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+                throw new AuthenticationFailedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            }
+
+            loginAttemptLimiter.recordSuccess(request.email());
+            return user;
+        } catch (AuthenticationFailedException e) {
+            // 없는 계정도 센다 — 존재하는 이메일에서만 잠기면 그게 곧 존재 여부 신호다
+            loginAttemptLimiter.recordFailure(request.email());
+            throw e;
         }
-
-        return user;
     }
 
     public User findById(Long userId) {
@@ -63,6 +81,9 @@ public class UserService {
 
     @Transactional
     public void delete(Long userId) {
+        // 재설정 토큰이 사용자를 참조한다. 안 지우면 FK 제약 위반
+        // 조율 층이 아니라 여기서 하는 이유는 토큰이 user 기능 안의 사정이기 때문
+        passwordResetTokenRepository.deleteByUserId(userId);
         userRepository.delete(findById(userId));
     }
 

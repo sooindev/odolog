@@ -10,10 +10,11 @@ import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
 import { Section } from '@/shared/ui/layout/section'
-import { changePassword } from '@/features/auth/api/endpoints/endpoints'
+import { changePassword, exportAccount } from '@/features/auth/api/endpoints/endpoints'
 import { useNavigate } from 'react-router'
 import { ErrorText, NoticeText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
+import { todayString } from '@/shared/lib/format/format'
 import { updateProfile } from '@/features/auth/api/endpoints/endpoints'
 import type { UpdateProfileRequest, UserResponse } from '@/features/auth/api/types/types'
 
@@ -47,6 +48,13 @@ export function ProfilePage() {
         <AppearanceCard />
       </Section>
 
+      <Section
+        title="내 기록"
+        description="차량·정비 이력·주유 기록을 JSON 파일 하나로 내려받습니다. 비밀번호는 담기지 않습니다."
+      >
+        <ExportCard />
+      </Section>
+
       {/* 되돌릴 수 없는 동작은 맨 아래. 위에 두면 스크롤할 때마다 지나침 */}
       <Section
         title="회원 탈퇴"
@@ -55,6 +63,51 @@ export function ProfilePage() {
         <WithdrawCard />
       </Section>
     </Page>
+  )
+}
+
+function ExportCard() {
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  async function handleExport() {
+    setError(null)
+    setPending(true)
+
+    try {
+      const data = await exportAccount()
+
+      // <a href> 로 바로 받지 않는 이유: 그 요청에는 fetch 래퍼가 붙지 않아
+      // 세션·CSRF 헤더가 빠진다. 받아 온 것을 파일로 만드는 편이 경로가 하나다
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+      )
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `odolog-${todayString()}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : '내보내기에 실패했습니다.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="min-w-0 text-caption text-muted-foreground">
+            탈퇴하면 기록은 복구되지 않습니다. 지우기 전에 받아 두세요.
+          </p>
+          <Button variant="secondary" onClick={handleExport} disabled={pending} className="shrink-0">
+            {pending ? '준비 중…' : 'JSON 내려받기'}
+          </Button>
+        </div>
+        {error !== null && <ErrorText message={error} />}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -112,13 +165,13 @@ function PasswordForm() {
           </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="새 비밀번호" htmlFor="new-password" hint="8자 이상">
+            <Field label="새 비밀번호" htmlFor="new-password" hint="8자 이상 · 한글은 24자까지">
               <Input
                 id="new-password"
                 type="password"
                 required
                 minLength={8}
-                maxLength={100}
+                maxLength={72}
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}

@@ -114,6 +114,8 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 그대로 보�
 | 로그아웃 | `POST /api/users/logout` |
 | 내 정보 조회/수정 | `GET`, `PATCH /api/users/me` |
 | 비밀번호 변경 | `PATCH /api/users/me/password` |
+| 비밀번호 재설정 요청/확정 | `POST`, `PATCH /api/users/password-reset` |
+| 내 기록 내보내기 | `GET /api/users/me/export` |
 | 회원 탈퇴 | `DELETE /api/users/me` |
 | 홈 요약 (통계·차트·최근 활동) | `GET /api/summary` |
 | 차량 등록/목록조회 | `POST`, `GET /api/vehicles` |
@@ -127,6 +129,17 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 그대로 보�
 | 주유 기록 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/fuel-records` |
 | 주유 기록 수정/삭제 | `PATCH`/`DELETE /api/vehicles/{vehicleId}/fuel-records/{recordId}` |
 | 연비 요약 조회 | `GET /api/vehicles/{vehicleId}/fuel-records/summary` |
+
+**바꾸는 요청(POST·PATCH·DELETE)에는 CSRF 토큰이 필요하다.** 서버가 `XSRF-TOKEN` 쿠키를
+내려주고, 같은 값을 `X-XSRF-TOKEN` 헤더로 되돌려줘야 한다. 없으면 403 이다.
+Swagger UI 는 이 과정을 알아서 한다(`springdoc.swagger-ui.csrf`).
+
+**로그인은 10분 안에 10번 틀리면 10분간 잠긴다**(429). 계정이 없는 주소로 시도해도 똑같이
+세는데, 존재하는 이메일에서만 잠기면 그 차이가 곧 가입 여부를 알려주기 때문이다.
+같은 이유로 **비밀번호 재설정 요청은 가입 여부와 무관하게 204** 다.
+
+**비밀번호는 UTF-8 기준 72바이트까지다.** BCrypt 의 상한이고, 한글은 글자당 3바이트라
+24자까지다. 넘으면 400 이다 — 글자 수로 제한하면 한글에서 500 이 났다.
 
 주유 기록 목록은 다른 목록 API 와 달리 **`sort` 를 받지 않는다.** 연비가 "바로 앞 기록과의
 주행거리 차이"로 계산되기 때문에 **정렬이 곧 계산의 전제**라, 서버가 주행거리 내림차순으로 고정한다.
@@ -150,8 +163,8 @@ PATCH /api/vehicles/1/odometer
 
 ## 진행 상황
 
-백엔드 API **24개**와 프론트엔드 화면 8장(라우트 기준. `/` 가 세 얼굴을 가져 실제로 볼 상태는
-10개)이 모두 동작하는 상태다. 백엔드 테스트 **147개**, 프론트엔드 테스트 **30개**가 통과하고,
+백엔드 API **27개**와 프론트엔드 화면 10장(라우트 기준. `/` 가 세 얼굴을 가져 실제로 볼 상태는
+13개)이 모두 동작하는 상태다. 백엔드 테스트 **188개**, 프론트엔드 테스트 **39개**가 통과하고,
 프론트엔드는 `tsc -b` / `oxlint` / `vite build` 도 통과한다.
 커밋마다 GitHub Actions 가 이 넷을 전부 돌린다 (`.github/workflows/ci.yml`).
 
@@ -251,8 +264,8 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 백엔드(IntelliJ `OdoLogApplication`)와 프론트(`cd frontend && npm run dev`)를 함께 띄우고
 `http://localhost:5173` 에서 확인한다.
 
-아래는 요약이다. **항목별로 "무엇을 봐야 하는지"까지 쪼갠 166개짜리 전체 목록은
-`CLAUDE.md` 의 Phase 6** 에 있다 (준비 6 · 기능 한 바퀴 117 · 폭 22 · 테마 10 · 접근성 11).
+아래는 요약이다. **항목별로 "무엇을 봐야 하는지"까지 쪼갠 176개짜리 전체 목록은
+`CLAUDE.md` 의 Phase 6** 에 있다 (준비 6 · 기능 한 바퀴 127 · 폭 22 · 테마 10 · 접근성 11).
 
 기능:
 
@@ -376,7 +389,7 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 ### 완료 판정 기준
 
 위 0번을 처음부터 끝까지 막힘없이 수행할 수 있고, `./gradlew test` 가 통과하면 "완성"으로 본다.
-(테스트 **147개**는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
+(테스트 **227개**(백엔드 188 · 프론트 39)는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
 배포(서버 인프라, 도메인, CI/CD)는 이 프로젝트의 범위 밖이며, **로컬에서 완전히 동작하는 것**까지가 목표다.
 
 ## 트러블슈팅
@@ -576,3 +589,7 @@ FLUSH PRIVILEGES;
 
 `Unable to determine Dialect without JDBC metadata` 는 별개의 원인이 아니라,
 연결에 실패해 Hibernate가 DB 종류를 알아낼 수 없어서 따라온 2차 에러다.
+
+## 라이선스
+
+[MIT](LICENSE)

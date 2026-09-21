@@ -230,4 +230,52 @@ class UserControllerTest {
                                 new ChangePasswordRequest("oldpassword", "short"))))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("가입 비밀번호가 72바이트를 넘으면 400을 반환한다")
+    void signUpRejectsPasswordOverByteLimit() throws Exception {
+        // BCrypt 가 72바이트에서 IllegalArgumentException 을 던진다
+        // @Size 는 글자 수라 한글 25자(75바이트)를 막지 못해 500 으로 새어 나갔다
+        String password = "가".repeat(25);
+        SignUpRequest request = new SignUpRequest("test@odolog.com", password, "닉네임", null);
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("72바이트")));
+    }
+
+    @Test
+    @DisplayName("가입 비밀번호가 정확히 72바이트면 통과한다")
+    void signUpAcceptsPasswordAtByteLimit() throws Exception {
+        // 경계를 한 칸 안쪽으로 잘못 잡으면 24자 한글 비밀번호가 막힌다
+        User user = new User("test@odolog.com", "encoded", "닉네임", null);
+        ReflectionTestUtils.setField(user, "id", 1L);
+        when(userService.signUp(any())).thenReturn(user);
+
+        String password = "가".repeat(24);
+        SignUpRequest request = new SignUpRequest("test@odolog.com", password, "닉네임", null);
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("비밀번호 변경도 72바이트를 넘으면 400을 반환한다")
+    void changePasswordRejectsPasswordOverByteLimit() throws Exception {
+        // 가입만 막으면 가입으로 못 만드는 비밀번호가 변경으로 통과한다
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+
+        ChangePasswordRequest request = new ChangePasswordRequest("current1234", "a".repeat(73));
+
+        mockMvc.perform(patch("/api/users/me/password")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
 }

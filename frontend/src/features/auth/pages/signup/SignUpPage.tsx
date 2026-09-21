@@ -73,13 +73,13 @@ export function SignUpPage() {
               </Field>
 
               {/* 규칙은 틀리기 전에 */}
-              <Field label="비밀번호" htmlFor="password" hint="8자 이상">
+              <Field label="비밀번호" htmlFor="password" hint="8자 이상 · 한글은 24자까지">
                 <Input
                   id="password"
                   type="password"
                   required
                   minLength={8}
-                  maxLength={100}
+                  maxLength={72}
                   autoComplete="new-password"
                   value={form.password}
                   onChange={(event) => change('password', event.target.value)}
