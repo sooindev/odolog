@@ -102,7 +102,8 @@ public final class FuelAnomaly {
 
             int distance = records.get(i).getOdometer() - records.get(i - 1).getOdometer();
             BigDecimal used = records.get(i).getLiters();
-            if (distance <= 0 || used.compareTo(BigDecimal.ZERO) <= 0) {
+            // 연비 계산과 같은 규칙 — 주유량을 안 적은 구간은 '평소' 를 재는 표본에서도 빠진다
+            if (distance <= 0 || used == null || used.compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
 

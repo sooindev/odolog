@@ -59,7 +59,8 @@ public class GarageSummaryService {
         List<FuelRecord> fuels = fuelRecordRepository.findByVehicle_Owner_IdOrderByOdometerAscIdAsc(ownerId);
 
         long maintenanceCost = records.stream().mapToLong(MaintenanceRecord::getCost).sum();
-        long fuelCost = fuels.stream().mapToLong(FuelRecord::getTotalCost).sum();
+        // 결제 금액을 안 적은 기록은 0 으로 친다 — 합계에서는 '없음' 과 0 이 같은 뜻이다
+        long fuelCost = fuels.stream().mapToLong(FuelRecord::totalCostOrZero).sum();
 
         return new GarageSummaryResponse(
                 vehicles.size(),
@@ -90,8 +91,8 @@ public class GarageSummaryService {
         for (FuelRecord record : fuels) {
             YearMonth key = YearMonth.from(record.getFueledAt());
             Bucket bucket = buckets.getOrDefault(key, new Bucket(0, 0, 0));
-            buckets.put(key, new Bucket(bucket.maintenance(), bucket.fuel() + record.getTotalCost(),
-                    bucket.count() + 1));
+            buckets.put(key, new Bucket(bucket.maintenance(),
+                    bucket.fuel() + record.totalCostOrZero(), bucket.count() + 1));
         }
 
         List<MonthlyCost> monthly = new ArrayList<>(MONTHS_SHOWN);
@@ -167,7 +168,8 @@ public class GarageSummaryService {
         for (FuelRecord record : fuels) {
             Long vehicleId = record.getVehicle().getId();
             all.add(new RecentActivity("FUEL", record.getId(), record.getFueledAt(),
-                    vehicleId, names.get(vehicleId), record.getTotalCost(), null, record.getLiters()));
+                    vehicleId, names.get(vehicleId), record.totalCostOrZero(), null,
+                    record.getLiters()));
         }
 
         return all.stream()

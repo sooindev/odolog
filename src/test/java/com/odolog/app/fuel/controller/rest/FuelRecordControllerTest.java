@@ -1,12 +1,14 @@
 package com.odolog.app.fuel.controller.rest;
 
 import com.odolog.app.common.auth.constant.SessionConst;
+import com.odolog.app.fuel.dto.request.update.FuelRecordUpdateRequest;
 import com.odolog.app.fuel.dto.response.record.FuelRecordResponse;
 import com.odolog.app.fuel.dto.response.summary.FuelSummaryResponse;
 import com.odolog.app.fuel.service.application.FuelRecordService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
@@ -26,6 +28,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -94,15 +100,64 @@ class FuelRecordControllerTest {
     }
 
     @Test
-    @DisplayName("주유량을 빠뜨리면 400 — 래퍼 타입이라 0으로 채워지지 않는다")
-    void registerMissingLiters() throws Exception {
+    @DisplayName("주유량과 결제 금액은 빠뜨려도 201 — 비워 두는 것이 정상적인 사용이다")
+    void registerWithoutLitersAndCost() throws Exception {
+        // 영수증을 잃었거나 계기판만 적어 두는 경우. 화면이 저장 전에 무엇을 못 하게 되는지 알린다
+        when(fuelRecordService.register(eq(1L), eq(10L), any())).thenReturn(response());
+
         mockMvc.perform(post("/api/vehicles/10/fuel-records")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"fueledAt":"2026-09-10","odometer":10500,"totalCost":50000}
+                                {"fueledAt":"2026-09-10","odometer":10500}
+                                """))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("빠뜨리는 것과 0 은 다르다 — 0L 은 여전히 400")
+    void zeroLitersStillRejected() throws Exception {
+        // 비운 것은 "모름", 0 은 "0리터를 넣었다". 뒤쪽은 연비가 0 으로 나누기가 된다
+        mockMvc.perform(post("/api/vehicles/10/fuel-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fueledAt":"2026-09-10","odometer":10500,"liters":0,"totalCost":50000}
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("수정은 clearLiters 로만 비운다 — 키가 없으면 유지")
+    void updateDistinguishesAbsentFromNull() throws Exception {
+        when(fuelRecordService.update(eq(1L), eq(10L), eq(5L), any())).thenReturn(response());
+
+        // liters 키가 아예 없다 → 유지
+        mockMvc.perform(patch("/api/vehicles/10/fuel-records/5")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"memo":"메모만 고친다"}
+                                """))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<FuelRecordUpdateRequest> kept = ArgumentCaptor.forClass(FuelRecordUpdateRequest.class);
+        verify(fuelRecordService).update(eq(1L), eq(10L), eq(5L), kept.capture());
+        // null 이면 "안 보냄" — 메모만 고치는 요청이 주유량을 지우면 안 된다
+        assertThat(kept.getValue().liters()).isNull();
+
+        // clearLiters 를 명시해야만 비움. null 하나로는 "안 보냄" 과 가를 수 없다
+        mockMvc.perform(patch("/api/vehicles/10/fuel-records/5")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"clearLiters":true}
+                                """))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<FuelRecordUpdateRequest> cleared = ArgumentCaptor.forClass(FuelRecordUpdateRequest.class);
+        verify(fuelRecordService, times(2)).update(eq(1L), eq(10L), eq(5L), cleared.capture());
+        assertThat(cleared.getValue().clearLiters()).isTrue();
     }
 
     @Test

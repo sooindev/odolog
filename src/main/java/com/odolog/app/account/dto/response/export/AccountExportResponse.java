@@ -71,7 +71,7 @@ public record AccountExportResponse(
             LocalDate fueledAt,
             int odometer,
             BigDecimal liters,
-            int totalCost,
+            Integer totalCost,
             String memo,
             boolean resetPoint,
             LocalDateTime createdAt

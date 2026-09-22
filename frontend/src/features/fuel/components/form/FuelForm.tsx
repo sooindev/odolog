@@ -44,17 +44,23 @@ export function FuelForm({
   // 숫자도 문자열 보관 — 입력 도중의 빈 문자열을 숫자로 표현할 수 없음
   const [fueledAt, setFueledAt] = useState(record?.fueledAt ?? todayString())
   const [odometer, setOdometer] = useState(String(record?.odometer ?? defaultOdometer))
-  const [liters, setLiters] = useState(record === null ? '' : String(record.liters))
-  const [totalCost, setTotalCost] = useState(record === null ? '' : String(record.totalCost))
+  // record.liters 가 null 일 수 있다 — 안 적고 저장한 기록을 다시 여는 경우
+  const [liters, setLiters] = useState(record?.liters == null ? '' : String(record.liters))
+  const [totalCost, setTotalCost] = useState(record?.totalCost == null ? '' : String(record.totalCost))
   const [memo, setMemo] = useState(record?.memo ?? '')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
+  /*
+   * 빈 칸은 0 이 아니라 null 이다. Number('') 가 0 이라 그대로 쓰면
+   * "0L 을 0원에 넣었다" 가 되어 유류비 합계가 조용히 틀어진다
+   */
+  const litersValue = liters === '' ? null : Number(liters)
+  const costValue = totalCost === '' ? null : Number(totalCost)
+
   // 입력 중 단가 표시. 영수증과 대조해 오타를 그 자리에서 잡기 위함
-  const litersValue = Number(liters)
-  const costValue = Number(totalCost)
   const pricePerLiter =
-    liters !== '' && totalCost !== '' && litersValue > 0
+    litersValue !== null && costValue !== null && litersValue > 0
       ? Math.round(costValue / litersValue)
       : null
 
@@ -70,18 +76,33 @@ export function FuelForm({
     setError(null)
 
     /*
-     * 등록 폼은 주행거리를 차량의 현재 값으로 미리 채운다. 계기판을 보고 고쳐 쓰라는 뜻인데,
-     * 그대로 두고 저장하면 **아무 계산도 일어나지 않는다**:
-     *   · 차량 주행거리는 liftOdometerTo 때문에 "지금까지 기록된 최댓값"이라 구간 거리가 0 →
-     *     이번 구간의 연비가 나오지 않는다
-     *   · liftOdometerTo 도 같은 값이면 올리지 않으므로 차량 쪽도 그대로다
-     * 막지는 않는다 — 주행거리를 정말 모르고 지출만 남기려는 경우도 있다. 대신 묻는다.
+     * 저장은 막지 않는다. 다만 이대로 두면 못 하게 되는 일이 있어서, 저장 직전에 한 번 알린다.
+     * 경고를 모아 한 번만 묻는 이유 — 조건마다 창을 띄우면 두 번 연속 뜨고,
+     * 두 번째 창은 사람이 읽지 않고 누른다.
+     *
+     * 주행거리: 등록 폼은 차량의 현재 값으로 미리 채운다. 계기판을 보고 고쳐 쓰라는 뜻인데,
+     * 그대로 두면 구간 거리가 0 이라 연비가 안 나오고 차량 쪽도 안 올라간다(liftOdometerTo).
+     * 주유량·금액: 비워 두는 것이 정상적인 사용이다 — 영수증을 잃었거나 계기판만 적어 두는 경우.
+     * 대신 각각 무엇을 못 하게 되는지는 달라서 줄을 나눠 적는다.
      */
+    const warnings: string[] = []
+
     if (record === null && Number(odometer) === baseOdometer) {
+      warnings.push(
+        `· 주행거리가 차량의 현재 값(${formatKm(baseOdometer)})과 같습니다.\n` +
+          '  이번 구간의 연비가 계산되지 않고, 차량 주행거리도 올라가지 않습니다.',
+      )
+    }
+    if (litersValue === null) {
+      warnings.push('· 주유량이 비어 있어 이번 구간의 연비를 계산할 수 없습니다.')
+    }
+    if (costValue === null) {
+      warnings.push('· 결제 금액이 비어 있어 유류비 합계와 리터당 단가에서 빠집니다.')
+    }
+
+    if (warnings.length > 0) {
       const confirmed = window.confirm(
-        `주행거리가 차량의 현재 값(${formatKm(baseOdometer)})과 같습니다.\n` +
-          '이대로 저장하면 이번 구간의 연비가 계산되지 않고, 차량 주행거리도 올라가지 않습니다.\n\n' +
-          '계기판 숫자로 고치지 않고 계속할까요?',
+        `이대로 저장하면:\n\n${warnings.join('\n')}\n\n계속할까요?`,
       )
       if (!confirmed) {
         return
@@ -100,12 +121,17 @@ export function FuelForm({
           memo: memo === '' ? undefined : memo,
         })
       } else {
-        // 바뀐 필드만. 값 비교로 판단하는 이유 — 0 으로 바꾸는 것과 안 보내는 것은 다름
+        /*
+         * 바뀐 필드만. 값 비교로 판단하는 이유 — 0 으로 바꾸는 것과 안 보내는 것은 다름
+         * 비우는 것은 값이 아니라 clear 플래그로 말한다 (DTO 주석 참고)
+         */
         await updateFuelRecord(vehicleId, record.id, {
           fueledAt: fueledAt === record.fueledAt ? undefined : fueledAt,
           odometer: Number(odometer) === record.odometer ? undefined : Number(odometer),
-          liters: litersValue === record.liters ? undefined : litersValue,
-          totalCost: costValue === record.totalCost ? undefined : costValue,
+          liters: litersValue !== null && litersValue !== record.liters ? litersValue : undefined,
+          clearLiters: litersValue === null && record.liters !== null ? true : undefined,
+          totalCost: costValue !== null && costValue !== record.totalCost ? costValue : undefined,
+          clearTotalCost: costValue === null && record.totalCost !== null ? true : undefined,
           memo: memo === (record.memo ?? '') ? undefined : memo,
         })
       }
@@ -157,11 +183,15 @@ export function FuelForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         {/* step 0.01 — 백엔드가 소수 2자리까지만 받음 */}
-        <Field label="주유량 (L)" htmlFor="fuel-liters">
+        <Field
+          label="주유량 (L)"
+          htmlFor="fuel-liters"
+          /* 필수가 아니다. 비워 두면 무엇을 못 하게 되는지만 말해 준다 — 주행거리 칸과 같은 방식 */
+          hint={liters === '' ? '비우면 이번 구간의 연비를 계산할 수 없습니다.' : undefined}
+        >
           <Input
             id="fuel-liters"
             type="number"
-            required
             min={0.01}
             max={9999.99}
             step={0.01}
@@ -175,12 +205,17 @@ export function FuelForm({
         <Field
           label="결제 금액 (원)"
           htmlFor="fuel-cost"
-          hint={pricePerLiter === null ? undefined : `리터당 약 ${pricePerLiter.toLocaleString()}원`}
+          hint={
+            pricePerLiter !== null
+              ? `리터당 약 ${pricePerLiter.toLocaleString()}원`
+              : totalCost === ''
+                ? '비우면 유류비 합계에서 빠집니다.'
+                : undefined
+          }
         >
           <Input
             id="fuel-cost"
             type="number"
-            required
             min={0}
             className="tabular-nums"
             value={totalCost}

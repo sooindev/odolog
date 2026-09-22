@@ -50,7 +50,9 @@ public record FuelEfficiency(Integer distance, BigDecimal average,
             int segment = records.get(i).getOdometer() - records.get(i - 1).getOdometer();
             BigDecimal used = records.get(i).getLiters();
 
-            if (segment <= 0 || used.compareTo(BigDecimal.ZERO) <= 0) {
+            // 주유량을 안 적은 기록은 자기 구간만 빠진다. 다음 구간은 멀쩡하다 —
+            // 모르는 것은 "그때 얼마나 넣었나" 뿐이고 거리는 그대로 이어진다
+            if (segment <= 0 || used == null || used.compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
 

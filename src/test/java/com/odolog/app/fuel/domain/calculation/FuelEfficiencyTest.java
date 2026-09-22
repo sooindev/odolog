@@ -24,6 +24,11 @@ class FuelEfficiencyTest {
                 new BigDecimal(liters), 80000, null);
     }
 
+    /** 주유량을 안 적고 저장한 기록 */
+    private FuelRecord withoutLiters(int odometer) {
+        return new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, 80000, null);
+    }
+
     private List<FuelRecord> ascending(FuelRecord... records) {
         return new ArrayList<>(List.of(records));
     }
@@ -47,6 +52,27 @@ class FuelEfficiencyTest {
         assertThat(result.distance()).isEqualTo(1000);
         assertThat(result.average()).isEqualByComparingTo("20.00");
         assertThat(result.excludedSegments()).isZero();
+    }
+
+    @Test
+    @DisplayName("주유량을 안 적은 기록은 자기 구간만 빠지고 다음 구간은 멀쩡하다")
+    void recordWithoutLitersSkipsOnlyItsOwnSegment() {
+        /*
+         * 가운데 기록에 주유량이 없다. 모르는 것은 "그때 얼마나 넣었나" 뿐이고
+         * 계기판은 그대로 이어지므로, 그 다음 구간(10800 → 11200)은 계산할 수 있어야 한다.
+         */
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                record(10000, "40.00"),
+                record(10400, "40.00"),
+                withoutLiters(10800),
+                record(11200, "40.00")));
+
+        // 성립하는 구간은 10000→10400 과 10800→11200 둘. 800km / 80L
+        assertThat(result.distance()).isEqualTo(800);
+        assertThat(result.average()).isEqualByComparingTo("10.00");
+        // 못 센 것은 '뺀 구간' 이 아니다 — 애초에 구간이 성립하지 않는다
+        assertThat(result.excludedSegments()).isZero();
+        assertThat(result.missingSegments()).isZero();
     }
 
     @Test

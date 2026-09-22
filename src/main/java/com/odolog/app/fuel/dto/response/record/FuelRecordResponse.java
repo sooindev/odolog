@@ -17,13 +17,13 @@ public record FuelRecordResponse(
         LocalDate fueledAt,
         int odometer,
         BigDecimal liters,
-        int totalCost,
+        Integer totalCost,
         String memo,
         /** 연비 재계산 기준점인지 */
         boolean resetPoint,
 
-        /** 리터당 단가(원). 총액 ÷ 리터, 표시용 반올림 */
-        int pricePerLiter,
+        /** 리터당 단가(원). 총액 ÷ 리터, 표시용 반올림. 둘 중 하나라도 없으면 null */
+        Integer pricePerLiter,
         /** 직전 주유 이후 거리(km). 직전 없으면 null */
         Integer distance,
         /** 연비(km/L), 소수 2자리. 구간 미성립이면 null */
@@ -50,9 +50,17 @@ public record FuelRecordResponse(
         if (!record.isResetPoint() && previous != null
                 && record.getOdometer() > previous.getOdometer()) {
             distance = record.getOdometer() - previous.getOdometer();
-            // 단순법. 가득 채우지 않은 주유가 섞이면 그 구간만 높게 나옴
-            efficiency = BigDecimal.valueOf(distance)
-                    .divide(record.getLiters(), 2, RoundingMode.HALF_UP);
+
+            /*
+             * 거리와 연비는 조건이 다르다. 거리는 계기판 둘만 있으면 나오고,
+             * 연비는 주유량까지 있어야 나온다 — 주유량을 안 적었어도 얼마나 달렸는지는 안다.
+             * 둘을 한 조건에 묶으면 "500km 를 달렸다" 는 사실까지 같이 사라진다
+             */
+            if (record.getLiters() != null) {
+                // 단순법. 가득 채우지 않은 주유가 섞이면 그 구간만 높게 나옴
+                efficiency = BigDecimal.valueOf(distance)
+                        .divide(record.getLiters(), 2, RoundingMode.HALF_UP);
+            }
         }
 
         return new FuelRecordResponse(
@@ -74,7 +82,13 @@ public record FuelRecordResponse(
         );
     }
 
-    private static int pricePerLiter(FuelRecord record) {
+    /** 총액과 주유량이 둘 다 있어야 나온다. 하나만 있으면 단가는 뜻이 없다 */
+    private static Integer pricePerLiter(FuelRecord record) {
+        if (record.getTotalCost() == null || record.getLiters() == null
+                || record.getLiters().compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
         return BigDecimal.valueOf(record.getTotalCost())
                 .divide(record.getLiters(), 0, RoundingMode.HALF_UP)
                 .intValue();

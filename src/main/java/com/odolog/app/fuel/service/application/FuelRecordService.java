@@ -99,8 +99,17 @@ public class FuelRecordService {
             // 수정에도 같은 규칙. 없으면 자리수 오타를 고쳐도 차량이 틀린 채로 남음
             record.getVehicle().liftOdometerTo(request.odometer());
         }
-        if (request.liters() != null) record.changeLiters(request.liters());
-        if (request.totalCost() != null) record.changeTotalCost(request.totalCost());
+        // 비우기가 값보다 먼저. 둘 다 왔다면 비우려는 뜻으로 읽는다 (DTO 주석 참고)
+        if (Boolean.TRUE.equals(request.clearLiters())) {
+            record.changeLiters(null);
+        } else if (request.liters() != null) {
+            record.changeLiters(request.liters());
+        }
+        if (Boolean.TRUE.equals(request.clearTotalCost())) {
+            record.changeTotalCost(null);
+        } else if (request.totalCost() != null) {
+            record.changeTotalCost(request.totalCost());
+        }
         if (request.memo() != null) record.changeMemo(request.memo());
         if (request.resetPoint() != null) record.changeResetPoint(request.resetPoint());
 
@@ -122,8 +131,11 @@ public class FuelRecordService {
         int totalCost = 0;
         BigDecimal totalLiters = BigDecimal.ZERO;
         for (FuelRecord record : records) {
-            totalCost += record.getTotalCost();
-            totalLiters = totalLiters.add(record.getLiters());
+            totalCost += record.totalCostOrZero();
+            // 주유량은 BigDecimal 이라 더하는 모양이 달라 여기서 직접 거른다
+            if (record.getLiters() != null) {
+                totalLiters = totalLiters.add(record.getLiters());
+            }
         }
 
         FuelEfficiency efficiency = FuelEfficiency.of(records);

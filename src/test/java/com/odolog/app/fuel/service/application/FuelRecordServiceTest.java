@@ -62,6 +62,13 @@ class FuelRecordServiceTest {
         return record;
     }
 
+    /** 주유량도 금액도 안 적고 저장한 기록 */
+    private FuelRecord bare(Long id, Vehicle vehicle, int odometer) {
+        FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, null, null);
+        ReflectionTestUtils.setField(record, "id", id);
+        return record;
+    }
+
     @Test
     @DisplayName("직전 기록이 없으면 연비와 주행거리가 null 이다")
     void firstRecordHasNoEfficiency() {
@@ -155,6 +162,47 @@ class FuelRecordServiceTest {
         // 직전 조회는 한 번뿐 — 행마다면 N+1
         verify(fuelRecordRepository)
                 .findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(anyLong(), anyInt());
+    }
+
+    @Test
+    @DisplayName("주유량·금액을 안 적은 기록은 연비도 단가도 0 이 아니라 null 이다")
+    void bareRecordHasNoDerivedValues() {
+        Vehicle vehicle = vehicle(11000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+
+        Pageable pageable = PageRequest.of(0, 2);
+        when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(
+                        bare(2L, vehicle, 10500),
+                        record(1L, vehicle, 10000, "30.00", 60000)), pageable, 2));
+
+        FuelRecordResponse bare = fuelRecordService.findByVehicle(1L, 10L, pageable).getContent().get(0);
+
+        // 거리는 안다 — 모르는 것은 "얼마나 넣었나" 뿐이다
+        assertThat(bare.distance()).isEqualTo(500);
+        // 0 을 주면 "연비 0km/L 인 차" 와 구분되지 않는다
+        assertThat(bare.efficiency()).isNull();
+        assertThat(bare.pricePerLiter()).isNull();
+        assertThat(bare.liters()).isNull();
+        assertThat(bare.totalCost()).isNull();
+    }
+
+    @Test
+    @DisplayName("요약의 합계는 적힌 것만 더한다 — 안 적은 기록이 0 으로 섞이지 않는다")
+    void summarySkipsUnrecordedValues() {
+        Vehicle vehicle = vehicle(11000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
+                record(1L, vehicle, 10000, "30.00", 60000),
+                bare(2L, vehicle, 10500),
+                record(3L, vehicle, 11000, "25.00", 50000)));
+
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
+
+        // 건수는 셋 — 기록 자체는 있었던 일이다
+        assertThat(summary.recordCount()).isEqualTo(3);
+        assertThat(summary.totalCost()).isEqualTo(110000);
+        assertThat(summary.totalLiters()).isEqualByComparingTo("55.00");
     }
 
     @Test
@@ -261,7 +309,7 @@ class FuelRecordServiceTest {
 
         // 자리수 오타 정정
         fuelRecordService.update(1L, 10L, 1L,
-                new FuelRecordUpdateRequest(null, 100000, null, null, null, null));
+                new FuelRecordUpdateRequest(null, 100000, null, null, null, null, null, null));
 
         assertThat(existing.getOdometer()).isEqualTo(100000);
         assertThat(vehicle.getOdometer()).isEqualTo(100000);
@@ -278,7 +326,7 @@ class FuelRecordServiceTest {
                 eq(10L), anyInt())).thenReturn(Optional.empty());
 
         fuelRecordService.update(1L, 10L, 1L,
-                new FuelRecordUpdateRequest(null, 15000, null, null, null, null));
+                new FuelRecordUpdateRequest(null, 15000, null, null, null, null, null, null));
 
         assertThat(existing.getOdometer()).isEqualTo(15000);
         assertThat(vehicle.getOdometer()).isEqualTo(50000);
@@ -347,11 +395,11 @@ class FuelRecordServiceTest {
 
         // 끄기 전 500km ÷ 25L = 20.00
         FuelRecordResponse before = fuelRecordService.update(1L, 10L, 2L,
-                new FuelRecordUpdateRequest(null, null, null, null, null, false));
+                new FuelRecordUpdateRequest(null, null, null, null, null, null, null, false));
         assertThat(before.efficiency()).isEqualByComparingTo("20.00");
 
         FuelRecordResponse after = fuelRecordService.update(1L, 10L, 2L,
-                new FuelRecordUpdateRequest(null, null, null, null, null, true));
+                new FuelRecordUpdateRequest(null, null, null, null, null, null, null, true));
 
         assertThat(after.resetPoint()).isTrue();
         assertThat(after.efficiency()).isNull();

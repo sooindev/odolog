@@ -6,18 +6,32 @@
 export interface FuelRecordRegisterRequest {
   fueledAt: string
   odometer: number
-  /** 백엔드는 BigDecimal(6,2). JSON 에서는 숫자 */
-  liters: number
-  totalCost: number
+  /**
+   * 백엔드는 BigDecimal(6,2). JSON 에서는 숫자
+   * 모르면 null — 영수증을 잃었거나 계기판만 적어 두는 경우가 있다.
+   * 0 을 보내면 안 된다. 0L 을 넣었다는 말이 되고 서버의 @Positive 에 막힌다
+   */
+  liters: number | null
+  totalCost: number | null
   memo?: string
 }
 
-/** 부분 수정이라 전부 선택 — 보낸 필드만 변경 */
+/**
+ * 부분 수정이라 전부 선택 — 보낸 필드만 변경
+ *
+ * liters·totalCost 만 상태가 셋이라(유지 / 변경 / 비움) clear 플래그가 따로 있다.
+ * null 하나로는 안 되는 이유: JSON 에서 "키가 없음" 과 "값이 null" 은 서버에 똑같이
+ * 도착해서, null 을 비움으로 읽으면 메모만 고치는 요청이 주유량을 지운다
+ */
 export interface FuelRecordUpdateRequest {
   fueledAt?: string
   odometer?: number
   liters?: number
   totalCost?: number
+  /** 주유량을 비운다 */
+  clearLiters?: boolean
+  /** 결제 금액을 비운다 */
+  clearTotalCost?: boolean
   memo?: string
   /** 연비 기준점 표시/해제. 안 보내면 유지 */
   resetPoint?: boolean
@@ -27,14 +41,16 @@ export interface FuelRecordResponse {
   id: number
   fueledAt: string
   odometer: number
-  liters: number
-  totalCost: number
+  /** 안 적었으면 null. 0 이 아니다 — 0L 을 넣었다는 말이 되고 연비가 0 으로 나누기가 된다 */
+  liters: number | null
+  /** 안 적었으면 null. 합계에서는 0 으로 치지만 단가 계산에서는 빠진다 */
+  totalCost: number | null
   memo: string | null
   /** 연비 재계산 기준점인지. 직전과의 연결이 끊겨 이 기록의 구간 연비도 null */
   resetPoint: boolean
 
-  /** 리터당 단가(원). 서버가 반올림한 표시용 값 */
-  pricePerLiter: number
+  /** 리터당 단가(원). 서버가 반올림한 표시용 값. 주유량·금액 중 하나라도 없으면 null */
+  pricePerLiter: number | null
   /**
    * 직전 주유 이후 거리(km). 아래 셋은 서버 계산값
    * 첫 기록·구간 미성립이면 0 이 아니라 null — 0 이면 "연비 0km/L" 라는 틀린 값이 찍힘

@@ -161,9 +161,12 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                     </div>
 
                     <div className="flex flex-col items-end gap-1 tabular-nums">
-                      <span className="text-strong">{record.liters.toFixed(2)} L</span>
+                      {/* 안 적은 값은 "0.00 L" 이 아니라 "—" 다. 0 을 찍으면 적은 값처럼 보인다 */}
+                      <span className="text-strong">
+                        {record.liters === null ? '— L' : `${record.liters.toFixed(2)} L`}
+                      </span>
                       <span className="text-caption text-muted-foreground">
-                        {formatWon(record.totalCost)}
+                        {record.totalCost === null ? '— 원' : formatWon(record.totalCost)}
                       </span>
                     </div>
 
