@@ -194,6 +194,39 @@ class VehicleControllerTest {
     }
 
     @Test
+    @DisplayName("주행거리에 상한이 있다 — 자리수를 크게 잘못 넣으면 차량이 그 값에 묶인다")
+    void updateOdometerUpperBound() throws Exception {
+        /*
+         * liftOdometerTo 가 "지금까지 기록된 최댓값" 을 잡아 두기 때문에, 한 번 20억이 들어가면
+         * 그 뒤 모든 정비·주유 폼이 그 값을 기준으로 말하기 시작한다.
+         * 되돌리는 길은 force 정정 하나뿐이라 애초에 막는다.
+         */
+        mockMvc.perform(patch("/api/vehicles/10/odometer")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"odometer\":2000000000}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("상한 안쪽은 그대로 통과한다 — 정상 입력을 막으면 안 된다")
+    void updateOdometerWithinBound() throws Exception {
+        User owner = new User("owner@odolog.com", "encoded", "닉네임", null);
+        ReflectionTestUtils.setField(owner, "id", 1L);
+        Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
+        ReflectionTestUtils.setField(vehicle, "id", 10L);
+        when(vehicleService.updateOdometer(eq(1L), eq(10L), any(UpdateOdometerRequest.class)))
+                .thenReturn(vehicle);
+
+        // 200만 km — 실제 차량이 도달할 수 없는 선이라 여기까지는 열어 둔다
+        mockMvc.perform(patch("/api/vehicles/10/odometer")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"odometer\":2000000}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("차량 정보를 수정하면 200과 바뀐 값을 돌려준다")
     void updateVehicle() throws Exception {
         User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");

@@ -25,8 +25,37 @@ export function parse(value: string) {
   return { year, month, day }
 }
 
+/**
+ * 그 해·그 달에 고를 수 있는 마지막 날
+ * 올해 이번 달이면 오늘까지다 — 미래 날짜는 서버가 @PastOrPresent 로 거절한다
+ */
+export function lastSelectableDay(year: number, month: number) {
+  const today = todayParts()
+  const end = daysInMonth(year, month)
+
+  return year === today.year && month === today.month ? Math.min(end, today.day) : end
+}
+
+/** 그 해에 고를 수 있는 마지막 달. 올해면 이번 달까지 */
+export function lastSelectableMonth(year: number) {
+  const today = todayParts()
+
+  return year === today.year ? today.month : 12
+}
+
+/**
+ * 'YYYY-MM-DD' 조립. 고를 수 없는 값은 자른다
+ *
+ * 자르는 순서가 년 → 월 → 일인 이유: 굴린 칸의 뜻을 최대한 살리기 위해서다.
+ * 2020-12-25 에서 년을 올해로 굴리면 12월이 미래라 9월로 잘리고, 25일도 미래면 오늘로 잘린다.
+ * 1/31 에서 2월로 옮기면 28일이 되는 것(윤년은 Date 가 계산)과 같은 성격의 보정이다
+ *
+ * 화면(네이티브 date 입력)은 max 로 막지만 휠은 칸을 직접 만들므로,
+ * 여기서 자르지 않으면 **기기에 따라 되는 날짜가 달라진다**
+ */
 export function join(year: number, month: number, day: number) {
-  // 일수가 줄어드는 달로 옮기면 자르기 (1/31 → 2/28)
-  const clamped = Math.min(day, daysInMonth(year, month))
-  return `${year}-${String(month).padStart(2, '0')}-${String(clamped).padStart(2, '0')}`
+  const clampedMonth = Math.min(month, lastSelectableMonth(year))
+  const clampedDay = Math.min(day, lastSelectableDay(year, clampedMonth))
+
+  return `${year}-${String(clampedMonth).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`
 }

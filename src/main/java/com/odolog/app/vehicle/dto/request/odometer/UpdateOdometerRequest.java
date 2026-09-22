@@ -1,12 +1,15 @@
 package com.odolog.app.vehicle.dto.request.odometer;
 
+import com.odolog.app.common.validation.limit.InputLimits;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
 
 public record UpdateOdometerRequest(
 
         @NotNull
         @PositiveOrZero
+        @Max(InputLimits.MAX_ODOMETER)
         Integer odometer,
 
         /**

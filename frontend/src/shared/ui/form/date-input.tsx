@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from 'cn'
 import { controlClassName } from '@/shared/ui/form/control'
 import { formatDate, todayString } from '@/shared/lib/format/format'
-import { daysInMonth, join, parse } from '@/shared/ui/form/date-parts'
+import { join, lastSelectableDay, lastSelectableMonth, parse } from '@/shared/ui/form/date-parts'
 
 /** 한 칸 높이(px). 스크롤 위치 ↔ 선택 인덱스 변환의 기준 */
 const ITEM_HEIGHT = 40
@@ -38,10 +38,15 @@ function DateWheel({
     wheelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [open])
 
+  /*
+   * 칸 목록도 오늘에서 끊는다. 년만 막고 월·일을 열어 두면 올해 남은 달이 그대로 선택되고,
+   * 저장할 때야 서버가 400 을 준다 — 데스크톱의 <input type="date"> 는 max 로 막는 자리다.
+   * 고를 수 없는 것을 아예 안 보여주는 편이 막아 놓고 나중에 혼내는 것보다 낫다
+   */
   const thisYear = new Date().getFullYear()
   const years = Array.from({ length: YEARS_BACK + 1 }, (_, i) => thisYear - YEARS_BACK + i)
-  const months = Array.from({ length: 12 }, (_, i) => i + 1)
-  const days = Array.from({ length: daysInMonth(year, month) }, (_, i) => i + 1)
+  const months = Array.from({ length: lastSelectableMonth(year) }, (_, i) => i + 1)
+  const days = Array.from({ length: lastSelectableDay(year, month) }, (_, i) => i + 1)
 
   return (
     <div className="flex flex-col">

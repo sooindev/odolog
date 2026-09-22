@@ -13,6 +13,7 @@ import { Textarea } from '@/shared/ui/base/textarea'
 import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { todayString } from '@/shared/lib/format/format'
+import { MAX_AMOUNT, MAX_ODOMETER } from '@/shared/lib/limits/limits'
 import { registerRecord, updateRecord } from '@/features/maintenance/api/endpoints/endpoints'
 import { SERVICE_TYPE_GROUPS, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import type {
@@ -173,6 +174,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
             type="number"
             required
             min={0}
+            max={MAX_ODOMETER}
             className="tabular-nums"
             value={serviceOdometer}
             onChange={(event) => setServiceOdometer(event.target.value)}
@@ -185,6 +187,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
             type="number"
             required
             min={0}
+            max={MAX_AMOUNT}
             className="tabular-nums"
             value={cost}
             onChange={(event) => setCost(event.target.value)}

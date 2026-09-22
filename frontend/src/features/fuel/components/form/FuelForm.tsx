@@ -10,6 +10,7 @@ import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { formatKm, todayString } from '@/shared/lib/format/format'
+import { MAX_AMOUNT, MAX_ODOMETER } from '@/shared/lib/limits/limits'
 import {
   registerFuelRecord,
   updateFuelRecord,
@@ -174,6 +175,7 @@ export function FuelForm({
             autoFocus
             required
             min={0}
+            max={MAX_ODOMETER}
             className="tabular-nums"
             value={odometer}
             onChange={(event) => setOdometer(event.target.value)}
@@ -217,6 +219,7 @@ export function FuelForm({
             id="fuel-cost"
             type="number"
             min={0}
+            max={MAX_AMOUNT}
             className="tabular-nums"
             value={totalCost}
             onChange={(event) => setTotalCost(event.target.value)}

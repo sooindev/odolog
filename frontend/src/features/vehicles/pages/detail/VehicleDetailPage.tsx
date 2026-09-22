@@ -17,6 +17,7 @@ import { ApiError } from '@/shared/api/client/client'
 import { formatKm, formatNumber } from '@/shared/lib/format/format'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { useCountUp } from '@/shared/lib/hooks/useCountUp'
+import { MAX_ODOMETER } from '@/shared/lib/limits/limits'
 import { deleteVehicle, fetchVehicle, updateOdometer } from '@/features/vehicles/api/endpoints/endpoints'
 import type { VehicleResponse } from '@/features/vehicles/api/types/types'
 
@@ -303,6 +304,7 @@ function OdometerForm({
                 type="number"
                 required
                 min={0}
+                max={MAX_ODOMETER}
                 className="flex-1 tabular-nums"
                 value={odometer}
                 onChange={(event) => setOdometer(event.target.value)}

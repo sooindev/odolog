@@ -1,9 +1,11 @@
 package com.odolog.app.fuel.dto.request.update;
 
+import com.odolog.app.common.validation.limit.InputLimits;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
@@ -29,6 +31,7 @@ public record FuelRecordUpdateRequest(
         LocalDate fueledAt,
 
         @PositiveOrZero
+        @Max(InputLimits.MAX_ODOMETER)
         Integer odometer,
 
         @Positive
@@ -37,6 +40,7 @@ public record FuelRecordUpdateRequest(
         BigDecimal liters,
 
         @PositiveOrZero
+        @Max(InputLimits.MAX_AMOUNT)
         Integer totalCost,
 
         /** 주유량을 비운다. 값을 함께 보내면 비우기가 이긴다 */
