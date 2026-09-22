@@ -44,7 +44,13 @@ function DateWheel({
    * 고를 수 없는 것을 아예 안 보여주는 편이 막아 놓고 나중에 혼내는 것보다 낫다
    */
   const thisYear = new Date().getFullYear()
-  const years = Array.from({ length: YEARS_BACK + 1 }, (_, i) => thisYear - YEARS_BACK + i)
+  /*
+   * 기본은 20년치지만, 지금 값이 그보다 오래됐으면 그 해까지 늘린다.
+   * 고정 범위로 두면 값이 목록에 없어 indexOf 가 -1 이 되고, 년 칸이 자리를 못 잡는다.
+   * 서버는 @PastOrPresent 라 얼마나 오래된 날짜든 받는다 — 화면만 못 열면 안 된다
+   */
+  const firstYear = Math.min(thisYear - YEARS_BACK, year)
+  const years = Array.from({ length: thisYear - firstYear + 1 }, (_, i) => firstYear + i)
   const months = Array.from({ length: lastSelectableMonth(year) }, (_, i) => i + 1)
   const days = Array.from({ length: lastSelectableDay(year, month) }, (_, i) => i + 1)
 

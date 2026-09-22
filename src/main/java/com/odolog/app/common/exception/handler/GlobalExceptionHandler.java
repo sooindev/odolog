@@ -5,6 +5,7 @@ import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.TooManyRequestsException;
 import com.odolog.app.common.exception.type.ForbiddenAccessException;
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -105,6 +106,12 @@ public class GlobalExceptionHandler {
                 .filter(name -> name != null)
                 .reduce((first, second) -> first + "." + second)
                 .orElse(null);
+    }
+
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRequest(InvalidRequestException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(e.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

@@ -11,6 +11,7 @@ import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -185,6 +186,22 @@ class FuelRecordServiceTest {
         assertThat(bare.pricePerLiter()).isNull();
         assertThat(bare.liters()).isNull();
         assertThat(bare.totalCost()).isNull();
+    }
+
+    @Test
+    @DisplayName("메모를 비우면 빈 문자열이 아니라 null 로 저장한다")
+    void blankMemoBecomesNull() {
+        // "없음" 이 null 과 '' 두 모양이면 내보낸 JSON 에도 그대로 나간다 (phone 과 같은 규칙)
+        Vehicle vehicle = vehicle(10000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(call -> call.getArgument(0));
+
+        fuelRecordService.register(1L, 10L, new FuelRecordRegisterRequest(
+                LocalDate.of(2026, 9, 1), 10500, new BigDecimal("25.00"), 50000, "   "));
+
+        ArgumentCaptor<FuelRecord> saved = ArgumentCaptor.forClass(FuelRecord.class);
+        verify(fuelRecordRepository).save(saved.capture());
+        assertThat(saved.getValue().getMemo()).isNull();
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.odolog.app.maintenance.dto.request.register.MaintenanceRecordRegister
 import com.odolog.app.maintenance.dto.request.update.MaintenanceRecordUpdateRequest;
 import com.odolog.app.maintenance.dto.response.schedule.NextServiceResponse;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.common.dto.request.page.SortGuard;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.EnumMap;
 import java.util.ArrayList;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
@@ -37,7 +39,8 @@ public class MaintenanceRecordService {
     public MaintenanceRecord register(Long requesterId, Long vehicleId, MaintenanceRecordRegisterRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
 
-        MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(), request.description(),
+        MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(),
+                blankToNull(request.description()),
                 request.cost(), request.serviceOdometer(), request.serviceDate());
 
         // 정비 시점 주행거리가 더 크면 차량도 갱신. 주유와 같은 규칙
@@ -46,8 +49,14 @@ public class MaintenanceRecordService {
         return maintenanceRecordRepository.save(record);
     }
 
+    /** 화면이 쓰는 것만 정렬 대상 (차량 목록과 같은 이유 — SortGuard 주석 참고) */
+    private static final Set<String> SORTABLE =
+            Set.of("serviceDate", "id", "cost", "serviceOdometer", "type");
+
     public Page<MaintenanceRecord> findByVehicle(Long requesterId, Long vehicleId, Pageable pageable) {
         vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        SortGuard.allowOnly(pageable, SORTABLE);
+
         return maintenanceRecordRepository.findByVehicleId(vehicleId, pageable);
     }
 
@@ -101,7 +110,7 @@ public class MaintenanceRecordService {
             record.changeType(request.type());
         }
         if (request.description() != null) {
-            record.changeDescription(request.description());
+            record.changeDescription(blankToNull(request.description()));
         }
         if (request.cost() != null) {
             record.changeCost(request.cost());
@@ -124,6 +133,11 @@ public class MaintenanceRecordService {
         MaintenanceRecord record = findRecordInVehicle(vehicleId, recordId);
 
         maintenanceRecordRepository.delete(record);
+    }
+
+    /** 빈 문자열은 "없음" 으로. 주유 메모·프로필 전화번호와 같은 규칙 */
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 
     private MaintenanceRecord findRecordInVehicle(Long vehicleId, Long recordId) {

@@ -12,6 +12,8 @@ export function useCountUp(target: number): { value: number; running: boolean } 
 
   // 직전 값. 첫 렌더에서는 target 과 같아 무동작
   const fromRef = useRef(target)
+  // 지금 화면에 찍혀 있는 값. 연출 도중에 target 이 또 바뀌면 여기서 이어간다
+  const shownRef = useRef(target)
 
   useEffect(() => {
     const from = fromRef.current
@@ -31,7 +33,8 @@ export function useCountUp(target: number): { value: number; running: boolean } 
       // ease-out quart. CSS 의 ease-apple 과 같은 성격
       const eased = 1 - (1 - progress) ** 4
 
-      setValue(Math.round(from + (target - from) * eased))
+      shownRef.current = Math.round(from + (target - from) * eased)
+      setValue(shownRef.current)
 
       if (progress < 1) {
         frame = requestAnimationFrame(tick)
@@ -46,6 +49,7 @@ export function useCountUp(target: number): { value: number; running: boolean } 
       // 연출을 끈 사용자에게는 결과만
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         fromRef.current = target
+        shownRef.current = target
         setValue(target)
         return
       }
@@ -56,7 +60,12 @@ export function useCountUp(target: number): { value: number; running: boolean } 
 
     return () => {
       cancelAnimationFrame(frame)
-      fromRef.current = target
+      /*
+       * 끝까지 갔으면 shownRef 가 곧 target 이라 결과가 같고,
+       * 도중에 끊겼으면 **화면에 보이던 그 값**에서 다음 연출이 출발한다.
+       * 전에는 옛 target 을 넣어서, 굴러가는 중에 값이 또 바뀌면 숫자가 한 번 튀었다
+       */
+      fromRef.current = shownRef.current
     }
   }, [target])
 

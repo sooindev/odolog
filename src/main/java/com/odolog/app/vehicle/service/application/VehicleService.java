@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.service.application;
 
+import com.odolog.app.common.dto.request.page.SortGuard;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
@@ -53,7 +55,13 @@ public class VehicleService {
         return vehicleRepository.save(vehicle);
     }
 
+    /** 화면이 쓰는 것만 정렬 대상. 연관 엔티티를 타고 들어가는 정렬을 막는다 */
+    private static final Set<String> SORTABLE = Set.of(
+            "createdAt", "plateNumber", "manufacturer", "modelName", "modelYear", "odometer");
+
     public Page<Vehicle> findMyVehicles(Long ownerId, Pageable pageable) {
+        SortGuard.allowOnly(pageable, SORTABLE);
+
         return vehicleRepository.findByOwnerId(ownerId, pageable);
     }
 

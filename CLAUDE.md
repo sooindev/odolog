@@ -183,6 +183,11 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
 13. **서비스는 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드에만 `@Transactional`.**
     메서드 쪽이 클래스 쪽을 덮어쓴다. 새 메서드를 깜빡했을 때 기본이 안전한 쪽(읽기 전용)이라
     쓰기가 실패해서 바로 드러난다. 반대로 하면 아무 일도 안 일어나 영영 모른다.
+14-1. **빈 문자열로 저장하지 않는다.** 선택 입력 칸(전화번호·메모·정비 설명)을 비우면
+    `''` 가 아니라 `null` 로 저장한다(2026-09-23 에 메모·설명까지 맞췄다). 그대로 두면
+    "없음" 이 두 모양이 되고, **내보낸 JSON 에도 그 차이가 그대로 나간다.**
+    자르는 자리는 서비스다 — DTO 접근자에서 자르면 부분 수정에서 "안 보냄"과 "지움"이 같아진다.
+
 14. **주석은 한 줄 명사구로 쓴다** (2026-09-18 부터). 종결어미(`~한다` / `~이다`)를 붙이지 않고
     명사나 명사구로 끝낸다. `<b>` · `<p>` 같은 Javadoc 태그도 쓰지 않는다.
 
@@ -482,6 +487,12 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 
     com/odolog/app/
     ├── OdoLogApplication.java                @SpringBootApplication.
+    │                                         **앱 시간대를 Asia/Seoul 로 고정한다**(2026-09-23).
+    │                                         @PastOrPresent 와 LocalDate.now() 가 JVM 기본
+    │                                         시간대를 따라서, UTC 서버면 한국 사용자가 고른
+    │                                         "오늘" 이 미래라 매일 오전 9시까지 400 이 난다.
+    │                                         run() 보다 먼저 부른다 — 커넥션 풀과 Hibernate 가
+    │                                         뜰 때 한 번 읽어 가므로 그 뒤엔 늦다.
     │                                         **이 파일만 더 내려가지 못한다.** 컴포넌트 스캔이
     │                                         이 클래스의 패키지부터 시작하므로 bootstrap/ 같은
     │                                         하위 폴더로 옮기면 scanBasePackages·@EntityScan·
@@ -588,7 +599,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     아닌지를 파일을 열어 봐야 안다
     │   ├── repository/jpa/MaintenanceRecordRepository.java
     │   │                                     findByVehicleId(Pageable),
-    │   │                                     findTopByVehicleIdAndTypeOrderByServiceDateDescIdDesc,
+    │   │                                     findByVehicleIdOrderByServiceDateDescIdDesc(종류별
+    │   │                                     최신 1건을 한 번에 — 종류마다 findTopBy 면 15쿼리),
     │   │                                     findByIdAndVehicleId(타 차량 소속 차단),
     │   │                                     deleteByVehicleId
     │   ├── dto/
@@ -790,6 +802,13 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │                                 @Import 가 필요하다 — 실제로 둘 다 밟고 정했다
         │   └── openapi/OpenApiConfig.java    문서 제목/설명 + @LoginUser를 스펙에서 제외
         ├── dto/
+        │   ├── request/
+        │   │   └── page/SortGuard.java       정렬 가능한 속성을 화이트리스트로 제한(2026-09-23).
+        │   │                                 Spring Data 는 ?sort=owner.password 처럼 연관
+        │   │                                 엔티티를 타고 들어가는 정렬을 그대로 받는다 —
+        │   │                                 암묵적 조인이 생기고 의도한 적 없는 표면이 열린다.
+        │   │                                 **블랙리스트가 아닌 이유**: 엔티티에 필드를 더하면
+        │   │                                 자동으로 정렬 대상이 된다. 막을 것을 세는 쪽은 뒤처진다
         │   └── response/                     요청 DTO가 없어 response만 있다
         │       ├── error/ErrorResponse.java   record(message)
         │       └── page/PageResponse.java     record<T>(items/page/size/totalElements/
@@ -799,6 +818,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
             │                                   의존이 생긴다
             ├── type/                         예외 타입만 모아 둔다 (상태 코드 하나당 하나)
             │   ├── ConflictException.java              409 전용
+            │   ├── InvalidRequestException.java        400 전용. 지금까지 400 은 전부
+            │   │                                        프레임워크가 만들었는데, 검증 애노테이션으로
+            │   │                                        표현할 수 없는 규칙(정렬 화이트리스트)이
+            │   │                                        생겨 추가했다
             │   ├── TooManyRequestsException.java       429 전용. 로그인·재설정 요청·회원가입
             │   │                                        셋이 같은 리미터를 키만 갈라 쓴다
             │   ├── AuthenticationFailedException.java  401 전용
@@ -858,7 +881,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 216개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 219개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -1096,6 +1119,8 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
             │       ├── useAsyncData.ts   조회 4곳의 공통 훅. data/loading/error +
             │       │                     reload()/setData. cancelled 플래그가 여기 한 곳에만
             │       └── useCountUp.ts     직전 값에서 새 값으로 굴러가는 숫자.
+            │                             연출 도중 값이 또 바뀌면 **화면에 보이던 값**에서
+            │                             이어간다 — 옛 목표에서 다시 시작하면 숫자가 한 번 튄다.
             │                             **첫 렌더에서는 안 움직인다** — 값이 실제로 바뀐
             │                             순간에만. 지속 시간은 변화 폭에 비례(0.45~1.4s)
             │       └── useCountUp.test.ts  위 두 줄을 고정한다. matchMedia 는 jsdom 에 없어
@@ -1859,7 +1884,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (216개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (219개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (42개)
 
 ---

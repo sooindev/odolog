@@ -1,6 +1,11 @@
 package com.odolog.app.vehicle.service.application;
 
 import com.odolog.app.common.exception.type.ConflictException;
+import com.odolog.app.common.exception.type.InvalidRequestException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
@@ -24,6 +29,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
@@ -87,6 +94,30 @@ class VehicleServiceTest {
 
         assertThat(saved.getOwner()).isEqualTo(owner);
         assertThat(saved.getPlateNumber()).isEqualTo("12가3456");
+    }
+
+    @Test
+    @DisplayName("허용 목록에 없는 속성으로 정렬하면 InvalidRequestException")
+    void rejectsSortOutsideWhitelist() {
+        /*
+         * Spring Data 는 ?sort=owner.password 를 그대로 받아 암묵적 조인을 만든다.
+         * 값이 응답에 실리지는 않지만 정렬 대상이 될 이유가 없다 —
+         * 없는 속성만 400 이 되던 상태(PropertyReferenceException)로는 안 걸렸다.
+         */
+        assertThatThrownBy(() -> vehicleService.findMyVehicles(1L,
+                PageRequest.of(0, 20, Sort.by("owner.password"))))
+                .isInstanceOf(InvalidRequestException.class);
+    }
+
+    @Test
+    @DisplayName("허용 목록 안의 속성은 그대로 통과한다")
+    void allowsWhitelistedSort() {
+        when(vehicleRepository.findByOwnerId(eq(1L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        assertThatCode(() -> vehicleService.findMyVehicles(1L,
+                PageRequest.of(0, 20, Sort.by("plateNumber"))))
+                .doesNotThrowAnyException();
     }
 
     @Test

@@ -16,7 +16,10 @@ export function ProtectedRoute() {
   if (user === null) {
     // replace — 뒤로가기로 돌아와 다시 튕기는 반복 방지
     // state — 로그인 후 원래 가려던 곳으로 복귀용
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    // pathname 만 넘기면 ?page=2 같은 것이 사라져 목록 첫 장으로 돌아온다
+    const from = `${location.pathname}${location.search}${location.hash}`
+
+    return <Navigate to="/login" replace state={{ from }} />
   }
 
   return <Outlet />

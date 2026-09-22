@@ -46,7 +46,7 @@ public class FuelRecordService {
 
         FuelRecord record = fuelRecordRepository.save(new FuelRecord(
                 vehicle, request.fueledAt(), request.odometer(),
-                request.liters(), request.totalCost(), request.memo()));
+                request.liters(), request.totalCost(), blankToNull(request.memo())));
 
         // 계기판 값이 더 최신이면 차량 쪽도 갱신
         vehicle.liftOdometerTo(request.odometer());
@@ -110,7 +110,7 @@ public class FuelRecordService {
         } else if (request.totalCost() != null) {
             record.changeTotalCost(request.totalCost());
         }
-        if (request.memo() != null) record.changeMemo(request.memo());
+        if (request.memo() != null) record.changeMemo(blankToNull(request.memo()));
         if (request.resetPoint() != null) record.changeResetPoint(request.resetPoint());
 
         return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()),
@@ -160,6 +160,15 @@ public class FuelRecordService {
     }
 
 
+
+    /**
+     * 빈 문자열은 "없음" 으로 저장한다
+     * 그대로 두면 "없음" 이 null 과 '' 두 모양이 되고, 내보낸 JSON 에도 그대로 나간다.
+     * UserService 가 phone 에 쓰는 규칙과 같다
+     */
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
+    }
 
     /** 그 차량의 평소 구간. 목록·등록·수정이 같은 기준을 써야 같은 행이 같은 말을 한다 */
     private FuelAnomaly.Baseline baselineOf(Long vehicleId) {
