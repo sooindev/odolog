@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!--
+      Referer 를 아예 보내지 않는다. /reset-password?token=... 는 이 화면이 띄우는 주소라
+      백엔드 필터가 닿지 않는다 — 그 화면에서 나가는 요청에 토큰이 실리는 것을 여기서 막는다.
+    -->
+    <meta name="referrer" content="no-referrer" />
     <!-- 모바일 브라우저가 주소창을 칠하는 색. ThemeProvider가 테마에 맞춰 바꿔 끼운다. -->
     <meta name="theme-color" content="#f4f4f6" />
     <meta name="description" content="차량 정비 이력을 기록하고 다음 정비 시점을 확인하는 앱" />

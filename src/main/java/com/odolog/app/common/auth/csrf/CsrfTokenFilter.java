@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -45,6 +46,17 @@ public class CsrfTokenFilter extends OncePerRequestFilter {
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
 
     private final SecureRandom random = new SecureRandom();
+
+    /**
+     * 세션 쿠키와 같은 스위치를 읽는다. 전용 설정을 새로 만들지 않은 이유는
+     * 쿠키 둘이 같은 연결로 오가기 때문 — 한쪽만 https 전용인 조합은 뜻이 없고,
+     * 설정이 둘이면 언젠가 한쪽만 켜 둔 채 배포한다
+     */
+    private final boolean secureCookie;
+
+    public CsrfTokenFilter(@Value("${server.servlet.session.cookie.secure:false}") boolean secureCookie) {
+        this.secureCookie = secureCookie;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -90,6 +102,8 @@ public class CsrfTokenFilter extends OncePerRequestFilter {
         Cookie cookie = new Cookie(COOKIE_NAME, token);
         // HttpOnly 를 주면 안 된다 — 화면이 이 값을 읽어 헤더에 실어야 한다
         cookie.setHttpOnly(false);
+        // https 로만 보낸다. 켜지 않으면 세션 쿠키만 지키고 CSRF 토큰은 평문으로 샌다
+        cookie.setSecure(secureCookie);
         cookie.setPath("/");
         cookie.setAttribute("SameSite", "Lax");
         response.addCookie(cookie);

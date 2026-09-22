@@ -27,7 +27,7 @@ export function VehicleDetailPage() {
 
   const id = Number(vehicleId)
 
-  // 404 와 403 을 구분해 보여주지 않음 — 남의 차량이 존재한다는 사실 자체를 숨김
+  // 남의 차량도 없는 차량도 서버가 404 하나로 답함 — 존재 자체를 숨기는 쪽이 백엔드
   const load = useCallback(() => fetchVehicle(id), [id])
   const {
     data: vehicle,

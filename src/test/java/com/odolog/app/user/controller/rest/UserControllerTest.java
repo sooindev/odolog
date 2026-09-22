@@ -2,7 +2,9 @@ package com.odolog.app.user.controller.rest;
 
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.auth.constant.SessionConst;
+import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
+import com.odolog.app.common.exception.type.TooManyRequestsException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.login.LoginRequest;
 import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
@@ -45,6 +47,27 @@ class UserControllerTest {
 
     @MockitoBean
     private UserService userService;
+
+    // 컨트롤러가 직접 주입받는다 — @WebMvcTest 는 @Component 를 안 올리므로 여기서 대신 준다
+    @MockitoBean
+    private LoginAttemptLimiter attemptLimiter;
+
+    @Test
+    @DisplayName("가입 시도가 한도를 넘으면 429를 반환한다")
+    void signUpTooManyAttempts() throws Exception {
+        // 가입 409 가 가입 여부를 알려주므로, 한 곳에서 주소를 쓸어 보는 것을 IP 로 막는다
+        doThrow(new TooManyRequestsException("회원가입 시도가 너무 많습니다. 10분 후 다시 시도해 주세요."))
+                .when(attemptLimiter).checkNotLocked(any(), any());
+
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", null);
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value(
+                        "회원가입 시도가 너무 많습니다. 10분 후 다시 시도해 주세요."));
+    }
 
     @Test
     @DisplayName("회원가입 성공 시 201과 사용자 정보를 반환한다")

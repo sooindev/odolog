@@ -83,7 +83,7 @@ public class PasswordResetService {
     @Transactional
     public void request(String email) {
         String limitKey = RATE_LIMIT_PREFIX + email;
-        rateLimiter.checkNotLocked(limitKey);
+        rateLimiter.checkNotLocked(limitKey, "비밀번호 재설정 요청이 너무 많습니다.");
         rateLimiter.recordFailure(limitKey);
 
         Optional<User> found = userRepository.findByEmail(email);

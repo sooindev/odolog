@@ -15,7 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class CsrfTokenFilterTest {
 
-    private final CsrfTokenFilter filter = new CsrfTokenFilter();
+    // 로컬과 같은 설정(http). Secure 를 켠 경우는 마지막 테스트에서 따로 본다
+    private final CsrfTokenFilter filter = new CsrfTokenFilter(false);
 
     private MockHttpServletRequest request(String method, String uri) {
         MockHttpServletRequest request = new MockHttpServletRequest(method, uri);
@@ -90,6 +91,17 @@ class CsrfTokenFilterTest {
         filter.doFilter(request, new MockHttpServletResponse(), chain);
 
         assertThat(chain.getRequest()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("secure 를 켜면 토큰 쿠키도 https 전용이 된다")
+    void issuesSecureCookieWhenEnabled() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        new CsrfTokenFilter(true).doFilter(request("GET", "/api/users/me"), response, new MockFilterChain());
+
+        // 세션 쿠키만 지키고 이쪽이 평문으로 나가면 반쪽짜리다
+        assertThat(response.getCookie(CsrfTokenFilter.COOKIE_NAME).getSecure()).isTrue();
     }
 
     @Test

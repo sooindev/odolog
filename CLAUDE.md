@@ -165,6 +165,14 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     403(권한 없음) / 404(리소스 없음) / 409(리소스 중복) / 429(시도 과다). 서버 쪽 불변식이 깨진 경우
     (예: 세션엔 있는데 DB엔 없는 사용자)는 일부러 핸들러를 만들지 않고 500으로 흘려보내
     로그에 남긴다 — 모든 예외를 친절한 응답으로 감쌀 필요는 없다.
+    **단, 남의 자원에는 403 이 아니라 404 를 준다** (2026-09-22). 403 은 "권한이 없다"와
+    동시에 **"있긴 하다"** 를 말하고, 차량 id 는 1,2,3… 으로 이어지므로 둘이 갈리면
+    훑어서 어느 번호가 쓰이는지 셀 수 있다. **문구까지 같아야 한다** — 상태 코드만 맞추고
+    메시지가 다르면 그 메시지가 대신 알려준다. 정비·주유는 `findByIdAndVehicleId` 라
+    처음부터 404 하나였고, 차량만 혼자 달랐다.
+    그래서 지금 `ForbiddenAccessException` 을 던지는 곳은 **한 군데도 없다.**
+    타입과 핸들러는 남겨 뒀다 — 소유자가 아니어도 볼 수는 있는 자원(예: 공유받은 차량)이
+    생기면 그때가 진짜 403 이다.
 12. **예외는 전용 타입으로 던진다.** `IllegalArgumentException` 같은 JDK 범용 예외를 핸들러에
     매핑하지 않는다. 우리가 안 던진 예외까지 잡혀서 500이어야 할 것이 조용히 4xx로 나간다.
     상태 코드 하나당 예외 클래스 하나(`ConflictException`/`AuthenticationFailedException`/
@@ -183,6 +191,21 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     이 문서(`CLAUDE.md`)에 있으므로 코드에서 되풀이하지 않는다 — 같은 설명이 두 곳에 있으면
     한쪽만 고치게 되고, 그때 **코드 옆의 설명이 먼저 낡는다.**
     길어야 세 줄이고, 그보다 길어지면 그건 주석이 아니라 설계 기록이라 여기로 옮긴다.
+
+15. **계정 존재 여부를 응답으로 알려주지 않는다 — 단, 회원가입은 예외다** (2026-09-22).
+    로그인은 실패 사유를 통일하고(없는 이메일도 "이메일 또는 비밀번호가 올바르지 않습니다"),
+    비밀번호 재설정은 가입 여부와 무관하게 204 를 주며 **메일 발송 실패까지 삼킨다**.
+    없는 계정의 로그인 실패도 횟수를 센다 — 안 세면 "빨리 답하는 쪽"이 곧 없는 계정이다.
+    **회원가입만 409 로 존재를 알려준다.** 가입하려는 사람에게 "이미 있습니다"는 맞는 안내이고,
+    이걸 없애려면 가입을 메일 확인 흐름으로 바꿔야 하는데 **메일 설정이 없으면 아무도 가입을
+    끝내지 못하게 된다.** 대신 **한 곳에서 주소를 쓸어 보는 것**을 막는다 —
+    `UserController` 가 **IP 를 키로** 가입 시도를 센다(이메일로 세면 매번 다른 주소를 넣는
+    열거자는 카운터가 늘 1 이라 그냥 빠져나간다). 성공한 가입도 센다: 409 만 세면 아직 없는
+    주소를 찔러 보는 쪽이 안 걸리는데, 그쪽은 계정을 실제로 만들어 버려 더 나쁘다.
+    **`X-Forwarded-For` 는 읽지 않는다** — 보내는 쪽이 적는 값이라, 그 값을 덮어써 주는
+    프록시를 앞에 두기 전까지는 헤더 한 줄로 제한을 빠져나가게 만들 뿐이다.
+    → 남은 구멍은 **응답 시간**이다. 이메일이 없으면 BCrypt 검증을 건너뛰어 빨리 답한다.
+      백로그에 있다.
 
 ## 디자인 시스템 (프론트엔드)
 
@@ -543,7 +566,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     updateOdometer(dirty checking),
     │   │                                     delete(이력 먼저 → 차량),
     │   │                                     deleteAllOwnedBy(탈퇴용 일괄 삭제),
-    │   │                                     findOwnedVehicle(404/403 — maintenance도 재사용)
+    │   │                                     findOwnedVehicle(남의 차량도 404 — 규칙 11.
+    │   │                                     maintenance·fuel 도 이걸 재사용)
     │   └── controller/rest/VehicleController.java
     │                                         POST·GET /api/vehicles,
     │                                         GET·PATCH·DELETE /api/vehicles/{id},
@@ -681,7 +705,14 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   ├── ratelimit/LoginAttemptLimiter.java
         │   │                                 비밀번호 대입 방어. 10분 안에 10번 실패하면 10분 잠금.
         │   │                                 **계정이 없어도 센다** — 없는 이메일만 빨리 답하면
-        │   │                                 그 자체가 존재 여부를 알려준다. 인메모리라 재시작하면 잊는다
+        │   │                                 그 자체가 존재 여부를 알려준다. 인메모리라 재시작하면 잊는다.
+        │   │                                 **세 곳이 키만 갈라 쓴다**: 로그인(이메일) ·
+        │   │                                 재설정 요청(`password-reset:`+이메일) ·
+        │   │                                 회원가입(`signup:`+IP). 그래서 잠겼을 때의 문구는
+        │   │                                 부르는 쪽이 넘긴다 — 안 그러면 가입 화면에
+        │   │                                 "로그인 시도가 너무 많습니다" 가 뜬다.
+        │   │                                 **이름이 이미 좁다** — 셋을 다 뜻하는 이름으로
+        │   │                                 바꿀 값이 생기면 그때 바꾼다
         │   ├── csrf/CsrfTokenFilter.java     쿠키의 토큰과 헤더의 토큰을 비교(double submit).
         │   │                                 세션 보관 방식을 안 쓴 이유는 토큰을 내주려면 세션이
         │   │                                 필요해져 비로그인 방문자에게도 세션이 생기기 때문.
@@ -702,6 +733,15 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │                                  상한을 @Size(max = 100) 이 못 막았다
         │   └── validator/MaxBytesValidator.java
         │                                      null 은 통과시킨다 — "비었는가"는 @NotBlank 의 몫
+        ├── web/
+        │   └── header/SecurityHeadersFilter.java
+        │                                     모든 응답에 nosniff · X-Frame-Options: DENY ·
+        │                                     Referrer-Policy: no-referrer. 스프링 시큐리티를
+        │                                     안 써서 공짜로 따라오는 헤더가 하나도 없다.
+        │                                     HSTS 는 request.isSecure() 일 때만 — http 에서
+        │                                     켜면 그 도메인이 https 전용으로 굳는다.
+        │                                     config/web 이 아닌 이유: WebConfig 는 한 번 알려주는
+        │                                     설정이고 이쪽은 요청마다 도는 실행 코드
         ├── config/
         │   ├── web/WebConfig.java            ArgumentResolver 등록 + CORS(5173, credentials)
         │   ├── jpa/JpaAuditingConfig.java    @EnableJpaAuditing 스위치.
@@ -720,9 +760,11 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
             │                                   의존이 생긴다
             ├── type/                         예외 타입만 모아 둔다 (상태 코드 하나당 하나)
             │   ├── ConflictException.java              409 전용
-            │   ├── TooManyRequestsException.java       429 전용 (로그인 시도 제한)
+            │   ├── TooManyRequestsException.java       429 전용. 로그인·재설정 요청·회원가입
+            │   │                                        셋이 같은 리미터를 키만 갈라 쓴다
             │   ├── AuthenticationFailedException.java  401 전용
-            │   ├── ForbiddenAccessException.java       403 전용
+            │   ├── ForbiddenAccessException.java       403 전용. **지금 던지는 곳이 없다** —
+            │   │                                        남의 자원은 404 로 통일(규칙 11)
             │   └── ResourceNotFoundException.java      404 전용
             └── handler/GlobalExceptionHandler.java
                                               409/401/403/404/400 매핑. 전용 예외만
@@ -754,6 +796,15 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          **프런트** 주소다(백엔드가 아니다)
                                          **SQL 로깅은 개발 전용** — bind:trace 가 이메일·닉네임과
                                          BCrypt 해시까지 찍는다. 배포하면 반드시 꺼야 한다
+    src/main/resources/application-prod.yml
+                                         운영 전용 덮어쓰기. SPRING_PROFILES_ACTIVE=prod 하나로
+                                         springdoc 문서를 닫고, SQL·bind 로깅을 끄고,
+                                         세션 쿠키 secure 를 켠다(CsrfTokenFilter 가 같은 키를
+                                         읽으므로 CSRF 쿠키도 같이 따라온다).
+                                         **주석으로 "배포할 때 끄세요" 라고 적어 두는 것과의
+                                         차이가 이 파일의 전부다** — 주석은 사람이 기억해야 하고
+                                         프로파일은 환경변수가 대신 기억한다
+
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음.
                                          odolog.csrf.enabled=false — 켜 두면 @WebMvcTest 가 Filter 빈을
@@ -761,16 +812,18 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 188개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 195개.
 
     src/test/java/com/odolog/app/
     ├── common/
-    │   └── auth/
-    │       ├── ratelimit/LoginAttemptLimiterTest.java
-    │       │                                   시계를 밖에서 넣는다 — 안에서 now() 를 부르면
-    │       │                                   잠금 만료를 테스트할 수 없다. 대소문자 우회도 본다
-    │       └── csrf/CsrfTokenFilterTest.java   필터를 직접 호출한다. @WebMvcTest 로 하면
-    │                                           Filter 빈이 같이 올라와 기존 테스트가 전부 403
+    │   ├── auth/
+    │   │   ├── ratelimit/LoginAttemptLimiterTest.java
+    │   │   │                                   시계를 밖에서 넣는다 — 안에서 now() 를 부르면
+    │   │   │                                   잠금 만료를 테스트할 수 없다. 대소문자 우회도 본다
+    │   │   └── csrf/CsrfTokenFilterTest.java   필터를 직접 호출한다. @WebMvcTest 로 하면
+    │   │                                       Filter 빈이 같이 올라와 기존 테스트가 전부 403
+    │   └── web/header/SecurityHeadersFilterTest.java
+    │                                           헤더 셋이 붙는지 + HSTS 는 https 에만 붙는지
     ├── user/
     │   ├── repository/jpa/PasswordResetTokenRepositoryTest.java
     │   │                                              @DataJpaTest — 해시 조회, 해시 유니크,
@@ -1023,7 +1076,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 ### 프론트엔드 — 테스트
 
 **테스트는 대상 파일 옆에 둔다**(`format.ts` 옆에 `format.test.ts`). 백엔드가 테스트 경로를
-대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 30개**다.
+대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 39개**다.
 
     cn-usage.test.ts        cn() 과 cva() 인자에 타입 스케일 토큰이 없는지 소스를 훑는다.
                             **이 가드가 없던 8일 동안 CardTitle 이 17px·600 을 잃고
@@ -1533,7 +1586,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       로그인하면 **원래 가려던 `/vehicles` 로 복귀**하는지
 - [ ] **B-108** **두 번째 계정**으로 가입 → 차량 목록이 비어 있는지(**남의 차량이 안 보인다**)
 - [ ] **B-109** 두 번째 계정에서 첫 계정 차량의 상세 주소(`/vehicles/1` 등)를 직접 입력 →
-      404 와 403 을 **구분해서 보여주지 않는지**(남의 차량 존재 자체를 알리지 않는다)
+      Network 탭에서 **403 이 아니라 404** 인지. 없는 id(`/vehicles/99999`)와 **응답 본문까지
+      같은지** — 문구가 다르면 그 문구가 존재 여부를 알려준다 (2026-09-22 통일)
 - [ ] **B-110** 첫 계정 복귀 → 차량 삭제. ⚠️ confirm 문구가 **"이 차량과 정비 이력, 주유 기록이
       모두 삭제됩니다"** 인지 — 주유가 빠져 있으면 9/17 에 고친 것이 되돌아간 것이고,
       "주유 기록은 남겠지" 하고 누른 사용자가 유류비와 연비를 통째로 잃는다 →
@@ -1709,7 +1763,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (188개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (195개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (39개)
 
 ---
@@ -1731,6 +1785,9 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 이메일 중복 확인 API (`GET /api/users/exists?email=`) — 회원가입 폼 실시간 피드백용
       → 단, 이건 계정 존재 여부를 노출하는 API다. 로그인 실패 메시지를 일부러 통일해 둔 것과
         모순되므로 **도입 전에 트레이드오프를 다시 따진다.**
+      → 2026-09-22 에 한 번 따졌다. 가입 409 가 이미 같은 것을 알려주고 있었고,
+        **없애는 대신 IP 로 속도를 제한하기로 했다**(규칙 15). 이 API 를 따로 만들면
+        그 제한 바깥에 같은 오라클을 하나 더 두는 셈이라, 만든다면 **같은 리미터를 통과시켜야** 한다.
 - [ ] 정비 이력 종류별 필터링 (`GET .../maintenance-records?type=`)
 - [ ] 차량 목록에 각 차량의 "임박한 정비" 요약 포함 (목록 화면에서 바로 보이게)
 - [ ] 만탱크 연비 — 지금은 매 주유마다 직전 기록과의 차이로 계산한다(단순법).

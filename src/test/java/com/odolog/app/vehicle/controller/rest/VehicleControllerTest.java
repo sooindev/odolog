@@ -1,7 +1,6 @@
 package com.odolog.app.vehicle.controller.rest;
 
 import com.odolog.app.common.auth.constant.SessionConst;
-import com.odolog.app.common.exception.type.ForbiddenAccessException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
@@ -172,16 +171,16 @@ class VehicleControllerTest {
     }
 
     @Test
-    @DisplayName("본인 소유가 아닌 차량의 주행거리를 갱신하려 하면 403")
+    @DisplayName("본인 소유가 아닌 차량의 주행거리를 갱신하려 하면 404 — 존재 자체를 알리지 않는다")
     void updateOdometerForbidden() throws Exception {
         when(vehicleService.updateOdometer(eq(1L), eq(10L), any(UpdateOdometerRequest.class)))
-                .thenThrow(new ForbiddenAccessException("본인 소유의 차량만 접근할 수 있습니다."));
+                .thenThrow(new ResourceNotFoundException("존재하지 않는 차량입니다: 1"));
 
         mockMvc.perform(patch("/api/vehicles/10/odometer")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"odometer\":50000}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test

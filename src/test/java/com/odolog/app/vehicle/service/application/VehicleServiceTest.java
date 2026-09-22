@@ -1,7 +1,6 @@
 package com.odolog.app.vehicle.service.application;
 
 import com.odolog.app.common.exception.type.ConflictException;
-import com.odolog.app.common.exception.type.ForbiddenAccessException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
@@ -26,6 +25,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -99,13 +99,28 @@ class VehicleServiceTest {
     }
 
     @Test
-    @DisplayName("본인 소유가 아닌 차량에 접근하면 ForbiddenAccessException")
+    @DisplayName("본인 소유가 아닌 차량에 접근하면 없는 것처럼 ResourceNotFoundException")
     void findOwnedVehicleForbidden() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
 
         assertThatThrownBy(() -> vehicleService.findOwnedVehicle(999L, 10L))
-                .isInstanceOf(ForbiddenAccessException.class);
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("없는 차량과 남의 차량은 메시지까지 같다")
+    void hidesExistenceOfOthersVehicles() {
+        // 상태 코드만 맞추고 문구가 다르면 그 문구가 존재 여부를 알려준다
+        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(createVehicle(10L, createOwner(1L))));
+        when(vehicleRepository.findById(11L)).thenReturn(Optional.empty());
+
+        String othersVehicle = catchThrowable(() -> vehicleService.findOwnedVehicle(999L, 10L)).getMessage();
+        String missingVehicle = catchThrowable(() -> vehicleService.findOwnedVehicle(999L, 11L)).getMessage();
+
+        // id 만 다르고 나머지는 같아야 한다 — 보낸 쪽이 이미 아는 값이다
+        assertThat(othersVehicle).isEqualTo("존재하지 않는 차량입니다: 10");
+        assertThat(missingVehicle).isEqualTo("존재하지 않는 차량입니다: 11");
     }
 
     @Test
@@ -204,7 +219,7 @@ class VehicleServiceTest {
 
         assertThatThrownBy(() -> vehicleService.update(999L, 10L,
                 new VehicleUpdateRequest(null, "기아", null, null)))
-                .isInstanceOf(ForbiddenAccessException.class);
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test

@@ -46,7 +46,7 @@ public class UserService {
 
     public User login(LoginRequest request) {
         // 검증보다 먼저. 잠긴 동안에는 비밀번호를 맞혀도 들여보내지 않는다
-        loginAttemptLimiter.checkNotLocked(request.email());
+        loginAttemptLimiter.checkNotLocked(request.email(), "로그인 시도가 너무 많습니다.");
 
         try {
             User user = userRepository.findByEmail(request.email())

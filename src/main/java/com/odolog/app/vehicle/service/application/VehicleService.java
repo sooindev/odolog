@@ -6,7 +6,6 @@ import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.dto.request.odometer.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.register.VehicleRegisterRequest;
 import com.odolog.app.vehicle.dto.request.update.VehicleUpdateRequest;
-import com.odolog.app.common.exception.type.ForbiddenAccessException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
@@ -125,14 +124,29 @@ public class VehicleService {
         vehicleRepository.deleteAll(vehicles);
     }
 
+    /**
+     * 남의 차량도 "없다"고 답한다
+     *
+     * 403 은 "권한이 없다"는 뜻이지만 동시에 **"있긴 하다"** 는 뜻을 나른다.
+     * 차량 id 가 1,2,3… 으로 이어지므로 403 과 404 가 갈리면 훑어서
+     * 어느 번호가 쓰이고 있는지 셀 수 있다
+     *
+     * 정비·주유는 findByIdAndVehicleId 라 처음부터 404 하나였다 — 차량만 혼자 달랐다
+     *
+     * 상태 코드만 맞추고 문구를 달리하면 소용없다. 그래서 두 경우가 **같은 예외를 만들어 쓴다**
+     */
     public Vehicle findOwnedVehicle(Long requesterId, Long vehicleId) {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 차량입니다: " + vehicleId));
+                .orElseThrow(() -> notFound(vehicleId));
 
         if (!vehicle.getOwner().getId().equals(requesterId)) {
-            throw new ForbiddenAccessException("본인 소유의 차량만 접근할 수 있습니다.");
+            throw notFound(vehicleId);
         }
 
         return vehicle;
+    }
+
+    private ResourceNotFoundException notFound(Long vehicleId) {
+        return new ResourceNotFoundException("존재하지 않는 차량입니다: " + vehicleId);
     }
 }

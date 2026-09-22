@@ -55,6 +55,7 @@ odolog:
 
 # Swagger UI 가 CSRF 쿠키를 읽어 헤더로 실어 보내게 한다.
 # 없으면 문서에서 "Try it out" 으로 POST·PATCH·DELETE 를 못 쏜다.
+# 문서 자체는 아무 인증도 요구하지 않으므로 운영에서는 닫는다 — application-prod.yml.
 springdoc:
   swagger-ui:
     csrf:
@@ -64,7 +65,8 @@ springdoc:
 
 # ⚠️ 아래 두 줄은 개발 전용이다.
 # bind: trace 는 쿼리에 들어가는 값을 전부 찍는다 — 이메일·닉네임·전화번호와
-# BCrypt 해시가 그대로 로그에 남는다. 배포 환경에서는 반드시 꺼야 한다.
+# BCrypt 해시가 그대로 로그에 남는다.
+# 끄는 일은 application-prod.yml 이 대신한다 (SPRING_PROFILES_ACTIVE=prod).
 logging:
   level:
     org.hibernate.SQL: debug

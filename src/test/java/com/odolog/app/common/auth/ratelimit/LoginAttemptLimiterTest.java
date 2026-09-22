@@ -51,7 +51,7 @@ class LoginAttemptLimiterTest {
 
         fail(limiter, "a@odolog.com", 9);
 
-        assertThatCode(() -> limiter.checkNotLocked("a@odolog.com")).doesNotThrowAnyException();
+        assertThatCode(() -> limiter.checkNotLocked("a@odolog.com", "로그인 시도가 너무 많습니다.")).doesNotThrowAnyException();
     }
 
     @Test
@@ -61,9 +61,22 @@ class LoginAttemptLimiterTest {
 
         fail(limiter, "a@odolog.com", 10);
 
-        assertThatThrownBy(() -> limiter.checkNotLocked("a@odolog.com"))
+        assertThatThrownBy(() -> limiter.checkNotLocked("a@odolog.com", "로그인 시도가 너무 많습니다."))
                 .isInstanceOf(TooManyRequestsException.class)
                 .hasMessageContaining("다시 시도");
+    }
+
+    @Test
+    @DisplayName("잠긴 이유는 부르는 쪽이 넘긴 문장을 그대로 쓴다")
+    void usesCallerSuppliedReason() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());
+
+        fail(limiter, "signup:10.0.0.1", 10);
+
+        // 리미터가 문구를 들고 있으면 회원가입 화면에 "로그인 시도가…" 가 뜬다
+        assertThatThrownBy(() -> limiter.checkNotLocked("signup:10.0.0.1", "회원가입 시도가 너무 많습니다."))
+                .isInstanceOf(TooManyRequestsException.class)
+                .hasMessageContaining("회원가입 시도가 너무 많습니다.");
     }
 
     @Test
@@ -75,7 +88,7 @@ class LoginAttemptLimiterTest {
 
         clock.advance(Duration.ofMinutes(11));
 
-        assertThatCode(() -> limiter.checkNotLocked("a@odolog.com")).doesNotThrowAnyException();
+        assertThatCode(() -> limiter.checkNotLocked("a@odolog.com", "로그인 시도가 너무 많습니다.")).doesNotThrowAnyException();
     }
 
     @Test
@@ -90,7 +103,7 @@ class LoginAttemptLimiterTest {
             clock.advance(Duration.ofMinutes(11));
         }
 
-        assertThatCode(() -> limiter.checkNotLocked("a@odolog.com")).doesNotThrowAnyException();
+        assertThatCode(() -> limiter.checkNotLocked("a@odolog.com", "로그인 시도가 너무 많습니다.")).doesNotThrowAnyException();
     }
 
     @Test
@@ -102,7 +115,7 @@ class LoginAttemptLimiterTest {
         limiter.recordSuccess("a@odolog.com");
         fail(limiter, "a@odolog.com", 9);
 
-        assertThatCode(() -> limiter.checkNotLocked("a@odolog.com")).doesNotThrowAnyException();
+        assertThatCode(() -> limiter.checkNotLocked("a@odolog.com", "로그인 시도가 너무 많습니다.")).doesNotThrowAnyException();
     }
 
     @Test
@@ -114,7 +127,7 @@ class LoginAttemptLimiterTest {
         fail(limiter, "A@Odolog.com", 5);
         fail(limiter, "  a@odolog.com  ", 5);
 
-        assertThatThrownBy(() -> limiter.checkNotLocked("a@odolog.com"))
+        assertThatThrownBy(() -> limiter.checkNotLocked("a@odolog.com", "로그인 시도가 너무 많습니다."))
                 .isInstanceOf(TooManyRequestsException.class);
     }
 
@@ -125,6 +138,6 @@ class LoginAttemptLimiterTest {
 
         fail(limiter, "a@odolog.com", 10);
 
-        assertThatCode(() -> limiter.checkNotLocked("b@odolog.com")).doesNotThrowAnyException();
+        assertThatCode(() -> limiter.checkNotLocked("b@odolog.com", "로그인 시도가 너무 많습니다.")).doesNotThrowAnyException();
     }
 }
