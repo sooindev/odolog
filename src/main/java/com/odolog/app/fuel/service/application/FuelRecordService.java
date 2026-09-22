@@ -128,7 +128,7 @@ public class FuelRecordService {
         List<FuelRecord> records = fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId);
 
         // 건수·비용·주유량은 전체 기준. 초기화 대상은 연비뿐
-        int totalCost = 0;
+        long totalCost = 0;
         BigDecimal totalLiters = BigDecimal.ZERO;
         for (FuelRecord record : records) {
             totalCost += record.totalCostOrZero();

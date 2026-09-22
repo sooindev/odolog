@@ -9,7 +9,11 @@ import java.math.BigDecimal;
  */
 public record FuelSummaryResponse(
         int recordCount,
-        int totalCost,
+        /**
+         * 총 유류비(원). int 가 아닌 이유 — 홈 요약(GarageSummaryResponse.fuelCost)이 long 이라
+         * 둘이 다르면 같은 값을 두 화면이 다르게 말한다. 실제로 40억 원에서 음수가 나왔다
+         */
+        long totalCost,
         BigDecimal totalLiters,
         /** 평균에 실제로 쓴 구간 거리의 합(km). 2건 미만이면 null */
         Integer totalDistance,

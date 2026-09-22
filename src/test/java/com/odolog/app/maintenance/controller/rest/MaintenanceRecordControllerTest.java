@@ -139,6 +139,48 @@ class MaintenanceRecordControllerTest {
     }
 
     @Test
+    @DisplayName("없는 종류를 보내면 400 — 우리 에러 모양으로, 어느 필드인지까지")
+    void unknownServiceTypeIsBadRequest() throws Exception {
+        /*
+         * 전에는 핸들러가 없어 스프링 기본 응답(timestamp/status/error/path)이 나갔다.
+         * message 가 없어 화면이 "요청에 실패했습니다 (HTTP 400)" 로 떨어졌고, 무엇이
+         * 틀렸는지 말해 주지 못했다.
+         */
+        mockMvc.perform(post("/api/vehicles/10/maintenance-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"NOT_A_TYPE","cost":1000,"serviceOdometer":100,"serviceDate":"2026-09-01"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("type: 값의 형식이 올바르지 않습니다."));
+    }
+
+    @Test
+    @DisplayName("날짜 형식이 깨져도 같은 모양으로 400")
+    void brokenDateIsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/vehicles/10/maintenance-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"ENGINE_OIL","cost":1000,"serviceOdometer":100,"serviceDate":"2026-13-45"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("serviceDate: 값의 형식이 올바르지 않습니다."));
+    }
+
+    @Test
+    @DisplayName("JSON 이 통째로 깨지면 필드를 특정할 수 없어 일반 문구로 400")
+    void brokenJsonIsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/vehicles/10/maintenance-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("요청 본문을 읽을 수 없습니다. 형식을 확인해 주세요."));
+    }
+
+    @Test
     @DisplayName("정비 이력 삭제 성공 시 204")
     void deleteSuccess() throws Exception {
         mockMvc.perform(delete("/api/vehicles/10/maintenance-records/100")

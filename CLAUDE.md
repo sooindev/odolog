@@ -165,6 +165,9 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     403(권한 없음) / 404(리소스 없음) / 409(리소스 중복) / 429(시도 과다). 서버 쪽 불변식이 깨진 경우
     (예: 세션엔 있는데 DB엔 없는 사용자)는 일부러 핸들러를 만들지 않고 500으로 흘려보내
     로그에 남긴다 — 모든 예외를 친절한 응답으로 감쌀 필요는 없다.
+    **다만 "상태 코드를 낮추지 않는다" 와 "본문을 주지 않는다" 는 다른 얘기다**(2026-09-23).
+    500 은 500 으로 두되 `ErrorResponse` 는 돌려준다 — 안 그러면 스프링 기본 응답이 나가는데
+    거기엔 `message` 가 없어 화면이 "요청에 실패했습니다 (HTTP 500)" 밖에 말하지 못한다.
     **단, 남의 자원에는 403 이 아니라 404 를 준다** (2026-09-22). 403 은 "권한이 없다"와
     동시에 **"있긴 하다"** 를 말하고, 차량 id 는 1,2,3… 으로 이어지므로 둘이 갈리면
     훑어서 어느 번호가 쓰이는지 셀 수 있다. **문구까지 같아야 한다** — 상태 코드만 맞추고
@@ -752,6 +755,16 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │                                  상한을 @Size(max = 100) 이 못 막았다
         │   └── validator/MaxBytesValidator.java
         │                                      null 은 통과시킨다 — "비었는가"는 @NotBlank 의 몫
+        ├── schema/
+        │   └── drift/SchemaDriftChecker.java
+        │                                     기동할 때 엔티티의 nullable 과 실제 DB 컬럼을 한 번
+        │                                     대조하고, 어긋나면 고칠 ALTER 까지 찍는다(경고만,
+        │                                     막지는 않는다). **ddl-auto: validate 로는 안 된다** —
+        │                                     Hibernate 의 스키마 검증은 존재와 타입만 보고
+        │                                     nullability 는 아예 보지 않는다(2026-09-23 실험으로 확인).
+        │                                     @Column·@JoinColumn 이 붙은 필드만 본다 — 애노테이션이
+        │                                     없으면 기본값을 추측해야 하는데 기본형에 Hibernate 가
+        │                                     NOT NULL 을 붙이는 등 예외가 많아 오탐이 난다
         ├── web/
         │   └── header/SecurityHeadersFilter.java
         │                                     모든 응답에 nosniff · X-Frame-Options: DENY ·
@@ -786,7 +799,14 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
             │   │                                        남의 자원은 404 로 통일(규칙 11)
             │   └── ResourceNotFoundException.java      404 전용
             └── handler/GlobalExceptionHandler.java
-                                              409/401/403/404/400 매핑. 전용 예외만
+                                              409/401/403/404/400 매핑 + HttpMessageNotReadable
+                                              (깨진 JSON·없는 enum·날짜 형식 → 400, 어느 필드인지까지).
+                                              DataIntegrityViolation 이 유니크가 아니면 **500 을
+                                              유지하되 본문은 우리 모양**으로 준다(2026-09-23) —
+                                              상태 코드를 낮추면 우리 버그가 4xx 로 새어 나가지만,
+                                              화면이 아무 말도 못 하는 건 다른 문제다.
+                                              예외를 다시 던지지 않으므로 스택은 직접 찍는다.
+                                              전용 예외만
                                               잡는다 — IllegalArgumentException 같은
                                               JDK 범용 예외는 매핑하지 않음(규칙 12).
                                               IllegalStateException은 미처리 → 500.
@@ -831,7 +851,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 207개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 214개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -841,8 +861,13 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │   │   │                                   잠금 만료를 테스트할 수 없다. 대소문자 우회도 본다
     │   │   └── csrf/CsrfTokenFilterTest.java   필터를 직접 호출한다. @WebMvcTest 로 하면
     │   │                                       Filter 빈이 같이 올라와 기존 테스트가 전부 403
-    │   └── web/header/SecurityHeadersFilterTest.java
-    │                                           헤더 셋이 붙는지 + HSTS 는 https 에만 붙는지
+    │   ├── web/header/SecurityHeadersFilterTest.java
+    │   │                                       헤더 셋이 붙는지 + HSTS 는 https 에만 붙는지
+    │   └── schema/drift/SchemaDriftCheckerTest.java
+    │                                           @SpringBootTest — 컬럼을 일부러 어긋나게 만들고
+    │                                           되돌린다. 양방향 다 본다.
+    │                                           **이 장치가 조용히 고장 나면 그때부터
+    │                                           아무것도 못 잡는다**
     ├── user/
     │   ├── repository/jpa/PasswordResetTokenRepositoryTest.java
     │   │                                              @DataJpaTest — 해시 조회, 해시 유니크,
@@ -1812,7 +1837,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (207개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (214개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (39개)
 
 ---

@@ -188,6 +188,23 @@ class FuelRecordServiceTest {
     }
 
     @Test
+    @DisplayName("총 유류비가 20억을 넘어도 음수가 되지 않는다")
+    void totalCostDoesNotOverflow() {
+        /*
+         * int 로 누적하던 시절 4,000,000,000 원이 -294,967,296 으로 찍혔다.
+         * 홈 요약은 long 이라 같은 데이터에 4,000,000,000 을 주던 상태 —
+         * 같은 값을 두 화면이 다르게 말했다.
+         */
+        Vehicle vehicle = vehicle(11000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
+                record(1L, vehicle, 10000, "10.00", 2_000_000_000),
+                record(2L, vehicle, 10500, "10.00", 2_000_000_000)));
+
+        assertThat(fuelRecordService.summary(1L, 10L).totalCost()).isEqualTo(4_000_000_000L);
+    }
+
+    @Test
     @DisplayName("요약의 합계는 적힌 것만 더한다 — 안 적은 기록이 0 으로 섞이지 않는다")
     void summarySkipsUnrecordedValues() {
         Vehicle vehicle = vehicle(11000);

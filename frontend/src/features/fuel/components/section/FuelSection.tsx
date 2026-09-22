@@ -122,13 +122,27 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         {/* 이 행에서 가장 중요한 값이라 맨 앞 */}
                         {record.efficiency === null ? (
                           /*
-                            연비가 없는 이유는 둘 — 첫 기록이거나 기준점이거나
-                            "—" 만 두면 왜 없는지 알 수 없어 이유를 명시
+                            연비가 없는 이유가 셋이라 문구도 셋이다. "—" 만 두면 왜 없는지 알 수 없다.
+
+                            주유량만 없는 경우를 distance 로 가려낸다 — 기준점이거나 직전 기록이
+                            없으면 서버가 distance 도 null 로 주므로, distance 가 있는데 연비가
+                            없다는 것은 "달린 거리는 아는데 얼마나 넣었는지 모른다" 뿐이다.
+                            여기서 "기준 기록" 이라고 적으면 거짓말이 된다 — 첫 기록도 아니고
+                            다음 주유부터 계산되는 것도 아니다(바로 다음 기록은 이미 나온다).
                           */
                           <span className="text-caption text-muted-foreground">
-                            {record.resetPoint ? '연비 기준점' : '기준 기록'}
-                            {/* 연비가 없는 이유를 말하는 문구라 faint 를 쓰지 않는다 — 대비 3.2 라 읽어야 하는 값에는 못 쓴다 */}
-                            <span className="ml-1 text-muted-foreground">· 다음 주유부터 계산</span>
+                            {record.distance !== null && record.liters === null ? (
+                              <>
+                                주유량 없음
+                                <span className="ml-1 text-muted-foreground">· 연비 계산 안 됨</span>
+                              </>
+                            ) : (
+                              <>
+                                {record.resetPoint ? '연비 기준점' : '기준 기록'}
+                                {/* 연비가 없는 이유를 말하는 문구라 faint 를 쓰지 않는다 — 대비 3.2 라 읽어야 하는 값에는 못 쓴다 */}
+                                <span className="ml-1 text-muted-foreground">· 다음 주유부터 계산</span>
+                              </>
+                            )}
                           </span>
                         ) : (
                           <span className="flex items-baseline gap-1.5">
