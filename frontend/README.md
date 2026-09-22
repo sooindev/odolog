@@ -11,6 +11,8 @@ npm run dev     # http://localhost:5173
 
 **백엔드가 http://localhost:8080 에 떠 있어야 한다.** 세션 쿠키 인증이라
 백엔드 CORS 설정(`WebConfig`)의 `allowedOrigins`와 이 개발 서버 포트가 일치해야 한다.
+포트 5173 이 이미 쓰이고 있으면 Vite 가 5174 로 옮겨 뜨는데, **그러면 모든 요청이 막힌다** —
+먼저 쓰고 있는 것을 끄고 5173 으로 띄워야 한다.
 
 ## 스크립트
 
@@ -18,7 +20,7 @@ npm run dev     # http://localhost:5173
 |---|---|
 | `npm run dev` | 개발 서버 |
 | `npm run build` | 타입 검사(`tsc -b`) 후 프로덕션 빌드 |
-| `npm run test` | vitest (36개) |
+| `npm run test` | vitest (39개) |
 | `npm run lint` | oxlint |
 | `npm run preview` | 빌드 결과 미리보기. `/api` 를 8080 으로 넘겨주므로 백엔드가 떠 있어야 한다 |
 
