@@ -51,7 +51,7 @@ class FuelRecordControllerTest {
     private FuelRecordResponse response() {
         return new FuelRecordResponse(1L, LocalDate.of(2026, 9, 10), 10500,
                 new BigDecimal("25.00"), 50000, null, false,
-                2000, 500, new BigDecimal("20.00"), false);
+                2000, 500, new BigDecimal("20.00"), false, false);
     }
 
     @Test

@@ -50,6 +50,44 @@ class FuelEfficiencyTest {
     }
 
     @Test
+    @DisplayName("기록이 빠진 구간은 평균에서 빼고 따로 센다 — 기록을 지웠을 때가 이 경우다")
+    void missingSegmentExcluded() {
+        /*
+         * 평소 400km 를 40L 로 달리는 차(10km/L). 가운데 기록 하나가 없어져
+         * 한 구간만 800km 가 됐다 — 거리는 두 배인데 주유량은 한 번치뿐이라 20km/L 로 뜬다.
+         * 50 을 넘지 않아 "불가능"에는 안 걸리므로, 빼지 않으면 조용히 평균을 끌어올린다.
+         */
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                record(10000, "40.00"),
+                record(10400, "40.00"),
+                record(10800, "40.00"),
+                record(11200, "40.00"),
+                record(12000, "40.00")));
+
+        assertThat(result.missingSegments()).isEqualTo(1);
+        assertThat(result.excludedSegments()).isZero();
+        // 멀쩡한 구간 셋(1200km / 120L)만 남는다. 빼지 않으면 12.50 이다
+        assertThat(result.distance()).isEqualTo(1200);
+        assertThat(result.average()).isEqualByComparingTo("10.00");
+    }
+
+    @Test
+    @DisplayName("장거리 여행은 빼지 않는다 — 거리는 길어도 그만큼 넣었으면 연비는 평소와 같다")
+    void longTripKept() {
+        // 마지막 구간이 800km 지만 80L 를 넣었다. 거리만 보고 빼면 멀쩡한 구간을 버린다
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                record(10000, "40.00"),
+                record(10400, "40.00"),
+                record(10800, "40.00"),
+                record(11200, "40.00"),
+                record(12000, "80.00")));
+
+        assertThat(result.missingSegments()).isZero();
+        assertThat(result.distance()).isEqualTo(2000);
+        assertThat(result.average()).isEqualByComparingTo("10.00");
+    }
+
+    @Test
     @DisplayName("물리적으로 불가능한 구간은 평균에서 빼고 뺀 개수를 알려준다")
     void impossibleSegmentExcluded() {
         /*

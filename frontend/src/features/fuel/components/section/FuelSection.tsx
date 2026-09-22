@@ -38,7 +38,14 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   }
 
   async function handleDelete(recordId: number) {
-    if (!window.confirm('이 주유 기록을 삭제할까요? 연비가 다시 계산됩니다.')) {
+    // 지우면 다음 기록의 구간이 그만큼 길어지는데 주유량은 안 늘어 연비가 뜬다.
+    // 구간이 셋 미만이면 '평소'가 없어 서버가 그걸 못 잡으므로, 여기서 미리 말한다
+    if (
+      !window.confirm(
+        '이 주유 기록을 삭제할까요?\n\n' +
+          '지운 기록의 주유량이 함께 사라져 다음 기록의 연비가 실제보다 높게 나옵니다.',
+      )
+    ) {
       return
     }
 
@@ -133,6 +140,11 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                                 무엇을 잘못 적었는지 보려면 그 값이 남아 있어야 함 */}
                             {record.efficiencySuspicious && (
                               <span className="text-xs text-destructive">확인 필요</span>
+                            )}
+                            {/* 기록이 빠진(또는 지운) 구간. 빨강을 쓰지 않는다 —
+                                빨강은 "실패"를 나르는 기능색이고 이건 잘못이 아니라 빈자리다 */}
+                            {record.missingRecordSuspected && (
+                              <span className="text-xs text-muted-foreground">기록 빠짐?</span>
                             )}
                           </span>
                         )}

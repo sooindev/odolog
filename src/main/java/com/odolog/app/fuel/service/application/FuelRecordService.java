@@ -51,12 +51,16 @@ public class FuelRecordService {
         // 계기판 값이 더 최신이면 차량 쪽도 갱신
         vehicle.liftOdometerTo(request.odometer());
 
-        return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()));
+        return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()),
+                baselineOf(vehicleId));
     }
 
     /**
-     * 페이지당 쿼리 2번
+     * 페이지당 쿼리 3번
      * 페이지 안쪽 행은 서로가 짝, 마지막 행의 짝만 다음 페이지에 있어 한 건 추가 조회 (N+1 방지)
+     *
+     * 세 번째는 '평소 구간'을 구하는 전체 조회다. 페이지 안에서만 중앙값을 내면
+     * 같은 기록이 1페이지와 2페이지에서 다르게 판정된다 — 기준은 이력 전체라야 한 벌이다
      */
     public Page<FuelRecordResponse> findByVehicle(Long requesterId, Long vehicleId, Pageable pageable) {
         vehicleService.findOwnedVehicle(requesterId, vehicleId);
@@ -72,10 +76,12 @@ public class FuelRecordService {
         // 내림차순이라 맨 끝이 가장 오래된 기록. 그것의 직전 한 건
         FuelRecord beforePage = findPrevious(vehicleId, items.get(items.size() - 1).getOdometer());
 
+        FuelAnomaly.Baseline baseline = baselineOf(vehicleId);
+
         List<FuelRecordResponse> responses = new ArrayList<>(items.size());
         for (int i = 0; i < items.size(); i++) {
             FuelRecord previous = (i == items.size() - 1) ? beforePage : items.get(i + 1);
-            responses.add(FuelRecordResponse.of(items.get(i), previous));
+            responses.add(FuelRecordResponse.of(items.get(i), previous, baseline));
         }
 
         return new PageImpl<>(responses, page.getPageable(), page.getTotalElements());
@@ -98,7 +104,8 @@ public class FuelRecordService {
         if (request.memo() != null) record.changeMemo(request.memo());
         if (request.resetPoint() != null) record.changeResetPoint(request.resetPoint());
 
-        return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()));
+        return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()),
+                baselineOf(vehicleId));
     }
 
     @Transactional
@@ -133,12 +140,20 @@ public class FuelRecordService {
             }
         }
 
+        // 빠진 구간 수를 여기서 따로 세지 않는다 — 평균에서 뺀 바로 그 개수라야
+        // "N곳을 뺐습니다" 가 참이 된다
         return new FuelSummaryResponse(records.size(), totalCost, totalLiters,
                 efficiency.distance(), efficiency.average(), latestId, resetPointId,
-                FuelAnomaly.longSegmentCount(records), efficiency.excludedSegments());
+                efficiency.missingSegments(), efficiency.excludedSegments());
     }
 
 
+
+    /** 그 차량의 평소 구간. 목록·등록·수정이 같은 기준을 써야 같은 행이 같은 말을 한다 */
+    private FuelAnomaly.Baseline baselineOf(Long vehicleId) {
+        return FuelAnomaly.baselineOf(
+                fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId));
+    }
 
     private FuelRecord findPrevious(Long vehicleId, int odometer) {
         return fuelRecordRepository

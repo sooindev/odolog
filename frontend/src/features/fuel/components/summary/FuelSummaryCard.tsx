@@ -123,13 +123,13 @@ export function FuelSummaryCard({
             )}
 
             {/*
-              기록 누락 가능성. 한 번 안 적으면 그 구간 거리가 두 배가 되고 연비도 두 배가 되어 평균에 섞임
-              말해 주면 빠진 기록을 채워 넣게 되고 그러면 저절로 맞아짐
+              기록 누락 가능성. 한 번 안 적거나 지우면 그 구간 거리가 두 배가 되고 연비도 두 배가 됨
+              평균에서 빼 두므로 여기서도 뺐다고 말해야 함 — 목록의 숫자와 평균이 안 맞아 보이기 때문
             */}
             {data.longSegmentCount > 0 && (
               <p className="text-xs leading-relaxed text-muted-foreground">
-                평소보다 긴 구간이 {data.longSegmentCount}곳 있습니다. 주유 기록이 빠졌다면 채워
-                넣으면 연비가 다시 계산됩니다.
+                주유 기록이 빠진 것으로 보이는 구간 {data.longSegmentCount}곳을 평균에서 뺐습니다.
+                목록에서 `기록 빠짐?` 이 붙은 구간의 기록을 채워 넣으면 다시 계산됩니다.
               </p>
             )}
 

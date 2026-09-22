@@ -1,5 +1,6 @@
 package com.odolog.app.fuel.domain.calculation;
 
+import com.odolog.app.fuel.domain.calculation.FuelAnomaly.Baseline;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import org.junit.jupiter.api.DisplayName;
@@ -16,18 +17,30 @@ class FuelAnomalyTest {
 
     private final Vehicle vehicle = new Vehicle(null, "12가3456", "현대", "아반떼", 2023);
 
-    private FuelRecord at(int odometer) {
+    private FuelRecord at(int odometer, String liters) {
         return new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer,
-                new BigDecimal("40.00"), 80000, null);
+                new BigDecimal(liters), 80000, null);
     }
 
-    /** 주행거리 목록 → 기록 목록 */
+    /** 주행거리 목록 → 기록 목록. 주유량은 전부 40L 라 구간 연비가 거리에 비례 */
     private List<FuelRecord> records(int... odometers) {
         List<FuelRecord> list = new ArrayList<>();
         for (int odometer : odometers) {
-            list.add(at(odometer));
+            list.add(at(odometer, "40.00"));
         }
         return list;
+    }
+
+    /** 그 목록에서 마지막 구간이 의심받는지 */
+    private boolean suspectsLastSegment(List<FuelRecord> records) {
+        Baseline baseline = FuelAnomaly.baselineOf(records);
+
+        FuelRecord last = records.get(records.size() - 1);
+        int distance = last.getOdometer() - records.get(records.size() - 2).getOdometer();
+        BigDecimal efficiency = BigDecimal.valueOf(distance)
+                .divide(last.getLiters(), 2, java.math.RoundingMode.HALF_UP);
+
+        return baseline.suspectsMissingRecord(distance, efficiency);
     }
 
     @Test
@@ -45,43 +58,67 @@ class FuelAnomalyTest {
     @Test
     @DisplayName("주유를 한 번 빼먹으면 그 구간이 두 배가 되고, 그걸 잡아낸다")
     void catchesMissedRecord() {
-        // 평소 400km 구간. 가운데 한 번을 안 적어 800km 구간 발생
-        List<FuelRecord> records = records(10000, 10400, 10800, 11600, 12000, 12400);
+        // 평소 400km(10km/L). 마지막만 안 적어 800km(20km/L) 구간 발생
+        assertThat(suspectsLastSegment(records(10000, 10400, 10800, 11200, 12000))).isTrue();
+    }
 
-        assertThat(FuelAnomaly.longSegmentCount(records)).isEqualTo(1);
+    @Test
+    @DisplayName("기록을 지운 것도 같은 모양으로 잡힌다 — 빼먹은 것과 데이터가 같다")
+    void catchesDeletedRecord() {
+        List<FuelRecord> kept = records(10000, 10400, 10800, 11200, 11600, 12000);
+        // 11,600 기록을 지우면 마지막 구간이 400 → 800 이 된다
+        kept.remove(4);
+
+        assertThat(suspectsLastSegment(kept)).isTrue();
+    }
+
+    @Test
+    @DisplayName("⚠️ 장거리 여행은 잡지 않는다 — 거리는 길어도 연비는 평소와 같다")
+    void ignoresLongTrip() {
+        List<FuelRecord> trip = records(10000, 10400, 10800, 11200);
+        // 800km 를 달리고 그만큼(80L) 넣었다. 거리는 두 배지만 연비는 그대로 10km/L
+        trip.add(at(12000, "80.00"));
+
+        assertThat(suspectsLastSegment(trip)).isFalse();
     }
 
     @Test
     @DisplayName("구간 길이가 고르면 아무것도 의심하지 않는다")
     void noWarningWhenEven() {
-        assertThat(FuelAnomaly.longSegmentCount(records(10000, 10400, 10800, 11200, 11600)))
-                .isZero();
+        assertThat(suspectsLastSegment(records(10000, 10400, 10800, 11200, 11600))).isFalse();
     }
 
     @Test
     @DisplayName("계절 편차 정도(1.5배)는 넘긴다 — 아무 때나 경고하면 아무도 안 본다")
     void toleratesNormalVariation() {
-        // 400 · 400 · 600 · 400 — 1.5배는 계절 편차 수준
-        assertThat(FuelAnomaly.longSegmentCount(records(10000, 10400, 10800, 11400, 11800)))
-                .isZero();
+        // 400 · 400 · 400 · 600 — 1.5배는 계절 편차 수준
+        assertThat(suspectsLastSegment(records(10000, 10400, 10800, 11200, 11800))).isFalse();
     }
 
     @Test
     @DisplayName("구간이 셋 미만이면 '평소'라는 게 없어 의심하지 않는다")
     void needsEnoughSegments() {
         // 400 · 1200 — 세 배지만 기준 삼을 '평소'가 없음
-        assertThat(FuelAnomaly.longSegmentCount(records(10000, 10400, 11600))).isZero();
-        assertThat(FuelAnomaly.longSegmentCount(records(10000))).isZero();
-        assertThat(FuelAnomaly.longSegmentCount(List.of())).isZero();
+        assertThat(suspectsLastSegment(records(10000, 10400, 11600))).isFalse();
+        assertThat(FuelAnomaly.baselineOf(records(10000))).isEqualTo(Baseline.NONE);
+        assertThat(FuelAnomaly.baselineOf(List.of())).isEqualTo(Baseline.NONE);
     }
 
     @Test
     @DisplayName("연비 기준점에서는 구간을 세지 않는다 — 연비 계산과 같은 규칙")
     void skipsResetPoint() {
-        List<FuelRecord> records = records(10000, 10400, 10800, 11200, 11600);
-        // 기준점 앞 구간은 애초에 이어지지 않음
-        records.get(2).changeResetPoint(true);
+        List<FuelRecord> records = records(10000, 10400, 10800, 11200);
+        // 기준점 앞 구간은 애초에 이어지지 않아 구간이 둘뿐 → 판단 보류
+        records.get(1).changeResetPoint(true);
 
-        assertThat(FuelAnomaly.longSegmentCount(records)).isZero();
+        assertThat(FuelAnomaly.baselineOf(records)).isEqualTo(Baseline.NONE);
+    }
+
+    @Test
+    @DisplayName("연비를 모르는 구간은 의심 대상이 아니다")
+    void ignoresUncalculatedSegment() {
+        Baseline baseline = FuelAnomaly.baselineOf(records(10000, 10400, 10800, 11200, 11600));
+
+        assertThat(baseline.suspectsMissingRecord(9999, null)).isFalse();
     }
 }

@@ -44,9 +44,14 @@ export interface FuelRecordResponse {
   efficiency: number | null
   /**
    * 물리적으로 불가능한 연비인지(50 초과 · 2 미만) = 입력 오류
-   * 빠진 기록은 여기서 안 잡힘 — 25 는 불가능한 값이 아니라서. longSegmentCount 담당
+   * 25 는 불가능한 값이 아니라 빠진 기록은 여기서 안 잡힘 — 아래가 담당
    */
   efficiencySuspicious: boolean
+  /**
+   * 이 구간에 주유 기록이 빠진 것으로 보이는지 = 안 적었거나 지운 자리
+   * 이 구간은 평균에서도 빠져 있음 — 표시가 없으면 목록 숫자와 평균이 안 맞아 보임
+   */
+  missingRecordSuspected: boolean
 }
 
 export interface FuelSummaryResponse {

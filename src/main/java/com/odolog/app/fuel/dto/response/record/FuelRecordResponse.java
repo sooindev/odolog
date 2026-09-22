@@ -30,12 +30,19 @@ public record FuelRecordResponse(
         BigDecimal efficiency,
         /**
          * 물리적으로 불가능한 연비인지(50 초과 · 2 미만) = 입력 오류
-         * 빠진 기록은 여기서 못 잡음 — 요약의 longSegmentCount 담당
+         * 25 는 불가능한 값이 아니라 빠진 기록은 여기서 못 잡음 — 아래가 담당
          */
-        boolean efficiencySuspicious
+        boolean efficiencySuspicious,
+
+        /**
+         * 이 구간에 주유 기록이 빠진 것으로 보이는지 = 안 적었거나 지운 자리
+         * 평균에서도 빠진 구간이라, 표시가 없으면 목록의 숫자와 평균이 말이 안 맞아 보인다
+         */
+        boolean missingRecordSuspected
 ) {
 
-    public static FuelRecordResponse of(FuelRecord record, FuelRecord previous) {
+    public static FuelRecordResponse of(FuelRecord record, FuelRecord previous,
+                                          FuelAnomaly.Baseline baseline) {
         Integer distance = null;
         BigDecimal efficiency = null;
 
@@ -59,7 +66,11 @@ public record FuelRecordResponse(
                 pricePerLiter(record),
                 distance,
                 efficiency,
-                FuelAnomaly.isImpossible(efficiency)
+                FuelAnomaly.isImpossible(efficiency),
+                // 불가능한 값이면 그쪽이 먼저다 — 한 행에 표시를 둘 붙이면 무엇을 하라는 건지 흐려진다
+                !FuelAnomaly.isImpossible(efficiency)
+                        && distance != null
+                        && baseline.suspectsMissingRecord(distance, efficiency)
         );
     }
 

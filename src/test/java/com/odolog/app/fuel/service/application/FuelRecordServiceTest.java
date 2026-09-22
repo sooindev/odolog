@@ -130,7 +130,7 @@ class FuelRecordServiceTest {
     }
 
     @Test
-    @DisplayName("목록의 마지막 행만 직전 기록을 따로 조회한다 — 쿼리는 2번뿐")
+    @DisplayName("목록의 마지막 행만 직전 기록을 따로 조회한다 — 행마다 조회하면 N+1")
     void listQueriesPreviousOnlyOnce() {
         Vehicle vehicle = vehicle(11000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
@@ -155,6 +155,63 @@ class FuelRecordServiceTest {
         // 직전 조회는 한 번뿐 — 행마다면 N+1
         verify(fuelRecordRepository)
                 .findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(anyLong(), anyInt());
+    }
+
+    @Test
+    @DisplayName("기록이 빠진 것으로 보이는 구간은 목록 행에 표시된다")
+    void listMarksMissingRecordSegment() {
+        Vehicle vehicle = vehicle(12000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+
+        // 평소 400km/40L(10km/L) 인데 마지막 구간만 800km — 기록 하나가 빠졌거나 지워진 모양
+        List<FuelRecord> ascending = List.of(
+                record(1L, vehicle, 10000, "40.00", 60000),
+                record(2L, vehicle, 10400, "40.00", 60000),
+                record(3L, vehicle, 10800, "40.00", 60000),
+                record(4L, vehicle, 11200, "40.00", 60000),
+                record(5L, vehicle, 12000, "40.00", 60000));
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(ascending);
+
+        // 화면 목록은 내림차순
+        Pageable pageable = PageRequest.of(0, 2);
+        when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(ascending.get(4), ascending.get(3)), pageable, 5));
+
+        Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, 10L, pageable);
+
+        FuelRecordResponse suspicious = page.getContent().get(0);
+        // 값은 지우지 않는다 — 무엇이 이상한지 보려면 20.00 이 남아 있어야 한다
+        assertThat(suspicious.efficiency()).isEqualByComparingTo("20.00");
+        assertThat(suspicious.missingRecordSuspected()).isTrue();
+        // 50 을 넘지 않아 '불가능'은 아니다. 표시가 둘이면 무엇을 하라는 건지 흐려진다
+        assertThat(suspicious.efficiencySuspicious()).isFalse();
+
+        // 평소 구간은 아무 표시도 없다
+        assertThat(page.getContent().get(1).missingRecordSuspected()).isFalse();
+    }
+
+    @Test
+    @DisplayName("기준을 페이지가 아니라 이력 전체에서 잡는다 — 같은 행이 페이지마다 달리 판정되면 안 된다")
+    void baselineComesFromWholeHistory() {
+        Vehicle vehicle = vehicle(12000);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+
+        List<FuelRecord> ascending = List.of(
+                record(1L, vehicle, 10000, "40.00", 60000),
+                record(2L, vehicle, 10400, "40.00", 60000),
+                record(3L, vehicle, 10800, "40.00", 60000),
+                record(4L, vehicle, 11200, "40.00", 60000),
+                record(5L, vehicle, 12000, "40.00", 60000));
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(ascending);
+
+        Pageable pageable = PageRequest.of(0, 2);
+        when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(ascending.get(4), ascending.get(3)), pageable, 5));
+
+        fuelRecordService.findByVehicle(1L, 10L, pageable);
+
+        // 이 페이지에는 구간이 하나뿐이라, 전체를 안 읽으면 '평소'를 못 구해 아무것도 못 잡는다
+        verify(fuelRecordRepository).findAllByVehicleIdOrderByOdometerAscIdAsc(10L);
     }
 
     @Test
