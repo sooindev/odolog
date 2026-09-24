@@ -94,7 +94,7 @@ function Preview() {
   return (
     <section className="reveal flex flex-col gap-10">
       <div className="flex flex-col items-center gap-3 text-center">
-        <h2 className="text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)] leading-[1.1] font-semibold tracking-[-0.035em] text-strong">
+        <h2 className="text-headline text-strong">
           차 한 대의 기록이 한 화면에
         </h2>
         <p className="max-w-md text-body leading-relaxed text-muted-foreground">
@@ -149,7 +149,7 @@ function Preview() {
 function Closing() {
   return (
     <section className="reveal flex flex-col items-center gap-7 border-t border-border pt-20 text-center">
-      <h2 className="max-w-lg text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)] leading-[1.1] font-semibold tracking-[-0.035em] text-strong">
+      <h2 className="max-w-lg text-headline text-strong">
         차 한 대만 있으면 시작할 수 있습니다.
       </h2>
 

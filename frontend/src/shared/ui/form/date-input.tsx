@@ -199,7 +199,7 @@ function WheelColumn({
           style={{ height: ITEM_HEIGHT }}
         >
           {entry}
-          <span className="ml-0.5 text-[0.6875rem] text-muted-foreground">{label}</span>
+          <span className="ml-0.5 text-unit text-muted-foreground">{label}</span>
         </div>
       ))}
     </div>

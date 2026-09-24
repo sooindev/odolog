@@ -39,7 +39,7 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
             <div className="absolute inset-0 flex flex-col justify-between">
               {[max, max / 2, 0].map((tick) => (
                 <div key={tick} className="flex h-0 items-center gap-3">
-                  <span className="w-8 shrink-0 text-right text-[0.625rem] tabular-nums text-muted-foreground sm:w-10">
+                  <span className="w-8 shrink-0 text-right text-axis tabular-nums text-muted-foreground sm:w-10">
                     {formatCompact(tick)}
                   </span>
                   <div className="h-px flex-1 bg-border" />
@@ -69,7 +69,7 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
               // 홀수 칸만 남겨 간격을 두 배로. 막대는 12개 그대로
               <span
                 key={entry.month}
-                className={`flex-1 text-center text-[0.625rem] tabular-nums text-muted-foreground ${
+                className={`flex-1 text-center text-axis tabular-nums text-muted-foreground ${
                   index % 2 === 1 ? 'invisible sm:visible' : ''
                 }`}
               >
@@ -77,7 +77,7 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
               </span>
             ))}
           </div>
-          <figcaption className="ml-10 text-[0.625rem] text-muted-foreground sm:ml-[3.25rem]">월</figcaption>
+          <figcaption className="ml-10 text-axis text-muted-foreground sm:ml-[3.25rem]">월</figcaption>
         </figure>
 
         {/* 마우스를 올려야만 보이는 값은 키보드·스크린리더 사용자에게 없는 것이나 같다.
@@ -174,7 +174,7 @@ function MonthColumn({
       {/* 모든 막대에 값을 적으면 읽히지 않음. 가장 높은 달 하나만 */}
       {isPeak && (
         <span
-          className="pointer-events-none absolute text-[0.625rem] font-medium tabular-nums text-muted-foreground transition-opacity duration-200 group-hover:opacity-0 group-focus-visible:opacity-0"
+          className="pointer-events-none absolute text-axis font-medium tabular-nums text-muted-foreground transition-opacity duration-200 group-hover:opacity-0 group-focus-visible:opacity-0"
           style={{ bottom: `calc(${percent}% + 6px)` }}
         >
           {formatCompact(entry.cost)}
@@ -188,12 +188,12 @@ function MonthColumn({
         <p className="text-caption font-medium tabular-nums text-strong">
           {formatWon(entry.cost)}
         </p>
-        <p className="text-[0.6875rem] tabular-nums text-muted-foreground">
+        <p className="text-unit tabular-nums text-muted-foreground">
           {formatMonth(entry.month)} · {entry.count}건
         </p>
         {/* 구성은 표에도 있음. 말풍선은 정보를 보태는 장치지 감췄다 보여주는 장치가 아님 */}
         {entry.cost > 0 && (
-          <p className="text-[0.6875rem] tabular-nums text-muted-foreground">
+          <p className="text-unit tabular-nums text-muted-foreground">
             정비 {formatWon(entry.maintenanceCost)} · 주유 {formatWon(entry.fuelCost)}
           </p>
         )}

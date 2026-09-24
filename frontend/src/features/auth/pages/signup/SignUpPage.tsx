@@ -10,6 +10,7 @@ import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
+import { passwordHint } from '@/shared/lib/limits/limits'
 import { signUp } from '@/features/auth/api/endpoints/endpoints'
 import type { SignUpRequest } from '@/features/auth/api/types/types'
 
@@ -73,13 +74,15 @@ export function SignUpPage() {
               </Field>
 
               {/* 규칙은 틀리기 전에 */}
-              <Field label="비밀번호" htmlFor="password" hint="8자 이상 · 한글은 24자까지">
+              <Field label="비밀번호" htmlFor="password" hint={passwordHint(form.password)}>
                 <Input
                   id="password"
                   type="password"
                   required
                   minLength={8}
-                  maxLength={72}
+                  // 글자 수 상한이라 한글 24자(=72바이트)는 못 막는다. 거친 천장일 뿐이고
+                  // 실제 판정은 위 hint 와 서버의 @MaxBytes 가 한다
+                maxLength={72}
                   autoComplete="new-password"
                   value={form.password}
                   onChange={(event) => change('password', event.target.value)}

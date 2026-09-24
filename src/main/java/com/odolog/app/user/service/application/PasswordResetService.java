@@ -86,6 +86,16 @@ public class PasswordResetService {
         rateLimiter.checkNotLocked(limitKey, "비밀번호 재설정 요청이 너무 많습니다.");
         rateLimiter.recordFailure(limitKey);
 
+        /*
+         * 만료된 토큰을 여기서 같이 치운다
+         *
+         * 스케줄러를 따로 두지 않은 이유: 토큰이 쌓이는 유일한 경로가 이 메서드라,
+         * 여기가 곧 "쌓이는 만큼 치워지는" 자리다. 앱이 안 뜨는 시간에도 돌아야 할 일이 아니다.
+         * 가입 여부를 확인하기 **전에** 부르는 것도 의도다 — 없는 주소로 요청해도 하는 일이
+         * 같아야 응답 시간으로 가입 여부가 드러나지 않는다
+         */
+        tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now(clock));
+
         Optional<User> found = userRepository.findByEmail(email);
         if (found.isEmpty()) {
             return;

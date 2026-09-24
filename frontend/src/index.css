@@ -65,6 +65,19 @@
   /* 보조. 설명·날짜·부가 정보 — 본문 아래 한 단 */
   --text-caption: 0.8125rem;
 
+  /* 랜딩의 구역 제목. title(화면 제목)과 section(카드 제목) 사이가 비어 있었다 */
+  --text-headline: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem);
+  --text-headline--line-height: 1.1;
+  --text-headline--letter-spacing: -0.035em;
+  --text-headline--font-weight: 600;
+
+  /* 단위·부가 라벨. eyebrow 와 크기는 같지만 자간을 벌리지 않는다 —
+     대문자 분류 라벨이 아니라 숫자 옆에 붙는 "L" · "월" 같은 것 */
+  --text-unit: 0.6875rem;
+
+  /* 차트 축 눈금. 375px 에서 12칸을 적어야 해서 본문 척도보다 한 단 더 아래다 */
+  --text-axis: 0.625rem;
+
   /*
      위 둘에는 행간을 묶지 않는다. 화면에서 `leading-relaxed` 를 붙여 쓰는 자리가 있어서,
      토큰에 행간을 넣으면 그 자리들이 한꺼번에 달라진다.

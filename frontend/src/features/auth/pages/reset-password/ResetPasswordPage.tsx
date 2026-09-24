@@ -10,6 +10,7 @@ import { Input } from '@/shared/ui/base/input'
 import { ErrorText } from '@/shared/ui/feedback/state'
 import { Field } from '@/shared/ui/form/field'
 import { FormActions, Page } from '@/shared/ui/layout/page'
+import { passwordHint } from '@/shared/lib/limits/limits'
 
 export function ResetPasswordPage() {
   const [params] = useSearchParams()
@@ -69,13 +70,15 @@ export function ResetPasswordPage() {
       <Card>
         <CardContent>
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          <Field label="새 비밀번호" htmlFor="new-password" hint="8자 이상 · 한글은 24자까지">
+          <Field label="새 비밀번호" htmlFor="new-password" hint={passwordHint(newPassword)}>
             <Input
               id="new-password"
               type="password"
               required
               autoFocus
               minLength={8}
+              // 글자 수 상한이라 한글 24자(=72바이트)는 못 막는다. 거친 천장일 뿐이고
+              // 실제 판정은 위 hint 와 서버의 @MaxBytes 가 한다
               maxLength={72}
               autoComplete="new-password"
               value={newPassword}

@@ -34,4 +34,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    // 앱은 OdoLogApplication.main 에서 시간대를 고정하는데 테스트는 main 을 거치지 않는다.
+    // 그대로 두면 @PastOrPresent 와 LocalDate.now() 를 쓰는 테스트가 CI(UTC)와 로컬(KST)에서
+    // 다른 조건으로 돌아, 날짜 경계에서만 깨지는 테스트가 생긴다
+    systemProperty 'user.timezone', 'Asia/Seoul'
 }

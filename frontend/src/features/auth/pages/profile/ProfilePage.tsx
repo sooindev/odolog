@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router'
 import { ErrorText, NoticeText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { todayString } from '@/shared/lib/format/format'
+import { passwordHint } from '@/shared/lib/limits/limits'
 import { updateProfile } from '@/features/auth/api/endpoints/endpoints'
 import type { UpdateProfileRequest, UserResponse } from '@/features/auth/api/types/types'
 
@@ -86,7 +87,14 @@ function ExportCard() {
       link.href = url
       link.download = `odolog-${todayString()}.json`
       link.click()
-      URL.revokeObjectURL(url)
+
+      /*
+       * 같은 틱에 해제하면 안 된다. click() 은 다운로드를 시작만 시키고 브라우저가 Blob 을
+       * 실제로 읽는 것은 그다음이라, 바로 revoke 하면 취소되거나 0바이트 파일이 떨어진다.
+       * 이 버튼은 탈퇴 직전에 기록을 챙기라고 둔 것이라 조용히 실패하면 백업을 받은 줄 알고
+       * 계정을 지우게 된다
+       */
+      setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : '내보내기에 실패했습니다.')
     } finally {
@@ -165,12 +173,14 @@ function PasswordForm() {
           </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="새 비밀번호" htmlFor="new-password" hint="8자 이상 · 한글은 24자까지">
+            <Field label="새 비밀번호" htmlFor="new-password" hint={passwordHint(newPassword)}>
               <Input
                 id="new-password"
                 type="password"
                 required
                 minLength={8}
+                // 글자 수 상한이라 한글 24자(=72바이트)는 못 막는다. 거친 천장일 뿐이고
+                // 실제 판정은 위 hint 와 서버의 @MaxBytes 가 한다
                 maxLength={72}
                 autoComplete="new-password"
                 value={newPassword}

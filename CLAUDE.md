@@ -265,12 +265,25 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
 
        text-eyebrow  11px  자간 +0.2em   분류 한 줄 (대문자)
        text-title    32→52px clamp       화면 제목(h1)
+       text-headline 28→40px clamp       랜딩의 구역 제목 (2026-09-24 신설)
        text-display  52→80px clamp 굵기300 히어로 숫자 하나
        text-figure   22px                목록 행의 수치
        text-section  17px                카드·구역 제목
        text-lede     16px                제목 아래 설명
        text-body     15px 자간 -0.01em   그냥 읽는 글 (2026-09-19 신설)
        text-caption  13px                설명·날짜·부가 정보 (2026-09-19 신설)
+       text-unit     11px                단위·부가 라벨 (2026-09-24 신설)
+       text-axis     10px                차트 축 눈금 (2026-09-24 신설)
+
+   **`text-unit` 은 `text-eyebrow` 와 크기가 같다.** 자간을 벌리지 않는 것이 다르다 —
+   대문자 분류 라벨이 아니라 숫자 옆에 붙는 `L`·`월` 같은 것이라 벌리면 흩어져 보인다.
+
+   ⚠️ **토큰은 두 곳 이상에서 반복될 때만 만든다** (2026-09-24 에 기준을 적었다).
+   화면 하나에만 쓰이는 고유 크기 — 랜딩 h1, `AuthLayout` 태그라인, 홈 통계 타일 — 는
+   임의 값으로 둔다. 쓰는 곳이 하나인 척도를 토큰으로 올리면 **척도가 아니라 별명이 된다.**
+   전에는 "크기는 전부 토큰으로" 라고만 적혀 있었는데 실제로는 화면 6곳이 임의 값을 쓰고
+   있었다 — 문서가 사실이 아니었던 자리라 기준을 명시한다.
+   새 토큰을 만들면 **`cn-usage.test.ts` 의 `TYPE_SCALE` 목록에도 더한다.**
 
    **아래 둘에는 행간을 묶지 않았다.** 화면에서 `leading-relaxed` 를 붙여 쓰는 자리가 있어
    토큰에 넣으면 그 자리들이 한꺼번에 달라진다. 제목 계열과 달리 본문 행간은 문단 길이에 따라
@@ -366,6 +379,12 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
      줄어들면 고무처럼 보이고, 버튼의 변이 주변 괘선과 맞춰 둔 정렬이 그 순간 어긋난다.
    - **`prefers-reduced-motion` 에서는 지연도 함께 0 으로 만든다.** 지속 시간만 없애면
      차트 막대의 지연이 그대로 남아 **내용이 잠깐 안 보이는 시간**으로만 나타난다.
+
+9-1. **제목 태그는 목차를 만든다 — 크게 보인다고 제목이 아니다** (2026-09-24).
+   `Page` 가 `h1`, `CardTitle` 과 `Section` 이 `h2` 다. `AuthLayout` 왼쪽의 큰 문장은
+   **`p` 다** — 아무 구역도 이끌지 않는 태그라인인데 `h2` 로 두었더니, 그 패널이 `Outlet`
+   보다 앞서 있어 스크린리더 목차가 `h2 → h1` 순서가 됐다. 게다가 `hidden lg:flex` 라
+   **화면 폭에 따라 목차가 달라졌다.** 크기는 클래스가 정하고, 태그는 구조가 정한다.
 
 10. **모든 앱 화면은 `Page` 로 시작한다.** 뒤로가기·eyebrow·제목·설명·액션·간격이 전부 거기 있다.
    화면마다 머리말을 직접 그리면 반드시 어긋난다 — 실제로 차량 상세가 그렇게 드리프트해서
@@ -510,7 +529,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   └── jpa/
     │   │       ├── UserRepository.java       findByEmail, existsByEmail
     │   │       └── PasswordResetTokenRepository.java
-    │   │                                     findByTokenHash, deleteByUserId(재발급·탈퇴 공용)
+    │   │                                     findByTokenHash, deleteByUserId(재발급·탈퇴 공용),
+    │   │                                     deleteByExpiresAtBefore(만료분 정리 — 스케줄러를
+    │   │                                     두지 않고 request() 가 부른다. 토큰이 쌓이는
+    │   │                                     유일한 경로가 거기라 쌓이는 만큼 치워진다)
     │   ├── dto/
     │   │   ├── request/
     │   │   │   ├── signup/
@@ -1107,7 +1129,10 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
             │   ├── provider/ThemeProvider.tsx 저장·복원, OS 설정 추적, View Transition 전환
             │   └── toggle/ThemeToggle.tsx    해/모니터/달 3칸 세그먼트 컨트롤 (헤더에 배치)
             ├── lib/
-            │   ├── limits/limits.ts      주행거리·금액 상한. 백엔드 InputLimits 와 같은 숫자다 —
+            │   ├── limits/limits.ts      주행거리·금액 상한 + 비밀번호 바이트 계산.
+            │   │                         maxLength 는 글자 수만 세서 한글 24자(=72바이트)를
+            │   │                         못 막는다 — 저장 전에 알려 주려면 직접 세야 한다.
+            │   │                         백엔드 InputLimits 와 같은 숫자다 —
             │   │                         브라우저가 먼저 막아 주면 저장을 누르기 전에 알고,
             │   │                         서버는 화면을 안 거치는 요청까지 막는다.
             │   │                         한쪽만 고치면 "화면은 되는데 저장이 안 되는" 상태가 된다

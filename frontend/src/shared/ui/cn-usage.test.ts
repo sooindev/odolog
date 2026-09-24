@@ -17,6 +17,9 @@ const TYPE_SCALE = [
   'text-lede',
   'text-body',
   'text-caption',
+  'text-headline',
+  'text-unit',
+  'text-axis',
 ]
 
 /** 여는 괄호부터 짝이 맞는 닫는 괄호까지. 중첩 괄호를 그대로 지나감 */
