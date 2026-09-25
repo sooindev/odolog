@@ -625,6 +625,14 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                                 "먼저 오는 것"이라서). 딱 그 값·그 날도 지남.
     │   │   │                                 **지난 것이 먼저** 오도록 정렬 — 이 목록은
     │   │   │                                 "뭘 해야 하나"를 보는 자리다
+    │   │   ├── entity/ServiceInterval.java   차량별 권장 주기(2026-09-25 신설).
+    │   │   │                                 주기가 enum 상수로 고정돼 있어 엔진오일이 언제나
+    │   │   │                                 5,000km(광유 기준)였다 — 합성유는 10,000~15,000km 라
+    │   │   │                                 **`지남` 이 늘 켜진 경고등**이 됐고, 늘 켜진 경고는
+    │   │   │                                 아무도 안 본다. 차량 단위인 이유: 주기는 사람이 아니라
+    │   │   │                                 차의 성질이다. km·개월을 따로 비울 수 있다 —
+    │   │   │                                 합성유는 거리만 늘고 기간은 그대로인 게 보통.
+    │   │   │                                 둘 다 비면 행을 지운다(customized 가 거짓말하지 않게)
     │   │   ├── entity/MaintenanceRecord.java @Entity. type은 @Enumerated(STRING).
     │   │   │                                 필드별 change 메서드 5개
     │   │   └── type/ServiceType.java         enum 15종(부위별로 묶어 선언 — 화면 선택 목록이
@@ -737,6 +745,18 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     차량 밑에 이력을 중첩한다 — 평평하게 내보내면 어느 기록이
     │   │                                     어느 차의 것인지 우리 DB 안에서만 뜻이 있는 id 로만 안다.
     │   │                                     **계산값(연비·단가)과 비밀번호 해시는 담지 않는다**
+    │   ├── dto/request/restore/AccountRestoreRequest.java
+    │   │                                     내보낸 JSON 을 되돌려받는다. 패키지가 restore 인
+    │   │                                     이유는 **import 가 자바 예약어**라서.
+    │   │                                     **사용자 정보는 안 받는다** — 가져오기는 내 계정에
+    │   │                                     기록을 더하는 것이지 계정을 바꾸는 게 아니다
+    │   ├── service/application/AccountRestoreService.java
+    │   │                                     복원할 수 없으면 백업이 아니라 기념품이다.
+    │   │                                     규칙 셋: 같은 번호판이면 기록만 붙이고 차량 정보는
+    │   │                                     안 건드린다(파일이 옛날 것일 수 있다) ·
+    │   │                                     **같은 기록은 건너뛴다**(두 번 넣어도 두 배가 되지
+    │   │                                     않아야 한다 — id 가 JSON 에 없어 종류·날짜·주행거리로
+    │   │                                     판정) · 하나라도 걸리면 전부 안 들어간다
     │   ├── service/application/AccountExportService.java
     │   │                                     export(ownerId, exportedAt) — 쿼리 3번.
     │   │                                     "언제" 를 밖에서 받는다(테스트에서 고정하려고)
@@ -895,7 +915,10 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     src/main/resources/application.yml   MariaDB 접속(${DB_USERNAME}/${DB_PASSWORD}),
                                          ddl-auto=update, open-in-view=false.
                                          세션 쿠키 http-only + same-site=lax (브라우저 기본값에
-                                         기대지 않는다). secure 는 ${SESSION_COOKIE_SECURE:false} —
+                                         기대지 않는다). **세션 14일**(2026-09-25) —
+                                         톰캣 기본 30분이면 영수증 정리하다 로그아웃된다.
+                                         timeout 과 cookie.max-age 를 **같이** 늘려야 한다:
+                                         서버가 기억해도 세션 쿠키면 브라우저를 닫는 순간 끝난다. secure 는 ${SESSION_COOKIE_SECURE:false} —
                                          로컬이 http 라 기본은 꺼짐이고 배포에서 환경변수로 켠다.
                                          springdoc.swagger-ui.csrf 로 Swagger 가 토큰을 실어 보낸다
                                          (없으면 문서에서 쓰기 요청을 못 쏜다).
@@ -921,7 +944,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 227개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 236개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -1935,7 +1958,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (227개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (236개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (42개)
 
 ---

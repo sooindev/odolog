@@ -85,4 +85,9 @@ export interface FuelSummaryResponse {
   longSegmentCount: number
   /** 물리적으로 불가능해서 평균에서 뺀 구간 수. 뺐으면 화면이 말해야 함 */
   excludedSegmentCount: number
+  /**
+   * 최근 구간 연비 (오래된 것부터, 최대 12개)
+   * 평균 하나로는 추세를 알 수 없다 — 연비가 꾸준히 떨어지는 것은 그 자체로 정비 신호다
+   */
+  trend: { fueledAt: string; efficiency: number }[]
 }

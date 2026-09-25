@@ -1,6 +1,7 @@
 import { api } from '@/shared/api/client/client'
 import type {
   AccountExport,
+  AccountRestoreResult,
   ChangePasswordRequest,
   PasswordResetConfirmRequest,
   PasswordResetRequest,
@@ -51,6 +52,14 @@ export function withdraw(request: WithdrawRequest) {
 /** 탈퇴 전에 챙겨 갈 수 있어야 한다. 파일로 만드는 일은 화면이 한다 */
 export function exportAccount() {
   return api.get<AccountExport>('/api/users/me/export')
+}
+
+/**
+ * 내보낸 파일을 되돌려 넣는다. 내보내기의 짝 — 복원할 수 없으면 백업이 아니다
+ * 사용자 정보는 서버가 무시한다. 남의 파일을 넣어도 내 계정에 기록만 붙는다
+ */
+export function restoreAccount(vehicles: AccountExport['vehicles']) {
+  return api.post<AccountRestoreResult>('/api/users/me/restore', { vehicles })
 }
 
 // 204. 가입되지 않은 주소여도 똑같이 204 다 — 응답이 갈리면 가입 여부 조회가 된다

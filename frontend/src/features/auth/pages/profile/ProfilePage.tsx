@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 
 import { useAuth } from '@/features/auth/context/definition/AuthContext'
 import { useTheme } from '@/shared/theme/context/ThemeContext'
@@ -10,14 +10,23 @@ import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
 import { Section } from '@/shared/ui/layout/section'
-import { changePassword, exportAccount } from '@/features/auth/api/endpoints/endpoints'
+import {
+  changePassword,
+  exportAccount,
+  restoreAccount,
+} from '@/features/auth/api/endpoints/endpoints'
 import { useNavigate } from 'react-router'
 import { ErrorText, NoticeText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { todayString } from '@/shared/lib/format/format'
 import { passwordHint } from '@/shared/lib/limits/limits'
 import { updateProfile } from '@/features/auth/api/endpoints/endpoints'
-import type { UpdateProfileRequest, UserResponse } from '@/features/auth/api/types/types'
+import type {
+  AccountExport,
+  AccountRestoreResult,
+  UpdateProfileRequest,
+  UserResponse,
+} from '@/features/auth/api/types/types'
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -114,8 +123,103 @@ function ExportCard() {
           </Button>
         </div>
         {error !== null && <ErrorText message={error} />}
+
+        <div className="border-t border-border pt-4">
+          <RestoreForm />
+        </div>
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * 내보낸 파일을 되돌려 넣는다. 내보내기 바로 아래에 둔다 — 짝이라서
+ *
+ * 파일을 브라우저에서 읽어 JSON 으로 보낸다. multipart 로 올리지 않는 이유:
+ * 서버가 파싱·검증을 한 번 더 하게 되고, fetch 래퍼(세션·CSRF)도 우회해야 한다
+ */
+function RestoreForm() {
+  const [result, setResult] = useState<AccountRestoreResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    // 같은 파일을 다시 고를 수 있어야 한다 — 값이 남아 있으면 change 가 안 난다
+    event.target.value = ''
+    if (file === undefined) {
+      return
+    }
+
+    setResult(null)
+    setError(null)
+    setPending(true)
+
+    try {
+      const parsed = JSON.parse(await file.text()) as { vehicles?: AccountExport['vehicles'] }
+      if (!Array.isArray(parsed.vehicles)) {
+        // 아무 JSON 이나 던지면 서버가 400 을 주지만, 그 전에 여기서 더 정확히 말해 준다
+        throw new SyntaxError('vehicles 없음')
+      }
+
+      setResult(await restoreAccount(parsed.vehicles))
+    } catch (caught) {
+      setError(
+        caught instanceof SyntaxError
+          ? '오도로그에서 내려받은 JSON 파일이 맞는지 확인해 주세요.'
+          : caught instanceof ApiError
+            ? caught.message
+            : '가져오기에 실패했습니다.',
+      )
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0 text-caption text-muted-foreground">
+          받아 둔 파일을 다시 넣습니다. 같은 기록은 건너뛰므로 두 번 넣어도 늘지 않습니다.
+        </p>
+        {/* label 이 input 을 감싸 버튼처럼. 파일 입력의 기본 생김새는 테마를 안 따라온다 */}
+        <label className="shrink-0">
+          <span
+            className={
+              'inline-flex h-9 cursor-pointer items-center border border-border bg-fill px-4 ' +
+              'text-caption text-strong transition-colors duration-200 ease-apple hover:bg-card-hover'
+            }
+          >
+            {pending ? '가져오는 중…' : 'JSON 가져오기'}
+          </span>
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="sr-only"
+            disabled={pending}
+            onChange={handleFile}
+          />
+        </label>
+      </div>
+
+      {/* 말없이 건너뛰면 "안 들어갔나?" 하고 또 누르게 된다 */}
+      {result !== null && (
+        <NoticeText
+          message={
+            `차량 ${result.addedVehicles}대와 기록 ` +
+            `${result.addedMaintenanceRecords + result.addedFuelRecords}건을 넣었습니다.` +
+            (result.mergedVehicles > 0
+              ? ` 이미 있던 차량 ${result.mergedVehicles}대에는 기록만 붙였습니다.`
+              : '') +
+            (result.skippedRecords > 0
+              ? ` 이미 같은 기록이 있어 ${result.skippedRecords}건은 건너뛰었습니다.`
+              : '')
+          }
+        />
+      )}
+
+      {error !== null && <ErrorText message={error} />}
+    </div>
   )
 }
 

@@ -204,7 +204,8 @@ class FuelRecordControllerTest {
     @DisplayName("/summary 는 {recordId} 보다 먼저 매칭된다")
     void summaryRoutesBeforePathVariable() throws Exception {
         when(fuelRecordService.summary(1L, 10L)).thenReturn(new FuelSummaryResponse(
-                3, 160000, new BigDecimal("80.00"), 1000, new BigDecimal("20.00"), 3L, null, 0, 0));
+                3, 160000, new BigDecimal("80.00"), 1000, new BigDecimal("20.00"),
+                3L, null, 0, 0, List.of()));
 
         mockMvc.perform(get("/api/vehicles/10/fuel-records/summary").session(loginSessionOf(1L)))
                 .andExpect(status().isOk())

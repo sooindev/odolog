@@ -12,8 +12,9 @@ import { DateInput } from '@/shared/ui/form/date-input'
 import { Textarea } from '@/shared/ui/base/textarea'
 import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
-import { todayString } from '@/shared/lib/format/format'
+import { formatKm, todayString } from '@/shared/lib/format/format'
 import { MAX_AMOUNT, MAX_ODOMETER } from '@/shared/lib/limits/limits'
+import { looksBigJump, looksPast } from '@/shared/lib/odometer/odometer'
 import { registerRecord, updateRecord } from '@/features/maintenance/api/endpoints/endpoints'
 import { SERVICE_TYPE_GROUPS, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import type {
@@ -51,17 +52,27 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // 주유 폼과 같은 안내. 차량 주행거리는 지금까지 기록된 최댓값이라 그보다 작으면 과거 기록
+  // 규칙은 shared/lib/odometer 에. 주유 폼·주행거리 갱신이 같은 것을 본다
   // 막지 않고 안내만
   const odometerValue = Number(serviceOdometer)
-  const looksPast =
-    serviceOdometer !== '' &&
-    Number.isFinite(odometerValue) &&
-    odometerValue < baseOdometer
+  const past = serviceOdometer !== '' && looksPast(odometerValue, baseOdometer)
+  const bigJump = serviceOdometer !== '' && looksBigJump(odometerValue, baseOdometer)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+
+    // 줄이는 쪽보다 되돌리기 어렵다 — 올라간 차량 값은 force 정정으로만 내려온다
+    if (bigJump) {
+      const confirmed = window.confirm(
+        `주행거리가 ${formatKm(baseOdometer)} 에서 ${formatKm(odometerValue)} 로 크게 뜁니다.\n` +
+          '자리수가 틀리면 차량 주행거리가 그 값에 묶입니다.\n\n이대로 저장할까요?',
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+
     setPending(true)
 
     try {
@@ -164,7 +175,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
           hint={
             serviceOdometer === ''
               ? '주행거리를 적지 않으면 다음 정비 시점을 계산할 수 없습니다.'
-              : looksPast
+              : past
                 ? `차량에 기록된 ${baseOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
                 : undefined
           }

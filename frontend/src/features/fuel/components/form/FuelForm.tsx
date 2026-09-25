@@ -11,6 +11,7 @@ import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { formatKm, todayString } from '@/shared/lib/format/format'
 import { MAX_AMOUNT, MAX_ODOMETER } from '@/shared/lib/limits/limits'
+import { looksBigJump, looksPast } from '@/shared/lib/odometer/odometer'
 import {
   registerFuelRecord,
   updateFuelRecord,
@@ -65,12 +66,11 @@ export function FuelForm({
       ? Math.round(costValue / litersValue)
       : null
 
-  // 차량 주행거리보다 작으면 과거 기록
-  // liftOdometerTo 덕에 그 값이 "지금까지 기록된 최댓값"이라 비교 하나로 자리수 오타가 걸림 (새 API 불필요)
+  // 규칙은 shared/lib/odometer 에. 정비 폼·주행거리 갱신이 같은 것을 본다
   // 막지 않고 안내만 — 지난달 영수증 정리는 정상적인 사용이고 계기판 교체도 있음
   const odometerValue = Number(odometer)
-  const looksPast =
-    odometer !== '' && Number.isFinite(odometerValue) && odometerValue < baseOdometer
+  const past = odometer !== '' && looksPast(odometerValue, baseOdometer)
+  const bigJump = odometer !== '' && looksBigJump(odometerValue, baseOdometer)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -99,6 +99,13 @@ export function FuelForm({
     }
     if (costValue === null) {
       warnings.push('· 결제 금액이 비어 있어 유류비 합계와 리터당 단가에서 빠집니다.')
+    }
+    if (bigJump) {
+      // 줄이는 쪽보다 되돌리기 어렵다 — 올라간 차량 값은 force 정정으로만 내려온다
+      warnings.push(
+        `· 주행거리가 ${formatKm(baseOdometer)} 에서 ${formatKm(odometerValue)} 로 크게 뜁니다.\n` +
+          '  자리수가 틀리면 차량 주행거리가 그 값에 묶입니다.',
+      )
     }
 
     if (warnings.length > 0) {
@@ -163,9 +170,11 @@ export function FuelForm({
           hint={
             odometer === ''
               ? '주행거리를 적지 않으면 연비를 계산할 수 없습니다.'
-              : looksPast
+              : past
                 ? `차량에 기록된 ${baseOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
-                : '계기판 숫자. 이 값이 차량 주행거리보다 크면 차량 쪽도 함께 올라갑니다.'
+                : bigJump
+                  ? `차량에 기록된 ${baseOdometer.toLocaleString()}km 에서 크게 뜁니다. 자리수를 확인해 주세요.`
+                  : '계기판 숫자. 이 값이 차량 주행거리보다 크면 차량 쪽도 함께 올라갑니다.'
           }
         >
           <Input

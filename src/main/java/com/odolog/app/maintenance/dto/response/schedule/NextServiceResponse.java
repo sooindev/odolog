@@ -17,7 +17,12 @@ public record NextServiceResponse(
         Integer nextServiceOdometer,
         LocalDate lastServiceDate,
         LocalDate nextServiceDate,
-        boolean overdue
+        boolean overdue,
+        /** 실제로 적용된 주기. 차량별 설정이 있으면 그 값 */
+        Integer intervalKm,
+        Integer intervalMonths,
+        /** 기본값을 덮어쓴 상태인가 */
+        boolean customized
 ) {
 
     public static NextServiceResponse from(NextService next) {
@@ -27,6 +32,9 @@ public record NextServiceResponse(
                 next.nextOdometer(),
                 next.lastDate(),
                 next.nextDate(),
-                next.overdue());
+                next.overdue(),
+                next.intervalKm(),
+                next.intervalMonths(),
+                next.customized());
     }
 }

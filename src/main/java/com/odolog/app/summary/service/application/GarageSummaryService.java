@@ -5,8 +5,10 @@ import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.fuel.domain.calculation.FuelEfficiency;
 import com.odolog.app.maintenance.domain.calculation.NextService;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.entity.ServiceInterval;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.summary.dto.response.garage.GarageSummaryResponse;
 import com.odolog.app.summary.dto.response.garage.GarageSummaryResponse.MonthlyCost;
 import com.odolog.app.summary.dto.response.garage.GarageSummaryResponse.RecentActivity;
@@ -42,13 +44,16 @@ public class GarageSummaryService {
 
     private final VehicleRepository vehicleRepository;
     private final MaintenanceRecordRepository maintenanceRecordRepository;
+    private final ServiceIntervalRepository serviceIntervalRepository;
     private final FuelRecordRepository fuelRecordRepository;
 
     public GarageSummaryService(VehicleRepository vehicleRepository,
                                 MaintenanceRecordRepository maintenanceRecordRepository,
+                                ServiceIntervalRepository serviceIntervalRepository,
                                 FuelRecordRepository fuelRecordRepository) {
         this.vehicleRepository = vehicleRepository;
         this.maintenanceRecordRepository = maintenanceRecordRepository;
+        this.serviceIntervalRepository = serviceIntervalRepository;
         this.fuelRecordRepository = fuelRecordRepository;
     }
 
@@ -72,7 +77,8 @@ public class GarageSummaryService {
                 fuelCost,
                 monthly(records, fuels, today),
                 byType(records),
-                vehicleLines(vehicles, records, fuels, today),
+                vehicleLines(vehicles, records, fuels,
+                        serviceIntervalRepository.findByVehicle_Owner_Id(ownerId), today),
                 recent(records, fuels, vehicles));
     }
 
@@ -123,8 +129,16 @@ public class GarageSummaryService {
                 .toList();
     }
 
+    /** 차량마다 조회하면 차량 수만큼 쿼리가 는다. 한 번 읽어 와서 나눈다 */
+    private List<ServiceInterval> intervalsOf(List<ServiceInterval> all, Long vehicleId) {
+        return all.stream()
+                .filter(interval -> interval.getVehicle().getId().equals(vehicleId))
+                .toList();
+    }
+
     private List<VehicleLine> vehicleLines(List<Vehicle> vehicles, List<MaintenanceRecord> records,
-                                           List<FuelRecord> fuels, LocalDate today) {
+                                           List<FuelRecord> fuels, List<ServiceInterval> overrides,
+                                           LocalDate today) {
         List<VehicleLine> lines = new ArrayList<>(vehicles.size());
 
         for (Vehicle vehicle : vehicles) {
@@ -137,7 +151,8 @@ public class GarageSummaryService {
                     .toList();
 
             // 이미 읽어 둔 이력으로 센다 — 추가 쿼리 없음
-            long overdue = NextService.of(mine, vehicle.getOdometer(), today).stream()
+            long overdue = NextService.of(mine, intervalsOf(overrides, vehicle.getId()),
+                            vehicle.getOdometer(), today).stream()
                     .filter(NextService::overdue)
                     .count();
 

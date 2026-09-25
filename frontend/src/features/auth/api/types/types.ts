@@ -72,3 +72,18 @@ export interface PasswordResetConfirmRequest {
   token: string
   newPassword: string
 }
+
+/**
+ * 되돌려 넣은 결과
+ * 개수를 받는 이유: 같은 파일을 두 번 넣으면 두 번째는 전부 건너뛴다.
+ * 그때 아무 말도 없으면 "안 들어갔나?" 하고 또 누르게 된다
+ */
+export interface AccountRestoreResult {
+  addedVehicles: number
+  addedMaintenanceRecords: number
+  addedFuelRecords: number
+  /** 같은 번호판이 이미 있어 기록만 붙인 차량 수 */
+  mergedVehicles: number
+  /** 이미 같은 기록이 있어 건너뛴 수 */
+  skippedRecords: number
+}

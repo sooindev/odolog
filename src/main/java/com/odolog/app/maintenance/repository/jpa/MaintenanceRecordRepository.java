@@ -13,6 +13,9 @@ public interface MaintenanceRecordRepository extends JpaRepository<MaintenanceRe
 
     Page<MaintenanceRecord> findByVehicleId(Long vehicleId, Pageable pageable);
 
+    /** 종류로 좁힌 목록. 이력이 쌓이면 페이지를 넘겨 가며 찾게 된다 */
+    Page<MaintenanceRecord> findByVehicleIdAndType(Long vehicleId, ServiceType type, Pageable pageable);
+
 
     Optional<MaintenanceRecord> findByIdAndVehicleId(Long id, Long vehicleId);
 

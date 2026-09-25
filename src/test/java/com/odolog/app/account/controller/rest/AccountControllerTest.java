@@ -3,6 +3,7 @@ package com.odolog.app.account.controller.rest;
 import com.odolog.app.account.dto.request.withdraw.WithdrawRequest;
 import com.odolog.app.account.dto.response.export.AccountExportResponse;
 import com.odolog.app.account.service.application.AccountExportService;
+import com.odolog.app.account.service.application.AccountRestoreService;
 import com.odolog.app.account.service.application.AccountWithdrawalService;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
@@ -40,6 +41,9 @@ class AccountControllerTest {
 
     @MockitoBean
     private AccountExportService accountExportService;
+
+    @MockitoBean
+    private AccountRestoreService accountRestoreService;
 
     @Test
     @DisplayName("탈퇴에 성공하면 204이고 세션이 끊긴다")

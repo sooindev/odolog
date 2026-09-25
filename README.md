@@ -4,7 +4,7 @@
 **다음 정비 시점**(주행거리 기준·날짜 기준)이 계산된다.
 
 Spring Boot 3.5 + MariaDB 백엔드에 React 19 SPA 를 붙인 구성이고, 인증은 **세션 쿠키**다.
-백엔드 API 27개 · 화면 10 라우트가 모두 동작하고 테스트 269개(백엔드 227 · 프론트 42)가 통과한다.
+백엔드 API 27개 · 화면 10 라우트가 모두 동작하고 테스트 278개(백엔드 236 · 프론트 42)가 통과한다.
 
 플랫폼은 웹 하나다 — 네이티브 앱은 만들지 않는다(근거는 `HISTORY.md` 의 2026-09-16 항목).
 개인 학습 프로젝트라 **로컬에서 완전히 동작하는 것**까지가 범위이고 배포는 범위 밖이다.
@@ -51,6 +51,10 @@ Spring Boot 3.5 + MariaDB 백엔드에 React 19 SPA 를 붙인 구성이고, 인
 
 `ServiceType` enum 15종이 각각 `recommendedIntervalKm` / `recommendedIntervalMonths` 를 들고 있다.
 해당 종류의 마지막 이력에 주기를 더해 **두 기준을 모두** 내려보내고, 먼저 오는 쪽이 실제 시기다.
+
+**권장 주기는 차량마다 바꿀 수 있다**(2026-09-25). 기본값은 광유 기준이라 엔진오일이
+5,000km 인데, 합성유는 10,000~15,000km 다 — 손잡이가 없으면 `지남` 이 **늘 켜진 경고등**이 되고
+늘 켜진 경고는 아무도 안 본다. km·개월을 따로 비울 수 있다(합성유는 거리만 늘고 기간은 그대로).
 
 **지난 것은 `지남` 으로 표시하고 목록 맨 위로 올린다**(2026-09-25). 판정은 서버가 한다 —
 화면이 직접 오늘과 비교하면 차량 상세와 홈이 다른 말을 하게 된다. 홈의 `차량별` 카드에도
@@ -146,7 +150,7 @@ npm run dev     # http://localhost:5173
 ### 4. 검사
 
 ```
-./gradlew test                  # 백엔드 227개
+./gradlew test                  # 백엔드 236개
 cd frontend && npm run test     # 프론트 42개 (vitest)
 cd frontend && npm run lint     # oxlint
 cd frontend && npm run build    # tsc -b + vite build
@@ -305,6 +309,7 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 보존된다.
 | 비밀번호 변경 | `PATCH /api/users/me/password` |
 | 비밀번호 재설정 요청/확정 | `POST`, `PATCH /api/users/password-reset` |
 | 내 기록 내보내기 | `GET /api/users/me/export` |
+| 내 기록 가져오기 | `POST /api/users/me/restore` |
 | 회원 탈퇴 | `DELETE /api/users/me` |
 | 홈 요약 (통계·차트·최근 활동) | `GET /api/summary` |
 | 차량 등록/목록조회 | `POST`, `GET /api/vehicles` |
@@ -312,9 +317,10 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 보존된다.
 | 차량 정보 수정 | `PATCH /api/vehicles/{vehicleId}` |
 | 주행거리 갱신 | `PATCH /api/vehicles/{vehicleId}/odometer` |
 | 차량 삭제 | `DELETE /api/vehicles/{vehicleId}` |
-| 정비 이력 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/maintenance-records` |
+| 정비 이력 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/maintenance-records` (`?type=` 로 거르기) |
 | 정비 이력 수정/삭제 | `PATCH`/`DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` |
 | 다음 정비 시점 조회 | `GET /api/vehicles/{vehicleId}/maintenance-records/next-services` |
+| 차량별 권장 주기 설정 | `PATCH /api/vehicles/{vehicleId}/maintenance-records/intervals/{type}` |
 | 주유 기록 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/fuel-records` |
 | 주유 기록 수정/삭제 | `PATCH`/`DELETE /api/vehicles/{vehicleId}/fuel-records/{recordId}` |
 | 연비 요약 조회 | `GET /api/vehicles/{vehicleId}/fuel-records/summary` |
@@ -481,7 +487,7 @@ BCrypt 는 같은 값도 매번 다른 해시를 내놓아 조회 키로 못 쓴
 ## 진행 상황
 
 백엔드 API **27개**와 프론트엔드 화면 10장(라우트 기준. `/` 가 세 얼굴을 가져 실제로 볼 상태는
-13개)이 모두 동작하는 상태다. 백엔드 테스트 **227개**, 프론트엔드 테스트 **42개**가 통과하고,
+13개)이 모두 동작하는 상태다. 백엔드 테스트 **236개**, 프론트엔드 테스트 **42개**가 통과하고,
 프론트엔드는 `tsc -b` / `oxlint` / `vite build` 도 통과한다.
 커밋마다 GitHub Actions 가 이 넷을 전부 돌린다 (`.github/workflows/ci.yml`).
 
@@ -535,6 +541,7 @@ Phase 6 이후에 기능이 더 붙었다.
 | 자잘한 결함 7건 정리 | 정렬 화이트리스트 · 빈 문자열 정규화 · 시간대 고정 · 숫자 연출 튐 · 휠 년 범위 · 복귀 주소 · 문서 드리프트 | 2026-09-23 |
 | 점검 결함 6건 수정 | 내보내기 Blob 해제 · 제목 계층 · 타입 스케일 토큰 셋 · 비밀번호 바이트 안내 · 만료 토큰 정리 · 테스트 시간대 | 2026-09-24 |
 | **지난 정비 표시** | 계산만 하고 결론을 말하지 않던 것. `지남` 라벨 + 목록 맨 위 + 홈 차량별 건수 | 2026-09-25 |
+| **기능 공백 7건** | 주행거리 급증 확인 · 차량별 주기 · 연비 추이 · 세션 14일 · 홈에서 바로 기록 · 정비 종류 필터 · **가져오기** | 2026-09-25 |
 
 Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않는다.
 
@@ -693,8 +700,9 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 - [x] ~~다음 정비 시점을 **전체 종류 한 번에** 반환하는 API~~ — **완료.**
       정비 종류가 15개가 되면서 요청 15번이 되어 더 미룰 수 없었다.
 - [x] ~~정비 이력 등록 시 차량 주행거리 자동 갱신~~ — **완료.** 규칙은 `Vehicle.liftOdometerTo()` 에 있고 주유·정비가 같이 쓴다.
-- [ ] 정비 이력 종류별 필터링 (`GET .../maintenance-records?type=`)
-- [ ] 차량 목록에 각 차량의 "임박한 정비" 요약 포함 (목록 화면에서 바로 보이게)
+- [x] ~~정비 이력 종류별 필터링~~ — **2026-09-25 완료** (`?type=`). 화면에도 종류 select 를 뒀다.
+- [x] ~~차량 목록에 각 차량의 "임박한 정비" 요약 포함~~ — **2026-09-25 완료.** 홈 `차량별` 에
+      `정비 N건 지남` 이 붙는다(추가 쿼리 0). 차량 목록 쪽은 아직 — 거기는 정비 정보를 안 읽는다.
 - [ ] 이메일 중복 확인 API (`GET /api/users/exists?email=`) — 회원가입 폼 실시간 피드백용
       → 단, 이건 계정 존재 여부를 노출하는 API다. 로그인 실패 메시지를 일부러 통일해 둔 것과
         모순되므로 **도입 전에 트레이드오프를 다시 따진다.**
@@ -728,7 +736,7 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 ### 완료 판정 기준
 
 위 0번을 처음부터 끝까지 막힘없이 수행할 수 있고, `./gradlew test` 가 통과하면 "완성"으로 본다.
-(테스트 **269개**(백엔드 227 · 프론트 42)는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
+(테스트 **278개**(백엔드 236 · 프론트 42)는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
 배포(서버 인프라, 도메인, CI/CD)는 이 프로젝트의 범위 밖이며, **로컬에서 완전히 동작하는 것**까지가 목표다.
 
 ## 트러블슈팅

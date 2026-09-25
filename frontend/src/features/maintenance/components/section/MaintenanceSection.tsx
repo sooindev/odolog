@@ -10,7 +10,8 @@ import { formatDate, formatKm, formatWon } from '@/shared/lib/format/format'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { deleteRecord, fetchRecords } from '@/features/maintenance/api/endpoints/endpoints'
 import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
-import type { MaintenanceRecordResponse } from '@/features/maintenance/api/types/types'
+import { controlClassName } from '@/shared/ui/form/control'
+import type { MaintenanceRecordResponse, ServiceType } from '@/features/maintenance/api/types/types'
 
 interface Props {
   vehicleId: number
@@ -21,6 +22,8 @@ interface Props {
 
 export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Props) {
   const [page, setPage] = useState(0)
+  // 종류 필터. null 이면 전체
+  const [filter, setFilter] = useState<ServiceType | null>(null)
 
   // 'closed' | 'new' | 수정할 이력
   const [editing, setEditing] = useState<'closed' | 'new' | MaintenanceRecordResponse>('closed')
@@ -29,7 +32,10 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
   // 삭제 중인 id. boolean 이면 목록 전체가 잠겨 어느 줄인지 안 보임
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  const load = useCallback(() => fetchRecords(vehicleId, page), [vehicleId, page])
+  const load = useCallback(
+    () => fetchRecords(vehicleId, page, filter),
+    [vehicleId, page, filter],
+  )
   const { data, loading, error, reload } = useAsyncData(load, '정비 이력을 불러오지 못했습니다.')
 
   // 변수로 받아야 타입이 좁혀짐. JSX 에서 같은 식을 두 번 쓰면 매번 새 식이라 단언이 필요해짐
@@ -75,9 +81,33 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>정비 이력</CardTitle>
         {editing === 'closed' && (
-          <Button size="sm" variant="secondary" onClick={() => setEditing('new')}>
-            이력 추가
-          </Button>
+          <div className="flex items-center gap-2">
+            {/*
+              네이티브 select 를 쓴다. 종류가 15개라 세그먼트 컨트롤로는 줄이 넘치고,
+              직접 만든 드롭다운은 키보드·스크린리더를 처음부터 다시 짜야 한다
+            */}
+            <select
+              aria-label="정비 종류로 거르기"
+              className={controlClassName + ' h-8 w-auto text-caption'}
+              value={filter ?? ''}
+              onChange={(event) => {
+                setFilter(event.target.value === '' ? null : (event.target.value as ServiceType))
+                // 3페이지를 보다 필터를 바꾸면 그 종류에는 3페이지가 없을 수 있다
+                setPage(0)
+              }}
+            >
+              <option value="">전체 종류</option>
+              {(Object.keys(SERVICE_TYPE_LABELS) as ServiceType[]).map((type) => (
+                <option key={type} value={type}>
+                  {SERVICE_TYPE_LABELS[type]}
+                </option>
+              ))}
+            </select>
+
+            <Button size="sm" variant="secondary" onClick={() => setEditing('new')}>
+              이력 추가
+            </Button>
+          </div>
         )}
       </CardHeader>
 
@@ -106,7 +136,12 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
             ))}
           </div>
         ) : data === null || data.totalElements === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">아직 등록된 정비 이력이 없습니다.</p>
+          // 필터가 걸린 채 비었으면 "이력이 없다" 는 거짓말이다 — 거른 결과가 없을 뿐이다
+          <p className="py-4 text-sm text-muted-foreground">
+            {filter === null
+              ? '아직 등록된 정비 이력이 없습니다.'
+              : `${SERVICE_TYPE_LABELS[filter]} 이력이 없습니다. 위에서 '전체 종류' 로 바꾸면 전부 보입니다.`}
+          </p>
         ) : (
           <ul className="divide-y divide-border">
             {data.items.map((record) => (

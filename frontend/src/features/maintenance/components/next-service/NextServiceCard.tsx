@@ -1,12 +1,21 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
+import type { FormEvent } from 'react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { ErrorText, Skeleton } from '@/shared/ui/feedback/state'
 import { formatDate, formatKm } from '@/shared/lib/format/format'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
-import { fetchNextServices } from '@/features/maintenance/api/endpoints/endpoints'
+import { Button } from '@/shared/ui/base/button'
+import { Field } from '@/shared/ui/form/field'
+import { Input } from '@/shared/ui/base/input'
+import { FormActions } from '@/shared/ui/layout/page'
+import { ApiError } from '@/shared/api/client/client'
+import {
+  changeServiceInterval,
+  fetchNextServices,
+} from '@/features/maintenance/api/endpoints/endpoints'
 import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
-import type { NextServiceResponse } from '@/features/maintenance/api/types/types'
+import type { NextServiceResponse, ServiceType } from '@/features/maintenance/api/types/types'
 
 /**
  * 종류별 다음 정비 시점. 요청 1번
@@ -20,7 +29,11 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
     data: results,
     loading,
     error,
+    reload,
   } = useAsyncData(load, '다음 정비 시점을 불러오지 못했습니다.')
+
+  // 주기를 고치는 중인 종류. 한 번에 하나만 연다 — 여럿이 열리면 어느 줄을 고치는지 흐려진다
+  const [editing, setEditing] = useState<ServiceType | null>(null)
 
   // 껍데기는 항상 렌더. 카드가 통째로 사라지면 아래 내용이 위로 튐
   return (
@@ -83,19 +96,144 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
                   {describeLast(result)}
                 </span>
 
-                <span
-                  className={`text-right text-caption tabular-nums ${
-                    result.overdue ? 'font-medium text-strong' : 'text-foreground'
-                  }`}
-                >
-                  {describeNext(result)}
+                <span className="flex items-baseline justify-end gap-2 text-right">
+                  <span
+                    className={`text-caption tabular-nums ${
+                      result.overdue ? 'font-medium text-strong' : 'text-foreground'
+                    }`}
+                  >
+                    {describeNext(result)}
+                  </span>
+                  {/*
+                    주기를 고치는 손잡이. 이게 없으면 `지남` 이 늘 켜져 있는 경고등이 된다 —
+                    엔진오일 기본값은 광유 기준 5,000km 인데 합성유는 10,000~15,000km 다
+                  */}
+                  <button
+                    type="button"
+                    className="shrink-0 text-unit text-muted-foreground underline-offset-4 transition-opacity duration-200 ease-apple hover:opacity-70 hover:underline"
+                    onClick={() => setEditing(editing === result.type ? null : result.type)}
+                  >
+                    {result.customized ? '주기 변경됨' : '주기'}
+                  </button>
                 </span>
+
+                {editing === result.type && (
+                  // 행 전체 폭을 쓴다. 오른쪽 끝에서 열면 입력칸 두 개가 들어갈 자리가 없다
+                  <div className="col-span-full">
+                    <IntervalForm
+                      vehicleId={vehicleId}
+                      result={result}
+                      onSaved={() => {
+                        setEditing(null)
+                        reload()
+                      }}
+                      onCancel={() => setEditing(null)}
+                    />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         )}
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * 이 차량에서 쓸 주기. 비우면 기본값으로 되돌아간다
+ * 두 칸을 언제나 함께 보낸다 — 서버가 "안 보냄" 과 "비움" 을 가르지 않는다(전체 교체)
+ */
+function IntervalForm({
+  vehicleId,
+  result,
+  onSaved,
+  onCancel,
+}: {
+  vehicleId: number
+  result: NextServiceResponse
+  onSaved: () => void
+  onCancel: () => void
+}) {
+  const [km, setKm] = useState(result.intervalKm === null ? '' : String(result.intervalKm))
+  const [months, setMonths] = useState(
+    result.intervalMonths === null ? '' : String(result.intervalMonths),
+  )
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setError(null)
+    setPending(true)
+
+    try {
+      await changeServiceInterval(vehicleId, result.type, {
+        intervalKm: km === '' ? null : Number(km),
+        intervalMonths: months === '' ? null : Number(months),
+      })
+      onSaved()
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : '주기를 저장하지 못했습니다.')
+      setPending(false)
+    }
+  }
+
+  return (
+    // 정비 폼과 같은 펼침 연출. 닫을 때는 연출 없음
+    <form className="form-open" onSubmit={handleSubmit}>
+      <div className="flex flex-col gap-4 bg-sunken p-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="주행거리 주기 (km)"
+            htmlFor={`interval-km-${result.type}`}
+            hint={km === '' ? '비우면 기본값을 씁니다.' : undefined}
+          >
+            <Input
+              id={`interval-km-${result.type}`}
+              type="number"
+              autoFocus
+              min={1}
+              max={500000}
+              className="tabular-nums"
+              value={km}
+              onChange={(event) => setKm(event.target.value)}
+            />
+          </Field>
+
+          <Field
+            label="기간 주기 (개월)"
+            htmlFor={`interval-months-${result.type}`}
+            hint={months === '' ? '비우면 기본값을 씁니다.' : undefined}
+          >
+            <Input
+              id={`interval-months-${result.type}`}
+              type="number"
+              min={1}
+              max={120}
+              className="tabular-nums"
+              value={months}
+              onChange={(event) => setMonths(event.target.value)}
+            />
+          </Field>
+        </div>
+
+        <p className="text-caption leading-relaxed text-muted-foreground">
+          이 차량에만 적용됩니다. 둘 다 비우면 기본 권장 주기로 돌아갑니다.
+        </p>
+
+        {error !== null && <ErrorText message={error} />}
+
+        <FormActions>
+          <Button type="submit" size="sm" disabled={pending}>
+            {pending ? '저장 중…' : '저장'}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+            취소
+          </Button>
+        </FormActions>
+      </div>
+    </form>
   )
 }
 

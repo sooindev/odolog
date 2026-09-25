@@ -43,10 +43,18 @@ spring:
 server:
   servlet:
     session:
+      # 톰캣 기본은 30분이다. 정비 영수증을 정리하다 잠깐 자리를 비우면 로그아웃됐다 —
+      # 쿠키 속성은 "브라우저 기본값에 기대지 않는다" 며 다 적어 두고 만료만 기본값이었다.
+      # 차량 기록은 은행이 아니라 며칠~몇 주 유지가 맞다
+      timeout: 14d
       cookie:
         http-only: true
         same-site: lax
         secure: ${SESSION_COOKIE_SECURE:false}
+        # 서버가 14일을 기억해도 쿠키가 세션 쿠키면 브라우저를 닫는 순간 끝난다.
+        # 둘을 같이 늘려야 실제로 유지된다 — 공용 컴퓨터가 그 대가이고,
+        # http-only + same-site 가 이미 걸려 있어 남이 읽어 가기는 어렵다
+        max-age: 14d
 
 odolog:
   # 재설정 링크가 가리킬 화면 주소. 메일 본문에 들어가므로 백엔드가 아니라 프런트다

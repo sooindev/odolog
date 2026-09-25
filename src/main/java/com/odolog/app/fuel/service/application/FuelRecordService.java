@@ -28,6 +28,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class FuelRecordService {
 
+    /** 추이에 그릴 점 개수. 월별 차트 12칸과 같은 눈금 */
+    private static final int TREND_POINTS = 12;
+
     /** 정렬 고정. sort 파라미터 무시 — 정렬이 곧 연비 계산의 전제 */
     private static final Sort FIXED_SORT = Sort.by(Sort.Direction.DESC, "odometer", "id");
 
@@ -156,7 +159,12 @@ public class FuelRecordService {
         // "N곳을 뺐습니다" 가 참이 된다
         return new FuelSummaryResponse(records.size(), totalCost, totalLiters,
                 efficiency.distance(), efficiency.average(), latestId, resetPointId,
-                efficiency.missingSegments(), efficiency.excludedSegments());
+                efficiency.missingSegments(), efficiency.excludedSegments(),
+                // 이미 읽어 둔 records 로 만든다 — 추가 쿼리 없음
+                FuelEfficiency.trend(records, TREND_POINTS).stream()
+                        .map(point -> new FuelSummaryResponse.TrendPoint(
+                                point.fueledAt(), point.efficiency()))
+                        .toList());
     }
 
 

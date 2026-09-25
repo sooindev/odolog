@@ -2,12 +2,14 @@ package com.odolog.app.maintenance.service.application;
 
 import com.odolog.app.maintenance.domain.calculation.NextService;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.entity.ServiceInterval;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.maintenance.dto.request.register.MaintenanceRecordRegisterRequest;
 import com.odolog.app.maintenance.dto.request.update.MaintenanceRecordUpdateRequest;
 import com.odolog.app.maintenance.dto.response.schedule.NextServiceResponse;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.common.dto.request.page.SortGuard;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.vehicle.service.application.VehicleService;
@@ -26,12 +28,42 @@ import java.util.Set;
 public class MaintenanceRecordService {
 
     private final MaintenanceRecordRepository maintenanceRecordRepository;
+    private final ServiceIntervalRepository serviceIntervalRepository;
     private final VehicleService vehicleService;
 
     public MaintenanceRecordService(MaintenanceRecordRepository maintenanceRecordRepository,
+                                     ServiceIntervalRepository serviceIntervalRepository,
                                      VehicleService vehicleService) {
         this.maintenanceRecordRepository = maintenanceRecordRepository;
+        this.serviceIntervalRepository = serviceIntervalRepository;
         this.vehicleService = vehicleService;
+    }
+
+    /**
+     * 이 차량에서 쓸 권장 주기를 정한다. 둘 다 null 이면 기본값으로 되돌린다
+     *
+     * 되돌릴 때 행을 지우는 이유: 값이 전부 비어 있는 행은 "덮어쓰지 않음" 과 같은 뜻인데,
+     * 남겨 두면 customized 가 true 로 남아 화면이 "기본과 다름" 이라고 거짓말한다
+     */
+    @Transactional
+    public void changeInterval(Long requesterId, Long vehicleId, ServiceType type,
+                               Integer intervalKm, Integer intervalMonths) {
+
+        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+
+        serviceIntervalRepository.findByVehicleIdAndType(vehicleId, type).ifPresentOrElse(
+                existing -> {
+                    existing.change(intervalKm, intervalMonths);
+                    if (existing.isEmpty()) {
+                        serviceIntervalRepository.delete(existing);
+                    }
+                },
+                () -> {
+                    if (intervalKm != null || intervalMonths != null) {
+                        serviceIntervalRepository.save(
+                                new ServiceInterval(vehicle, type, intervalKm, intervalMonths));
+                    }
+                });
     }
 
     @Transactional
@@ -52,11 +84,16 @@ public class MaintenanceRecordService {
     private static final Set<String> SORTABLE =
             Set.of("serviceDate", "id", "cost", "serviceOdometer", "type");
 
-    public Page<MaintenanceRecord> findByVehicle(Long requesterId, Long vehicleId, Pageable pageable) {
+    /** type 이 null 이면 전체. 전용 메서드를 하나 더 만들지 않는 이유 — 호출부가 갈리면
+     *  소유권 검사와 정렬 가드를 두 곳에서 되풀이해야 한다 */
+    public Page<MaintenanceRecord> findByVehicle(Long requesterId, Long vehicleId,
+                                                 ServiceType type, Pageable pageable) {
         vehicleService.findOwnedVehicle(requesterId, vehicleId);
         SortGuard.allowOnly(pageable, SORTABLE);
 
-        return maintenanceRecordRepository.findByVehicleId(vehicleId, pageable);
+        return type == null
+                ? maintenanceRecordRepository.findByVehicleId(vehicleId, pageable)
+                : maintenanceRecordRepository.findByVehicleIdAndType(vehicleId, type, pageable);
     }
 
     /**
@@ -72,6 +109,7 @@ public class MaintenanceRecordService {
 
         return NextService.of(
                         maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(vehicleId),
+                        serviceIntervalRepository.findByVehicleId(vehicleId),
                         vehicle.getOdometer(), LocalDate.now())
                 .stream()
                 .map(NextServiceResponse::from)

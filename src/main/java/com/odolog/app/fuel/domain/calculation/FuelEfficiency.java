@@ -4,6 +4,8 @@ import com.odolog.app.fuel.domain.entity.FuelRecord;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -81,6 +83,48 @@ public record FuelEfficiency(Integer distance, BigDecimal average,
         }
 
         return new FuelEfficiency(distance, divide(distance, liters), excluded, missing);
+    }
+
+    /**
+     * 구간 연비를 시간 순으로. 화면이 "좋아지고 있나 나빠지고 있나" 를 보여줄 재료
+     *
+     * 평균 하나로는 추세를 알 수 없다 — 20번을 기록해도 지금 값 하나만 보인다.
+     * 연비가 꾸준히 떨어지는 것은 그 자체로 정비 신호다
+     *
+     * 평균에서 빼는 구간(불가능한 값·기록 빠짐)은 여기서도 뺀다.
+     * 넣으면 한 점이 축을 혼자 차지해 나머지가 바닥에 깔린다
+     *
+     * @param all   주행거리 오름차순 정렬된 한 차량의 주유 기록
+     * @param limit 최근 몇 개까지. 12칸 월별 차트와 같은 눈금
+     */
+    public static List<Point> trend(List<FuelRecord> all, int limit) {
+        List<FuelRecord> records = sinceResetPoint(all);
+        FuelAnomaly.Baseline baseline = FuelAnomaly.baselineOf(all);
+
+        List<Point> points = new ArrayList<>();
+        for (int i = 1; i < records.size(); i++) {
+            int segment = records.get(i).getOdometer() - records.get(i - 1).getOdometer();
+            BigDecimal used = records.get(i).getLiters();
+
+            if (segment <= 0 || used == null || used.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            BigDecimal efficiency = divide(segment, used);
+            if (FuelAnomaly.isImpossible(efficiency)
+                    || baseline.suspectsMissingRecord(segment, efficiency)) {
+                continue;
+            }
+
+            points.add(new Point(records.get(i).getFueledAt(), efficiency));
+        }
+
+        // 최근 것부터 limit 개. 앞에서 자르면 옛날만 남는다
+        return points.size() <= limit ? points : points.subList(points.size() - limit, points.size());
+    }
+
+    /** 추이 한 점 */
+    public record Point(LocalDate fueledAt, BigDecimal efficiency) {
     }
 
     private static BigDecimal divide(int distance, BigDecimal liters) {

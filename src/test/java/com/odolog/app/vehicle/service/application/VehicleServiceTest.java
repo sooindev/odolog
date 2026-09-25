@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.repository.jpa.UserRepository;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
@@ -50,6 +51,9 @@ class VehicleServiceTest {
 
     @Mock
     private MaintenanceRecordRepository maintenanceRecordRepository;
+
+    @Mock
+    private ServiceIntervalRepository serviceIntervalRepository;
 
     @Mock
     private FuelRecordRepository fuelRecordRepository;

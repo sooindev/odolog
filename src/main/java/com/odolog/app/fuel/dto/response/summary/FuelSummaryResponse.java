@@ -1,6 +1,8 @@
 package com.odolog.app.fuel.dto.response.summary;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 차량 한 대의 주유 요약
@@ -39,6 +41,16 @@ public record FuelSummaryResponse(
          * 위와 나눠 세는 이유는 고치는 방법이 달라서다 — 이쪽은 적힌 값을 고치는 일이고
          * 위는 없는 기록을 채우는 일이다. 뺐으면 화면이 그 사실을 말해야 한다
          */
-        int excludedSegmentCount
+        int excludedSegmentCount,
+
+        /**
+         * 최근 구간 연비 (오래된 것부터)
+         * 평균 하나로는 추세를 알 수 없어서 — 20번을 기록해도 지금 값 하나만 보였다.
+         * 평균에서 뺀 구간은 여기서도 뺀다. 넣으면 한 점이 축을 혼자 차지한다
+         */
+        List<TrendPoint> trend
 ) {
+
+    public record TrendPoint(LocalDate fueledAt, BigDecimal efficiency) {
+    }
 }

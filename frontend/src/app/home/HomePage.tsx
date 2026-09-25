@@ -58,8 +58,19 @@ function Dashboard({ nickname }: { nickname: string }) {
       title={`${nickname}님의 차고`}
       description="차량과 정비·주유 기록, 들어간 유지비를 한눈에 봅니다."
       action={
-        <Button size="sm" variant="secondary" render={<Link to="/vehicles" />}>
-          내 차량
+        /*
+          차량이 한 대면 그 차로 바로 보낸다. 주유 기록은 이 앱에서 가장 자주 하는 일인데
+          홈 → 내 차량 → 차량 → 주유 추가로 네 단계였다.
+          여러 대면 어느 차인지 물어야 하므로 목록으로 — 고를 것이 있을 때만 고르게 한다
+        */
+        <Button
+          size="sm"
+          variant="secondary"
+          render={
+            <Link to={data.vehicles.length === 1 ? `/vehicles/${data.vehicles[0].id}` : '/vehicles'} />
+          }
+        >
+          {data.vehicles.length === 1 ? '기록하러 가기' : '내 차량'}
         </Button>
       }
     >

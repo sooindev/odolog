@@ -94,4 +94,18 @@ export interface NextServiceResponse {
    * 화면이 직접 오늘과 비교하면 차량 상세와 홈이 다른 말을 하게 된다
    */
   overdue: boolean
+  /** 실제로 적용된 주기. 차량별 설정이 있으면 그 값 */
+  intervalKm: number | null
+  intervalMonths: number | null
+  /** 기본값을 덮어쓴 상태인가 */
+  customized: boolean
+}
+
+/**
+ * 이 차량에서 쓸 권장 주기. 부분 수정이 아니라 전체 교체다 —
+ * 둘 다 null 이면 기본값으로 되돌아간다
+ */
+export interface ServiceIntervalRequest {
+  intervalKm: number | null
+  intervalMonths: number | null
 }

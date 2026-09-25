@@ -7,6 +7,7 @@ import com.odolog.app.maintenance.dto.request.register.MaintenanceRecordRegister
 import com.odolog.app.maintenance.dto.request.update.MaintenanceRecordUpdateRequest;
 import com.odolog.app.maintenance.dto.response.schedule.NextServiceResponse;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +32,9 @@ class MaintenanceRecordServiceTest {
 
     @Mock
     private MaintenanceRecordRepository maintenanceRecordRepository;
+
+    @Mock
+    private ServiceIntervalRepository serviceIntervalRepository;
 
     @Mock
     private VehicleService vehicleService;

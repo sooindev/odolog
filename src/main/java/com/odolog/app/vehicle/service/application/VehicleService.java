@@ -10,6 +10,7 @@ import com.odolog.app.vehicle.dto.request.update.VehicleUpdateRequest;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.repository.jpa.UserRepository;
 import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
 import org.springframework.data.domain.Page;
@@ -27,16 +28,19 @@ public class VehicleService {
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
     private final MaintenanceRecordRepository maintenanceRecordRepository;
+    private final ServiceIntervalRepository serviceIntervalRepository;
     // 서비스가 아니라 리포지토리 주입 — 서비스끼리면 진짜 순환 참조
     // (FuelRecordService 가 VehicleService 를 이미 씀)
     private final FuelRecordRepository fuelRecordRepository;
 
     public VehicleService(VehicleRepository vehicleRepository, UserRepository userRepository,
                            MaintenanceRecordRepository maintenanceRecordRepository,
+                           ServiceIntervalRepository serviceIntervalRepository,
                            FuelRecordRepository fuelRecordRepository) {
         this.vehicleRepository = vehicleRepository;
         this.userRepository = userRepository;
         this.maintenanceRecordRepository = maintenanceRecordRepository;
+        this.serviceIntervalRepository = serviceIntervalRepository;
         this.fuelRecordRepository = fuelRecordRepository;
     }
 
@@ -112,6 +116,7 @@ public class VehicleService {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
         // 자식 먼저, 차량 나중 — 바꾸면 FK 제약 위반
         maintenanceRecordRepository.deleteByVehicleId(vehicle.getId());
+        serviceIntervalRepository.deleteByVehicleId(vehicle.getId());
         fuelRecordRepository.deleteByVehicleId(vehicle.getId());
         vehicleRepository.delete(vehicle);
     }
@@ -127,6 +132,7 @@ public class VehicleService {
         // 차량을 먼저 지우면 이력이 붙잡고 있어 FK 제약 위반
         for (Vehicle vehicle : vehicles) {
             maintenanceRecordRepository.deleteByVehicleId(vehicle.getId());
+            serviceIntervalRepository.deleteByVehicleId(vehicle.getId());
             fuelRecordRepository.deleteByVehicleId(vehicle.getId());
         }
         vehicleRepository.deleteAll(vehicles);

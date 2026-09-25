@@ -18,6 +18,7 @@ import { formatKm, formatNumber } from '@/shared/lib/format/format'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { useCountUp } from '@/shared/lib/hooks/useCountUp'
 import { MAX_ODOMETER } from '@/shared/lib/limits/limits'
+import { looksBigJump } from '@/shared/lib/odometer/odometer'
 import { deleteVehicle, fetchVehicle, updateOdometer } from '@/features/vehicles/api/endpoints/endpoints'
 import type { VehicleResponse } from '@/features/vehicles/api/types/types'
 
@@ -261,6 +262,20 @@ function OdometerForm({
      * 되돌릴 방법이 아예 없어진다 — 기록을 고쳐도 차량 값은 따라 내려오지 않기 때문이다.
      * 계기판 교체도 실제로 일어나는 일이라, 묻고 나서 force 를 실어 보낸다.
      */
+    /*
+     * 급증도 묻는다. 줄이는 쪽만 막던 시절에는 방향이 거꾸로였다 —
+     * 줄이는 것은 force 로 되돌릴 수 있지만 올라간 값은 force 정정 말고는 길이 없다
+     */
+    if (looksBigJump(next, vehicle.odometer)) {
+      const confirmed = window.confirm(
+        `${formatKm(vehicle.odometer)} 에서 ${formatKm(next)} 로 크게 뜁니다.\n` +
+          '자리수를 확인해 주세요.\n\n이대로 저장할까요?',
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+
     let force = false
     if (next < vehicle.odometer) {
       const confirmed = window.confirm(
