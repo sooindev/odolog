@@ -27,7 +27,9 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
     <Card>
       <CardHeader>
         <CardTitle>다음 정비 시점</CardTitle>
-        <CardDescription>종류별 권장 주기와 마지막 정비 기록으로 계산합니다.</CardDescription>
+        <CardDescription>
+          종류별 권장 주기와 마지막 정비 기록으로 계산합니다. 지난 것이 위에 옵니다.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {loading && (
@@ -60,15 +62,32 @@ export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
                 key={result.type}
                 className="grid grid-cols-[1fr_auto] items-baseline gap-x-6 gap-y-1.5 py-5 first:pt-0 last:pb-0 sm:grid-cols-[8rem_minmax(0,1fr)_auto]"
               >
-                <span className="text-body font-medium tracking-[-0.015em] text-strong">
-                  {SERVICE_TYPE_LABELS[result.type]}
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <span className="truncate text-body font-medium tracking-[-0.015em] text-strong">
+                    {SERVICE_TYPE_LABELS[result.type]}
+                  </span>
+                  {/*
+                    빨강을 쓰지 않는다. 빨강은 "실패" 를 나르는 기능색이고(디자인 규칙 3)
+                    주유 목록의 `확인 필요`(입력 오류)가 이미 그 뜻으로 쓰고 있다.
+                    정비 시기가 지난 것은 잘못이 아니라 할 일이라, 모노톤 시스템의 방식대로
+                    대비를 올려서 말한다 — 테두리 친 라벨 + 아래 값도 strong 으로
+                  */}
+                  {result.overdue && (
+                    <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
+                      지남
+                    </span>
+                  )}
                 </span>
 
-                <span className="order-3 text-xs tabular-nums text-muted-foreground sm:order-none">
+                <span className="order-3 text-caption tabular-nums text-muted-foreground sm:order-none">
                   {describeLast(result)}
                 </span>
 
-                <span className="text-right text-caption tabular-nums text-foreground">
+                <span
+                  className={`text-right text-caption tabular-nums ${
+                    result.overdue ? 'font-medium text-strong' : 'text-foreground'
+                  }`}
+                >
                   {describeNext(result)}
                 </span>
               </li>

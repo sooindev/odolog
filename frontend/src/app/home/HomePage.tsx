@@ -134,8 +134,17 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                 className="flex items-center justify-between gap-4 transition-opacity duration-200 ease-apple hover:opacity-70"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <p className="truncate text-body text-strong">
-                    {line.manufacturer} {line.modelName}
+                  <p className="flex min-w-0 items-baseline gap-2">
+                    <span className="truncate text-body text-strong">
+                      {line.manufacturer} {line.modelName}
+                    </span>
+                    {/* 차량 상세까지 안 들어가도 "이 차에 할 일이 있다" 를 알 수 있게.
+                        빨강을 쓰지 않는 이유는 NextServiceCard 주석 참고 */}
+                    {line.overdueServiceCount > 0 && (
+                      <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
+                        정비 {line.overdueServiceCount}건 지남
+                      </span>
+                    )}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {line.plateNumber} · 정비 {line.maintenanceCount}건

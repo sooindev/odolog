@@ -53,7 +53,13 @@ public record GarageSummaryResponse(
             /** 정비 이력 없으면 null */
             LocalDate lastServiceDate,
             /** 주유 2건 미만이면 null */
-            BigDecimal averageEfficiency
+            BigDecimal averageEfficiency,
+            /**
+             * 권장 주기가 지난 정비 종류 수 (2026-09-25)
+             * 차량 상세까지 들어가야만 알 수 있던 것을 목록에서 보이게 한다 —
+             * 계산은 차량 상세와 같은 NextService 가 하므로 두 화면이 같은 말을 한다
+             */
+            int overdueServiceCount
     ) {
     }
 

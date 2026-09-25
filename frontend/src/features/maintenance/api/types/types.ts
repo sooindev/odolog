@@ -89,4 +89,9 @@ export interface NextServiceResponse {
   nextServiceOdometer: number | null
   lastServiceDate: string | null
   nextServiceDate: string | null
+  /**
+   * 주행거리·날짜 중 하나라도 지났는지. 서버 판정이다 —
+   * 화면이 직접 오늘과 비교하면 차량 상세와 홈이 다른 말을 하게 된다
+   */
+  overdue: boolean
 }

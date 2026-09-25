@@ -193,16 +193,19 @@ class MaintenanceRecordControllerTest {
     void calculateAllNextServices() throws Exception {
         when(maintenanceRecordService.calculateAllNextServices(1L, 10L)).thenReturn(List.of(
                 new NextServiceResponse(ServiceType.ENGINE_OIL, 20000, 25000,
-                        LocalDate.of(2026, 9, 1), LocalDate.of(2027, 3, 1)),
+                        LocalDate.of(2026, 9, 1), LocalDate.of(2027, 3, 1), true),
                 new NextServiceResponse(ServiceType.TRANSMISSION_FLUID, 15000, 75000,
-                        LocalDate.of(2026, 6, 1), LocalDate.of(2030, 6, 1))));
+                        LocalDate.of(2026, 6, 1), LocalDate.of(2030, 6, 1), false)));
 
         mockMvc.perform(get("/api/vehicles/10/maintenance-records/next-services")
                         .session(loginSessionOf(1L)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].type").value("ENGINE_OIL"))
-                .andExpect(jsonPath("$[1].type").value("TRANSMISSION_FLUID"));
+                .andExpect(jsonPath("$[1].type").value("TRANSMISSION_FLUID"))
+                // 지남 여부가 응답에 실려야 화면이 오늘과 직접 비교하지 않는다
+                .andExpect(jsonPath("$[0].overdue").value(true))
+                .andExpect(jsonPath("$[1].overdue").value(false));
     }
 
 }

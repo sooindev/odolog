@@ -3,6 +3,7 @@ package com.odolog.app.summary.service.application;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.fuel.domain.calculation.FuelEfficiency;
+import com.odolog.app.maintenance.domain.calculation.NextService;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
@@ -71,7 +72,7 @@ public class GarageSummaryService {
                 fuelCost,
                 monthly(records, fuels, today),
                 byType(records),
-                vehicleLines(vehicles, records, fuels),
+                vehicleLines(vehicles, records, fuels, today),
                 recent(records, fuels, vehicles));
     }
 
@@ -123,7 +124,7 @@ public class GarageSummaryService {
     }
 
     private List<VehicleLine> vehicleLines(List<Vehicle> vehicles, List<MaintenanceRecord> records,
-                                           List<FuelRecord> fuels) {
+                                           List<FuelRecord> fuels, LocalDate today) {
         List<VehicleLine> lines = new ArrayList<>(vehicles.size());
 
         for (Vehicle vehicle : vehicles) {
@@ -135,13 +136,19 @@ public class GarageSummaryService {
                     .filter(record -> record.getVehicle().getId().equals(vehicle.getId()))
                     .toList();
 
+            // 이미 읽어 둔 이력으로 센다 — 추가 쿼리 없음
+            long overdue = NextService.of(mine, vehicle.getOdometer(), today).stream()
+                    .filter(NextService::overdue)
+                    .count();
+
             lines.add(new VehicleLine(
                     vehicle.getId(), vehicle.getPlateNumber(), vehicle.getManufacturer(),
                     vehicle.getModelName(), vehicle.getOdometer(),
                     mine.size(),
                     // serviceDate 내림차순이라 첫 줄이 최근
                     mine.isEmpty() ? null : mine.get(0).getServiceDate(),
-                    FuelEfficiency.of(myFuels).average()));
+                    FuelEfficiency.of(myFuels).average(),
+                    (int) overdue));
         }
 
         return lines;

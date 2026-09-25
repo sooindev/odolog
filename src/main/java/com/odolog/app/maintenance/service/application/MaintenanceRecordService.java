@@ -1,5 +1,6 @@
 package com.odolog.app.maintenance.service.application;
 
+import com.odolog.app.maintenance.domain.calculation.NextService;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
@@ -16,9 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Map;
 import java.util.List;
-import java.util.EnumMap;
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -63,39 +62,20 @@ public class MaintenanceRecordService {
     /**
      * 전체 종류의 다음 정비 시점을 한 번에. 종류마다 요청하면 15왕복
      * 이력 없는 종류는 제외 — 15줄 중 13줄이 "기록 없음"이면 빈칸 목록이 됨
+     *
+     * 계산과 "지남" 판정은 NextService 가 한다 — 홈 요약이 같은 것을 쓴다
+     * "오늘"을 밖에서 받지 않고 여기서 만드는 이유: 이 경로는 화면이 바로 부르는 조회라
+     * 고정할 이유가 없고, 고정이 필요한 홈 요약 쪽은 자기가 today 를 넘긴다
      */
     public List<NextServiceResponse> calculateAllNextServices(Long requesterId, Long vehicleId) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
 
-        // 정렬된 목록에서 종류별 첫 줄 = 그 종류의 최신 이력
-        Map<ServiceType, MaintenanceRecord> latest = new EnumMap<>(ServiceType.class);
-        for (MaintenanceRecord record : maintenanceRecordRepository
-                .findByVehicleIdOrderByServiceDateDescIdDesc(vehicleId)) {
-            latest.putIfAbsent(record.getType(), record);
-        }
-
-        // enum 선언 순서 유지. 화면 순서를 서버가 정하는 편이 어긋날 여지가 적음
-        List<NextServiceResponse> responses = new ArrayList<>(latest.size());
-        for (ServiceType type : ServiceType.values()) {
-            MaintenanceRecord record = latest.get(type);
-            if (record != null) {
-                responses.add(toNextService(type, record));
-            }
-        }
-
-        return responses;
-    }
-
-    private NextServiceResponse toNextService(ServiceType type, MaintenanceRecord record) {
-        Integer intervalKm = type.getRecommendedIntervalKm();
-        Integer nextOdometer = (intervalKm == null) ? null : record.getServiceOdometer() + intervalKm;
-
-        Integer intervalMonths = type.getRecommendedIntervalMonths();
-        LocalDate nextDate = (intervalMonths == null) ? null
-                : record.getServiceDate().plusMonths(intervalMonths);
-
-        return new NextServiceResponse(type, record.getServiceOdometer(), nextOdometer,
-                record.getServiceDate(), nextDate);
+        return NextService.of(
+                        maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(vehicleId),
+                        vehicle.getOdometer(), LocalDate.now())
+                .stream()
+                .map(NextServiceResponse::from)
+                .toList();
     }
 
 

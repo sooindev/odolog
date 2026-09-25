@@ -36,6 +36,8 @@ export interface VehicleLine {
   lastServiceDate: string | null
   /** 주유 2건 미만이면 null */
   averageEfficiency: number | null
+  /** 권장 주기가 지난 정비 종류 수. 차량 상세와 같은 계산이다 */
+  overdueServiceCount: number
 }
 
 /**
