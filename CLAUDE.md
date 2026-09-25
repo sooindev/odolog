@@ -602,7 +602,12 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │       └── vehicle/VehicleResponse.java
     │   │                                     owner 없음 — LAZY 미접근으로 N+1 방지
     │   ├── service/application/VehicleService.java
-    │   │                                     register, findMyVehicles(Pageable),
+    │   │                                     register,
+    │   │                                     findMyVehicles(Pageable) — **DTO 를 돌려준다.**
+    │   │                                     지남 수가 엔티티에 없는 계산값이라서
+    │   │                                     (FuelRecordService.findByVehicle 과 같은 이유).
+    │   │                                     쿼리 3번 — 이력·주기를 소유자 단위로 한 번에 읽고
+    │   │                                     나눈다. 차량마다면 페이지 크기만큼 는다,
     │   │                                     update(번호판이 실제로 바뀔 때만 중복 검사),
     │   │                                     updateOdometer(dirty checking),
     │   │                                     delete(이력 먼저 → 차량),
@@ -745,6 +750,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     차량 밑에 이력을 중첩한다 — 평평하게 내보내면 어느 기록이
     │   │                                     어느 차의 것인지 우리 DB 안에서만 뜻이 있는 id 로만 안다.
     │   │                                     **계산값(연비·단가)과 비밀번호 해시는 담지 않는다**
+    │   ├── dto/response/export/AccountExportResponse.java
+    │   │                                     차량 밑에 이력·주유·**차량별 주기**를 중첩한다.
+    │   │                                     주기가 빠져 있으면 복원한 차가 기본값으로 돌아가
+    │   │                                     `지남` 이 다시 늘 켜진다 — 말없이 사라지는 설정이다
     │   ├── dto/request/restore/AccountRestoreRequest.java
     │   │                                     내보낸 JSON 을 되돌려받는다. 패키지가 restore 인
     │   │                                     이유는 **import 가 자바 예약어**라서.

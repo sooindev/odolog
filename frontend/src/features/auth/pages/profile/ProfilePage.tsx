@@ -211,6 +211,9 @@ function RestoreForm() {
             (result.mergedVehicles > 0
               ? ` 이미 있던 차량 ${result.mergedVehicles}대에는 기록만 붙였습니다.`
               : '') +
+            (result.addedServiceIntervals > 0
+              ? ` 차량별 정비 주기 ${result.addedServiceIntervals}개도 되살렸습니다.`
+              : '') +
             (result.skippedRecords > 0
               ? ` 이미 같은 기록이 있어 ${result.skippedRecords}건은 건너뛰었습니다.`
               : '')

@@ -5,6 +5,7 @@ import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.dto.request.odometer.UpdateOdometerRequest;
+import com.odolog.app.vehicle.dto.response.vehicle.VehicleResponse;
 import com.odolog.app.vehicle.dto.request.register.VehicleRegisterRequest;
 import com.odolog.app.vehicle.dto.request.update.VehicleUpdateRequest;
 import com.odolog.app.vehicle.service.application.VehicleService;
@@ -61,11 +62,14 @@ class VehicleControllerTest {
         ReflectionTestUtils.setField(vehicle, "id", 10L);
 
         when(vehicleService.findMyVehicles(eq(1L), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(vehicle), PageRequest.of(0, 20), 1));
+                .thenReturn(new PageImpl<>(List.of(VehicleResponse.of(vehicle, 2)),
+                        PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/vehicles").session(loginSessionOf(1L)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].plateNumber").value("12가3456"))
+                // 목록에서만 채워진다 — 홈에만 있고 목록에는 없어 두 화면이 다르게 답하던 자리
+                .andExpect(jsonPath("$.items[0].overdueServiceCount").value(2))
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
                 .andExpect(jsonPath("$.totalElements").value(1))

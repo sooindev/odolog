@@ -47,8 +47,9 @@ public class VehicleController {
             @ParameterObject
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        PageResponse<VehicleResponse> vehicles = PageResponse.from(
-                vehicleService.findMyVehicles(ownerId, pageable).map(VehicleResponse::from));
+        // 서비스가 DTO 를 돌려준다 — 지남 수가 엔티티에 없는 계산값이라서
+        PageResponse<VehicleResponse> vehicles =
+                PageResponse.from(vehicleService.findMyVehicles(ownerId, pageable));
 
         return ResponseEntity.ok(vehicles);
     }

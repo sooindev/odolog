@@ -2,6 +2,7 @@ package com.odolog.app.account.dto.response.export;
 
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.entity.ServiceInterval;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 
@@ -44,8 +45,25 @@ public record AccountExportResponse(
             int odometer,
             LocalDateTime createdAt,
             List<MaintenanceData> maintenanceRecords,
-            List<FuelData> fuelRecords
+            List<FuelData> fuelRecords,
+            /**
+             * 차량별 권장 주기(2026-09-25 추가)
+             * 이게 빠져 있으면 복원한 차가 기본값으로 돌아가 `지남` 이 다시 늘 켜진다 —
+             * 말없이 사라지는 설정이라 더 나쁘다
+             */
+            List<IntervalData> serviceIntervals
     ) {
+    }
+
+    public record IntervalData(
+            String type,
+            Integer intervalKm,
+            Integer intervalMonths
+    ) {
+        static IntervalData from(ServiceInterval interval) {
+            return new IntervalData(interval.getType().name(),
+                    interval.getIntervalKm(), interval.getIntervalMonths());
+        }
     }
 
     public record MaintenanceData(
@@ -93,7 +111,8 @@ public record AccountExportResponse(
             User user,
             List<Vehicle> vehicles,
             Map<Long, List<MaintenanceRecord>> maintenanceByVehicle,
-            Map<Long, List<FuelRecord>> fuelByVehicle) {
+            Map<Long, List<FuelRecord>> fuelByVehicle,
+            Map<Long, List<ServiceInterval>> intervalsByVehicle) {
 
         List<VehicleData> vehicleData = vehicles.stream()
                 .map(vehicle -> new VehicleData(
@@ -108,6 +127,9 @@ public record AccountExportResponse(
                                 .toList(),
                         fuelByVehicle.getOrDefault(vehicle.getId(), List.of()).stream()
                                 .map(FuelData::from)
+                                .toList(),
+                        intervalsByVehicle.getOrDefault(vehicle.getId(), List.of()).stream()
+                                .map(IntervalData::from)
                                 .toList()))
                 .toList();
 

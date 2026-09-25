@@ -38,4 +38,9 @@ export interface VehicleResponse {
   /** 등록 API 는 NotNull 이지만 컬럼은 nullable — 검증 이전 데이터는 null 가능 */
   modelYear: number | null
   odometer: number
+  /**
+   * 권장 주기가 지난 정비 종류 수. 목록 조회에서만 채워진다 —
+   * 단건 응답(등록·수정·주행거리 갱신)에서는 0 이다
+   */
+  overdueServiceCount: number
 }

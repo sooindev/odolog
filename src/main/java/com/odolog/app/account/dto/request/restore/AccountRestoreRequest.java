@@ -46,7 +46,25 @@ public record AccountRestoreRequest(
             @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) int odometer,
 
             @NotNull @Size(max = 5000) @Valid List<MaintenanceData> maintenanceRecords,
-            @NotNull @Size(max = 5000) @Valid List<FuelData> fuelRecords
+            @NotNull @Size(max = 5000) @Valid List<FuelData> fuelRecords,
+
+            /**
+             * 차량별 권장 주기. 옛 파일에는 없을 수 있어 null 을 허용한다
+             * 빠져 있으면 기본값으로 복원되는데, 그건 "설정이 없던 상태" 와 같아 문제가 없다
+             */
+            @Size(max = 30) @Valid List<IntervalData> serviceIntervals
+    ) {
+
+        /** 옛 파일 대비. null 을 그대로 돌리면 부르는 쪽이 매번 검사해야 한다 */
+        public List<IntervalData> serviceIntervals() {
+            return serviceIntervals == null ? List.of() : serviceIntervals;
+        }
+    }
+
+    public record IntervalData(
+            @NotNull ServiceType type,
+            @Positive @Max(500_000) Integer intervalKm,
+            @Positive @Max(120) Integer intervalMonths
     ) {
     }
 

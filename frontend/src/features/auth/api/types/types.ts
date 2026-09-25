@@ -86,4 +86,6 @@ export interface AccountRestoreResult {
   mergedVehicles: number
   /** 이미 같은 기록이 있어 건너뛴 수 */
   skippedRecords: number
+  /** 되살린 차량별 주기 수. 이미 설정이 있는 종류는 건드리지 않는다 */
+  addedServiceIntervals: number
 }

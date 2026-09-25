@@ -29,7 +29,8 @@ interface Props {
   record: MaintenanceRecordResponse | null
   /** 등록 시 주행거리 기본값 (차량의 현재 주행거리) */
   defaultOdometer: number
-  onSaved: () => void
+  /** 저장한 종류를 함께 넘긴다 — 목록이 필터를 풀지 말지 판단해야 한다 */
+  onSaved: (savedType: ServiceType) => void
   onCancel: () => void
 }
 
@@ -98,7 +99,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         await updateRecord(vehicleId, record.id, request)
       }
 
-      onSaved()
+      onSaved(type)
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : '저장에 실패했습니다.')
     } finally {

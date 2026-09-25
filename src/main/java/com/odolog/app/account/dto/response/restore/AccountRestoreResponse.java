@@ -14,6 +14,12 @@ public record AccountRestoreResponse(
         /** 같은 번호판이 이미 있어 기록만 붙인 차량 수 */
         int mergedVehicles,
         /** 이미 같은 기록이 있어 건너뛴 수 */
-        int skippedRecords
+        int skippedRecords,
+        /**
+         * 되살린 차량별 주기 수
+         * 이미 설정이 있는 종류는 건드리지 않는다 — 차량 정보를 안 덮어쓰는 것과 같은 이유로,
+         * 파일이 옛날 것일 수 있는데 지금 설정을 밀어낼 이유가 없다
+         */
+        int addedServiceIntervals
 ) {
 }

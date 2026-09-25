@@ -4,6 +4,9 @@ import com.odolog.app.common.dto.request.page.SortGuard;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
+import com.odolog.app.maintenance.domain.calculation.NextService;
+import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.entity.ServiceInterval;
 import com.odolog.app.vehicle.dto.request.odometer.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.register.VehicleRegisterRequest;
 import com.odolog.app.vehicle.dto.request.update.VehicleUpdateRequest;
@@ -12,12 +15,14 @@ import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.repository.jpa.UserRepository;
+import com.odolog.app.vehicle.dto.response.vehicle.VehicleResponse;
 import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -63,10 +68,44 @@ public class VehicleService {
     private static final Set<String> SORTABLE = Set.of(
             "createdAt", "plateNumber", "manufacturer", "modelName", "modelYear", "odometer");
 
-    public Page<Vehicle> findMyVehicles(Long ownerId, Pageable pageable) {
+    /**
+     * 목록만 DTO 를 돌려준다. 지남 수가 엔티티에 없는 계산값이기 때문 —
+     * FuelRecordService.findByVehicle 이 같은 이유로 DTO 를 돌려준다
+     *
+     * 쿼리 3번(페이지 + 정비 이력 + 주기). 이력과 주기는 소유자 단위로 한 번에 읽고 나눈다 —
+     * 차량마다 조회하면 페이지 크기만큼 늘어난다
+     */
+    public Page<VehicleResponse> findMyVehicles(Long ownerId, Pageable pageable) {
         SortGuard.allowOnly(pageable, SORTABLE);
 
-        return vehicleRepository.findByOwnerId(ownerId, pageable);
+        Page<Vehicle> page = vehicleRepository.findByOwnerId(ownerId, pageable);
+        if (page.isEmpty()) {
+            return page.map(vehicle -> VehicleResponse.of(vehicle, 0));
+        }
+
+        List<MaintenanceRecord> records =
+                maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(ownerId);
+        List<ServiceInterval> intervals = serviceIntervalRepository.findByVehicle_Owner_Id(ownerId);
+        LocalDate today = LocalDate.now();
+
+        return page.map(vehicle -> VehicleResponse.of(vehicle,
+                overdueCountOf(vehicle, records, intervals, today)));
+    }
+
+    /** 홈 요약과 같은 계산(NextService)을 쓴다 — 두 화면이 다른 수를 말하면 안 된다 */
+    private int overdueCountOf(Vehicle vehicle, List<MaintenanceRecord> records,
+                               List<ServiceInterval> intervals, LocalDate today) {
+
+        List<MaintenanceRecord> mine = records.stream()
+                .filter(record -> record.getVehicle().getId().equals(vehicle.getId()))
+                .toList();
+        List<ServiceInterval> mineIntervals = intervals.stream()
+                .filter(interval -> interval.getVehicle().getId().equals(vehicle.getId()))
+                .toList();
+
+        return (int) NextService.of(mine, mineIntervals, vehicle.getOdometer(), today).stream()
+                .filter(NextService::overdue)
+                .count();
     }
 
     @Transactional

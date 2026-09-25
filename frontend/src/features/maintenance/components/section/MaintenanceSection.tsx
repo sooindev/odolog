@@ -41,11 +41,26 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
   // 변수로 받아야 타입이 좁혀짐. JSX 에서 같은 식을 두 번 쓰면 매번 새 식이라 단언이 필요해짐
   const errorMessage = error ?? actionError
 
-  function refresh() {
+  /**
+   * savedType 이 있으면 방금 저장한 것이다
+   *
+   * 필터가 걸린 채 다른 종류를 저장하면 목록에 안 나타난다 — 서버가 필터에 맞는 것만 주기 때문.
+   * 사용자는 저장이 실패한 줄 알고 다시 누르고, **같은 기록이 두 건** 생긴다.
+   * 그래서 필터 밖으로 저장했으면 필터를 푼다. 방금 넣은 것이 보이는 쪽이 먼저다
+   */
+  function refresh(savedType?: ServiceType) {
     setEditing('closed')
     setActionError(null)
-    reload()
     onChanged()
+
+    if (savedType !== undefined && filter !== null && filter !== savedType) {
+      // filter 가 바뀌면 load 가 새 함수가 되어 저절로 재조회된다. reload() 까지 부르면 두 번 나감
+      setFilter(null)
+      setPage(0)
+      return
+    }
+
+    reload()
   }
 
   async function handleDelete(recordId: number) {
@@ -78,8 +93,9 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>정비 이력</CardTitle>
+      {/* 375px 에서 제목 + 필터 + 버튼이 한 줄에 안 들어간다. 줄여서 맞추지 않고 접는다 */}
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-3">
+        <CardTitle className="min-w-0">정비 이력</CardTitle>
         {editing === 'closed' && (
           <div className="flex items-center gap-2">
             {/*

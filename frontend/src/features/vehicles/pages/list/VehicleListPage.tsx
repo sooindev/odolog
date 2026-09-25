@@ -64,8 +64,17 @@ export function VehicleListPage() {
                   <p className="truncate text-eyebrow text-muted-foreground uppercase">
                     {vehicle.plateNumber}
                   </p>
-                  <p className="truncate text-section text-strong">
-                    {vehicle.manufacturer} {vehicle.modelName}
+                  <p className="flex min-w-0 items-baseline gap-2">
+                    <span className="truncate text-section text-strong">
+                      {vehicle.manufacturer} {vehicle.modelName}
+                    </span>
+                    {/* 홈에만 있고 목록에는 없어서 같은 질문에 두 화면이 다르게 답하고 있었다.
+                        빨강을 쓰지 않는 이유는 NextServiceCard 주석 참고 */}
+                    {vehicle.overdueServiceCount > 0 && (
+                      <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
+                        정비 {vehicle.overdueServiceCount}건 지남
+                      </span>
+                    )}
                   </p>
                   <p className="text-caption text-muted-foreground">
                     {vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}

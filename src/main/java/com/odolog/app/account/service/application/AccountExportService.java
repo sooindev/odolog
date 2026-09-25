@@ -4,7 +4,9 @@ import com.odolog.app.account.dto.response.export.AccountExportResponse;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.entity.ServiceInterval;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.service.application.UserService;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
@@ -26,7 +28,7 @@ import java.util.stream.Collectors;
  * 같은 패키지의 AccountWithdrawalService 가 서비스를 받는 것과 다른데, 그쪽은 삭제 순서를
  * 조율해야 하기 때문이다
  *
- * 쿼리는 3번이다. 차량마다 따로 조회하면 차량 수만큼 늘어난다
+ * 쿼리는 4번이다. 차량마다 따로 조회하면 차량 수만큼 늘어난다
  */
 @Service
 @Transactional(readOnly = true)
@@ -35,15 +37,18 @@ public class AccountExportService {
     private final UserService userService;
     private final VehicleRepository vehicleRepository;
     private final MaintenanceRecordRepository maintenanceRecordRepository;
+    private final ServiceIntervalRepository serviceIntervalRepository;
     private final FuelRecordRepository fuelRecordRepository;
 
     public AccountExportService(UserService userService,
                                 VehicleRepository vehicleRepository,
                                 MaintenanceRecordRepository maintenanceRecordRepository,
+                                ServiceIntervalRepository serviceIntervalRepository,
                                 FuelRecordRepository fuelRecordRepository) {
         this.userService = userService;
         this.vehicleRepository = vehicleRepository;
         this.maintenanceRecordRepository = maintenanceRecordRepository;
+        this.serviceIntervalRepository = serviceIntervalRepository;
         this.fuelRecordRepository = fuelRecordRepository;
     }
 
@@ -60,6 +65,11 @@ public class AccountExportService {
                 fuelRecordRepository.findByVehicle_Owner_IdOrderByOdometerAscIdAsc(userId).stream()
                         .collect(Collectors.groupingBy(record -> record.getVehicle().getId()));
 
-        return AccountExportResponse.of(exportedAt, user, vehicles, maintenanceByVehicle, fuelByVehicle);
+        Map<Long, List<ServiceInterval>> intervalsByVehicle =
+                serviceIntervalRepository.findByVehicle_Owner_Id(userId).stream()
+                        .collect(Collectors.groupingBy(interval -> interval.getVehicle().getId()));
+
+        return AccountExportResponse.of(exportedAt, user, vehicles,
+                maintenanceByVehicle, fuelByVehicle, intervalsByVehicle);
     }
 }

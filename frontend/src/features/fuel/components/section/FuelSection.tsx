@@ -73,8 +73,9 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>주유 기록</CardTitle>
+      {/* 375px 에서 제목 + 필터 + 버튼이 한 줄에 안 들어간다. 줄여서 맞추지 않고 접는다 */}
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-3">
+        <CardTitle className="min-w-0">주유 기록</CardTitle>
         {editing === 'closed' && (
           <Button size="sm" variant="secondary" onClick={() => setEditing('new')}>
             주유 추가

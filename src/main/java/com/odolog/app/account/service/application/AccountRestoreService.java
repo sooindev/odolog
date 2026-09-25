@@ -5,7 +5,10 @@ import com.odolog.app.account.dto.response.restore.AccountRestoreResponse;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.entity.ServiceInterval;
+import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.service.application.UserService;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
@@ -44,15 +47,18 @@ public class AccountRestoreService {
     private final UserService userService;
     private final VehicleRepository vehicleRepository;
     private final MaintenanceRecordRepository maintenanceRecordRepository;
+    private final ServiceIntervalRepository serviceIntervalRepository;
     private final FuelRecordRepository fuelRecordRepository;
 
     public AccountRestoreService(UserService userService,
                                  VehicleRepository vehicleRepository,
                                  MaintenanceRecordRepository maintenanceRecordRepository,
+                                 ServiceIntervalRepository serviceIntervalRepository,
                                  FuelRecordRepository fuelRecordRepository) {
         this.userService = userService;
         this.vehicleRepository = vehicleRepository;
         this.maintenanceRecordRepository = maintenanceRecordRepository;
+        this.serviceIntervalRepository = serviceIntervalRepository;
         this.fuelRecordRepository = fuelRecordRepository;
     }
 
@@ -70,6 +76,7 @@ public class AccountRestoreService {
         int addedMaintenance = 0;
         int addedFuel = 0;
         int skipped = 0;
+        int addedIntervals = 0;
 
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
             Vehicle vehicle = byPlate.get(data.plateNumber());
@@ -126,12 +133,29 @@ public class AccountRestoreService {
                 addedFuel++;
             }
 
+            // 이미 설정이 있는 종류는 건드리지 않는다 (차량 정보를 안 덮어쓰는 것과 같은 이유)
+            Set<ServiceType> settled = new HashSet<>();
+            for (ServiceInterval interval : serviceIntervalRepository.findByVehicleId(vehicle.getId())) {
+                settled.add(interval.getType());
+            }
+
+            for (AccountRestoreRequest.IntervalData interval : data.serviceIntervals()) {
+                if (!settled.add(interval.type())
+                        || (interval.intervalKm() == null && interval.intervalMonths() == null)) {
+                    continue;
+                }
+
+                serviceIntervalRepository.save(new ServiceInterval(vehicle, interval.type(),
+                        interval.intervalKm(), interval.intervalMonths()));
+                addedIntervals++;
+            }
+
             // 기록을 넣은 뒤 한 번만. 파일의 값과 기록들 중 큰 쪽으로 맞춰진다
             vehicle.liftOdometerTo(data.odometer());
         }
 
         return new AccountRestoreResponse(addedVehicles, addedMaintenance, addedFuel,
-                mergedVehicles, skipped);
+                mergedVehicles, skipped, addedIntervals);
     }
 
     /*

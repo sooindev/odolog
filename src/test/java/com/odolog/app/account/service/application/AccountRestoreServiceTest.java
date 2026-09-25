@@ -7,6 +7,7 @@ import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.service.application.UserService;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
@@ -45,6 +46,9 @@ class AccountRestoreServiceTest {
     private MaintenanceRecordRepository maintenanceRecordRepository;
 
     @Mock
+    private ServiceIntervalRepository serviceIntervalRepository;
+
+    @Mock
     private FuelRecordRepository fuelRecordRepository;
 
     @InjectMocks
@@ -56,7 +60,7 @@ class AccountRestoreServiceTest {
                                                           List<AccountRestoreRequest.MaintenanceData> maintenance,
                                                           List<AccountRestoreRequest.FuelData> fuels) {
         return new AccountRestoreRequest.VehicleData(plate, "기아", "카니발", 2020, 30000,
-                maintenance, fuels);
+                maintenance, fuels, List.of());
     }
 
     private AccountRestoreRequest.MaintenanceData oilData(LocalDate date, int odometer) {

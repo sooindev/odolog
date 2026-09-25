@@ -6,6 +6,7 @@ import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
+import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.service.application.UserService;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
@@ -38,6 +39,9 @@ class AccountExportServiceTest {
 
     @Mock
     private MaintenanceRecordRepository maintenanceRecordRepository;
+
+    @Mock
+    private ServiceIntervalRepository serviceIntervalRepository;
 
     @Mock
     private FuelRecordRepository fuelRecordRepository;
