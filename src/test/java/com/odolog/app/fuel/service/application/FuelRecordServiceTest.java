@@ -76,8 +76,8 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(0);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
-        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
-                eq(10L), anyInt())).thenReturn(Optional.empty());
+        when(fuelRecordRepository.findPrevious(
+                eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
         FuelRecordResponse response = fuelRecordService.register(1L, 10L,
                 new FuelRecordRegisterRequest(LocalDate.of(2026, 9, 1), 10000,
@@ -95,8 +95,8 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(10000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
-        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
-                eq(10L), anyInt()))
+        when(fuelRecordRepository.findPrevious(
+                eq(10L), anyInt(), any()))
                 .thenReturn(Optional.of(record(1L, vehicle, 10000, "30.00", 60000)));
 
         FuelRecordResponse response = fuelRecordService.register(1L, 10L,
@@ -113,8 +113,8 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(9000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
-        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
-                eq(10L), anyInt())).thenReturn(Optional.empty());
+        when(fuelRecordRepository.findPrevious(
+                eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
         fuelRecordService.register(1L, 10L, new FuelRecordRegisterRequest(
                 LocalDate.of(2026, 9, 1), 10000, new BigDecimal("30.00"), 60000, null));
@@ -128,8 +128,8 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(50000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
-        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
-                eq(10L), anyInt())).thenReturn(Optional.empty());
+        when(fuelRecordRepository.findPrevious(
+                eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
         fuelRecordService.register(1L, 10L, new FuelRecordRegisterRequest(
                 LocalDate.of(2026, 1, 1), 10000, new BigDecimal("30.00"), 60000, null));
@@ -150,7 +150,7 @@ class FuelRecordServiceTest {
         Pageable pageable = PageRequest.of(0, 2);
         when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(items, pageable, 3));
-        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(10L, 10500))
+        when(fuelRecordRepository.findPrevious(eq(10L), eq(10500), any()))
                 .thenReturn(Optional.of(record(1L, vehicle, 10000, "30.00", 60000)));
 
         Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, 10L, pageable);
@@ -162,7 +162,7 @@ class FuelRecordServiceTest {
 
         // 직전 조회는 한 번뿐 — 행마다면 N+1
         verify(fuelRecordRepository)
-                .findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(anyLong(), anyInt());
+                .findPrevious(anyLong(), anyInt(), any());
     }
 
     @Test
@@ -338,8 +338,8 @@ class FuelRecordServiceTest {
         FuelRecord existing = record(1L, vehicle, 10000, "30.00", 60000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(fuelRecordRepository.findByIdAndVehicleId(1L, 10L)).thenReturn(Optional.of(existing));
-        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
-                eq(10L), anyInt())).thenReturn(Optional.empty());
+        when(fuelRecordRepository.findPrevious(
+                eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
         // 자리수 오타 정정
         fuelRecordService.update(1L, 10L, 1L,
@@ -356,8 +356,8 @@ class FuelRecordServiceTest {
         FuelRecord existing = record(1L, vehicle, 20000, "30.00", 60000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(fuelRecordRepository.findByIdAndVehicleId(1L, 10L)).thenReturn(Optional.of(existing));
-        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
-                eq(10L), anyInt())).thenReturn(Optional.empty());
+        when(fuelRecordRepository.findPrevious(
+                eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
         fuelRecordService.update(1L, 10L, 1L,
                 new FuelRecordUpdateRequest(null, 15000, null, null, null, null, null, null));
@@ -424,8 +424,8 @@ class FuelRecordServiceTest {
         FuelRecord existing = record(2L, vehicle, 20000, "25.00", 50000);
         when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
         when(fuelRecordRepository.findByIdAndVehicleId(2L, 10L)).thenReturn(Optional.of(existing));
-        when(fuelRecordRepository.findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(
-                eq(10L), anyInt())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));
+        when(fuelRecordRepository.findPrevious(
+                eq(10L), anyInt(), any())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));
 
         // 끄기 전 500km ÷ 25L = 20.00
         FuelRecordResponse before = fuelRecordService.update(1L, 10L, 2L,

@@ -10,6 +10,7 @@ import com.odolog.app.user.service.application.UserService;
 import com.odolog.app.common.auth.annotation.LoginUser;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
+import com.odolog.app.common.auth.session.LoginSessionRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -31,10 +32,13 @@ public class UserController {
 
     private final UserService userService;
     private final LoginAttemptLimiter attemptLimiter;
+    private final LoginSessionRegistry sessionRegistry;
 
-    public UserController(UserService userService, LoginAttemptLimiter attemptLimiter) {
+    public UserController(UserService userService, LoginAttemptLimiter attemptLimiter,
+                          LoginSessionRegistry sessionRegistry) {
         this.userService = userService;
         this.attemptLimiter = attemptLimiter;
+        this.sessionRegistry = sessionRegistry;
     }
 
     /**
@@ -79,6 +83,8 @@ public class UserController {
         HttpSession session = httpRequest.getSession();
         session.setAttribute(SessionConst.LOGIN_USER_ID, user.getId());
         httpRequest.changeSessionId();
+        // 비밀번호가 바뀌면 이 목록으로 다른 기기의 세션을 끊는다
+        sessionRegistry.register(user.getId(), session);
 
         return ResponseEntity.ok(UserResponse.from(user));
     }
@@ -100,11 +106,14 @@ public class UserController {
     }
 
     // 204. 돌려줄 것이 없고 비밀번호는 어떤 경우에도 응답에 안 담음
-    // 세션은 유지 — 본인이 바꾼 것이라 다시 로그인시킬 이유가 없음
+    // 이 세션은 유지 — 본인이 바꾼 것이라 다시 로그인시킬 이유가 없음
+    // 다른 기기의 세션은 끊는다 — 비밀번호를 바꾸는 흔한 이유가 "누가 쓰고 있는 것 같아서"다
     @PatchMapping("/me/password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
-                                                 @LoginUser Long userId) {
+                                                 @LoginUser Long userId,
+                                                 HttpServletRequest httpRequest) {
         userService.changePassword(userId, request);
+        sessionRegistry.invalidateOthers(userId, httpRequest.getSession(false));
         return ResponseEntity.noContent().build();
     }
 

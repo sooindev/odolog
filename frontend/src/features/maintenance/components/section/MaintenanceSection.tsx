@@ -11,6 +11,7 @@ import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { deleteRecord, fetchRecords } from '@/features/maintenance/api/endpoints/endpoints'
 import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import { controlClassName } from '@/shared/ui/form/control'
+import { cn } from 'cn'
 import type { MaintenanceRecordResponse, ServiceType } from '@/features/maintenance/api/types/types'
 
 interface Props {
@@ -104,7 +105,12 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
             */}
             <select
               aria-label="정비 종류로 거르기"
-              className={controlClassName + ' h-8 w-auto text-caption'}
+              /*
+                문자열로 이어 붙이면 h-11·w-full 이 CSS 순서로 이겨 44px·전체 폭이 됐다. cn 이 하나만 남긴다
+                크기는 임의 값 — 토큰(text-caption)은 cn 이 색으로 읽어 text-strong 을 지운다
+                md 부터만 13px. 모바일은 16px 유지 — 그보다 작으면 iOS 사파리가 확대한다
+              */
+              className={cn(controlClassName, 'h-8 w-auto md:text-[0.8125rem]')}
               value={filter ?? ''}
               onChange={(event) => {
                 setFilter(event.target.value === '' ? null : (event.target.value as ServiceType))

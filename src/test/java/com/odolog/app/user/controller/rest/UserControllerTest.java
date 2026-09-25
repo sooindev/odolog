@@ -3,6 +3,7 @@ package com.odolog.app.user.controller.rest;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
+import com.odolog.app.common.auth.session.LoginSessionRegistry;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.common.exception.type.TooManyRequestsException;
 import com.odolog.app.user.domain.entity.User;
@@ -28,6 +29,9 @@ import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -51,6 +55,9 @@ class UserControllerTest {
     // 컨트롤러가 직접 주입받는다 — @WebMvcTest 는 @Component 를 안 올리므로 여기서 대신 준다
     @MockitoBean
     private LoginAttemptLimiter attemptLimiter;
+
+    @MockitoBean
+    private LoginSessionRegistry sessionRegistry;
 
     @Test
     @DisplayName("가입 시도가 한도를 넘으면 429를 반환한다")
@@ -129,6 +136,8 @@ class UserControllerTest {
         HttpSession session = result.getRequest().getSession(false);
         assertThat(session).isNotNull();
         assertThat(session.getAttribute(SessionConst.LOGIN_USER_ID)).isEqualTo(1L);
+        // 비밀번호가 바뀌었을 때 끊을 수 있도록 목록에 오른다
+        verify(sessionRegistry).register(eq(1L), same(session));
     }
 
     @Test
@@ -211,6 +220,9 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(
                                 new ChangePasswordRequest("oldpassword", "newpassword1234"))))
                 .andExpect(status().isNoContent());
+
+        // 다른 기기의 세션만 끊고 지금 세션은 남긴다
+        verify(sessionRegistry).invalidateOthers(eq(1L), same(session));
     }
 
     @Test

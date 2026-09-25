@@ -1,5 +1,6 @@
 package com.odolog.app.account.controller.rest;
 
+import com.odolog.app.common.auth.session.LoginSessionRegistry;
 import com.odolog.app.account.dto.request.withdraw.WithdrawRequest;
 import com.odolog.app.account.dto.response.export.AccountExportResponse;
 import com.odolog.app.account.service.application.AccountExportService;
@@ -18,6 +19,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.eq;
@@ -45,6 +47,9 @@ class AccountControllerTest {
     @MockitoBean
     private AccountRestoreService accountRestoreService;
 
+    @MockitoBean
+    private LoginSessionRegistry sessionRegistry;
+
     @Test
     @DisplayName("탈퇴에 성공하면 204이고 세션이 끊긴다")
     void withdrawSuccess() throws Exception {
@@ -59,6 +64,8 @@ class AccountControllerTest {
 
         // 세션이 살아 있으면 없는 사용자 id 로 다음 요청이 500
         assertThat(session.isInvalid()).isTrue();
+        // 다른 기기의 세션도
+        verify(sessionRegistry).invalidateAll(1L);
     }
 
     @Test

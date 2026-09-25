@@ -1,5 +1,6 @@
 package com.odolog.app.account.controller.rest;
 
+import com.odolog.app.common.auth.session.LoginSessionRegistry;
 import com.odolog.app.account.dto.request.withdraw.WithdrawRequest;
 import com.odolog.app.account.dto.request.restore.AccountRestoreRequest;
 import com.odolog.app.account.dto.response.export.AccountExportResponse;
@@ -30,13 +31,16 @@ public class AccountController {
     private final AccountWithdrawalService accountWithdrawalService;
     private final AccountExportService accountExportService;
     private final AccountRestoreService accountRestoreService;
+    private final LoginSessionRegistry sessionRegistry;
 
     public AccountController(AccountWithdrawalService accountWithdrawalService,
                              AccountExportService accountExportService,
-                             AccountRestoreService accountRestoreService) {
+                             AccountRestoreService accountRestoreService,
+                             LoginSessionRegistry sessionRegistry) {
         this.accountWithdrawalService = accountWithdrawalService;
         this.accountExportService = accountExportService;
         this.accountRestoreService = accountRestoreService;
+        this.sessionRegistry = sessionRegistry;
     }
 
     /**
@@ -72,6 +76,8 @@ public class AccountController {
         if (session != null) {
             session.invalidate();
         }
+        // 다른 기기의 세션까지. 여기서 안 끊으면 그쪽은 최대 14일 동안 500 을 받는다
+        sessionRegistry.invalidateAll(userId);
 
         return ResponseEntity.noContent().build();
     }

@@ -54,7 +54,7 @@ public class FuelRecordService {
         // 계기판 값이 더 최신이면 차량 쪽도 갱신
         vehicle.liftOdometerTo(request.odometer());
 
-        return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()),
+        return FuelRecordResponse.of(record, findPrevious(vehicleId, record),
                 baselineOf(vehicleId));
     }
 
@@ -77,7 +77,7 @@ public class FuelRecordService {
         }
 
         // 내림차순이라 맨 끝이 가장 오래된 기록. 그것의 직전 한 건
-        FuelRecord beforePage = findPrevious(vehicleId, items.get(items.size() - 1).getOdometer());
+        FuelRecord beforePage = findPrevious(vehicleId, items.get(items.size() - 1));
 
         FuelAnomaly.Baseline baseline = baselineOf(vehicleId);
 
@@ -116,7 +116,7 @@ public class FuelRecordService {
         if (request.memo() != null) record.changeMemo(blankToNull(request.memo()));
         if (request.resetPoint() != null) record.changeResetPoint(request.resetPoint());
 
-        return FuelRecordResponse.of(record, findPrevious(vehicleId, record.getOdometer()),
+        return FuelRecordResponse.of(record, findPrevious(vehicleId, record),
                 baselineOf(vehicleId));
     }
 
@@ -184,9 +184,9 @@ public class FuelRecordService {
                 fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId));
     }
 
-    private FuelRecord findPrevious(Long vehicleId, int odometer) {
+    private FuelRecord findPrevious(Long vehicleId, FuelRecord record) {
         return fuelRecordRepository
-                .findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(vehicleId, odometer)
+                .findPrevious(vehicleId, record.getOdometer(), record.getId())
                 .orElse(null);
     }
 

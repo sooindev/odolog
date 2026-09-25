@@ -69,6 +69,16 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("가입 때 빈 전화번호는 null 로 저장한다 — '없음' 이 두 모양이 되지 않게")
+    void signUpBlankPhoneBecomesNull() {
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "  ");
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(userService.signUp(request).getPhone()).isNull();
+    }
+
+    @Test
     @DisplayName("이미 가입된 이메일이면 예외가 발생하고 저장하지 않는다")
     void signUpDuplicateEmail() {
         SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000");

@@ -63,4 +63,5 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+// buttonVariants 는 내보내지 않는다 — 컴포넌트와 값을 한 파일에서 내보내면 핫 리로드가 깨진다(쓰는 곳도 없다)
+export { Button }

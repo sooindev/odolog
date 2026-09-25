@@ -40,7 +40,9 @@ public class UserService {
         }
 
         String encodedPassword = passwordEncoder.encode(request.password());
-        User user = new User(request.email(), encodedPassword, request.nickname(), request.phone());
+        // 빈 전화번호는 null 로. updateProfile 과 같은 규칙 — 화면을 안 거친 요청도 같은 모양으로 저장
+        String phone = (request.phone() == null || request.phone().isBlank()) ? null : request.phone();
+        User user = new User(request.email(), encodedPassword, request.nickname(), phone);
 
         return userRepository.save(user);
     }

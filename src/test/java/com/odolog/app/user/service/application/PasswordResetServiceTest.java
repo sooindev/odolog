@@ -1,5 +1,6 @@
 package com.odolog.app.user.service.application;
 
+import com.odolog.app.common.auth.session.LoginSessionRegistry;
 import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.user.domain.entity.PasswordResetToken;
@@ -50,6 +51,9 @@ class PasswordResetServiceTest {
     private PasswordResetMailer mailer;
 
     @Mock
+    private LoginSessionRegistry sessionRegistry;
+
+    @Mock
     private LoginAttemptLimiter rateLimiter;
 
     private PasswordResetService service;
@@ -60,7 +64,7 @@ class PasswordResetServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PasswordResetService(userRepository, tokenRepository, mailer, rateLimiter,
+        service = new PasswordResetService(userRepository, tokenRepository, mailer, rateLimiter, sessionRegistry,
                 Clock.fixed(FIXED, ZoneOffset.UTC));
 
         user = new User("me@odolog.com", "old-hash", "닉네임", null);
@@ -130,6 +134,8 @@ class PasswordResetServiceTest {
         assertThat(token.getUsedAt()).isEqualTo(NOW);
         // 여러 번 틀려서 잠긴 사람이 여기까지 왔다. 바꿨으면 풀어 준다
         verify(rateLimiter).recordSuccess("me@odolog.com");
+        // 누가 들어와 있었을 수 있다. 열려 있던 세션은 전부 끊는다
+        verify(sessionRegistry).invalidateAll(1L);
     }
 
     @Test

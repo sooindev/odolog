@@ -65,10 +65,12 @@ export function setUnauthorizedHandler(handler: () => void) {
 //   /api/users/me/password    현재 비밀번호 오류 — 오타 한 번에 로그아웃되면 안 됨
 //
 // includes 는 정확히 일치하는 문자열만 찾으므로 하위 경로는 따로 등록
+// 메서드까지 본다 — 경로만 보면 PATCH /me(프로필 수정)의 세션 만료 401 까지 삼켜 로그인 상태로 남음
 const SKIP_UNAUTHORIZED_HANDLER = [
-  '/api/users/login',
-  '/api/users/me',
-  '/api/users/me/password',
+  'POST /api/users/login',
+  'GET /api/users/me',
+  'DELETE /api/users/me',
+  'PATCH /api/users/me/password',
 ]
 
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
@@ -104,7 +106,7 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
   }
 
   if (!response.ok) {
-    if (response.status === 401 && !SKIP_UNAUTHORIZED_HANDLER.includes(path)) {
+    if (response.status === 401 && !SKIP_UNAUTHORIZED_HANDLER.includes(`${method} ${path}`)) {
       onUnauthorized?.()
     }
     throw new ApiError(response.status, await readErrorMessage(response))

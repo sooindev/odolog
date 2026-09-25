@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiError, NETWORK_ERROR_STATUS, api } from './client'
+import { ApiError, NETWORK_ERROR_STATUS, api, setUnauthorizedHandler } from './client'
 
 /*
  * 이 테스트가 도는 환경에는 VITE_API_BASE_URL 이 없다 (.env.development 는 dev 전용)
@@ -125,5 +125,33 @@ describe('서버에 닿지 못했을 때', () => {
     const caught = await api.get('/api/vehicles').catch((error: unknown) => error)
 
     expect((caught as ApiError).status).not.toBe(401)
+  })
+})
+
+describe('401 전역 처리', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    setUnauthorizedHandler(() => {})
+  })
+
+  it('로그인 여부를 묻는 GET /me 의 401 은 로그아웃으로 보지 않는다', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    mockFetch(401, { message: '로그인이 필요합니다.' })
+
+    await api.get('/api/users/me').catch(() => undefined)
+
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('같은 경로라도 PATCH /me 의 401 은 세션 만료다', async () => {
+    // 경로만 보던 때는 프로필 수정 중 세션이 끊겨도 화면이 로그인 상태로 남았다
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    mockFetch(401, { message: '로그인이 필요합니다.' })
+
+    await api.patch('/api/users/me', { nickname: '새 이름' }).catch(() => undefined)
+
+    expect(handler).toHaveBeenCalledOnce()
   })
 })

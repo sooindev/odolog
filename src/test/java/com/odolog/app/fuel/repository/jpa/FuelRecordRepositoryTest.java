@@ -57,10 +57,10 @@ class FuelRecordRepositoryTest {
     void findPrevious() {
         save(vehicle, 10000, "30.00");
         FuelRecord middle = save(vehicle, 10500, "31.00");
-        save(vehicle, 11000, "32.00");
+        FuelRecord latest = save(vehicle, 11000, "32.00");
 
         Optional<FuelRecord> previous = fuelRecordRepository
-                .findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(vehicle.getId(), 11000);
+                .findPrevious(vehicle.getId(), 11000, latest.getId());
 
         assertThat(previous).isPresent();
         assertThat(previous.get().getId()).isEqualTo(middle.getId());
@@ -69,11 +69,22 @@ class FuelRecordRepositoryTest {
     @Test
     @DisplayName("가장 오래된 기록에는 직전이 없다")
     void findPreviousOfOldest() {
-        save(vehicle, 10000, "30.00");
+        FuelRecord oldest = save(vehicle, 10000, "30.00");
 
-        assertThat(fuelRecordRepository
-                .findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(vehicle.getId(), 10000))
+        assertThat(fuelRecordRepository.findPrevious(vehicle.getId(), 10000, oldest.getId()))
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("주행거리가 같으면 id 가 작은 쪽이 직전이다 — 목록 정렬과 같은 기준")
+    void findPreviousBreaksTieById() {
+        save(vehicle, 9500, "30.00");
+        FuelRecord first = save(vehicle, 10000, "30.00");
+        FuelRecord second = save(vehicle, 10000, "25.00");
+
+        // 둘이 페이지 경계로 갈려도 second 의 짝은 first 다. 전에는 9500 을 잡아 같은 구간이 두 번 보였다
+        assertThat(fuelRecordRepository.findPrevious(vehicle.getId(), 10000, second.getId()))
+                .get().extracting(FuelRecord::getId).isEqualTo(first.getId());
     }
 
     @Test
@@ -83,7 +94,7 @@ class FuelRecordRepositoryTest {
         FuelRecord mine = save(vehicle, 10000, "30.00");
 
         Optional<FuelRecord> previous = fuelRecordRepository
-                .findTopByVehicleIdAndOdometerLessThanOrderByOdometerDescIdDesc(vehicle.getId(), 11000);
+                .findPrevious(vehicle.getId(), 11000, Long.MAX_VALUE);
 
         assertThat(previous).isPresent();
         assertThat(previous.get().getId()).isEqualTo(mine.getId());

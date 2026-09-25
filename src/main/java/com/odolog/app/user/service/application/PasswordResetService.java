@@ -1,6 +1,7 @@
 package com.odolog.app.user.service.application;
 
 import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
+import com.odolog.app.common.auth.session.LoginSessionRegistry;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.user.domain.entity.PasswordResetToken;
 import com.odolog.app.user.domain.entity.User;
@@ -47,6 +48,7 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordResetMailer mailer;
     private final LoginAttemptLimiter rateLimiter;
+    private final LoginSessionRegistry sessionRegistry;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom random = new SecureRandom();
     private final Clock clock;
@@ -57,19 +59,23 @@ public class PasswordResetService {
     public PasswordResetService(UserRepository userRepository,
                                 PasswordResetTokenRepository tokenRepository,
                                 PasswordResetMailer mailer,
-                                LoginAttemptLimiter rateLimiter) {
-        this(userRepository, tokenRepository, mailer, rateLimiter, Clock.systemDefaultZone());
+                                LoginAttemptLimiter rateLimiter,
+                                LoginSessionRegistry sessionRegistry) {
+        this(userRepository, tokenRepository, mailer, rateLimiter, sessionRegistry,
+                Clock.systemDefaultZone());
     }
 
     PasswordResetService(UserRepository userRepository,
                          PasswordResetTokenRepository tokenRepository,
                          PasswordResetMailer mailer,
                          LoginAttemptLimiter rateLimiter,
+                         LoginSessionRegistry sessionRegistry,
                          Clock clock) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.mailer = mailer;
         this.rateLimiter = rateLimiter;
+        this.sessionRegistry = sessionRegistry;
         this.clock = clock;
     }
 
@@ -109,15 +115,13 @@ public class PasswordResetService {
         LocalDateTime expiresAt = LocalDateTime.now(clock).plusMinutes(VALID_MINUTES);
         tokenRepository.save(new PasswordResetToken(user, hash(token), expiresAt));
 
+        // 실제 발송은 커밋 뒤 다른 스레드(PasswordResetMailer). 여기서 기다리면
+        // 가입된 주소만 SMTP 시간만큼 늦게 답해 응답 시간이 가입 여부를 알려준다
         try {
             mailer.send(user.getEmail(), token, VALID_MINUTES);
         } catch (RuntimeException e) {
-            // 발송 실패를 그대로 올려보내면 가입된 주소에서만 500 이 나고, 그 차이가
-            // 곧 가입 여부를 알려준다. 위에서 없는 주소를 조용히 넘긴 것이 무의미해진다
-            //
-            // 대신 로그에 남긴다. 메일 설정이 잘못된 것은 운영 쪽 문제이지
-            // 요청한 사람이 알아서 할 수 있는 일이 아니다
-            log.error("비밀번호 재설정 메일 발송 실패. 메일 설정을 확인하세요.", e);
+            // 발송 예약조차 실패한 경우. 올려보내면 가입된 주소에서만 500 이 난다
+            log.error("비밀번호 재설정 메일 예약 실패.", e);
         }
     }
 
@@ -136,6 +140,9 @@ public class PasswordResetService {
 
         // 비밀번호를 바꿨으니 로그인 잠금도 푼다 — 잊어버려서 여러 번 틀린 사람이 여기까지 왔다
         rateLimiter.recordSuccess(token.getUser().getEmail());
+
+        // 열려 있던 세션도 전부 끊는다. 재설정하는 이유가 "누가 들어온 것 같아서" 일 수 있다
+        sessionRegistry.invalidateAll(token.getUser().getId());
     }
 
     /** 256비트. 추측으로 맞힐 수 없어야 한다 */
