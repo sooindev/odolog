@@ -221,7 +221,7 @@ export function TypeCostChart({ byType }: { byType: TypeCost[] }) {
 
       <CardContent>
         {byType.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">아직 등록된 정비 이력이 없습니다.</p>
+          <p className="py-4 text-caption text-muted-foreground">아직 등록된 정비 이력이 없습니다.</p>
         ) : (
           <ul className="flex flex-col gap-5">
             {byType.map((entry, index) => (
@@ -229,7 +229,7 @@ export function TypeCostChart({ byType }: { byType: TypeCost[] }) {
                 <div className="flex items-baseline justify-between gap-4">
                   <span className="text-body text-strong">
                     {SERVICE_TYPE_LABELS[entry.type]}
-                    <span className="ml-2 text-xs tabular-nums text-muted-foreground">
+                    <span className="ml-2 text-unit tabular-nums text-muted-foreground">
                       {entry.count}건
                     </span>
                   </span>

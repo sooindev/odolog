@@ -25,7 +25,8 @@ export function Field({
     <div className={cn('flex flex-col gap-2', className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {hint !== undefined && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {/* cn() 밖이라 토큰을 쓸 수 있다. 위 div 의 className 은 cn 을 거치므로 거기는 못 쓴다 */}
+      {hint !== undefined && <p className="text-caption text-muted-foreground">{hint}</p>}
     </div>
   )
 }

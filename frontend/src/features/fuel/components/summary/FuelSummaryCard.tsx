@@ -109,7 +109,7 @@ export function FuelSummaryCard({
 
             {/* 초기화 이후 구간만 센 값임을 명시. 안 적으면 전체 평균으로 오해함 */}
             {data.resetPointId !== null && data.averageEfficiency !== null && (
-              <p className="text-xs text-muted-foreground">연비 초기화 이후 구간만 계산한 값입니다.</p>
+              <p className="text-caption text-muted-foreground">연비 초기화 이후 구간만 계산한 값입니다.</p>
             )}
 
             {/*
@@ -117,7 +117,7 @@ export function FuelSummaryCard({
               목록에서는 그 행에 "확인 필요"가 붙어 있어 어느 기록인지 찾아갈 수 있다
             */}
             {data.excludedSegmentCount > 0 && (
-              <p className="text-xs leading-relaxed text-muted-foreground">
+              <p className="text-caption leading-relaxed text-muted-foreground">
                 계산할 수 없는 구간 {data.excludedSegmentCount}곳을 평균에서 뺐습니다. 목록에서 `확인
                 필요` 가 붙은 기록의 주행거리나 주유량을 확인해 주세요.
               </p>
@@ -128,7 +128,7 @@ export function FuelSummaryCard({
               평균에서 빼 두므로 여기서도 뺐다고 말해야 함 — 목록의 숫자와 평균이 안 맞아 보이기 때문
             */}
             {data.longSegmentCount > 0 && (
-              <p className="text-xs leading-relaxed text-muted-foreground">
+              <p className="text-caption leading-relaxed text-muted-foreground">
                 주유 기록이 빠진 것으로 보이는 구간 {data.longSegmentCount}곳을 평균에서 뺐습니다.
                 목록에서 `기록 빠짐?` 이 붙은 구간의 기록을 채워 넣으면 다시 계산됩니다.
               </p>

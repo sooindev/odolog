@@ -153,7 +153,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
           </div>
         ) : data === null || data.totalElements === 0 ? (
           // 필터가 걸린 채 비었으면 "이력이 없다" 는 거짓말이다 — 거른 결과가 없을 뿐이다
-          <p className="py-4 text-sm text-muted-foreground">
+          <p className="py-4 text-caption text-muted-foreground">
             {filter === null
               ? '아직 등록된 정비 이력이 없습니다.'
               : `${SERVICE_TYPE_LABELS[filter]} 이력이 없습니다. 위에서 '전체 종류' 로 바꾸면 전부 보입니다.`}
@@ -174,7 +174,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                     <span className="text-body font-medium tracking-[-0.01em] text-strong">
                       {SERVICE_TYPE_LABELS[record.type]}
                     </span>
-                    <span className="text-xs tabular-nums text-muted-foreground">
+                    <span className="text-caption tabular-nums text-muted-foreground">
                       {formatDate(record.serviceDate)}
                     </span>
                   </div>

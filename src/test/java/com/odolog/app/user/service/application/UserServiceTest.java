@@ -3,6 +3,7 @@ package com.odolog.app.user.service.application;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.repository.jpa.PasswordResetTokenRepository;
 import com.odolog.app.user.dto.request.login.LoginRequest;
@@ -41,6 +42,18 @@ class UserServiceTest {
 
     @InjectMocks
     private UserService userService;
+
+    @Test
+    @DisplayName("새 비밀번호가 현재와 같으면 막는다 — '바꿨다' 는 안내만 뜨고 아무것도 안 바뀐다")
+    void rejectsUnchangedPassword() {
+        User user = new User("me@odolog.com", new BCryptPasswordEncoder().encode("password1234"),
+                "나", null);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> userService.changePassword(1L,
+                new ChangePasswordRequest("password1234", "password1234")))
+                .isInstanceOf(InvalidRequestException.class);
+    }
 
     @Test
     @DisplayName("회원가입 시 비밀번호는 암호화되어 저장된다")

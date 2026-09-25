@@ -1,6 +1,7 @@
 package com.odolog.app.user.service.application;
 
 import com.odolog.app.common.exception.type.ConflictException;
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.login.LoginRequest;
 import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
@@ -94,6 +95,17 @@ public class UserService {
 
         // findById 가 두 번이지만 쿼리는 한 번 — 같은 트랜잭션의 1차 캐시
         User user = findById(userId);
+
+        /*
+         * 같은 값이면 막는다. 안 막으면 "바꿨다" 는 안내가 뜨는데 아무것도 안 바뀐다 —
+         * 비밀번호가 샜다고 생각해 바꾸러 온 사람이 안 바뀐 채로 안심하고 나간다.
+         * 재설정(PasswordResetService)에는 두지 않았다. 그쪽은 옛 비밀번호를 모르는 사람이라
+         * "같습니다" 라는 말이 도움이 안 된다
+         */
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new InvalidRequestException("새 비밀번호가 현재 비밀번호와 같습니다.");
+        }
+
         user.changePassword(passwordEncoder.encode(request.newPassword()));
     }
 

@@ -86,7 +86,7 @@ export function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-caption text-muted-foreground">
           계정이 없으신가요?{' '}
           <Link
             to="/signup"

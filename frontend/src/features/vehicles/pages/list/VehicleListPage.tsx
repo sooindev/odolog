@@ -70,7 +70,7 @@ export function VehicleListPage() {
                     </span>
                     {/* 홈에만 있고 목록에는 없어서 같은 질문에 두 화면이 다르게 답하고 있었다.
                         빨강을 쓰지 않는 이유는 NextServiceCard 주석 참고 */}
-                    {vehicle.overdueServiceCount > 0 && (
+                    {vehicle.overdueServiceCount !== null && vehicle.overdueServiceCount > 0 && (
                       <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
                         정비 {vehicle.overdueServiceCount}건 지남
                       </span>
@@ -139,7 +139,7 @@ function EmptyGarage() {
 
       <div className="flex max-w-sm flex-col gap-2">
         <p className="text-section text-strong">아직 등록된 차량이 없습니다</p>
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <p className="text-caption leading-relaxed text-muted-foreground">
           차량을 등록하면 정비 이력과 다음 정비 시점, 주유 기록과 연비를 함께 관리할 수 있습니다.
         </p>
       </div>

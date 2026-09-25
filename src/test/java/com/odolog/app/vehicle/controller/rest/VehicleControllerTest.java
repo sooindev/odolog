@@ -198,6 +198,24 @@ class VehicleControllerTest {
     }
 
     @Test
+    @DisplayName("단건 응답의 지남 수는 0 이 아니라 null — '안 셌다' 와 '없다' 는 다르다")
+    void singleResponseLeavesOverdueCountNull() throws Exception {
+        /*
+         * 0 을 넣으면 "지난 게 없다" 로 읽힌다. 나중에 상세 화면이 이 값을 쓰면 항상 "없음" 이
+         * 뜨고 왜 안 나오는지 한참 찾게 된다 — 연비가 구간 미성립일 때 null 인 것과 같은 규칙
+         */
+        User owner = new User("owner@odolog.com", "encoded", "닉네임", null);
+        ReflectionTestUtils.setField(owner, "id", 1L);
+        Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
+        ReflectionTestUtils.setField(vehicle, "id", 10L);
+        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+
+        mockMvc.perform(get("/api/vehicles/10").session(loginSessionOf(1L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overdueServiceCount").doesNotExist());
+    }
+
+    @Test
     @DisplayName("주행거리에 상한이 있다 — 자리수를 크게 잘못 넣으면 차량이 그 값에 묶인다")
     void updateOdometerUpperBound() throws Exception {
         /*

@@ -39,8 +39,8 @@ export interface VehicleResponse {
   modelYear: number | null
   odometer: number
   /**
-   * 권장 주기가 지난 정비 종류 수. 목록 조회에서만 채워진다 —
-   * 단건 응답(등록·수정·주행거리 갱신)에서는 0 이다
+   * 권장 주기가 지난 정비 종류 수. **목록 조회에서만 채워진다**
+   * 그 밖에서는 0 이 아니라 null — 0 은 "지난 게 없다" 이고 여기서 할 말은 "안 셌다" 다
    */
-  overdueServiceCount: number
+  overdueServiceCount: number | null
 }

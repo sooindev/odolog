@@ -120,7 +120,7 @@ export function SignUpPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-caption text-muted-foreground">
           이미 계정이 있으신가요?{' '}
           <Link
             to="/login"

@@ -121,7 +121,7 @@ function Preview() {
             <span className="text-[2.75rem] leading-none font-semibold tracking-[-0.045em] tabular-nums text-strong">
               45,000
             </span>
-            <span className="text-sm text-muted-foreground">km</span>
+            <span className="text-caption text-muted-foreground">km</span>
           </div>
 
           {/* 실제 화면은 이력 있는 종류만 표시
@@ -157,7 +157,7 @@ function Closing() {
         시작하기
       </Button>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-caption text-muted-foreground">
         이미 계정이 있으신가요?{' '}
         <Link
           to="/login"

@@ -149,17 +149,17 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                           <span className="flex items-baseline gap-1.5">
                             <span className="text-figure tabular-nums text-strong">
                               {record.efficiency.toFixed(2)}
-                              <span className="ml-1 text-sm text-muted-foreground">km/L</span>
+                              <span className="ml-1 text-caption text-muted-foreground">km/L</span>
                             </span>
                             {/* 물리적으로 불가능한 값. 숫자를 지우지 않고 옆에 붙임 —
                                 무엇을 잘못 적었는지 보려면 그 값이 남아 있어야 함 */}
                             {record.efficiencySuspicious && (
-                              <span className="text-xs text-destructive">확인 필요</span>
+                              <span className="text-unit text-destructive">확인 필요</span>
                             )}
                             {/* 기록이 빠진(또는 지운) 구간. 빨강을 쓰지 않는다 —
                                 빨강은 "실패"를 나르는 기능색이고 이건 잘못이 아니라 빈자리다 */}
                             {record.missingRecordSuspected && (
-                              <span className="text-xs text-muted-foreground">기록 빠짐?</span>
+                              <span className="text-unit text-muted-foreground">기록 빠짐?</span>
                             )}
                           </span>
                         )}

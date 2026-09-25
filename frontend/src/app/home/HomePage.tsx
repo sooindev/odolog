@@ -123,7 +123,7 @@ function StatTiles({ data }: { data: HomeData }) {
             </span>
           </dd>
 
-          {note !== null && <p className="text-xs tabular-nums text-muted-foreground">{note}</p>}
+          {note !== null && <p className="text-caption tabular-nums text-muted-foreground">{note}</p>}
         </div>
       ))}
     </dl>
@@ -157,7 +157,7 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                       </span>
                     )}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-caption text-muted-foreground">
                     {line.plateNumber} · 정비 {line.maintenanceCount}건
                     {/* 서버 계산값. 주유 2건 미만이면 null 이고 그때는 자리를 비움
                         '연비 —' 를 붙이면 없는 값이 자리를 차지함 */}
@@ -170,7 +170,7 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                   <p className="text-body tabular-nums text-strong">
                     {formatKm(line.odometer)}
                   </p>
-                  <p className="text-xs tabular-nums text-muted-foreground">
+                  <p className="text-caption tabular-nums text-muted-foreground">
                     {line.lastServiceDate === null
                       ? '정비 이력 없음'
                       : formatDate(line.lastServiceDate)}
@@ -193,7 +193,7 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
       </CardHeader>
       <CardContent>
         {recent.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">아직 등록된 기록이 없습니다.</p>
+          <p className="py-4 text-caption text-muted-foreground">아직 등록된 기록이 없습니다.</p>
         ) : (
           <ul className="divide-y divide-border">
             {recent.map((item) => (
@@ -206,7 +206,7 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
                   <p className="text-body text-strong">
                     {item.type === null ? '주유' : SERVICE_TYPE_LABELS[item.type]}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-caption text-muted-foreground">
                     {item.vehicleName}
                     {/* 주유는 종류가 하나뿐이라 제목만으로 구분이 안 됨
                         넣은 양을 붙여 무슨 기록인지 한눈에 */}
@@ -218,7 +218,7 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
                   <p className="text-body tabular-nums text-strong">
                     {formatWon(item.cost)}
                   </p>
-                  <p className="text-xs tabular-nums text-muted-foreground">
+                  <p className="text-caption tabular-nums text-muted-foreground">
                     {formatDate(item.date)}
                   </p>
                 </div>
@@ -245,7 +245,7 @@ function EmptyGarage() {
           <p className="text-section text-strong">
             아직 등록된 차량이 없습니다
           </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-caption leading-relaxed text-muted-foreground">
             차량을 등록하면 주행거리와 정비 기록, 들어간 비용이 이 화면에 모입니다.
           </p>
         </div>

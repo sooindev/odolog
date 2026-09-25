@@ -155,9 +155,20 @@ function IntervalForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  const [km, setKm] = useState(result.intervalKm === null ? '' : String(result.intervalKm))
+  /*
+   * 덮어쓴 적이 없으면 **빈 칸으로 연다.** 적용 중인 값(=기본값)을 채워 두면
+   * 아무것도 안 고치고 저장했을 때 기본값과 똑같은 커스텀 설정이 생기고,
+   * 버튼이 "주기 변경됨" 으로 바뀐다 — 값은 같은데 상태만 달라진다.
+   * 나중에 기본 권장 주기를 손보면 그 차만 옛 값에 묶인 채 아무도 모른다.
+   *
+   * 도움말("비우면 기본값을 씁니다")과도 그래야 앞뒤가 맞는다.
+   * 지금 적용 중인 값은 placeholder 로 보여 준다
+   */
+  const [km, setKm] = useState(
+    result.customized && result.intervalKm !== null ? String(result.intervalKm) : '',
+  )
   const [months, setMonths] = useState(
-    result.intervalMonths === null ? '' : String(result.intervalMonths),
+    result.customized && result.intervalMonths !== null ? String(result.intervalMonths) : '',
   )
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -187,7 +198,7 @@ function IntervalForm({
           <Field
             label="주행거리 주기 (km)"
             htmlFor={`interval-km-${result.type}`}
-            hint={km === '' ? '비우면 기본값을 씁니다.' : undefined}
+            hint={km === '' ? '비어 있으면 기본값(회색 숫자)을 씁니다.' : undefined}
           >
             <Input
               id={`interval-km-${result.type}`}
@@ -195,6 +206,7 @@ function IntervalForm({
               autoFocus
               min={1}
               max={500000}
+              placeholder={result.intervalKm === null ? '없음' : String(result.intervalKm)}
               className="tabular-nums"
               value={km}
               onChange={(event) => setKm(event.target.value)}
@@ -204,13 +216,14 @@ function IntervalForm({
           <Field
             label="기간 주기 (개월)"
             htmlFor={`interval-months-${result.type}`}
-            hint={months === '' ? '비우면 기본값을 씁니다.' : undefined}
+            hint={months === '' ? '비어 있으면 기본값(회색 숫자)을 씁니다.' : undefined}
           >
             <Input
               id={`interval-months-${result.type}`}
               type="number"
               min={1}
               max={120}
+              placeholder={result.intervalMonths === null ? '없음' : String(result.intervalMonths)}
               className="tabular-nums"
               value={months}
               onChange={(event) => setMonths(event.target.value)}
