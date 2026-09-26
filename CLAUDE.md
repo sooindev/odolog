@@ -182,7 +182,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     **단, 남의 자원에는 403 이 아니라 404 를 준다** (2026-09-22). 403 은 "권한이 없다"와
     동시에 **"있긴 하다"** 를 말하고, 차량 id 는 1,2,3… 으로 이어지므로 둘이 갈리면
     훑어서 어느 번호가 쓰이는지 셀 수 있다. **문구까지 같아야 한다** — 상태 코드만 맞추고
-    메시지가 다르면 그 메시지가 대신 알려준다. 정비·주유는 `findByIdAndVehicleId` 라
+    메시지가 다르면 그 메시지가 대신 알려준다. 정비·주유는 `findByPublicIdAndVehicleId` 라
     처음부터 404 하나였고, 차량만 혼자 달랐다.
     그래서 지금 `ForbiddenAccessException` 을 던지는 곳은 **한 군데도 없다.**
     타입과 핸들러는 남겨 뒀다 — 소유자가 아니어도 볼 수는 있는 자원(예: 공유받은 차량)이
@@ -198,6 +198,12 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     `''` 가 아니라 `null` 로 저장한다(2026-09-23 에 메모·설명까지 맞췄다). 그대로 두면
     "없음" 이 두 모양이 되고, **내보낸 JSON 에도 그 차이가 그대로 나간다.**
     자르는 자리는 서비스다 — DTO 접근자에서 자르면 부분 수정에서 "안 보냄"과 "지움"이 같아진다.
+    **필수 입력의 앞뒤 공백도 서비스가 자른다**(2026-09-26, `common/text/InputText.strip`).
+    번호판·제조사·모델명·닉네임. DB(unicode_ci)는 뒤 공백·대소문자를 무시하고 비교하는데 자바
+    `equals` 는 구분해서, `"12가3456 "` 을 공백만 지워 고치면 **자기 자신과 중복으로 409** 였고,
+    앞 공백은 같은 번호판 두 대를, 가져오기는 전체 실패를 만들었다(셋 다 재현).
+    "같은 번호판인가" 를 자바에서 판단하는 곳(차량 수정·가져오기)은 **DB 와 같은 기준**
+    (공백·대소문자 무시)으로 본다. `trim()` 이 아니라 `strip()` — 전각 공백(U+3000)까지 지운다.
 
 14. **주석은 한 줄 명사구로 쓴다** (2026-09-18 부터). 종결어미(`~한다` / `~이다`)를 붙이지 않고
     명사나 명사구로 끝낸다. `<b>` · `<p>` 같은 Javadoc 태그도 쓰지 않는다.
@@ -674,7 +680,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     findByVehicleId(Pageable),
     │   │                                     findByVehicleIdOrderByServiceDateDescIdDesc(종류별
     │   │                                     최신 1건을 한 번에 — 종류마다 findTopBy 면 15쿼리),
-    │   │                                     findByIdAndVehicleId(타 차량 소속 차단),
+    │   │                                     findByPublicIdAndVehicleId(타 차량 소속 차단),
     │   │                                     deleteByVehicleId
     │   ├── dto/
     │   │   ├── request/
@@ -714,7 +720,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     연비가 0 으로 나누기가 된다.
     │   │                                     더할 때만 둘이 같은 뜻이라 totalCostOrZero() 가 있다
     │   ├── repository/jpa/FuelRecordRepository.java
-    │   │                                     findByVehicleId(Pageable), findByIdAndVehicleId,
+    │   │                                     findByVehicleId(Pageable), findByPublicIdAndVehicleId,
     │   │                                     findPrevious(직전 1건 — **(주행거리, id) 순서**.
     │   │                                     주행거리만 보면 같은 값 2건이 페이지 경계에 걸릴 때
     │   │                                     같은 구간이 두 번 보인다. 이 저장소의 유일한 @Query),
@@ -851,7 +857,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │                                 **지금 세션만 남기고**, 재설정·탈퇴는 **전부** 끊는다.
         │   │                                 세션이 14일이라 안 끊으면 훔친 세션이 재설정 뒤에도 산다.
         │   │                                 세션과 같이 메모리에 둔다 — DB 버전 비교는 요청마다
-        │   │                                 조회가 늘고 WebConfig 가 리포지토리를 알게 된다
+        │   │                                 조회가 늘고 WebConfig 가 리포지토리를 알게 된다.
+        │   │                                 등록할 때 다른 사용자 목록에서 먼저 뺀다 — 로그인은 세션을
+        │   │                                 id 만 바꿔 다시 쓰므로 로그아웃 없이 계정을 바꾸면 둘에 남는다
         │   ├── annotation/LoginUser.java     @Target(PARAMETER) 커스텀 애노테이션
         │   ├── resolver/LoginUserArgumentResolver.java
         │   │                                 세션 LOGIN_USER_ID → Long 주입. 없으면 401
@@ -863,6 +871,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │                                     createdAt/updatedAt 을 네 엔티티가 상속받는다.
         │                                     테이블을 만들지 않고 필드만 자식에 합쳐지므로
         │                                     컬럼 이름이 그대로다(ddl-auto 가 안 건드린다)
+        ├── text/InputText.java               입력 앞뒤 공백 정리(strip). 규칙 14-1
         ├── validation/
         │   ├── limit/InputLimits.java         주행거리·금액 상한 상수. 애노테이션에 숫자를 직접
         │   │                                  적으면 8곳에 흩어져 한 곳만 고치게 된다.
@@ -934,20 +943,19 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
             │   │                                        남의 자원은 404 로 통일(규칙 11)
             │   └── ResourceNotFoundException.java      404 전용
             └── handler/GlobalExceptionHandler.java
-                                              409/401/403/404/400 매핑 + HttpMessageNotReadable
-                                              (깨진 JSON·없는 enum·날짜 형식 → 400, 어느 필드인지까지).
-                                              DataIntegrityViolation 이 유니크가 아니면 **500 을
-                                              유지하되 본문은 우리 모양**으로 준다(2026-09-23) —
-                                              상태 코드를 낮추면 우리 버그가 4xx 로 새어 나가지만,
-                                              화면이 아무 말도 못 하는 건 다른 문제다.
-                                              예외를 다시 던지지 않으므로 스택은 직접 찍는다.
-                                              전용 예외만
-                                              잡는다 — IllegalArgumentException 같은
-                                              JDK 범용 예외는 매핑하지 않음(규칙 12).
-                                              IllegalStateException은 미처리 → 500.
-                                              PropertyReferenceException(잘못된 sort) → 400.
-                                              DataIntegrityViolationException 은 cause 의
-                                              kind 가 UNIQUE 일 때만 409, 아니면 다시 던져 500
+                                              **ResponseEntityExceptionHandler 를 이어받는다**(2026-09-26).
+                                              405·415·404 같은 스프링 내부 예외는 부모가 맡아 상태 코드를
+                                              지키고, 본문만 handleExceptionInternal 이 우리 모양으로 바꾼다.
+                                              그 밖의 예외는 맨 아래 Exception 처리기가 **500 + 우리 문구**
+                                              (규칙 11). 부모 없이 Exception 을 잡으면 4xx 까지 500 이 된다.
+                                              ⚠️ HttpMessageNotReadable·MethodArgumentNotValid 는
+                                              @ExceptionHandler 가 아니라 **덮어쓰기**다 — 부모가 이미 맡고 있어
+                                              둘이면 기동이 실패한다.
+                                              409/401/403/404/400/429 는 전용 예외만 잡는다 — IllegalArgument
+                                              같은 JDK 범용 예외를 4xx 로 매핑하지 않는다(규칙 12). 그것들은
+                                              500 으로 간다. 예외 문구는 내보내지 않는다(내부 사정이 실린다).
+                                              DataIntegrityViolation 은 UNIQUE 면 409, 아니면 500 + 우리 문구.
+                                              PropertyReferenceException(잘못된 sort) → 400
 
 **같은 패키지였던 것이 갈라지면 import 가 새로 필요해진다.** 세분화하면서 실제로 컴파일이
 세 곳에서 깨졌다: `LoginUserArgumentResolver`(→`LoginUser`,`SessionConst`),
@@ -989,7 +997,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 255개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 261개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -2023,7 +2031,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (255개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (261개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (44개)
 
 ---

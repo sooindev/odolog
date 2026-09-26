@@ -16,9 +16,12 @@ import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.odolog.app.common.text.InputText;
+
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -68,7 +71,7 @@ public class AccountRestoreService {
 
         Map<String, Vehicle> byPlate = new LinkedHashMap<>();
         for (Vehicle vehicle : vehicleRepository.findAllByOwnerId(userId)) {
-            byPlate.put(vehicle.getPlateNumber(), vehicle);
+            byPlate.put(plateKey(vehicle.getPlateNumber()), vehicle);
         }
 
         int addedVehicles = 0;
@@ -79,12 +82,14 @@ public class AccountRestoreService {
         int addedIntervals = 0;
 
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
-            Vehicle vehicle = byPlate.get(data.plateNumber());
+            String plateNumber = InputText.strip(data.plateNumber());
+            Vehicle vehicle = byPlate.get(plateKey(plateNumber));
 
             if (vehicle == null) {
-                vehicle = vehicleRepository.save(new Vehicle(owner, data.plateNumber(),
-                        data.manufacturer(), data.modelName(), data.modelYear()));
-                byPlate.put(data.plateNumber(), vehicle);
+                vehicle = vehicleRepository.save(new Vehicle(owner, plateNumber,
+                        InputText.strip(data.manufacturer()), InputText.strip(data.modelName()),
+                        data.modelYear()));
+                byPlate.put(plateKey(plateNumber), vehicle);
                 addedVehicles++;
             } else {
                 mergedVehicles++;
@@ -181,6 +186,14 @@ public class AccountRestoreService {
 
     private String fuelKey(AccountRestoreRequest.FuelData record) {
         return record.fueledAt() + "|" + record.odometer();
+    }
+
+    /**
+     * 같은 차인지 가르는 열쇠. DB 유니크 제약과 같은 기준(앞뒤 공백·대소문자 무시)이라야 한다 —
+     * 자바에서 다르다고 보고 새로 저장하면 DB 가 같다고 보고 막아 가져오기 전체가 실패한다
+     */
+    private String plateKey(String plateNumber) {
+        return plateNumber.strip().toLowerCase(Locale.ROOT);
     }
 
     /** 빈 문자열은 "없음" 으로. 서비스들이 쓰는 규칙과 같다 */

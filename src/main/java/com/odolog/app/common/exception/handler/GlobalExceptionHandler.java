@@ -13,15 +13,24 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.data.mapping.PropertyReferenceException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+/**
+ * ResponseEntityExceptionHandler 를 이어받는 이유 — 405·415·404 처럼 스프링이 원래 4xx 로 답하던
+ * 예외를 부모가 맡아 상태 코드를 지키고, 그 밖의 예외만 맨 아래 handleUnexpected 가 500 으로 받는다.
+ * 부모 없이 Exception 을 잡으면 그 4xx 들까지 500 이 된다
+ */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -85,8 +94,11 @@ public class GlobalExceptionHandler {
      * 원인 메시지를 그대로 내보내지 않는 이유: Jackson 의 메시지는 패키지 이름과 클래스 이름을
      * 그대로 담는다. 대신 어느 필드인지만 뽑아 준다 — 고치는 데 필요한 것은 그것뿐이다
      */
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException e) {
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException e,
+                                                                  HttpHeaders headers, HttpStatusCode status,
+                                                                  WebRequest request) {
+        // @ExceptionHandler 가 아니라 덮어쓰기 — 부모가 이미 같은 예외를 맡고 있어 둘이면 기동이 실패한다
         String field = fieldOf(e);
         String message = (field == null)
                 ? "요청 본문을 읽을 수 없습니다. 형식을 확인해 주세요."
@@ -134,8 +146,10 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(e.getMessage()));
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException e) {
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException e,
+                                                                  HttpHeaders headers, HttpStatusCode status,
+                                                                  WebRequest request) {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
@@ -143,5 +157,33 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(message));
+    }
+
+    /**
+     * 부모가 맡은 4xx(405·415·404 등)의 본문도 우리 모양으로. 부모는 ProblemDetail 을 주는데
+     * 거기엔 message 가 없어 화면이 "요청에 실패했습니다 (HTTP 405)" 밖에 말하지 못한다
+     */
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception e, Object body, HttpHeaders headers,
+                                                             HttpStatusCode statusCode, WebRequest request) {
+        String message = switch (statusCode.value()) {
+            case 404 -> "요청한 주소를 찾을 수 없습니다.";
+            case 405 -> "허용되지 않는 요청 방식입니다.";
+            case 415 -> "지원하지 않는 요청 형식입니다.";
+            default -> statusCode.is4xxClientError() ? "잘못된 요청입니다." : "요청을 처리하지 못했습니다.";
+        };
+        return ResponseEntity.status(statusCode).headers(headers).body(new ErrorResponse(message));
+    }
+
+    /**
+     * 위에서 못 잡은 것 전부 — 우리 버그다. 상태 코드는 500 그대로(규칙 11), 본문만 우리 모양
+     * 예외 문구는 내보내지 않는다. 내부 클래스 이름·쿼리가 실릴 수 있다. 원인은 로그로
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleUnexpected(Exception e) {
+        log.error("처리하지 못한 예외", e);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     }
 }

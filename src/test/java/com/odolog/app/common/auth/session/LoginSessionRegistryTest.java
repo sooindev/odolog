@@ -41,6 +41,19 @@ class LoginSessionRegistryTest {
     }
 
     @Test
+    @DisplayName("같은 브라우저에서 다른 계정으로 다시 로그인하면 옛 계정 목록에서 빠진다")
+    void movesSessionToNewOwner() {
+        // 로그인은 세션을 새로 만들지 않고 id 만 바꿔 다시 쓴다 — 같은 객체가 두 사람 목록에 남을 수 있다
+        MockHttpSession browser = new MockHttpSession();
+        registry.register(1L, browser);
+        registry.register(2L, browser);
+
+        registry.invalidateAll(1L);
+
+        assertThat(browser.isInvalid()).isFalse();
+    }
+
+    @Test
     @DisplayName("이미 끝난 세션이 섞여 있어도 나머지를 끊는다")
     void toleratesAlreadyInvalidatedSession() {
         MockHttpSession expired = new MockHttpSession();

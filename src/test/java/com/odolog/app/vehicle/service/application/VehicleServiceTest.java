@@ -233,6 +233,37 @@ class VehicleServiceTest {
     }
 
     @Test
+    @DisplayName("등록할 때 앞뒤 공백을 잘라 저장한다 — 앞 공백 번호판이 같은 번호판 두 대가 되지 않게")
+    void registerStripsWhitespace() {
+        when(vehicleRepository.existsByOwnerIdAndPlateNumber(1L, "12가3456")).thenReturn(false);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(createOwner(1L)));
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Vehicle saved = vehicleService.register(1L,
+                new VehicleRegisterRequest(" 12가3456 ", "현대\u3000", " 아반떼", 2023));
+
+        // 중복 검사도 자른 값으로 — 위 스텁이 "12가3456" 이라 안 자르면 여기서 불일치
+        assertThat(saved.getPlateNumber()).isEqualTo("12가3456");
+        // 전각 공백(U+3000)까지. trim() 이면 남는다
+        assertThat(saved.getManufacturer()).isEqualTo("현대");
+        assertThat(saved.getModelName()).isEqualTo("아반떼");
+    }
+
+    @Test
+    @DisplayName("공백만 지우는 번호판 수정은 자기 자신과 중복으로 잡지 않는다")
+    void updateOnlyWhitespaceIsNotDuplicate() {
+        // DB 는 뒤 공백을 무시하고 비교해 "12가3456 " 과 "12가3456" 을 같다고 본다 — 검사하면 자기 자신이 걸린다
+        Vehicle vehicle = createVehicle(10L, createOwner(1L));
+        vehicle.changePlateNumber("12가3456 ");
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+
+        vehicleService.update(1L, "V10", new VehicleUpdateRequest("12가3456", null, null, null));
+
+        verify(vehicleRepository, never()).existsByOwnerIdAndPlateNumber(any(), any());
+        assertThat(vehicle.getPlateNumber()).isEqualTo("12가3456");
+    }
+
+    @Test
     @DisplayName("번호판을 이미 가진 다른 차량의 번호로 바꾸면 예외가 발생한다")
     void updateDuplicatePlateNumberFails() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));

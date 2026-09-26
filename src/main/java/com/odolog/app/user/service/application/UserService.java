@@ -2,6 +2,7 @@ package com.odolog.app.user.service.application;
 
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.InvalidRequestException;
+import com.odolog.app.common.text.InputText;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.login.LoginRequest;
 import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
@@ -45,7 +46,7 @@ public class UserService {
         String encodedPassword = passwordEncoder.encode(request.password());
         // 빈 전화번호는 null 로. updateProfile 과 같은 규칙 — 화면을 안 거친 요청도 같은 모양으로 저장
         String phone = (request.phone() == null || request.phone().isBlank()) ? null : request.phone();
-        User user = new User(request.email(), encodedPassword, request.nickname(), phone);
+        User user = new User(request.email(), encodedPassword, InputText.strip(request.nickname()), phone);
 
         return userRepository.save(user);
     }
@@ -122,7 +123,7 @@ public class UserService {
         User user = findById(userId);
 
         if (request.nickname() != null) {
-            user.changeNickname(request.nickname());
+            user.changeNickname(InputText.strip(request.nickname()));
         }
         if (request.phone() != null) {
             // null 은 "안 보냄", 빈 문자열이 "지움". 그대로 저장하면 "없음" 이 두 모양이 됨

@@ -20,6 +20,13 @@ public class LoginSessionRegistry implements HttpSessionListener {
     private final Map<Long, Set<HttpSession>> sessions = new ConcurrentHashMap<>();
 
     public void register(Long userId, HttpSession session) {
+        // 로그아웃 없이 다른 계정으로 로그인하면 같은 세션을 다시 쓴다(changeSessionId).
+        // 옛 주인 목록에서 빼지 않으면 그 사람이 비밀번호를 바꿀 때 지금 주인이 로그아웃된다
+        sessions.forEach((owner, owned) -> {
+            if (!owner.equals(userId)) {
+                owned.remove(session);
+            }
+        });
         sessions.computeIfAbsent(userId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
     }
 

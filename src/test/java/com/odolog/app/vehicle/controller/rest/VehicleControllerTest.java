@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -324,5 +325,23 @@ class VehicleControllerTest {
                         .param("sort", "nonexistent")
                         .session(loginSessionOf(1L)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("처리하지 못한 예외는 500 이되 본문은 우리 모양 — 화면이 문구를 띄울 수 있게")
+    void unexpectedExceptionKeeps500WithMessage() throws Exception {
+        when(vehicleService.findOwnedVehicle(1L, "10")).thenThrow(new IllegalStateException("내부 사정 — 밖으로 나가면 안 됨"));
+
+        mockMvc.perform(get("/api/vehicles/10").session(loginSessionOf(1L)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+    }
+
+    @Test
+    @DisplayName("스프링이 원래 4xx 로 답하던 예외는 상태 코드를 지킨다(405) — 전부 500 으로 삼키지 않는다")
+    void frameworkClientErrorKeepsStatus() throws Exception {
+        mockMvc.perform(put("/api/vehicles/10").session(loginSessionOf(1L)))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.message").value("허용되지 않는 요청 방식입니다."));
     }
 }

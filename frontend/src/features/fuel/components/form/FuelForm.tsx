@@ -94,10 +94,12 @@ export function FuelForm({
           '  이번 구간의 연비가 계산되지 않고, 차량 주행거리도 올라가지 않습니다.',
       )
     }
-    if (litersValue === null) {
+    // 수정일 때는 이번에 새로 비운 경우만 묻는다. 원래 비어 있던 기록의 메모만 고쳐도
+    // 매번 뜨면, 늘 뜨는 창이 되어 아무도 읽지 않는다
+    if (litersValue === null && (record === null || record.liters !== null)) {
       warnings.push('· 주유량이 비어 있어 이번 구간의 연비를 계산할 수 없습니다.')
     }
-    if (costValue === null) {
+    if (costValue === null && (record === null || record.totalCost !== null)) {
       warnings.push('· 결제 금액이 비어 있어 유류비 합계와 리터당 단가에서 빠집니다.')
     }
     if (bigJump) {

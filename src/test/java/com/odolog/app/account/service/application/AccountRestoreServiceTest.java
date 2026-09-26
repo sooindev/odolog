@@ -156,6 +156,26 @@ class AccountRestoreServiceTest {
     }
 
     @Test
+    @DisplayName("번호판이 공백만 달라도 같은 차로 본다 — DB 유니크 제약과 같은 기준")
+    void matchesPlateIgnoringWhitespace() {
+        // DB 에 "12가1212 " 로 저장돼 있고 파일은 "12가1212". 새 차로 저장하면 DB 가 같다고 보고 막아
+        // 가져오기 전체가 409 로 실패했다
+        Vehicle vehicle = existing("12가1212 ", 10L);
+        when(userService.findById(1L)).thenReturn(owner);
+        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
+                .thenReturn(List.of());
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
+                .thenReturn(List.of());
+
+        AccountRestoreResponse result = accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(
+                vehicleData("12가1212", List.of(oilData(LocalDate.of(2026, 5, 1), 30000)), List.of()))));
+
+        assertThat(result.mergedVehicles()).isEqualTo(1);
+        verify(vehicleRepository, never()).save(any(Vehicle.class));
+    }
+
+    @Test
     @DisplayName("차량 주행거리는 파일의 값까지 따라 오른다 — 내려가지는 않는다")
     void liftsOdometer() {
         Vehicle vehicle = existing("12가1212", 10L);

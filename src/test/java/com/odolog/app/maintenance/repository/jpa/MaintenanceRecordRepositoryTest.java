@@ -108,7 +108,7 @@ class MaintenanceRecordRepositoryTest {
 
     @Test
     @DisplayName("findByPublicIdAndVehicleId 는 다른 차량 소속 이력을 찾지 못한다")
-    void findByIdAndVehicleId() {
+    void findByPublicIdAndVehicleIdBlocksOtherVehicle() {
         MaintenanceRecord otherRecord = new MaintenanceRecord(otherVehicle, ServiceType.TIRE, "남의 차",
                 300000, 5000, LocalDate.of(2026, 2, 1));
         em.persist(otherRecord);

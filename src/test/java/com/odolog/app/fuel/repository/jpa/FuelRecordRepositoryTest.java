@@ -124,7 +124,7 @@ class FuelRecordRepositoryTest {
 
     @Test
     @DisplayName("findByPublicIdAndVehicleId 는 다른 차량 소속 기록을 찾지 못한다")
-    void findByIdAndVehicleIdBlocksOtherVehicle() {
+    void findByPublicIdAndVehicleIdBlocksOtherVehicle() {
         FuelRecord other = save(otherVehicle, 10000, "30.00");
 
         assertThat(fuelRecordRepository.findByPublicIdAndVehicleId(other.getPublicId(), vehicle.getId())).isEmpty();

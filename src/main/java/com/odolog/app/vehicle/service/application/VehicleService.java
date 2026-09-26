@@ -2,6 +2,7 @@ package com.odolog.app.vehicle.service.application;
 
 import com.odolog.app.common.dto.request.page.SortGuard;
 import com.odolog.app.common.exception.type.ConflictException;
+import com.odolog.app.common.text.InputText;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.maintenance.domain.calculation.NextService;
@@ -51,15 +52,16 @@ public class VehicleService {
 
     @Transactional
     public Vehicle register(Long ownerId, VehicleRegisterRequest request) {
-        if (vehicleRepository.existsByOwnerIdAndPlateNumber(ownerId, request.plateNumber())) {
-            throw new ConflictException("이미 등록하신 차량 번호입니다: " + request.plateNumber());
+        String plateNumber = InputText.strip(request.plateNumber());
+        if (vehicleRepository.existsByOwnerIdAndPlateNumber(ownerId, plateNumber)) {
+            throw new ConflictException("이미 등록하신 차량 번호입니다: " + plateNumber);
         }
 
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + ownerId));
 
-        Vehicle vehicle = new Vehicle(owner, request.plateNumber(), request.manufacturer(),
-                request.modelName(), request.modelYear());
+        Vehicle vehicle = new Vehicle(owner, plateNumber, InputText.strip(request.manufacturer()),
+                InputText.strip(request.modelName()), request.modelYear());
 
         return vehicleRepository.save(vehicle);
     }
@@ -114,19 +116,21 @@ public class VehicleService {
 
         // 번호판 먼저. 다른 필드를 먼저 바꾸면 dirty 상태가 되고 exists 직전에 자동 flush —
         // 방금 쓴 값을 다시 조회해 자기를 중복으로 판정
-        if (request.plateNumber() != null && !request.plateNumber().equals(vehicle.getPlateNumber())) {
-            // 값이 실제로 바뀔 때만 검사. 없으면 제조사만 고쳐도 자기가 중복으로 잡혀 409
-            // ...AndIdNot 쿼리를 새로 만드는 대신 조건으로 해결 — 리포지토리가 안 늘어남
-            if (vehicleRepository.existsByOwnerIdAndPlateNumber(requesterId, request.plateNumber())) {
-                throw new ConflictException("이미 등록하신 차량 번호입니다: " + request.plateNumber());
+        String plateNumber = InputText.strip(request.plateNumber());
+        if (plateNumber != null && !plateNumber.equals(vehicle.getPlateNumber())) {
+            // 다른 번호판으로 바꿀 때만 검사. 판단은 DB 와 같은 기준(앞뒤 공백·대소문자 무시) —
+            // 자바 equals 로만 보면 "12가3456 " → "12가3456" 이 자기 자신과 중복으로 잡혀 409
+            if (!plateNumber.equalsIgnoreCase(vehicle.getPlateNumber().strip())
+                    && vehicleRepository.existsByOwnerIdAndPlateNumber(requesterId, plateNumber)) {
+                throw new ConflictException("이미 등록하신 차량 번호입니다: " + plateNumber);
             }
-            vehicle.changePlateNumber(request.plateNumber());
+            vehicle.changePlateNumber(plateNumber);
         }
         if (request.manufacturer() != null) {
-            vehicle.changeManufacturer(request.manufacturer());
+            vehicle.changeManufacturer(InputText.strip(request.manufacturer()));
         }
         if (request.modelName() != null) {
-            vehicle.changeModelName(request.modelName());
+            vehicle.changeModelName(InputText.strip(request.modelName()));
         }
         if (request.modelYear() != null) {
             vehicle.changeModelYear(request.modelYear());
