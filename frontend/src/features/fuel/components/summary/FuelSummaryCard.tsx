@@ -26,7 +26,7 @@ export function FuelSummaryCard({
   const [actionError, setActionError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  async function setResetPoint(recordId: number, resetPoint: boolean) {
+  async function setResetPoint(recordId: string, resetPoint: boolean) {
     setActionError(null)
     setPending(true)
 
@@ -57,7 +57,7 @@ export function FuelSummaryCard({
               onClick={() => {
                 // 되돌릴 수 있지만(해제 버튼) 숫자가 크게 바뀌므로 한 번 확인
                 if (window.confirm('지금까지의 기록을 연비 계산에서 빼고 다시 셉니다. 계속할까요?')) {
-                  void setResetPoint(data.latestRecordId as number, true)
+                  void setResetPoint(data.latestRecordId as string, true)
                 }
               }}
             >
@@ -68,7 +68,7 @@ export function FuelSummaryCard({
               size="sm"
               variant="ghost"
               disabled={pending}
-              onClick={() => void setResetPoint(data.resetPointId as number, false)}
+              onClick={() => void setResetPoint(data.resetPointId as string, false)}
             >
               {pending ? '처리 중…' : '초기화 해제'}
             </Button>

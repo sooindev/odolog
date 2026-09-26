@@ -47,7 +47,8 @@ export interface VehicleLine {
  */
 export interface RecentActivity {
   kind: 'MAINTENANCE' | 'FUEL'
-  recordId: number
+  /** 공개 id */
+  recordId: string
   /** 'YYYY-MM-DD' */
   date: string
   vehicleId: string

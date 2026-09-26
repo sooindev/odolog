@@ -1,5 +1,6 @@
 package com.odolog.app.maintenance.domain.entity;
 
+import com.odolog.app.common.domain.identifier.PublicId;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.common.domain.entity.BaseTimeEntity;
@@ -17,16 +18,23 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "maintenance_records")
+@Table(
+        name = "maintenance_records",
+        uniqueConstraints = @UniqueConstraint(name = "uk_maintenance_records_public_id", columnNames = "public_id"))
 public class MaintenanceRecord extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** URL·API 용 식별자. id 는 서버 밖으로 내보내지 않는다 — 차량과 같은 이유(규칙 9-1) */
+    @Column(name = "public_id", nullable = false, updatable = false, length = PublicId.LENGTH)
+    private String publicId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
@@ -66,6 +74,7 @@ public class MaintenanceRecord extends BaseTimeEntity {
 
     public MaintenanceRecord(Vehicle vehicle, ServiceType type, String description,
                               int cost, int serviceOdometer, LocalDate serviceDate) {
+        this.publicId = PublicId.generate();
         this.vehicle = vehicle;
         this.type = type;
         this.description = description;
@@ -74,6 +83,10 @@ public class MaintenanceRecord extends BaseTimeEntity {
         this.serviceDate = serviceDate;
     }
 
+
+    public String getPublicId() {
+        return publicId;
+    }
 
     public Long getId() {
         return id;

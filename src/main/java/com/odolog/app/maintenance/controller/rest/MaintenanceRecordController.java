@@ -91,7 +91,7 @@ public class MaintenanceRecordController {
 
     @PatchMapping("/{recordId}")
     public ResponseEntity<MaintenanceRecordResponse> update(@PathVariable String vehicleId,
-                                                              @PathVariable Long recordId,
+                                                              @PathVariable String recordId,
                                                               @Valid @RequestBody MaintenanceRecordUpdateRequest request,
                                                               @LoginUser Long requesterId) {
         MaintenanceRecord record = maintenanceRecordService.update(requesterId, vehicleId, recordId, request);
@@ -100,7 +100,7 @@ public class MaintenanceRecordController {
 
     @DeleteMapping("/{recordId}")
     public ResponseEntity<Void> delete(@PathVariable String vehicleId,
-                                        @PathVariable Long recordId,
+                                        @PathVariable String recordId,
                                         @LoginUser Long requesterId) {
         maintenanceRecordService.delete(requesterId, vehicleId, recordId);
         return ResponseEntity.noContent().build();

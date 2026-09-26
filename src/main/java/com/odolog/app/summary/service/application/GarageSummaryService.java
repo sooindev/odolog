@@ -184,26 +184,32 @@ public class GarageSummaryService {
             publicIds.put(vehicle.getId(), vehicle.getPublicId());
         }
 
-        List<RecentActivity> all = new ArrayList<>(records.size() + fuels.size());
+        // 정렬용 숫자 id 를 곁에 둔다. 공개 id 는 무작위라 "나중에 넣은 것" 을 말하지 못한다
+        record Candidate(RecentActivity activity, long internalId) {
+        }
+
+        List<Candidate> all = new ArrayList<>(records.size() + fuels.size());
         for (MaintenanceRecord record : records) {
             Long vehicleId = record.getVehicle().getId();
-            all.add(new RecentActivity("MAINTENANCE", record.getId(), record.getServiceDate(),
-                    publicIds.get(vehicleId), names.get(vehicleId), record.getCost(), record.getType(), null));
+            all.add(new Candidate(new RecentActivity("MAINTENANCE", record.getPublicId(),
+                    record.getServiceDate(), publicIds.get(vehicleId), names.get(vehicleId),
+                    record.getCost(), record.getType(), null), record.getId()));
         }
         for (FuelRecord record : fuels) {
             Long vehicleId = record.getVehicle().getId();
-            all.add(new RecentActivity("FUEL", record.getId(), record.getFueledAt(),
-                    publicIds.get(vehicleId), names.get(vehicleId), record.totalCostOrZero(), null,
-                    record.getLiters()));
+            all.add(new Candidate(new RecentActivity("FUEL", record.getPublicId(),
+                    record.getFueledAt(), publicIds.get(vehicleId), names.get(vehicleId),
+                    record.totalCostOrZero(), null, record.getLiters()), record.getId()));
         }
 
         return all.stream()
-                .sorted(Comparator.comparing(RecentActivity::date).reversed()
+                .sorted(Comparator.comparing((Candidate candidate) -> candidate.activity().date()).reversed()
                         // 같은 날짜면 정비 먼저. 문자열 비교면 "FUEL" < "MAINTENANCE" 로 뒤집힘
-                        .thenComparingInt(activity -> "MAINTENANCE".equals(activity.kind()) ? 0 : 1)
+                        .thenComparingInt(candidate -> "MAINTENANCE".equals(candidate.activity().kind()) ? 0 : 1)
                         // 같은 종류끼리만 id 내림차순 — 테이블이 달라 id 는 서로 무관
-                        .thenComparing(Comparator.comparingLong(RecentActivity::recordId).reversed()))
+                        .thenComparing(Comparator.comparingLong(Candidate::internalId).reversed()))
                 .limit(RECENT_LIMIT)
+                .map(Candidate::activity)
                 .toList();
     }
 }

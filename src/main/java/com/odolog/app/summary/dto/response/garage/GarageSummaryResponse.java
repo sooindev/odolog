@@ -71,7 +71,8 @@ public record GarageSummaryResponse(
     public record RecentActivity(
             /** "MAINTENANCE" 또는 "FUEL" */
             String kind,
-            Long recordId,
+            /** 공개 id */
+            String recordId,
             LocalDate date,
             /** 공개 id */
             String vehicleId,

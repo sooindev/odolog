@@ -61,7 +61,7 @@ public class FuelRecordController {
 
     @PatchMapping("/{recordId}")
     public ResponseEntity<FuelRecordResponse> update(@PathVariable String vehicleId,
-                                                       @PathVariable Long recordId,
+                                                       @PathVariable String recordId,
                                                        @Valid @RequestBody FuelRecordUpdateRequest request,
                                                        @LoginUser Long requesterId) {
         return ResponseEntity.ok(fuelRecordService.update(requesterId, vehicleId, recordId, request));
@@ -69,7 +69,7 @@ public class FuelRecordController {
 
     @DeleteMapping("/{recordId}")
     public ResponseEntity<Void> delete(@PathVariable String vehicleId,
-                                         @PathVariable Long recordId,
+                                         @PathVariable String recordId,
                                          @LoginUser Long requesterId) {
         fuelRecordService.delete(requesterId, vehicleId, recordId);
         return ResponseEntity.noContent().build();

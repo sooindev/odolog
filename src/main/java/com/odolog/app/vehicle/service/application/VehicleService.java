@@ -184,7 +184,7 @@ public class VehicleService {
      * 차량 id 가 1,2,3… 으로 이어지므로 403 과 404 가 갈리면 훑어서
      * 어느 번호가 쓰이고 있는지 셀 수 있다
      *
-     * 정비·주유는 findByIdAndVehicleId 라 처음부터 404 하나였다 — 차량만 혼자 달랐다
+     * 정비·주유는 findByPublicIdAndVehicleId 라 처음부터 404 하나였다 — 차량만 혼자 달랐다
      *
      * 상태 코드만 맞추고 문구를 달리하면 소용없다. 그래서 두 경우가 **같은 예외를 만들어 쓴다**
      */

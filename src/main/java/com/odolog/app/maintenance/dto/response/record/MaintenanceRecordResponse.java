@@ -6,7 +6,8 @@ import com.odolog.app.maintenance.domain.type.ServiceType;
 import java.time.LocalDate;
 
 public record MaintenanceRecordResponse(
-        Long id,
+        /** 공개 id(12자). 숫자 PK 가 아니다 */
+        String id,
         ServiceType type,
         String description,
         int cost,
@@ -16,7 +17,7 @@ public record MaintenanceRecordResponse(
 
     public static MaintenanceRecordResponse from(MaintenanceRecord record) {
         return new MaintenanceRecordResponse(
-                record.getId(),
+                record.getPublicId(),
                 record.getType(),
                 record.getDescription(),
                 record.getCost(),

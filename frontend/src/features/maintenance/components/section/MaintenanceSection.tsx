@@ -31,7 +31,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
   // 조회 실패와 행동 실패는 사라지는 시점이 달라 분리
   const [actionError, setActionError] = useState<string | null>(null)
   // 삭제 중인 id. boolean 이면 목록 전체가 잠겨 어느 줄인지 안 보임
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(
     () => fetchRecords(vehicleId, page, filter),
@@ -64,7 +64,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
     reload()
   }
 
-  async function handleDelete(recordId: number) {
+  async function handleDelete(recordId: string) {
     if (!window.confirm('이 정비 이력을 삭제할까요?')) {
       return
     }

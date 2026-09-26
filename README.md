@@ -213,11 +213,11 @@ MAIL_PASSWORD=<앱 비밀번호>      # Gmail 이면 2단계 인증 후 발급
 `ddl-auto: validate` 로는 안 된다. Hibernate 의 스키마 검증은 테이블과 컬럼의 **존재와 타입만**
 보고 nullability 는 아예 보지 않는다 — 어긋난 스키마에 걸어도 앱이 그냥 뜨는 것을 확인했다.
 
-### ⚠️ 이미 쓰던 DB 가 있다면 — 차량 공개 id (2026-09-26)
+### ⚠️ 이미 쓰던 DB 가 있다면 — 공개 id (2026-09-26)
 
-차량 주소가 `/vehicles/1` 에서 `/vehicles/k3Xq9mTa2LpZ` 처럼 바뀌었다. 차량마다 12자 무작위
-`public_id` 가 생겼고, 숫자 id 는 더 이상 URL·API 로 나가지 않는다.
-**새로 스키마를 만드는 경우에는 할 일이 없다.** 차량이 이미 있는 DB 에만, **앱을 띄우기 전에** 한 번 실행한다.
+차량 주소가 `/vehicles/1` 에서 `/vehicles/k3Xq9mTa2LpZ` 처럼 바뀌었다. 차량·정비 이력·주유 기록마다
+12자 무작위 `public_id` 가 생겼고, 숫자 id 는 더 이상 URL·API 로 나가지 않는다.
+**새로 스키마를 만드는 경우에는 할 일이 없다.** 기록이 이미 있는 DB 에만, **앱을 띄우기 전에** 한 번 실행한다.
 
 ```
 /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog;
@@ -225,7 +225,17 @@ MAIL_PASSWORD=<앱 비밀번호>      # Gmail 이면 2단계 인증 후 발급
   UPDATE vehicles SET public_id = LEFT(REPLACE(REPLACE(REPLACE(
     TO_BASE64(RANDOM_BYTES(24)), '+', ''), '/', ''), '=', ''), 12);
   ALTER TABLE vehicles MODIFY public_id VARCHAR(12) NOT NULL;
-  ALTER TABLE vehicles ADD CONSTRAINT uk_vehicles_public_id UNIQUE (public_id);"
+  ALTER TABLE vehicles ADD CONSTRAINT uk_vehicles_public_id UNIQUE (public_id);
+  ALTER TABLE maintenance_records ADD COLUMN public_id VARCHAR(12) NULL;
+  UPDATE maintenance_records SET public_id = LEFT(REPLACE(REPLACE(REPLACE(
+    TO_BASE64(RANDOM_BYTES(24)), '+', ''), '/', ''), '=', ''), 12);
+  ALTER TABLE maintenance_records MODIFY public_id VARCHAR(12) NOT NULL;
+  ALTER TABLE maintenance_records ADD CONSTRAINT uk_maintenance_records_public_id UNIQUE (public_id);
+  ALTER TABLE fuel_records ADD COLUMN public_id VARCHAR(12) NULL;
+  UPDATE fuel_records SET public_id = LEFT(REPLACE(REPLACE(REPLACE(
+    TO_BASE64(RANDOM_BYTES(24)), '+', ''), '/', ''), '=', ''), 12);
+  ALTER TABLE fuel_records MODIFY public_id VARCHAR(12) NOT NULL;
+  ALTER TABLE fuel_records ADD CONSTRAINT uk_fuel_records_public_id UNIQUE (public_id);"
 ```
 
 순서가 중요하다. SQL 없이 앱부터 띄우면 `ddl-auto: update` 가 `NOT NULL` 컬럼을 더하면서 기존 행을
@@ -338,7 +348,7 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 보존된다.
 | 주행거리 갱신 | `PATCH /api/vehicles/{vehicleId}/odometer` |
 | 차량 삭제 | `DELETE /api/vehicles/{vehicleId}` |
 | 정비 이력 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/maintenance-records` (`?type=` 로 거르기) |
-| 정비 이력 수정/삭제 | `PATCH`/`DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` |
+| 정비 이력 수정/삭제 | `PATCH`/`DELETE /api/vehicles/{vehicleId}/maintenance-records/{recordId}` — `recordId` 도 12자 공개 id |
 | 다음 정비 시점 조회 | `GET /api/vehicles/{vehicleId}/maintenance-records/next-services` |
 | 차량별 권장 주기 설정 | `PATCH /api/vehicles/{vehicleId}/maintenance-records/intervals/{type}` |
 | 주유 기록 등록/목록조회 | `POST`, `GET /api/vehicles/{vehicleId}/fuel-records` |

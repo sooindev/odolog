@@ -38,7 +38,8 @@ export interface FuelRecordUpdateRequest {
 }
 
 export interface FuelRecordResponse {
-  id: number
+  /** 공개 id(12자). 숫자 PK 는 서버 밖으로 안 나온다 */
+  id: string
   fueledAt: string
   odometer: number
   /** 안 적었으면 null. 0 이 아니다 — 0L 을 넣었다는 말이 되고 연비가 0 으로 나누기가 된다 */
@@ -78,9 +79,9 @@ export interface FuelSummaryResponse {
   totalDistance: number | null
   averageEfficiency: number | null
   /** 최근 주유 기록. 연비 초기화가 찍을 대상. 없으면 null */
-  latestRecordId: number | null
+  latestRecordId: string | null
   /** 적용 중인 기준점. 없으면 null */
-  resetPointId: number | null
+  resetPointId: string | null
   /** 평소보다 긴 구간 수 = 기록을 빼먹었을 가능성 */
   longSegmentCount: number
   /** 물리적으로 불가능해서 평균에서 뺀 구간 수. 뺐으면 화면이 말해야 함 */

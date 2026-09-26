@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -126,9 +127,11 @@ class MaintenanceRecordControllerTest {
     @DisplayName("경로 변수 타입이 안 맞으면 500이 아니라 400")
     void invalidPathVariableType() throws Exception {
         // MethodArgumentTypeMismatchException 핸들러 검증
-        // 차량 id 는 문자열(공개 id)이 되어 아무 값이나 받으므로, 아직 숫자인 recordId 로 본다
-        mockMvc.perform(delete("/api/vehicles/k3Xq9mTa2LpZ/maintenance-records/abc")
-                        .session(loginSessionOf(1L)))
+        // 차량·기록 id 가 모두 문자열(공개 id)이 되어 남은 타입 있는 경로 변수는 정비 종류(enum)뿐이다
+        mockMvc.perform(patch("/api/vehicles/k3Xq9mTa2LpZ/maintenance-records/intervals/NOT_A_TYPE")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"intervalKm\":10000,\"intervalMonths\":null}"))
                 .andExpect(status().isBadRequest());
     }
 

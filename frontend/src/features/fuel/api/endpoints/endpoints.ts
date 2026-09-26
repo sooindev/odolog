@@ -27,12 +27,12 @@ export function registerFuelRecord(vehicleId: string, request: FuelRecordRegiste
 
 export function updateFuelRecord(
   vehicleId: string,
-  recordId: number,
+  recordId: string,
   request: FuelRecordUpdateRequest,
 ) {
   return api.patch<FuelRecordResponse>(`${base(vehicleId)}/${recordId}`, request)
 }
 
-export function deleteFuelRecord(vehicleId: string, recordId: number) {
+export function deleteFuelRecord(vehicleId: string, recordId: string) {
   return api.del(`${base(vehicleId)}/${recordId}`)
 }

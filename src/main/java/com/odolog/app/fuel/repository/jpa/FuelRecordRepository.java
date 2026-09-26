@@ -16,7 +16,7 @@ public interface FuelRecordRepository extends JpaRepository<FuelRecord, Long> {
     Page<FuelRecord> findByVehicleId(Long vehicleId, Pageable pageable);
 
     /** 타 차량 소속 기록 접근 차단 (404) */
-    Optional<FuelRecord> findByIdAndVehicleId(Long id, Long vehicleId);
+    Optional<FuelRecord> findByPublicIdAndVehicleId(String publicId, Long vehicleId);
 
     /**
      * (주행거리, id) 순서에서 바로 앞 = 직전 주유. 목록·연비 계산의 정렬과 같은 기준

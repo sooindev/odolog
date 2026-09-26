@@ -112,12 +112,23 @@ class FuelRecordRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByIdAndVehicleId 는 다른 차량 소속 기록을 찾지 못한다")
+    @DisplayName("공개 id 로 찾는다. 숫자 id 문자열로는 못 찾는다")
+    void findByPublicId() {
+        FuelRecord mine = save(vehicle, 10000, "30.00");
+
+        assertThat(fuelRecordRepository.findByPublicIdAndVehicleId(mine.getPublicId(), vehicle.getId()))
+                .isPresent();
+        assertThat(fuelRecordRepository.findByPublicIdAndVehicleId(String.valueOf(mine.getId()), vehicle.getId()))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("findByPublicIdAndVehicleId 는 다른 차량 소속 기록을 찾지 못한다")
     void findByIdAndVehicleIdBlocksOtherVehicle() {
         FuelRecord other = save(otherVehicle, 10000, "30.00");
 
-        assertThat(fuelRecordRepository.findByIdAndVehicleId(other.getId(), vehicle.getId())).isEmpty();
-        assertThat(fuelRecordRepository.findByIdAndVehicleId(other.getId(), otherVehicle.getId())).isPresent();
+        assertThat(fuelRecordRepository.findByPublicIdAndVehicleId(other.getPublicId(), vehicle.getId())).isEmpty();
+        assertThat(fuelRecordRepository.findByPublicIdAndVehicleId(other.getPublicId(), otherVehicle.getId())).isPresent();
     }
 
     @Test

@@ -22,7 +22,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   const [page, setPage] = useState(0)
   const [editing, setEditing] = useState<'closed' | 'new' | FuelRecordResponse>('closed')
   const [actionError, setActionError] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(() => fetchFuelRecords(vehicleId, page), [vehicleId, page])
   const { data, loading, error, reload } = useAsyncData(load, '주유 기록을 불러오지 못했습니다.')
@@ -37,7 +37,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
     onChanged()
   }
 
-  async function handleDelete(recordId: number) {
+  async function handleDelete(recordId: string) {
     // 지우면 다음 기록의 구간이 그만큼 길어지는데 주유량은 안 늘어 연비가 뜬다.
     // 구간이 셋 미만이면 '평소'가 없어 서버가 그걸 못 잡으므로, 여기서 미리 말한다
     if (

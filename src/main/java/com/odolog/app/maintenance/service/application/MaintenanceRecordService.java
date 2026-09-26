@@ -119,7 +119,7 @@ public class MaintenanceRecordService {
 
 
     @Transactional
-    public MaintenanceRecord update(Long requesterId, String vehicleId, Long recordId,
+    public MaintenanceRecord update(Long requesterId, String vehicleId, String recordId,
                                      MaintenanceRecordUpdateRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
         MaintenanceRecord record = findRecordInVehicle(vehicle.getId(), recordId);
@@ -146,7 +146,7 @@ public class MaintenanceRecordService {
     }
 
     @Transactional
-    public void delete(Long requesterId, String vehicleId, Long recordId) {
+    public void delete(Long requesterId, String vehicleId, String recordId) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
         MaintenanceRecord record = findRecordInVehicle(vehicle.getId(), recordId);
 
@@ -158,8 +158,8 @@ public class MaintenanceRecordService {
         return (value == null || value.isBlank()) ? null : value;
     }
 
-    private MaintenanceRecord findRecordInVehicle(Long vehicleId, Long recordId) {
-        return maintenanceRecordRepository.findByIdAndVehicleId(recordId, vehicleId)
+    private MaintenanceRecord findRecordInVehicle(Long vehicleId, String recordId) {
+        return maintenanceRecordRepository.findByPublicIdAndVehicleId(recordId, vehicleId)
                 .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 정비 이력입니다: " + recordId));
     }
 }

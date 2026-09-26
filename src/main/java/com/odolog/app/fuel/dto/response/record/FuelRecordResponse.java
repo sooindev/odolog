@@ -13,7 +13,8 @@ import java.time.LocalDate;
  * distance / efficiency 가 null 인 경우: 첫 기록, 기준점, 구간 미성립
  */
 public record FuelRecordResponse(
-        Long id,
+        /** 공개 id(12자). 숫자 PK 가 아니다 */
+        String id,
         LocalDate fueledAt,
         int odometer,
         BigDecimal liters,
@@ -64,7 +65,7 @@ public record FuelRecordResponse(
         }
 
         return new FuelRecordResponse(
-                record.getId(),
+                record.getPublicId(),
                 record.getFueledAt(),
                 record.getOdometer(),
                 record.getLiters(),

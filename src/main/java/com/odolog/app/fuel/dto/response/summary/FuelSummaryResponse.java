@@ -26,9 +26,10 @@ public record FuelSummaryResponse(
          * 최근 주유 기록 id. 없으면 null
          * 연비 초기화가 찍을 대상 — 없으면 화면이 목록을 한 번 더 받아야 함
          */
-        Long latestRecordId,
+        /** 공개 id */
+        String latestRecordId,
         /** 적용 중인 기준점 id. 없으면 null — 해제 버튼 표시 여부 */
-        Long resetPointId,
+        String resetPointId,
 
         /**
          * 기록이 빠진 것으로 보여 평균에서 뺀 구간 수

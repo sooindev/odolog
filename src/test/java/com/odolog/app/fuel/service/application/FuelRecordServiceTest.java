@@ -60,6 +60,8 @@ class FuelRecordServiceTest {
         FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer,
                 new BigDecimal(liters), cost, null);
         ReflectionTestUtils.setField(record, "id", id);
+        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
 
@@ -67,6 +69,8 @@ class FuelRecordServiceTest {
     private FuelRecord bare(Long id, Vehicle vehicle, int odometer) {
         FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, null, null);
         ReflectionTestUtils.setField(record, "id", id);
+        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
 
@@ -337,12 +341,12 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(10000);
         FuelRecord existing = record(1L, vehicle, 10000, "30.00", 60000);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
-        when(fuelRecordRepository.findByIdAndVehicleId(1L, 10L)).thenReturn(Optional.of(existing));
+        when(fuelRecordRepository.findByPublicIdAndVehicleId("R1", 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
         // 자리수 오타 정정
-        fuelRecordService.update(1L, "V10", 1L,
+        fuelRecordService.update(1L, "V10", "R1",
                 new FuelRecordUpdateRequest(null, 100000, null, null, null, null, null, null));
 
         assertThat(existing.getOdometer()).isEqualTo(100000);
@@ -355,11 +359,11 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(50000);
         FuelRecord existing = record(1L, vehicle, 20000, "30.00", 60000);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
-        when(fuelRecordRepository.findByIdAndVehicleId(1L, 10L)).thenReturn(Optional.of(existing));
+        when(fuelRecordRepository.findByPublicIdAndVehicleId("R1", 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
-        fuelRecordService.update(1L, "V10", 1L,
+        fuelRecordService.update(1L, "V10", "R1",
                 new FuelRecordUpdateRequest(null, 15000, null, null, null, null, null, null));
 
         assertThat(existing.getOdometer()).isEqualTo(15000);
@@ -398,8 +402,8 @@ class FuelRecordServiceTest {
         assertThat(summary.totalLiters()).isEqualByComparingTo("260.00");
 
         // 요약이 두 id 를 함께 줌 — 없으면 화면이 목록을 한 번 더 받아야 함
-        assertThat(summary.latestRecordId()).isEqualTo(5L);
-        assertThat(summary.resetPointId()).isEqualTo(3L);
+        assertThat(summary.latestRecordId()).isEqualTo("R5");
+        assertThat(summary.resetPointId()).isEqualTo("R3");
     }
 
     @Test
@@ -423,16 +427,16 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(20000);
         FuelRecord existing = record(2L, vehicle, 20000, "25.00", 50000);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
-        when(fuelRecordRepository.findByIdAndVehicleId(2L, 10L)).thenReturn(Optional.of(existing));
+        when(fuelRecordRepository.findByPublicIdAndVehicleId("R2", 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));
 
         // 끄기 전 500km ÷ 25L = 20.00
-        FuelRecordResponse before = fuelRecordService.update(1L, "V10", 2L,
+        FuelRecordResponse before = fuelRecordService.update(1L, "V10", "R2",
                 new FuelRecordUpdateRequest(null, null, null, null, null, null, null, false));
         assertThat(before.efficiency()).isEqualByComparingTo("20.00");
 
-        FuelRecordResponse after = fuelRecordService.update(1L, "V10", 2L,
+        FuelRecordResponse after = fuelRecordService.update(1L, "V10", "R2",
                 new FuelRecordUpdateRequest(null, null, null, null, null, null, null, true));
 
         assertThat(after.resetPoint()).isTrue();

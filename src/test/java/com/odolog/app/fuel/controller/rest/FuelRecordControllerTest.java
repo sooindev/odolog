@@ -55,7 +55,7 @@ class FuelRecordControllerTest {
     }
 
     private FuelRecordResponse response() {
-        return new FuelRecordResponse(1L, LocalDate.of(2026, 9, 10), 10500,
+        return new FuelRecordResponse("R1", LocalDate.of(2026, 9, 10), 10500,
                 new BigDecimal("25.00"), 50000, null, false,
                 2000, 500, new BigDecimal("20.00"), false, false);
     }
@@ -130,7 +130,7 @@ class FuelRecordControllerTest {
     @Test
     @DisplayName("수정은 clearLiters 로만 비운다 — 키가 없으면 유지")
     void updateDistinguishesAbsentFromNull() throws Exception {
-        when(fuelRecordService.update(eq(1L), eq("10"), eq(5L), any())).thenReturn(response());
+        when(fuelRecordService.update(eq(1L), eq("10"), eq("5"), any())).thenReturn(response());
 
         // liters 키가 아예 없다 → 유지
         mockMvc.perform(patch("/api/vehicles/10/fuel-records/5")
@@ -142,7 +142,7 @@ class FuelRecordControllerTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<FuelRecordUpdateRequest> kept = ArgumentCaptor.forClass(FuelRecordUpdateRequest.class);
-        verify(fuelRecordService).update(eq(1L), eq("10"), eq(5L), kept.capture());
+        verify(fuelRecordService).update(eq(1L), eq("10"), eq("5"), kept.capture());
         // null 이면 "안 보냄" — 메모만 고치는 요청이 주유량을 지우면 안 된다
         assertThat(kept.getValue().liters()).isNull();
 
@@ -156,7 +156,7 @@ class FuelRecordControllerTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<FuelRecordUpdateRequest> cleared = ArgumentCaptor.forClass(FuelRecordUpdateRequest.class);
-        verify(fuelRecordService, times(2)).update(eq(1L), eq("10"), eq(5L), cleared.capture());
+        verify(fuelRecordService, times(2)).update(eq(1L), eq("10"), eq("5"), cleared.capture());
         assertThat(cleared.getValue().clearLiters()).isTrue();
     }
 
@@ -205,7 +205,7 @@ class FuelRecordControllerTest {
     void summaryRoutesBeforePathVariable() throws Exception {
         when(fuelRecordService.summary(1L, "10")).thenReturn(new FuelSummaryResponse(
                 3, 160000, new BigDecimal("80.00"), 1000, new BigDecimal("20.00"),
-                3L, null, 0, 0, List.of()));
+                "R3", null, 0, 0, List.of()));
 
         mockMvc.perform(get("/api/vehicles/10/fuel-records/summary").session(loginSessionOf(1L)))
                 .andExpect(status().isOk())

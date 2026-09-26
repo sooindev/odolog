@@ -92,7 +92,7 @@ public class FuelRecordService {
 
 
     @Transactional
-    public FuelRecordResponse update(Long requesterId, String vehicleId, Long recordId,
+    public FuelRecordResponse update(Long requesterId, String vehicleId, String recordId,
                                      FuelRecordUpdateRequest request) {
         FuelRecord record = findRecordInVehicle(requesterId, vehicleId, recordId);
 
@@ -121,7 +121,7 @@ public class FuelRecordService {
     }
 
     @Transactional
-    public void delete(Long requesterId, String vehicleId, Long recordId) {
+    public void delete(Long requesterId, String vehicleId, String recordId) {
         fuelRecordRepository.delete(findRecordInVehicle(requesterId, vehicleId, recordId));
     }
 
@@ -144,13 +144,13 @@ public class FuelRecordService {
         FuelEfficiency efficiency = FuelEfficiency.of(records);
 
         // 오름차순이라 마지막이 최근
-        Long latestId = records.isEmpty() ? null : records.get(records.size() - 1).getId();
+        String latestId = records.isEmpty() ? null : records.get(records.size() - 1).getPublicId();
 
         // 기준점이 여럿이면 최근 것 우선이라 뒤에서부터
-        Long resetPointId = null;
+        String resetPointId = null;
         for (int i = records.size() - 1; i >= 0; i--) {
             if (records.get(i).isResetPoint()) {
-                resetPointId = records.get(i).getId();
+                resetPointId = records.get(i).getPublicId();
                 break;
             }
         }
@@ -190,10 +190,10 @@ public class FuelRecordService {
                 .orElse(null);
     }
 
-    private FuelRecord findRecordInVehicle(Long requesterId, String vehicleId, Long recordId) {
+    private FuelRecord findRecordInVehicle(Long requesterId, String vehicleId, String recordId) {
         Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
 
-        return fuelRecordRepository.findByIdAndVehicleId(recordId, id)
+        return fuelRecordRepository.findByPublicIdAndVehicleId(recordId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 주유 기록입니다: " + recordId));
     }
 }

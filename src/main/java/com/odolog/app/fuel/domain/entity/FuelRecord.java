@@ -1,5 +1,6 @@
 package com.odolog.app.fuel.domain.entity;
 
+import com.odolog.app.common.domain.identifier.PublicId;
 import com.odolog.app.common.domain.entity.BaseTimeEntity;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import jakarta.persistence.Column;
@@ -12,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
@@ -19,12 +21,18 @@ import java.time.LocalDate;
 
 /** 주유 한 건. 주행거리 + 리터 = 연비 (ServiceType 으로는 리터를 담을 자리가 없음) */
 @Entity
-@Table(name = "fuel_records")
+@Table(
+        name = "fuel_records",
+        uniqueConstraints = @UniqueConstraint(name = "uk_fuel_records_public_id", columnNames = "public_id"))
 public class FuelRecord extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** URL·API 용 식별자. id 는 서버 밖으로 내보내지 않는다 — 차량과 같은 이유(규칙 9-1) */
+    @Column(name = "public_id", nullable = false, updatable = false, length = PublicId.LENGTH)
+    private String publicId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
@@ -74,6 +82,7 @@ public class FuelRecord extends BaseTimeEntity {
 
     public FuelRecord(Vehicle vehicle, LocalDate fueledAt, int odometer, BigDecimal liters,
                       Integer totalCost, String memo) {
+        this.publicId = PublicId.generate();
         this.vehicle = vehicle;
         this.fueledAt = fueledAt;
         this.odometer = odometer;
@@ -104,6 +113,10 @@ public class FuelRecord extends BaseTimeEntity {
 
     public void changeResetPoint(boolean resetPoint) {
         this.resetPoint = resetPoint;
+    }
+
+    public String getPublicId() {
+        return publicId;
     }
 
     public Long getId() {

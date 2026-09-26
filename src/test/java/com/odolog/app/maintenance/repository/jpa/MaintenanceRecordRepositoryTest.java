@@ -92,7 +92,22 @@ class MaintenanceRecordRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByIdAndVehicleId 는 다른 차량 소속 이력을 찾지 못한다")
+    @DisplayName("공개 id 로 찾는다. 숫자 id 문자열로는 못 찾는다")
+    void findByPublicId() {
+        MaintenanceRecord mine = new MaintenanceRecord(vehicle, ServiceType.TIRE, null,
+                300000, 5000, LocalDate.of(2026, 2, 1));
+        em.persist(mine);
+        em.flush();
+        em.clear();
+
+        assertThat(maintenanceRecordRepository.findByPublicIdAndVehicleId(mine.getPublicId(), vehicle.getId()))
+                .isPresent();
+        assertThat(maintenanceRecordRepository.findByPublicIdAndVehicleId(String.valueOf(mine.getId()), vehicle.getId()))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("findByPublicIdAndVehicleId 는 다른 차량 소속 이력을 찾지 못한다")
     void findByIdAndVehicleId() {
         MaintenanceRecord otherRecord = new MaintenanceRecord(otherVehicle, ServiceType.TIRE, "남의 차",
                 300000, 5000, LocalDate.of(2026, 2, 1));
@@ -100,9 +115,9 @@ class MaintenanceRecordRepositoryTest {
         em.flush();
         em.clear();
 
-        assertThat(maintenanceRecordRepository.findByIdAndVehicleId(otherRecord.getId(), otherVehicle.getId()))
+        assertThat(maintenanceRecordRepository.findByPublicIdAndVehicleId(otherRecord.getPublicId(), otherVehicle.getId()))
                 .isPresent();
-        assertThat(maintenanceRecordRepository.findByIdAndVehicleId(otherRecord.getId(), vehicle.getId()))
+        assertThat(maintenanceRecordRepository.findByPublicIdAndVehicleId(otherRecord.getPublicId(), vehicle.getId()))
                 .isEmpty();
     }
 

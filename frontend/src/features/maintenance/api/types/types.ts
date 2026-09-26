@@ -72,7 +72,8 @@ export interface MaintenanceRecordUpdateRequest {
 }
 
 export interface MaintenanceRecordResponse {
-  id: number
+  /** 공개 id(12자). 숫자 PK 는 서버 밖으로 안 나온다 */
+  id: string
   type: ServiceType
   description: string | null
   cost: number

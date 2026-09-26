@@ -76,12 +76,12 @@ class MaintenanceRecordServiceTest {
         MaintenanceRecord record = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "기존 메모",
                 50000, 40000, LocalDate.of(2026, 1, 1));
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findByIdAndVehicleId(100L, 10L)).thenReturn(Optional.of(record));
+        when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L)).thenReturn(Optional.of(record));
 
         MaintenanceRecordUpdateRequest request = new MaintenanceRecordUpdateRequest(
                 null, "수정된 메모", null, null, null);
 
-        MaintenanceRecord updated = maintenanceRecordService.update(1L, "V10", 100L, request);
+        MaintenanceRecord updated = maintenanceRecordService.update(1L, "V10", "R100", request);
 
         assertThat(updated.getDescription()).isEqualTo("수정된 메모");
         assertThat(updated.getCost()).isEqualTo(50000);
@@ -93,12 +93,12 @@ class MaintenanceRecordServiceTest {
     void updateRecordNotBelongingToVehicle() {
         Vehicle vehicle = createVehicle(10L);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findByIdAndVehicleId(999L, 10L)).thenReturn(Optional.empty());
+        when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R999", 10L)).thenReturn(Optional.empty());
 
         MaintenanceRecordUpdateRequest request = new MaintenanceRecordUpdateRequest(
                 null, "수정된 메모", null, null, null);
 
-        assertThatThrownBy(() -> maintenanceRecordService.update(1L, "V10", 999L, request))
+        assertThatThrownBy(() -> maintenanceRecordService.update(1L, "V10", "R999", request))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -106,6 +106,8 @@ class MaintenanceRecordServiceTest {
                                      int odometer, LocalDate date) {
         MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, 0, odometer, date);
         ReflectionTestUtils.setField(record, "id", id);
+        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
 
@@ -255,11 +257,11 @@ class MaintenanceRecordServiceTest {
         MaintenanceRecord existing = record(100L, vehicle, ServiceType.ENGINE_OIL, 30000,
                 LocalDate.of(2026, 9, 1));
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
-        when(maintenanceRecordRepository.findByIdAndVehicleId(100L, 10L))
+        when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L))
                 .thenReturn(Optional.of(existing));
 
         // 자리수 오타 정정
-        maintenanceRecordService.update(1L, "V10", 100L, new MaintenanceRecordUpdateRequest(
+        maintenanceRecordService.update(1L, "V10", "R100", new MaintenanceRecordUpdateRequest(
                 null, null, null, 60000, null));
 
         assertThat(existing.getServiceOdometer()).isEqualTo(60000);

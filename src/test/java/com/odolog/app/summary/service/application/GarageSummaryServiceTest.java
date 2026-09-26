@@ -57,12 +57,16 @@ class GarageSummaryServiceTest {
     private MaintenanceRecord record(Long id, Vehicle vehicle, ServiceType type, int cost, LocalDate date) {
         MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, cost, 10000, date);
         ReflectionTestUtils.setField(record, "id", id);
+        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
 
     private FuelRecord fuel(Long id, Vehicle vehicle, int odometer, String liters, int cost, LocalDate date) {
         FuelRecord record = new FuelRecord(vehicle, date, odometer, new BigDecimal(liters), cost, null);
         ReflectionTestUtils.setField(record, "id", id);
+        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
 
@@ -178,8 +182,8 @@ class GarageSummaryServiceTest {
         assertThat(recent).extracting(GarageSummaryResponse.RecentActivity::kind)
                 .containsExactly("FUEL", "MAINTENANCE", "MAINTENANCE", "FUEL");
         // 같은 날짜면 정비 먼저. 문자열 정렬이면 FUEL 이 앞서 깨짐
-        assertThat(recent.get(1).recordId()).isEqualTo(9L);
-        assertThat(recent.get(2).recordId()).isEqualTo(7L);
+        assertThat(recent.get(1).recordId()).isEqualTo("R9");
+        assertThat(recent.get(2).recordId()).isEqualTo("R7");
         // 차량 이름은 이미 읽어 둔 목록에서
         assertThat(recent.get(0).vehicleName()).isEqualTo("현대 아반떼");
     }

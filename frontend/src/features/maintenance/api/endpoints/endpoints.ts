@@ -32,13 +32,13 @@ export function registerRecord(vehicleId: string, request: MaintenanceRecordRegi
 
 export function updateRecord(
   vehicleId: string,
-  recordId: number,
+  recordId: string,
   request: MaintenanceRecordUpdateRequest,
 ) {
   return api.patch<MaintenanceRecordResponse>(`${basePath(vehicleId)}/${recordId}`, request)
 }
 
-export function deleteRecord(vehicleId: string, recordId: number) {
+export function deleteRecord(vehicleId: string, recordId: string) {
   return api.del(`${basePath(vehicleId)}/${recordId}`)
 }
 
