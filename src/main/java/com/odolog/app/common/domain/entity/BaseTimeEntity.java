@@ -10,10 +10,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 생성·수정 시각 담당 부모. 엔티티 4개째(FuelRecord)에 도입
- * MappedSuperclass 라 테이블을 만들지 않고 필드만 자식에 합쳐짐 — 컬럼 이름이 그대로라 ddl-auto 가 안 건드림
- * CreatedDate / LastModifiedDate 는 Spring Data 것이라 EnableJpaAuditing 이 켜져 있어야 동작
- * (스위치는 common/config/jpa/JpaAuditingConfig)
+ * 생성·수정 시각 공통 부모. 테이블 없이 필드만 자식에 합류
+ * @EnableJpaAuditing(JpaAuditingConfig) 필요
  */
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)

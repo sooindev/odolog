@@ -20,7 +20,7 @@ public record VehicleRegisterRequest(
         @Size(max = 100)
         String modelName,
 
-        // 화면에만 있던 제한. API 는 null 도 999999 도 통과시켰음
+        // 연식 범위. 화면과 같은 제한
         @NotNull
         @Min(1900)
         @Max(2100)

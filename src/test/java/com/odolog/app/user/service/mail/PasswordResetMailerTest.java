@@ -20,13 +20,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-/**
- * 발송 시점과 스레드. 요청 스레드에서 기다리면 응답 시간이 가입 여부를 알려준다
- */
+/** 발송 시점과 스레드. 요청 스레드에서 보내면 응답 시간 차이 발생 */
 class PasswordResetMailerTest {
 
     private final JavaMailSender mailSender = mock(JavaMailSender.class);
-    // 실행을 모아 두기만 한다 — "요청 스레드에서 안 보냈다" 를 확인하려고
+    // 실행 대기열만 수집. 요청 스레드 미발송 확인용
     private final List<Runnable> queued = new ArrayList<>();
     private final PasswordResetMailer mailer =
             new PasswordResetMailer(mailSender, queued::add, "http://localhost:5173", "");

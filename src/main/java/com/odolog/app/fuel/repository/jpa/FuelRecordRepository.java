@@ -15,13 +15,10 @@ public interface FuelRecordRepository extends JpaRepository<FuelRecord, Long> {
 
     Page<FuelRecord> findByVehicleId(Long vehicleId, Pageable pageable);
 
-    /** 타 차량 소속 기록 접근 차단 (404) */
+    /** 타 차량 소속 기록 차단(404) */
     Optional<FuelRecord> findByPublicIdAndVehicleId(String publicId, Long vehicleId);
 
-    /**
-     * (주행거리, id) 순서에서 바로 앞 = 직전 주유. 목록·연비 계산의 정렬과 같은 기준
-     * 주행거리만 보면 같은 값 2건이 페이지 경계에 걸릴 때 둘 다 더 앞 기록을 짝으로 잡는다
-     */
+    /** (주행거리, id) 순서의 바로 앞 = 직전 주유. 목록·연비 계산과 같은 정렬 */
     @Query("""
             select f from FuelRecord f
             where f.vehicle.id = :vehicleId
@@ -35,10 +32,10 @@ public interface FuelRecordRepository extends JpaRepository<FuelRecord, Long> {
         return findPreceding(vehicleId, odometer, id, Limit.of(1)).stream().findFirst();
     }
 
-    /** 요약용 전체 조회. 페이지를 나누면 첫 기록과 마지막 기록이 못 만남 */
+    /** 요약용 전체 조회 */
     List<FuelRecord> findAllByVehicleIdOrderByOdometerAscIdAsc(Long vehicleId);
 
-    /** 한 사용자의 전체 주유 기록. 오름차순이라 차량별 연비 계산에 그대로 사용 */
+    /** 한 사용자의 전체 주유 기록. 오름차순 */
     List<FuelRecord> findByVehicle_Owner_IdOrderByOdometerAscIdAsc(Long ownerId);
 
     void deleteByVehicleId(Long vehicleId);

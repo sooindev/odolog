@@ -31,7 +31,7 @@ import type {
 export function ProfilePage() {
   const { user } = useAuth()
 
-  // 여기서 null 을 걸러내고 폼에는 확정된 user 전달
+  // null 은 여기서 거르고 폼에는 확정된 user 전달
   if (user === null) {
     return null
   }
@@ -42,7 +42,7 @@ export function ProfilePage() {
         <ProfileForm user={user} />
       </Section>
 
-      {/* 계정 바로 다음. 성격이 계정 쪽이라 화면 설정보다 앞 */}
+      {/* 계정 성격이라 화면 설정보다 앞 */}
       <Section
         title="비밀번호"
         description="바꾸려면 현재 비밀번호를 함께 입력해야 합니다. 변경해도 로그인은 유지됩니다."
@@ -50,10 +50,7 @@ export function ProfilePage() {
         <PasswordForm />
       </Section>
 
-      {/*
-        헤더 컨트롤은 "지금 당장 바꾸는" 자리, 여기는 "무엇이 기억돼 있는지" 확인하는 자리
-        같은 컴포넌트를 두 곳에서 쓰지만 상태가 하나라 어긋나지 않음
-      */}
+      {/* 헤더 토글과 같은 상태 공유. 여기서는 현재 설정 확인용 */}
       <Section title="화면" description="라이트·다크 중 하나를 고르거나, 기기 설정을 그대로 따를 수 있습니다.">
         <AppearanceCard />
       </Section>
@@ -65,7 +62,7 @@ export function ProfilePage() {
         <ExportCard />
       </Section>
 
-      {/* 되돌릴 수 없는 동작은 맨 아래. 위에 두면 스크롤할 때마다 지나침 */}
+      {/* 되돌릴 수 없는 동작은 맨 아래 */}
       <Section
         title="회원 탈퇴"
         description="계정과 등록한 차량, 정비 이력과 주유 기록이 모두 삭제됩니다. 되돌릴 수 없습니다."
@@ -87,8 +84,7 @@ function ExportCard() {
     try {
       const data = await exportAccount()
 
-      // <a href> 로 바로 받지 않는 이유: 그 요청에는 fetch 래퍼가 붙지 않아
-      // 세션·CSRF 헤더가 빠진다. 받아 온 것을 파일로 만드는 편이 경로가 하나다
+      // <a href> 대신 fetch 후 파일 생성. 세션·CSRF 헤더 유지
       const url = URL.createObjectURL(
         new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
       )
@@ -97,12 +93,7 @@ function ExportCard() {
       link.download = `odolog-${todayString()}.json`
       link.click()
 
-      /*
-       * 같은 틱에 해제하면 안 된다. click() 은 다운로드를 시작만 시키고 브라우저가 Blob 을
-       * 실제로 읽는 것은 그다음이라, 바로 revoke 하면 취소되거나 0바이트 파일이 떨어진다.
-       * 이 버튼은 탈퇴 직전에 기록을 챙기라고 둔 것이라 조용히 실패하면 백업을 받은 줄 알고
-       * 계정을 지우게 된다
-       */
+      // revoke 는 다음 틱에. 즉시 해제 시 다운로드 취소·0바이트 파일
       setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : '내보내기에 실패했습니다.')
@@ -133,10 +124,8 @@ function ExportCard() {
 }
 
 /**
- * 내보낸 파일을 되돌려 넣는다. 내보내기 바로 아래에 둔다 — 짝이라서
- *
- * 파일을 브라우저에서 읽어 JSON 으로 보낸다. multipart 로 올리지 않는 이유:
- * 서버가 파싱·검증을 한 번 더 하게 되고, fetch 래퍼(세션·CSRF)도 우회해야 한다
+ * 내보낸 파일 복원. 내보내기 바로 아래 배치
+ * 브라우저에서 읽어 JSON 전송. multipart 미사용
  */
 function RestoreForm() {
   const [result, setResult] = useState<AccountRestoreResult | null>(null)
@@ -145,7 +134,7 @@ function RestoreForm() {
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
-    // 같은 파일을 다시 고를 수 있어야 한다 — 값이 남아 있으면 change 가 안 난다
+    // 같은 파일 재선택 허용
     event.target.value = ''
     if (file === undefined) {
       return
@@ -158,7 +147,7 @@ function RestoreForm() {
     try {
       const parsed = JSON.parse(await file.text()) as { vehicles?: AccountExport['vehicles'] }
       if (!Array.isArray(parsed.vehicles)) {
-        // 아무 JSON 이나 던지면 서버가 400 을 주지만, 그 전에 여기서 더 정확히 말해 준다
+        // 형식이 다른 파일은 전송 전 안내
         throw new SyntaxError('vehicles 없음')
       }
 
@@ -182,7 +171,7 @@ function RestoreForm() {
         <p className="min-w-0 text-caption text-muted-foreground">
           받아 둔 파일을 다시 넣습니다. 같은 기록은 건너뛰므로 두 번 넣어도 늘지 않습니다.
         </p>
-        {/* label 이 input 을 감싸 버튼처럼. 파일 입력의 기본 생김새는 테마를 안 따라온다 */}
+        {/* label 로 감싼 버튼형 파일 입력. 기본 모양은 테마 미반영 */}
         <label className="shrink-0">
           <span
             className={
@@ -202,7 +191,7 @@ function RestoreForm() {
         </label>
       </div>
 
-      {/* 말없이 건너뛰면 "안 들어갔나?" 하고 또 누르게 된다 */}
+      {/* 건너뛴 수까지 안내 */}
       {result !== null && (
         <NoticeText
           message={
@@ -239,7 +228,7 @@ function PasswordForm() {
     setMessage(null)
     setError(null)
 
-    // 확인란은 서버로 보내지 않음. 오타 방지 장치일 뿐이고 보내면 비밀번호를 한 번 더 전송하는 셈
+    // 확인란은 전송하지 않음
     if (newPassword !== confirmPassword) {
       setError('새 비밀번호가 서로 다릅니다.')
       return
@@ -250,12 +239,12 @@ function PasswordForm() {
     try {
       await changePassword({ currentPassword, newPassword })
       setMessage('비밀번호를 변경했습니다.')
-      // 성공 시 비우기. 남겨 두면 다음 사람이 그대로 봄
+      // 성공 시 입력칸 비움
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
     } catch (caught) {
-      // 401 = 현재 비밀번호 오류. 이미 로그인한 상태라 사유를 뭉뚱그릴 이유가 없음
+      // 401 = 현재 비밀번호 오류
       setError(caught instanceof ApiError ? caught.message : '비밀번호 변경에 실패했습니다.')
     } finally {
       setPending(false)
@@ -266,8 +255,7 @@ function PasswordForm() {
     <Card>
       <CardContent>
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          {/* autoComplete 을 정확히 적어야 관리자가 "현재"와 "새것"을 구분
-              전부 password 면 저장된 값이 새 비밀번호 칸에 채워짐 */}
+          {/* autoComplete 로 비밀번호 관리자의 현재·새 비밀번호 구분 */}
           <Field label="현재 비밀번호" htmlFor="current-password">
             <Input
               id="current-password"
@@ -286,8 +274,7 @@ function PasswordForm() {
                 type="password"
                 required
                 minLength={8}
-                // 글자 수 상한이라 한글 24자(=72바이트)는 못 막는다. 거친 천장일 뿐이고
-                // 실제 판정은 위 hint 와 서버의 @MaxBytes 가 한다
+                // 글자 수 상한은 대략적인 천장. 실제 판정은 hint 와 서버 @MaxBytes
                 maxLength={72}
                 autoComplete="new-password"
                 value={newPassword}
@@ -337,12 +324,12 @@ function WithdrawCard() {
 
     try {
       await withdraw({ password })
-      // replace: true — 뒤로가기로 방금 떠난 화면에 못 돌아가게
+      // replace: 뒤로가기로 복귀 방지
       navigate('/', { replace: true })
     } catch (caught) {
-      // 401 = 비밀번호 오류. 이 경로는 전역 401 핸들러에서 제외돼 있어 여기서 잡을 수 있음
+      // 401 = 비밀번호 오류. 전역 401 처리 제외 경로
       setError(caught instanceof ApiError ? caught.message : '탈퇴에 실패했습니다.')
-      // 성공하면 화면을 떠나므로 실패했을 때만 복구
+      // 성공 시 화면 이탈, 실패 시에만 복구
       setPending(false)
     }
   }
@@ -354,8 +341,7 @@ function WithdrawCard() {
           <div className="form-open">
             <div>
               <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-                {/* 확인 문구 따라 치기보다 비밀번호가 더 강한 관문
-                    그건 실수만 막고 이건 본인 확인까지 */}
+                {/* 본인 확인용 비밀번호 */}
                 <Field
                   label="비밀번호"
                   htmlFor="withdraw-password"
@@ -394,11 +380,11 @@ function WithdrawCard() {
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* min-w-0 — 글이 줄어들지 못하면 버튼을 아래로 밀어냄 */}
+            {/* min-w-0: 버튼 밀림 방지 */}
             <p className="min-w-0 text-caption text-muted-foreground">
               탈퇴하면 같은 이메일로 다시 가입할 수 있지만, 기록은 복구되지 않습니다.
             </p>
-            {/* 빨갛게 채우지 않음. 가장 하면 안 되는 일이 화면에서 가장 강한 요소가 됨 */}
+            {/* 채우지 않은 빨간 버튼 */}
             <Button
               variant="destructive"
               size="sm"
@@ -417,7 +403,7 @@ function WithdrawCard() {
 function AppearanceCard() {
   const { theme, resolved } = useTheme()
 
-  // system 일 때 지금 어느 쪽인지. 없으면 "시스템 설정" 이라고만 적힘
+  // system 일 때 현재 적용 모드 표시
   const detail =
     theme === 'system'
       ? `기기 설정을 따릅니다. 지금은 ${resolved === 'dark' ? '다크' : '라이트'}입니다.`
@@ -426,9 +412,8 @@ function AppearanceCard() {
   return (
     <Card>
       {/*
-        좁은 화면에서는 세로로 쌓기. 한 줄이면 남는 폭이 설명 문구 길이에 좌우돼
-        문구가 가장 긴 system 일 때만 토글이 아래로 밀려 내려감
-        min-w-0 — 글 덩어리가 줄어들 수 있어야 토글을 안 밀어냄
+        좁은 화면은 세로 배치
+        min-w-0: 토글 밀림 방지
       */}
       <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex min-w-0 flex-col gap-1">
@@ -469,8 +454,7 @@ function ProfileForm({ user }: { user: UserResponse }) {
     try {
       const updated = await updateProfile(request)
       replaceUser(updated)
-      // 입력칸도 서버가 저장한 값으로. 서버가 앞뒤 공백을 자르므로 그대로 두면
-      // 다음 저장에서 "바뀐 것이 있다" 로 보고 같은 요청을 또 보낸다
+      // 입력칸도 서버 저장값으로. 공백 정리 후 재전송 방지
       setNickname(updated.nickname)
       setPhone(updated.phone ?? '')
       setMessage('저장했습니다.')
@@ -485,13 +469,12 @@ function ProfileForm({ user }: { user: UserResponse }) {
     <Card>
       <CardContent>
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          {/* 이메일은 수정 API 가 없어 표시만 */}
+          {/* 이메일은 표시만 */}
           <Field label="이메일" htmlFor="email">
             <Input id="email" value={user.email} disabled />
           </Field>
 
-          {/* 짧은 값이라 넓은 화면에서는 나란히
-              세로로 쌓으면 오른쪽이 통째로 비어 폼이 실제보다 길어 보임 */}
+          {/* 넓은 화면은 두 칸 나란히 */}
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="닉네임" htmlFor="nickname">
               <Input

@@ -11,8 +11,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 사용자별 로그인 세션 목록. 비밀번호 변경·재설정·탈퇴 때 다른 기기의 세션을 끊는 데 쓴다
- * 세션이 톰캣 메모리에 있으므로 목록도 메모리 — 재시작하면 둘 다 사라져 어긋나지 않는다
+ * 사용자별 로그인 세션 목록. 비밀번호 변경·재설정·탈퇴 시 다른 기기 세션 종료용
+ * 세션과 같은 톰캣 메모리 보관. 재시작 시 함께 초기화
  */
 @Component
 public class LoginSessionRegistry implements HttpSessionListener {
@@ -20,8 +20,8 @@ public class LoginSessionRegistry implements HttpSessionListener {
     private final Map<Long, Set<HttpSession>> sessions = new ConcurrentHashMap<>();
 
     public void register(Long userId, HttpSession session) {
-        // 로그아웃 없이 다른 계정으로 로그인하면 같은 세션을 다시 쓴다(changeSessionId).
-        // 옛 주인 목록에서 빼지 않으면 그 사람이 비밀번호를 바꿀 때 지금 주인이 로그아웃된다
+        // 로그아웃 없는 계정 전환 시 같은 세션 재사용(changeSessionId)
+        // 옛 주인 목록에서 제거
         sessions.forEach((owner, owned) -> {
             if (!owner.equals(userId)) {
                 owned.remove(session);
@@ -35,14 +35,14 @@ public class LoginSessionRegistry implements HttpSessionListener {
         invalidateOthers(userId, null);
     }
 
-    /** 비밀번호 변경용. 지금 요청한 세션만 남긴다 — 본인이 바꾼 것이라 다시 로그인시킬 이유가 없다 */
+    /** 비밀번호 변경용. 현재 세션만 유지 */
     public void invalidateOthers(Long userId, HttpSession keep) {
         Set<HttpSession> owned = sessions.get(userId);
         if (owned == null) {
             return;
         }
 
-        // 복사본을 돈다. invalidate() 가 sessionDestroyed 를 불러 원본에서 지운다
+        // 복사본 순회. invalidate() 가 sessionDestroyed 로 원본에서 제거
         for (HttpSession session : List.copyOf(owned)) {
             if (session == keep) {
                 continue;
@@ -51,12 +51,12 @@ public class LoginSessionRegistry implements HttpSessionListener {
             try {
                 session.invalidate();
             } catch (IllegalStateException alreadyInvalidated) {
-                // 그 사이 만료·로그아웃된 세션. 목표 상태와 같다
+                // 그 사이 만료·로그아웃된 세션
             }
         }
     }
 
-    /** 만료·로그아웃으로 끝난 세션을 목록에서 뺀다. 안 빼면 목록이 계속 자란다 */
+    /** 끝난 세션 제거. 목록 무한 증가 방지 */
     @Override
     public void sessionDestroyed(HttpSessionEvent event) {
         HttpSession destroyed = event.getSession();

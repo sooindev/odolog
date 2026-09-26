@@ -19,16 +19,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 내보낸 JSON 을 그대로 되돌려받는다
- *
- * 패키지가 restore 인 이유는 import 가 자바 예약어라서다
- *
- * 내보내기(AccountExportResponse)와 모양이 같지만 **사용자 정보는 받지 않는다** —
- * 가져오기는 "내 계정에 기록을 더하는 것" 이지 계정을 바꾸는 것이 아니다.
- * 그래서 남의 파일을 넣어도 내 계정에 붙고, 이메일·닉네임은 아무 영향이 없다
- *
- * 제약은 등록 DTO 와 같은 것을 건다. 파일로 들어온다고 검증을 느슨하게 하면
- * 화면으로는 못 만드는 데이터가 파일로는 들어간다
+ * 내보낸 JSON 의 복원 요청. 패키지명 restore 는 import 가 예약어라서
+ * 사용자 정보는 받지 않음. 내 계정에 기록만 추가
+ * 검증은 등록 DTO 와 동일. 파일 경로로 느슨한 데이터 유입 방지
  */
 public record AccountRestoreRequest(
 
@@ -48,14 +41,11 @@ public record AccountRestoreRequest(
             @NotNull @Size(max = 5000) @Valid List<MaintenanceData> maintenanceRecords,
             @NotNull @Size(max = 5000) @Valid List<FuelData> fuelRecords,
 
-            /**
-             * 차량별 권장 주기. 옛 파일에는 없을 수 있어 null 을 허용한다
-             * 빠져 있으면 기본값으로 복원되는데, 그건 "설정이 없던 상태" 와 같아 문제가 없다
-             */
+            /** 차량별 권장 주기. 옛 파일에는 없을 수 있어 null 허용 */
             @Size(max = 30) @Valid List<IntervalData> serviceIntervals
     ) {
 
-        /** 옛 파일 대비. null 을 그대로 돌리면 부르는 쪽이 매번 검사해야 한다 */
+        /** 옛 파일 대비 빈 목록 반환 */
         public List<IntervalData> serviceIntervals() {
             return serviceIntervals == null ? List.of() : serviceIntervals;
         }

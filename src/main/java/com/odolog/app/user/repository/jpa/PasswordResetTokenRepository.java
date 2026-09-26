@@ -10,13 +10,9 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
 
     Optional<PasswordResetToken> findByTokenHash(String tokenHash);
 
-    /** 새로 발급하면 이전 것은 지운다. 메일함에 남은 옛 링크가 계속 살아 있으면 안 된다 */
+    /** 재발급·탈퇴 시 기존 토큰 삭제 */
     void deleteByUserId(Long userId);
 
-    /**
-     * 만료된 토큰 정리
-     * 쓰지 않고 버려진 토큰은 아무도 안 지워서 계속 쌓인다 — 해시라 위험하지는 않지만
-     * 지울 이유가 있는 행을 안 지우는 상태다
-     */
+    /** 만료 토큰 정리 */
     void deleteByExpiresAtBefore(LocalDateTime cutoff);
 }

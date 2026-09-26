@@ -50,7 +50,7 @@ class AccountWithdrawalServiceTest {
         assertThatThrownBy(() -> accountWithdrawalService.withdraw(1L, new WithdrawRequest("wrongpassword")))
                 .isInstanceOf(AuthenticationFailedException.class);
 
-        // 롤백이 아니라 순서 자체로 막았는지
+        // 롤백이 아닌 순서로 차단
         verify(vehicleService, never()).deleteAllOwnedBy(1L);
         verify(userService, never()).delete(1L);
     }

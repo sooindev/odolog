@@ -26,7 +26,7 @@ public class UserService {
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    /** 없는 계정의 비교 상대. 같은 인코더로 만들어야 비용(라운드 수)이 실제 해시와 같다 */
+    /** 없는 계정의 비교 상대. 같은 인코더로 생성해 비용 동일 */
     private final String dummyHash = passwordEncoder.encode("no-such-account");
 
     public UserService(UserRepository userRepository,
@@ -44,7 +44,7 @@ public class UserService {
         }
 
         String encodedPassword = passwordEncoder.encode(request.password());
-        // 빈 전화번호는 null 로. updateProfile 과 같은 규칙 — 화면을 안 거친 요청도 같은 모양으로 저장
+        // 빈 전화번호는 null
         String phone = (request.phone() == null || request.phone().isBlank()) ? null : request.phone();
         User user = new User(request.email(), encodedPassword, InputText.strip(request.nickname()), phone);
 
@@ -52,13 +52,13 @@ public class UserService {
     }
 
     public User login(LoginRequest request) {
-        // 검증보다 먼저. 잠긴 동안에는 비밀번호를 맞혀도 들여보내지 않는다
+        // 검증보다 먼저. 잠긴 동안은 맞는 비밀번호도 거절
         loginAttemptLimiter.checkNotLocked(request.email(), "로그인 시도가 너무 많습니다.");
 
         try {
             User user = userRepository.findByEmail(request.email()).orElse(null);
 
-            // 없는 계정도 BCrypt 를 한 번 돌린다. 건너뛰면 그쪽만 수십 ms 빨라 응답 시간이 가입 여부를 알려준다
+            // 없는 계정도 BCrypt 한 번. 응답 시간으로 가입 여부가 드러나는 것 방지
             String hash = (user == null) ? dummyHash : user.getPassword();
             boolean matches = passwordEncoder.matches(request.password(), hash);
 
@@ -69,7 +69,7 @@ public class UserService {
             loginAttemptLimiter.recordSuccess(request.email());
             return user;
         } catch (AuthenticationFailedException e) {
-            // 없는 계정도 센다 — 존재하는 이메일에서만 잠기면 그게 곧 존재 여부 신호다
+            // 없는 계정도 실패 집계
             loginAttemptLimiter.recordFailure(request.email());
             throw e;
         }
@@ -80,7 +80,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + userId));
     }
 
-    /** 되돌릴 수 없는 동작 앞의 관문. 비밀번호 변경과 탈퇴가 공유 */
+    /** 되돌릴 수 없는 동작 앞의 비밀번호 확인. 변경·탈퇴 공용 */
     public void verifyPassword(Long userId, String rawPassword) {
         User user = findById(userId);
 
@@ -91,26 +91,21 @@ public class UserService {
 
     @Transactional
     public void delete(Long userId) {
-        // 재설정 토큰이 사용자를 참조한다. 안 지우면 FK 제약 위반
-        // 조율 층이 아니라 여기서 하는 이유는 토큰이 user 기능 안의 사정이기 때문
+        // 재설정 토큰 먼저 삭제. FK 제약
         passwordResetTokenRepository.deleteByUserId(userId);
         userRepository.delete(findById(userId));
     }
 
     @Transactional
     public void changePassword(Long userId, ChangePasswordRequest request) {
-        // 로그인 상태만으로는 부족. 열린 세션을 잡은 사람이 계정을 가져갈 수 있음
+        // 현재 비밀번호 확인. 열린 세션만으로는 변경 불가
         verifyPassword(userId, request.currentPassword());
 
-        // findById 가 두 번이지만 쿼리는 한 번 — 같은 트랜잭션의 1차 캐시
+        // 같은 트랜잭션 1차 캐시라 쿼리 1번
         User user = findById(userId);
 
-        /*
-         * 같은 값이면 막는다. 안 막으면 "바꿨다" 는 안내가 뜨는데 아무것도 안 바뀐다 —
-         * 비밀번호가 샜다고 생각해 바꾸러 온 사람이 안 바뀐 채로 안심하고 나간다.
-         * 재설정(PasswordResetService)에는 두지 않았다. 그쪽은 옛 비밀번호를 모르는 사람이라
-         * "같습니다" 라는 말이 도움이 안 된다
-         */
+        // 같은 비밀번호로 변경 거부. 바뀌지 않았는데 바뀐 것처럼 보이는 문제 방지
+        // 재설정에는 미적용(옛 비밀번호를 모르는 사용자)
         if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
             throw new InvalidRequestException("새 비밀번호가 현재 비밀번호와 같습니다.");
         }
@@ -126,7 +121,7 @@ public class UserService {
             user.changeNickname(InputText.strip(request.nickname()));
         }
         if (request.phone() != null) {
-            // null 은 "안 보냄", 빈 문자열이 "지움". 그대로 저장하면 "없음" 이 두 모양이 됨
+            // null 은 안 보냄, 빈 문자열은 지움
             String phone = request.phone().isBlank() ? null : request.phone();
             user.changePhone(phone);
         }

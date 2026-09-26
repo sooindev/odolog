@@ -57,7 +57,7 @@ class GarageSummaryServiceTest {
     private MaintenanceRecord record(Long id, Vehicle vehicle, ServiceType type, int cost, LocalDate date) {
         MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, cost, 10000, date);
         ReflectionTestUtils.setField(record, "id", id);
-        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
@@ -65,7 +65,7 @@ class GarageSummaryServiceTest {
     private FuelRecord fuel(Long id, Vehicle vehicle, int odometer, String liters, int cost, LocalDate date) {
         FuelRecord record = new FuelRecord(vehicle, date, odometer, new BigDecimal(liters), cost, null);
         ReflectionTestUtils.setField(record, "id", id);
-        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
@@ -106,7 +106,7 @@ class GarageSummaryServiceTest {
         List<GarageSummaryResponse.MonthlyCost> monthly = garageSummaryService.summarize(1L, TODAY).monthly();
 
         assertThat(monthly).hasSize(12);
-        // 2026-09 기준 12칸이면 2025-10 시작
+        // 2026-09 기준 12칸 → 2025-10 시작
         assertThat(monthly.get(0).month()).isEqualTo("2025-10");
         assertThat(monthly.get(11).month()).isEqualTo("2026-09");
 
@@ -151,7 +151,7 @@ class GarageSummaryServiceTest {
 
         GarageSummaryResponse.VehicleLine line = garageSummaryService.summarize(1L, TODAY).vehicles().get(0);
 
-        // 1000km ÷ (80 - 30)L = 20.00. 첫 30L 를 안 빼면 12.50
+        // 1000km ÷ (80 - 30)L = 20.00. 첫 30L 를 빼지 않으면 12.50
         assertThat(line.averageEfficiency()).isEqualByComparingTo("20.00");
     }
 
@@ -176,7 +176,7 @@ class GarageSummaryServiceTest {
         GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY);
 
         assertThat(summary.recent().get(0).cost()).isNull();
-        // 합계에서는 여전히 0 으로 친다 — 더할 때만은 "없음" 과 0 이 같은 뜻
+        // 합계에서는 0
         assertThat(summary.fuelCost()).isZero();
     }
 
@@ -196,10 +196,10 @@ class GarageSummaryServiceTest {
 
         assertThat(recent).extracting(GarageSummaryResponse.RecentActivity::kind)
                 .containsExactly("FUEL", "MAINTENANCE", "MAINTENANCE", "FUEL");
-        // 같은 날짜면 정비 먼저. 문자열 정렬이면 FUEL 이 앞서 깨짐
+        // 같은 날짜면 정비 먼저
         assertThat(recent.get(1).recordId()).isEqualTo("R9");
         assertThat(recent.get(2).recordId()).isEqualTo("R7");
-        // 차량 이름은 이미 읽어 둔 목록에서
+        // 차량 이름은 이미 읽은 목록에서
         assertThat(recent.get(0).vehicleName()).isEqualTo("현대 아반떼");
     }
 

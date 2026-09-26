@@ -21,7 +21,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // ProtectedRoute 가 기억해 둔 목적지(from)와 앞 화면이 남긴 안내(notice). 둘 다 이번 이동에만 붙는다
+  // 이전 화면이 남긴 목적지(from)·안내(notice). 이번 이동에만 존재
   const state = location.state as { from?: string; notice?: string } | null
   const from = state?.from ?? '/vehicles'
   const notice = state?.notice ?? null
@@ -31,7 +31,7 @@ export function LoginPage() {
   }
 
   async function handleSubmit(event: FormEvent) {
-    // 폼 기본 동작(전체 새로고침) 차단. 안 막으면 React 상태가 날아감
+    // 기본 제출(새로고침) 차단
     event.preventDefault()
     setError(null)
     setPending(true)
@@ -40,7 +40,7 @@ export function LoginPage() {
       await login({ email, password })
       navigate(from, { replace: true })
     } catch (caught) {
-      // 백엔드가 401 사유를 통일해 내려줌 (user enumeration 방지)
+      // 401 사유는 서버가 통일
       setError(caught instanceof ApiError ? caught.message : '로그인에 실패했습니다.')
     } finally {
       setPending(false)
@@ -49,7 +49,7 @@ export function LoginPage() {
 
   return (
     <Page title="로그인" description="기록해 둔 차량을 이어서 관리합니다.">
-      {/* 폼 + 안내 문구가 한 덩어리. 가로 폭은 AuthLayout 담당 */}
+      {/* 폼 + 안내 문구 한 덩어리. 폭은 AuthLayout 담당 */}
       <div className="flex flex-col gap-6">
         <Card>
           <CardContent>
@@ -77,7 +77,7 @@ export function LoginPage() {
                 />
               </Field>
 
-              {/* 실패가 나면 안내 대신 실패를 보인다 — 둘이 같이 있으면 무엇이 지금 일인지 흐려진다 */}
+              {/* 실패가 있으면 실패만 표시 */}
               {error !== null ? (
                 <ErrorText message={error} />
               ) : (

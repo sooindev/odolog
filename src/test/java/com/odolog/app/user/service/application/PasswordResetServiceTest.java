@@ -74,7 +74,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("가입되지 않은 주소면 아무 일도 하지 않는다")
     void doesNothingForUnknownEmail() {
-        // 여기서 404 를 주면 그게 곧 가입 여부 조회 API 가 된다
+        // 없는 주소도 조용히 성공. 가입 여부 노출 방지
         when(userRepository.findByEmail("nobody@odolog.com")).thenReturn(Optional.empty());
 
         service.request("nobody@odolog.com");
@@ -90,7 +90,7 @@ class PasswordResetServiceTest {
 
         service.request("me@odolog.com");
 
-        // 새로 발급하면 이전 것은 버린다 — 메일함에 남은 옛 링크가 계속 열쇠면 안 된다
+        // 재발급 시 이전 토큰 폐기
         verify(tokenRepository).deleteByUserId(1L);
 
         ArgumentCaptor<PasswordResetToken> saved = ArgumentCaptor.forClass(PasswordResetToken.class);
@@ -104,7 +104,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("저장하는 것은 원본이 아니라 해시다")
     void storesHashNotRawToken() {
-        // DB 가 새어도 그것만으로는 남의 비밀번호를 바꿀 수 없어야 한다
+        // DB 유출만으로는 비밀번호 변경 불가
         when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
 
         service.request("me@odolog.com");
@@ -132,9 +132,9 @@ class PasswordResetServiceTest {
 
         assertThat(user.getPassword()).isNotEqualTo("old-hash");
         assertThat(token.getUsedAt()).isEqualTo(NOW);
-        // 여러 번 틀려서 잠긴 사람이 여기까지 왔다. 바꿨으면 풀어 준다
+        // 재설정 성공 시 로그인 잠금 해제
         verify(rateLimiter).recordSuccess("me@odolog.com");
-        // 누가 들어와 있었을 수 있다. 열려 있던 세션은 전부 끊는다
+        // 열려 있던 세션 전부 종료
         verify(sessionRegistry).invalidateAll(1L);
     }
 
@@ -172,7 +172,7 @@ class PasswordResetServiceTest {
                 .isInstanceOf(AuthenticationFailedException.class);
     }
 
-    /** 저장된 값과 맞춰 보려면 테스트도 같은 방식으로 해싱해야 한다 */
+    /** 저장값과 같은 방식의 해싱 */
     private String hashOf(String raw) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -186,7 +186,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("메일 발송이 실패해도 요청은 성공으로 끝난다")
     void survivesMailFailure() {
-        // 실패를 올려보내면 가입된 주소에서만 500 이 나고, 그 차이가 곧 가입 여부를 알려준다
+        // 메일 실패도 성공 응답. 가입된 주소에서만 500 이 나는 것 방지
         when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
         org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("SMTP 실패"))
                 .when(mailer).send(anyString(), anyString(), anyInt());

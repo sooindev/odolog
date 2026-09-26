@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useCountUp } from './useCountUp'
 
-/** jsdom 에 matchMedia 가 없음. 연출을 끈 사용자 분기를 타려면 직접 심어야 함 */
+/** jsdom 에 없는 matchMedia 대체 */
 function setReducedMotion(reduced: boolean) {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: reduced,
@@ -13,7 +13,7 @@ function setReducedMotion(reduced: boolean) {
   }))
 }
 
-/** 애니메이션이 끝날 때까지 프레임을 흘려보냄 */
+/** 애니메이션 종료까지 프레임 진행 */
 async function runToEnd() {
   await act(async () => {
     vi.advanceTimersByTime(2000)
@@ -32,7 +32,7 @@ describe('useCountUp', () => {
   })
 
   it('첫 렌더에서는 움직이지 않는다', async () => {
-    // 0 에서 굴러오르는 연출은 아무 일도 없었는데 움직이는 것 — 일부러 걷어낸 자리
+    // 첫 렌더 정지
     const { result } = renderHook(() => useCountUp(50_000))
 
     expect(result.current.value).toBe(50_000)
@@ -50,7 +50,7 @@ describe('useCountUp', () => {
 
     rerender({ target: 52_000 })
 
-    // 첫 프레임에 시작. 중간값은 두 값 사이에 있어야 함
+    // 중간값은 두 값 사이
     await act(async () => {
       vi.advanceTimersByTime(100)
     })
@@ -64,7 +64,7 @@ describe('useCountUp', () => {
   })
 
   it('굴러간 뒤 또 바뀌면 그 자리에서 이어간다', async () => {
-    // fromRef 가 갱신되지 않으면 두 번째 변화가 첫 값에서 다시 시작함
+    // 두 번째 변화는 첫 목표에서 출발
     const { result, rerender } = renderHook(({ target }) => useCountUp(target), {
       initialProps: { target: 50_000 },
     })
@@ -83,7 +83,7 @@ describe('useCountUp', () => {
   })
 
   it('변화 폭이 클수록 오래 걸린다', async () => {
-    // 10km 와 20,000km 가 같은 시간이면 작은 변화는 굼뜨고 큰 변화는 순식간에 지나감
+    // 변화 폭에 비례한 지속 시간
     const small = renderHook(({ target }) => useCountUp(target), {
       initialProps: { target: 50_000 },
     })
@@ -98,7 +98,7 @@ describe('useCountUp', () => {
       vi.advanceTimersByTime(500)
     })
 
-    // 작은 변화는 최소 지속 시간(0.45s) 안에 끝나고, 큰 변화는 아직 가는 중
+    // 작은 변화는 최소 0.45s 안에 종료, 큰 변화는 진행 중
     expect(small.result.current.running).toBe(false)
     expect(large.result.current.running).toBe(true)
 
@@ -123,7 +123,7 @@ describe('useCountUp', () => {
   })
 
   it('굴러가는 도중 지금 보이는 값으로 목표가 바뀌면 연출이 끝난 상태로 돌아간다', async () => {
-    // running 이 true 로 남으면 멈춘 숫자에 tabular-nums 가 계속 붙어 폭이 달라진다
+    // 멈춘 숫자에 tabular-nums 가 남지 않음
     const { result, rerender } = renderHook(({ target }) => useCountUp(target), {
       initialProps: { target: 50_000 },
     })

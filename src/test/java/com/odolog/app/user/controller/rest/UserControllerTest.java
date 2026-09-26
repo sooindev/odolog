@@ -52,7 +52,7 @@ class UserControllerTest {
     @MockitoBean
     private UserService userService;
 
-    // 컨트롤러가 직접 주입받는다 — @WebMvcTest 는 @Component 를 안 올리므로 여기서 대신 준다
+    // 컨트롤러가 직접 주입받는 컴포넌트. @WebMvcTest 미포함이라 목으로 대체
     @MockitoBean
     private LoginAttemptLimiter attemptLimiter;
 
@@ -62,7 +62,7 @@ class UserControllerTest {
     @Test
     @DisplayName("가입 시도가 한도를 넘으면 429를 반환한다")
     void signUpTooManyAttempts() throws Exception {
-        // 가입 409 가 가입 여부를 알려주므로, 한 곳에서 주소를 쓸어 보는 것을 IP 로 막는다
+        // 가입 409 로 인한 주소 대량 조회를 IP 로 차단
         doThrow(new TooManyRequestsException("회원가입 시도가 너무 많습니다. 10분 후 다시 시도해 주세요."))
                 .when(attemptLimiter).checkNotLocked(any(), any());
 
@@ -133,13 +133,13 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        // 숫자 id 는 응답에 없다 — 가입 순서를 드러낸다(규칙 9-1)
+        // 숫자 id 미포함(규칙 9-1)
         assertThat(result.getResponse().getContentAsString()).doesNotContain("\"id\"");
 
         HttpSession session = result.getRequest().getSession(false);
         assertThat(session).isNotNull();
         assertThat(session.getAttribute(SessionConst.LOGIN_USER_ID)).isEqualTo(1L);
-        // 비밀번호가 바뀌었을 때 끊을 수 있도록 목록에 오른다
+        // 비밀번호 변경 시 종료 대상 목록에 등록
         verify(sessionRegistry).register(eq(1L), same(session));
     }
 
@@ -224,7 +224,7 @@ class UserControllerTest {
                                 new ChangePasswordRequest("oldpassword", "newpassword1234"))))
                 .andExpect(status().isNoContent());
 
-        // 다른 기기의 세션만 끊고 지금 세션은 남긴다
+        // 다른 기기 세션만 종료, 현재 세션 유지
         verify(sessionRegistry).invalidateOthers(eq(1L), same(session));
     }
 
@@ -272,8 +272,7 @@ class UserControllerTest {
     @Test
     @DisplayName("가입 비밀번호가 72바이트를 넘으면 400을 반환한다")
     void signUpRejectsPasswordOverByteLimit() throws Exception {
-        // BCrypt 가 72바이트에서 IllegalArgumentException 을 던진다
-        // @Size 는 글자 수라 한글 25자(75바이트)를 막지 못해 500 으로 새어 나갔다
+        // BCrypt 72바이트 상한. 글자 수 제한으로는 한글 25자를 막지 못함
         String password = "가".repeat(25);
         SignUpRequest request = new SignUpRequest("test@odolog.com", password, "닉네임", null);
 
@@ -287,7 +286,7 @@ class UserControllerTest {
     @Test
     @DisplayName("가입 비밀번호가 정확히 72바이트면 통과한다")
     void signUpAcceptsPasswordAtByteLimit() throws Exception {
-        // 경계를 한 칸 안쪽으로 잘못 잡으면 24자 한글 비밀번호가 막힌다
+        // 경계값: 한글 24자는 통과
         User user = new User("test@odolog.com", "encoded", "닉네임", null);
         ReflectionTestUtils.setField(user, "id", 1L);
         when(userService.signUp(any())).thenReturn(user);
@@ -304,7 +303,7 @@ class UserControllerTest {
     @Test
     @DisplayName("비밀번호 변경도 72바이트를 넘으면 400을 반환한다")
     void changePasswordRejectsPasswordOverByteLimit() throws Exception {
-        // 가입만 막으면 가입으로 못 만드는 비밀번호가 변경으로 통과한다
+        // 변경에도 가입과 같은 제한
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
 

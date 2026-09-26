@@ -31,9 +31,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 홈 요약. vehicle · maintenance · fuel 을 모두 읽는 조회 전용
- * account 와 같은 조율 층이지만 그쪽은 순서 조율, 이쪽은 집계라 패키지를 나눔
- * 서비스가 아닌 리포지토리 주입 — 집계에는 소유권 검사·삭제 순서 같은 규칙이 불필요
+ * 홈 요약. vehicle·maintenance·fuel 을 읽는 조회 전용 조율 층
+ * 집계에는 비즈니스 규칙이 필요 없어 리포지토리 주입
  */
 @Service
 @Transactional(readOnly = true)
@@ -58,14 +57,14 @@ public class GarageSummaryService {
     }
 
     public GarageSummaryResponse summarize(Long ownerId, LocalDate today) {
-        // 쿼리 3번 (전에는 HTTP 왕복 1 + 차량수 × 2)
+        // 쿼리 3번
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(ownerId);
         List<MaintenanceRecord> records =
                 maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(ownerId);
         List<FuelRecord> fuels = fuelRecordRepository.findByVehicle_Owner_IdOrderByOdometerAscIdAsc(ownerId);
 
         long maintenanceCost = records.stream().mapToLong(MaintenanceRecord::getCost).sum();
-        // 결제 금액을 안 적은 기록은 0 으로 친다 — 합계에서는 '없음' 과 0 이 같은 뜻이다
+        // 금액을 안 적은 기록은 합계에서 0
         long fuelCost = fuels.stream().mapToLong(FuelRecord::totalCostOrZero).sum();
 
         return new GarageSummaryResponse(
@@ -82,7 +81,7 @@ public class GarageSummaryService {
                 recent(records, fuels, vehicles));
     }
 
-    /** 빈 달도 0 으로 채움. 있는 달만 모으면 가로축이 등간격이 아니게 됨 */
+    /** 빈 달도 0 으로 채움. 가로축 등간격 유지 */
     private List<MonthlyCost> monthly(List<MaintenanceRecord> records, List<FuelRecord> fuels,
                                       LocalDate today) {
         record Bucket(long maintenance, long fuel, int count) {
@@ -114,7 +113,7 @@ public class GarageSummaryService {
         return monthly;
     }
 
-    /** 기록 있는 종류만. 0원짜리 줄 제외 */
+    /** 기록 있는 종류만 */
     private List<TypeCost> byType(List<MaintenanceRecord> records) {
         Map<ServiceType, long[]> sums = new EnumMap<>(ServiceType.class);
         for (MaintenanceRecord record : records) {
@@ -129,7 +128,7 @@ public class GarageSummaryService {
                 .toList();
     }
 
-    /** 차량마다 조회하면 차량 수만큼 쿼리가 는다. 한 번 읽어 와서 나눈다 */
+    /** 한 번 읽어 차량별로 분배. 차량별 조회 방지 */
     private List<ServiceInterval> intervalsOf(List<ServiceInterval> all, Long vehicleId) {
         return all.stream()
                 .filter(interval -> interval.getVehicle().getId().equals(vehicleId))
@@ -142,7 +141,7 @@ public class GarageSummaryService {
         List<VehicleLine> lines = new ArrayList<>(vehicles.size());
 
         for (Vehicle vehicle : vehicles) {
-            // getId() 는 LAZY 프록시에서도 초기화 없이 읽힘 — FK 를 이미 들고 있음
+            // getId() 는 LAZY 프록시 초기화 없이 조회
             List<MaintenanceRecord> mine = records.stream()
                     .filter(record -> record.getVehicle().getId().equals(vehicle.getId()))
                     .toList();
@@ -150,7 +149,7 @@ public class GarageSummaryService {
                     .filter(record -> record.getVehicle().getId().equals(vehicle.getId()))
                     .toList();
 
-            // 이미 읽어 둔 이력으로 센다 — 추가 쿼리 없음
+            // 이미 읽은 이력으로 계산. 추가 쿼리 없음
             long overdue = NextService.of(mine, intervalsOf(overrides, vehicle.getId()),
                             vehicle.getOdometer(), today).stream()
                     .filter(NextService::overdue)
@@ -171,20 +170,16 @@ public class GarageSummaryService {
 
     private List<RecentActivity> recent(List<MaintenanceRecord> records, List<FuelRecord> fuels,
                                         List<Vehicle> vehicles) {
-        /*
-         * 차량 이름은 이미 읽어 둔 목록에서 찾기
-         * getVehicle().getManufacturer() 는 LAZY 프록시를 초기화 — getId() 와 달리 FK 만으로는 모름
-         * 1차 캐시가 받아 주긴 하나 그 사실에 기대는 코드가 됨
-         */
+        // 차량 이름은 이미 읽은 목록에서 조회. LAZY 프록시 초기화 회피
         Map<Long, String> names = new LinkedHashMap<>();
-        // 숫자 PK → 공개 id. 응답에는 공개 id 만 나간다
+        // 숫자 PK → 공개 id
         Map<Long, String> publicIds = new LinkedHashMap<>();
         for (Vehicle vehicle : vehicles) {
             names.put(vehicle.getId(), vehicle.getManufacturer() + " " + vehicle.getModelName());
             publicIds.put(vehicle.getId(), vehicle.getPublicId());
         }
 
-        // 정렬용 숫자 id 를 곁에 둔다. 공개 id 는 무작위라 "나중에 넣은 것" 을 말하지 못한다
+        // 정렬용 숫자 id 보관. 공개 id 는 순서 정보 없음
         record Candidate(RecentActivity activity, long internalId) {
         }
 
@@ -205,9 +200,9 @@ public class GarageSummaryService {
 
         return all.stream()
                 .sorted(Comparator.comparing((Candidate candidate) -> candidate.activity().date()).reversed()
-                        // 같은 날짜면 정비 먼저. 문자열 비교면 "FUEL" < "MAINTENANCE" 로 뒤집힘
+                        // 같은 날짜면 정비 먼저
                         .thenComparingInt(candidate -> "MAINTENANCE".equals(candidate.activity().kind()) ? 0 : 1)
-                        // 같은 종류끼리만 id 내림차순 — 테이블이 달라 id 는 서로 무관
+                        // 같은 종류끼리만 id 내림차순. 테이블이 달라 id 끼리 무관
                         .thenComparing(Comparator.comparingLong(Candidate::internalId).reversed()))
                 .limit(RECENT_LIMIT)
                 .map(Candidate::activity)

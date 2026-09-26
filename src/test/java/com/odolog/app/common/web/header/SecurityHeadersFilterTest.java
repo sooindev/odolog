@@ -8,7 +8,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** CsrfTokenFilterTest 와 같은 방식 — 필터를 직접 부른다 */
+/** 필터 직접 호출. CsrfTokenFilterTest 와 같은 방식 */
 class SecurityHeadersFilterTest {
 
     private final SecurityHeadersFilter filter = new SecurityHeadersFilter();
@@ -23,7 +23,7 @@ class SecurityHeadersFilterTest {
 
         assertThat(response.getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
         assertThat(response.getHeader("X-Frame-Options")).isEqualTo("DENY");
-        // 재설정 토큰이 ?token= 으로 주소에 실리므로 Referer 를 아예 보내지 않는다
+        // 재설정 토큰이 주소에 실려 Referer 미전송
         assertThat(response.getHeader("Referrer-Policy")).isEqualTo("no-referrer");
         assertThat(chain.getRequest()).isNotNull();
     }
@@ -35,7 +35,7 @@ class SecurityHeadersFilterTest {
 
         filter.doFilter(new MockHttpServletRequest("GET", "/api/users/me"), response, new MockFilterChain());
 
-        // 로컬이 http 다. 붙여 두면 그 도메인 전체가 https 전용이 되어 접속이 막힌다
+        // http 에서 HSTS 금지. 도메인 전체가 https 전용이 되는 문제
         assertThat(response.getHeader("Strict-Transport-Security")).isNull();
     }
 

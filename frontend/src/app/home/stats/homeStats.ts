@@ -1,13 +1,9 @@
 import { api } from '@/shared/api/client/client'
 import type { ServiceType } from '@/features/maintenance/api/types/types'
 
-/*
- * 홈 화면 데이터. 백엔드 com.odolog.app.summary.dto 대응
- * 서버가 전부 읽어 더한 것을 한 번에 받으므로 이 파일에 계산은 없음
- * 직접 집계하던 시절의 문제 — 페이지 상한을 넘는 기록이 합계에서 빠지고, 계산이 두 곳에 존재
- */
+// 홈 화면 데이터. 백엔드 summary DTO 대응, 계산은 서버
 
-/** 월별 유지비 한 칸. 빈 달도 0 으로 채워 12칸 유지 */
+/** 월별 유지비 한 칸. 빈 달도 0 으로 채운 12칸 */
 export interface MonthlyCost {
   /** 'YYYY-MM' */
   month: string
@@ -37,13 +33,13 @@ export interface VehicleLine {
   lastServiceDate: string | null
   /** 주유 2건 미만이면 null */
   averageEfficiency: number | null
-  /** 권장 주기가 지난 정비 종류 수. 차량 상세와 같은 계산이다 */
+  /** 권장 주기가 지난 정비 종류 수. 차량 상세와 같은 계산 */
   overdueServiceCount: number
 }
 
 /**
- * 최근 활동 한 줄. 정비·주유 공용이라 kind 로 갈라 읽음
- * 정렬(날짜 내림차순, 같은 날은 정비 먼저)은 서버가 끝냄
+ * 최근 활동 한 줄. 정비·주유 공용, kind 로 구분
+ * 정렬은 서버 완료
  */
 export interface RecentActivity {
   kind: 'MAINTENANCE' | 'FUEL'
@@ -53,7 +49,7 @@ export interface RecentActivity {
   date: string
   vehicleId: string
   vehicleName: string
-  /** 주유 금액을 안 적었으면 null. 0 이 아니다 — "0원에 넣었다" 로 읽힌다 */
+  /** 주유 금액 없음이면 null */
   cost: number | null
   type: ServiceType | null
   liters: number | null
@@ -64,7 +60,7 @@ export interface HomeData {
   totalOdometer: number
   /** 정비 + 주유 건수 */
   recordCount: number
-  /** 정비비 + 유류비. 구성(아래 둘)도 함께 옴 */
+  /** 정비비 + 유류비. 구성도 함께 */
   totalCost: number
   maintenanceCost: number
   fuelCost: number

@@ -11,10 +11,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * CORS 필터가 CSRF 필터보다 앞에 서는지
- * 뒤에 서면 CSRF 가 막은 403 에 CORS 헤더가 없어 화면이 "서버에 연결하지 못했습니다" 를 띄운다
- */
+/** CORS 필터가 CSRF 필터보다 앞인지. 뒤면 CSRF 403 에 CORS 헤더 누락 */
 class WebConfigCorsTest {
 
     private static final String ORIGIN = "http://localhost:5173";
@@ -34,7 +31,7 @@ class WebConfigCorsTest {
         request.addHeader("Origin", ORIGIN);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        // 실제 등록 순서대로 CORS → CSRF
+        // 실제 등록 순서(CORS → CSRF)
         Filter cors = webConfig.corsFilter().getFilter();
         MockFilterChain chain = new MockFilterChain(new jakarta.servlet.http.HttpServlet() {
         }, cors, new CsrfTokenFilter(false));

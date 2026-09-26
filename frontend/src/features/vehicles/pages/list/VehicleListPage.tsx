@@ -14,7 +14,7 @@ import { fetchVehicles } from '@/features/vehicles/api/endpoints/endpoints'
 export function VehicleListPage() {
   const [page, setPage] = useState(0)
 
-  // page 가 바뀌면 새 함수가 만들어지고 useAsyncData 가 재조회
+  // page 변경 시 재조회
   const load = useCallback(() => fetchVehicles(page), [page])
   const { data, loading, error } = useAsyncData(load, '차량 목록을 불러오지 못했습니다.')
 
@@ -34,30 +34,25 @@ export function VehicleListPage() {
     <Page
       eyebrow="Garage"
       title="내 차량"
-      // 대수는 설명으로. 제목에 붙이면 대수가 바뀔 때마다 제목 길이가 달라짐
+      // 대수는 설명에. 제목 길이 고정
       description={`${data.totalElements}대를 관리 중입니다.`}
       action={
-        // render — 버튼 스타일을 Link 에 입힘. button 안의 a 는 잘못된 HTML
+        // render: 버튼 스타일을 Link 에. button 안 a 금지
         <Button size="sm" render={<Link to="/vehicles/new" />}>
           차량 등록
         </Button>
       }
     >
-      {/* 목록과 페이지 이동이 한 덩어리. Page 기본 간격이면 너무 멀어짐 */}
+      {/* 목록과 페이지 이동 한 덩어리 */}
       <div className="flex flex-col gap-10">
-        {/*
-          카드 격자가 아니라 괘선 행. 카드를 씌우면 차량 수만큼 상자가 늘어남
-          행으로 깔면 번호판끼리·주행거리끼리 세로로 정렬돼 여러 대를 훑어 비교할 수 있음
-          넓은 화면에서는 왼쪽 이름 / 오른쪽 수치로 밀어 가운데 여백이 둘을 가름
-        */}
+        {/* 카드 대신 괘선 행. 번호판·주행거리 세로 정렬로 여러 대 비교 */}
         <ul className="border-t border-border">
           {data.items.map((vehicle) => (
             <li key={vehicle.id} className="border-b border-border">
               <Link
                 to={`/vehicles/${vehicle.id}`}
-                // 행 전체가 판정 영역이라 -mx/px 로 좌우 여유
-                // before — 호버 시 왼쪽 끝에 1px 표식이 세로로 그어짐
-                // 배경만 옅게 바뀌면 어느 행인지 훑어봐야 알고, 가로로 늘리면 글자를 밀어내는 것처럼 보임
+                // 행 전체가 판정 영역
+                // before: 호버 시 왼쪽 1px 세로 표식
                 className="group relative -mx-3 flex items-center gap-4 px-3 py-5 transition-colors duration-200 ease-apple sm:-mx-4 sm:gap-10 sm:px-4 sm:py-7 before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:origin-top before:scale-y-0 before:bg-strong before:transition-transform before:duration-300 before:ease-apple hover:bg-wash hover:before:scale-y-100 focus-visible:before:scale-y-100"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -68,8 +63,7 @@ export function VehicleListPage() {
                     <span className="truncate text-section text-strong">
                       {vehicle.manufacturer} {vehicle.modelName}
                     </span>
-                    {/* 홈에만 있고 목록에는 없어서 같은 질문에 두 화면이 다르게 답하고 있었다.
-                        빨강을 쓰지 않는 이유는 NextServiceCard 주석 참고 */}
+                    {/* 지난 정비 표시. 빨강 대신 테두리(NextServiceCard 참고) */}
                     {vehicle.overdueServiceCount !== null && vehicle.overdueServiceCount > 0 && (
                       <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
                         정비 {vehicle.overdueServiceCount}건 지남
@@ -81,10 +75,9 @@ export function VehicleListPage() {
                   </p>
                 </div>
 
-                {/* 수치는 오른쪽 끝. tabular-nums 라야 자릿수가 달라도 줄이 안 떨림 */}
+                {/* 수치는 오른쪽 끝, tabular-nums */}
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  {/* 좁은 화면에서는 숨김. 아래 'km' 이 같은 말을 하고 있고
-                      넓은 자간이 오른쪽 열을 75px 넘게 잡아먹음 */}
+                  {/* 좁은 화면에서는 숨김. 아래 km 과 중복, 넓은 자간이 폭 차지 */}
                   <p className="hidden text-eyebrow text-faint uppercase sm:block">Odometer</p>
                   <p className="text-figure tabular-nums text-strong">
                     {formatNumber(vehicle.odometer)}
@@ -94,7 +87,7 @@ export function VehicleListPage() {
                   </p>
                 </div>
 
-                {/* 2px 만. 화살표가 크게 미끄러지면 장난스러워짐 */}
+                {/* 2px 이동만 */}
                 <ChevronRight className="size-4 shrink-0 text-faint transition-transform duration-200 ease-apple group-hover:translate-x-0.5" />
               </Link>
             </li>
@@ -112,7 +105,7 @@ export function VehicleListPage() {
   )
 }
 
-/** 실제 목록과 같은 높이를 미리 확보. 글자 한 줄만 두면 도착 시 화면이 튐 */
+/** 실제 목록과 같은 높이 확보. 도착 시 흔들림 방지 */
 function VehicleListSkeleton() {
   return (
     <div className="flex flex-col gap-12">
@@ -131,7 +124,7 @@ function VehicleListSkeleton() {
   )
 }
 
-/** 빈 상태. 할 일이 하나뿐이라 여백을 크게 */
+/** 빈 상태 */
 function EmptyGarage() {
   return (
     <div className="flex flex-col items-center gap-7 border-y border-border px-5 py-20 text-center sm:gap-8 sm:px-8 sm:py-32">

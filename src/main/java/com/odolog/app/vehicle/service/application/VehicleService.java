@@ -35,8 +35,7 @@ public class VehicleService {
     private final UserRepository userRepository;
     private final MaintenanceRecordRepository maintenanceRecordRepository;
     private final ServiceIntervalRepository serviceIntervalRepository;
-    // 서비스가 아니라 리포지토리 주입 — 서비스끼리면 진짜 순환 참조
-    // (FuelRecordService 가 VehicleService 를 이미 씀)
+    // 서비스 대신 리포지토리 주입. FuelRecordService → VehicleService 순환 방지
     private final FuelRecordRepository fuelRecordRepository;
 
     public VehicleService(VehicleRepository vehicleRepository, UserRepository userRepository,
@@ -66,16 +65,13 @@ public class VehicleService {
         return vehicleRepository.save(vehicle);
     }
 
-    /** 화면이 쓰는 것만 정렬 대상. 연관 엔티티를 타고 들어가는 정렬을 막는다 */
+    /** 화면이 쓰는 속성만 정렬 허용 */
     private static final Set<String> SORTABLE = Set.of(
             "createdAt", "plateNumber", "manufacturer", "modelName", "modelYear", "odometer");
 
     /**
-     * 목록만 DTO 를 돌려준다. 지남 수가 엔티티에 없는 계산값이기 때문 —
-     * FuelRecordService.findByVehicle 이 같은 이유로 DTO 를 돌려준다
-     *
-     * 쿼리 3번(페이지 + 정비 이력 + 주기). 이력과 주기는 소유자 단위로 한 번에 읽고 나눈다 —
-     * 차량마다 조회하면 페이지 크기만큼 늘어난다
+     * 목록은 DTO 반환. 지남 수가 계산값
+     * 쿼리 3번. 이력·주기는 소유자 단위로 한 번에 조회
      */
     public Page<VehicleResponse> findMyVehicles(Long ownerId, Pageable pageable) {
         SortGuard.allowOnly(pageable, SORTABLE);
@@ -94,7 +90,7 @@ public class VehicleService {
                 overdueCountOf(vehicle, records, intervals, today)));
     }
 
-    /** 홈 요약과 같은 계산(NextService)을 쓴다 — 두 화면이 다른 수를 말하면 안 된다 */
+    /** 홈 요약과 같은 NextService 계산 */
     private int overdueCountOf(Vehicle vehicle, List<MaintenanceRecord> records,
                                List<ServiceInterval> intervals, LocalDate today) {
 
@@ -114,12 +110,10 @@ public class VehicleService {
     public Vehicle update(Long requesterId, String vehicleId, VehicleUpdateRequest request) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
 
-        // 번호판 먼저. 다른 필드를 먼저 바꾸면 dirty 상태가 되고 exists 직전에 자동 flush —
-        // 방금 쓴 값을 다시 조회해 자기를 중복으로 판정
+        // 번호판 먼저 처리. 다른 필드 변경 후 exists 전 자동 flush 로 자기 중복 판정 방지
         String plateNumber = InputText.strip(request.plateNumber());
         if (plateNumber != null && !plateNumber.equals(vehicle.getPlateNumber())) {
-            // 다른 번호판으로 바꿀 때만 검사. 판단은 DB 와 같은 기준(앞뒤 공백·대소문자 무시) —
-            // 자바 equals 로만 보면 "12가3456 " → "12가3456" 이 자기 자신과 중복으로 잡혀 409
+            // 다른 번호판으로 바꿀 때만 검사. DB 와 같은 기준(앞뒤 공백·대소문자 무시)
             if (!plateNumber.equalsIgnoreCase(vehicle.getPlateNumber().strip())
                     && vehicleRepository.existsByOwnerIdAndPlateNumber(requesterId, plateNumber)) {
                 throw new ConflictException("이미 등록하신 차량 번호입니다: " + plateNumber);
@@ -136,7 +130,7 @@ public class VehicleService {
             vehicle.changeModelYear(request.modelYear());
         }
 
-        // save() 불필요. 영속 상태라 dirty checking 이 UPDATE 생성
+        // save() 불필요. dirty checking
         return vehicle;
     }
 
@@ -144,7 +138,7 @@ public class VehicleService {
     public Vehicle updateOdometer(Long requesterId, String vehicleId, UpdateOdometerRequest request) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
 
-        // 기본은 감소 금지. force 를 실어야만 정정 경로로 간다
+        // 기본은 감소 금지. force 일 때만 정정
         if (request.forced()) {
             vehicle.correctOdometer(request.odometer());
         } else {
@@ -157,22 +151,19 @@ public class VehicleService {
     @Transactional
     public void delete(Long requesterId, String vehicleId) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
-        // 자식 먼저, 차량 나중 — 바꾸면 FK 제약 위반
+        // 자식 먼저, 차량 나중. FK 제약
         maintenanceRecordRepository.deleteByVehicleId(vehicle.getId());
         serviceIntervalRepository.deleteByVehicleId(vehicle.getId());
         fuelRecordRepository.deleteByVehicleId(vehicle.getId());
         vehicleRepository.delete(vehicle);
     }
 
-    /**
-     * 한 사용자의 차량을 이력까지 일괄 삭제. 회원 탈퇴 전용
-     * delete() 반복 대신 — 차량마다 findById 와 소유권 검사가 반복됨 (이미 ownerId 로 조회한 것)
-     */
+    /** 한 사용자의 차량 일괄 삭제. 회원 탈퇴 전용 */
     @Transactional
     public void deleteAllOwnedBy(Long ownerId) {
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(ownerId);
 
-        // 차량을 먼저 지우면 이력이 붙잡고 있어 FK 제약 위반
+        // 이력 먼저 삭제. FK 제약
         for (Vehicle vehicle : vehicles) {
             maintenanceRecordRepository.deleteByVehicleId(vehicle.getId());
             serviceIntervalRepository.deleteByVehicleId(vehicle.getId());
@@ -182,18 +173,11 @@ public class VehicleService {
     }
 
     /**
-     * 남의 차량도 "없다"고 답한다
-     *
-     * 403 은 "권한이 없다"는 뜻이지만 동시에 **"있긴 하다"** 는 뜻을 나른다.
-     * 차량 id 가 1,2,3… 으로 이어지므로 403 과 404 가 갈리면 훑어서
-     * 어느 번호가 쓰이고 있는지 셀 수 있다
-     *
-     * 정비·주유는 findByPublicIdAndVehicleId 라 처음부터 404 하나였다 — 차량만 혼자 달랐다
-     *
-     * 상태 코드만 맞추고 문구를 달리하면 소용없다. 그래서 두 경우가 **같은 예외를 만들어 쓴다**
+     * 남의 차량도 없는 차량과 같은 404·같은 문구
+     * 403 은 존재를 드러냄
      */
     public Vehicle findOwnedVehicle(Long requesterId, String vehicleId) {
-        // 공개 id 로 찾는다. 예전 숫자 주소(/vehicles/1)는 그냥 없는 차량이다
+        // 공개 id 로 조회. 예전 숫자 주소는 없는 차량
         Vehicle vehicle = vehicleRepository.findByPublicId(vehicleId)
                 .orElseThrow(() -> notFound(vehicleId));
 

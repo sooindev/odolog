@@ -30,9 +30,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * 내보내기의 짝. 복원할 수 없으면 백업이 아니라 기념품이다
- */
+/** 내보내기의 짝 */
 @ExtendWith(MockitoExtension.class)
 class AccountRestoreServiceTest {
 
@@ -104,11 +102,7 @@ class AccountRestoreServiceTest {
     @Test
     @DisplayName("같은 파일을 두 번 넣어도 두 배가 되지 않는다")
     void doesNotDuplicate() {
-        /*
-         * 이 기능에서 가장 나쁜 결과는 "실수로 두 번 눌렀더니 기록이 두 배" 다.
-         * 내보낸 JSON 에는 id 가 없어(우리 DB 안에서만 뜻이 있는 값이라 뺐다)
-         * 사람이 보기에 같은 기록이면 같다고 본다 — 종류·날짜·주행거리
-         */
+        // id 없는 JSON 이라 내용(종류·날짜·주행거리)으로 중복 판정
         Vehicle vehicle = existing("12가1212", 10L);
         when(userService.findById(1L)).thenReturn(owner);
         when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
@@ -137,7 +131,7 @@ class AccountRestoreServiceTest {
     @Test
     @DisplayName("같은 번호판이 있으면 차량 정보는 건드리지 않고 기록만 붙인다")
     void mergesIntoExistingVehicle() {
-        // 파일이 옛날 것일 수 있는데 지금 값을 덮어쓸 이유가 없다
+        // 옛 파일일 수 있어 기존 차량 정보 유지
         Vehicle vehicle = existing("12가1212", 10L);
         vehicle.changeModelName("카니발 하이리무진");
         when(userService.findById(1L)).thenReturn(owner);
@@ -158,8 +152,7 @@ class AccountRestoreServiceTest {
     @Test
     @DisplayName("번호판이 공백만 달라도 같은 차로 본다 — DB 유니크 제약과 같은 기준")
     void matchesPlateIgnoringWhitespace() {
-        // DB 에 "12가1212 " 로 저장돼 있고 파일은 "12가1212". 새 차로 저장하면 DB 가 같다고 보고 막아
-        // 가져오기 전체가 409 로 실패했다
+        // DB 는 "12가1212 ", 파일은 "12가1212". 새 차로 저장하면 유니크 위반으로 전체 실패
         Vehicle vehicle = existing("12가1212 ", 10L);
         when(userService.findById(1L)).thenReturn(owner);
         when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
@@ -187,7 +180,7 @@ class AccountRestoreServiceTest {
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
                 .thenReturn(List.of());
 
-        // 파일의 값은 30,000 — 지금 50,000 보다 작으므로 내려가면 안 된다
+        // 파일 값 30,000 < 현재 50,000. 감소 금지
         accountRestoreService.restore(1L,
                 new AccountRestoreRequest(List.of(vehicleData("12가1212", List.of(), List.of()))));
 

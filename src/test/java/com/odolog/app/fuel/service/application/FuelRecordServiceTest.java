@@ -60,16 +60,16 @@ class FuelRecordServiceTest {
         FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer,
                 new BigDecimal(liters), cost, null);
         ReflectionTestUtils.setField(record, "id", id);
-        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
 
-    /** 주유량도 금액도 안 적고 저장한 기록 */
+    /** 주유량·금액 없는 기록 */
     private FuelRecord bare(Long id, Vehicle vehicle, int odometer) {
         FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, null, null);
         ReflectionTestUtils.setField(record, "id", id);
-        // 공개 id 도 읽을 수 있게 고정 — 무작위면 단언을 쓸 수 없다
+        // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
@@ -89,7 +89,7 @@ class FuelRecordServiceTest {
 
         assertThat(response.distance()).isNull();
         assertThat(response.efficiency()).isNull();
-        // 단가는 직전과 무관. 60000 / 30 = 2000
+        // 단가는 직전과 무관. 60000 ÷ 30 = 2000
         assertThat(response.pricePerLiter()).isEqualTo(2000);
     }
 
@@ -147,7 +147,7 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(11000);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
 
-        // 내림차순 11000 → 10500 이 한 페이지. 10500 의 짝(10000)은 다음 페이지
+        // 11000 → 10500 이 한 페이지. 10500 의 짝(10000)은 다음 페이지
         List<FuelRecord> items = List.of(
                 record(3L, vehicle, 11000, "25.00", 50000),
                 record(2L, vehicle, 10500, "25.00", 50000));
@@ -159,12 +159,12 @@ class FuelRecordServiceTest {
 
         Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, "V10", pageable);
 
-        // 첫 행은 페이지 안쪽끼리 짝 (11000 - 10500) / 25
+        // 첫 행은 페이지 안쪽 짝 (11000 - 10500) ÷ 25
         assertThat(page.getContent().get(0).efficiency()).isEqualByComparingTo("20.00");
-        // 마지막 행은 페이지 밖에서 가져온 짝 (10500 - 10000) / 25
+        // 마지막 행은 페이지 밖 짝 (10500 - 10000) ÷ 25
         assertThat(page.getContent().get(1).efficiency()).isEqualByComparingTo("20.00");
 
-        // 직전 조회는 한 번뿐 — 행마다면 N+1
+        // 직전 조회 1번. 행마다면 N+1
         verify(fuelRecordRepository)
                 .findPrevious(anyLong(), anyInt(), any());
     }
@@ -183,9 +183,9 @@ class FuelRecordServiceTest {
 
         FuelRecordResponse bare = fuelRecordService.findByVehicle(1L, "V10", pageable).getContent().get(0);
 
-        // 거리는 안다 — 모르는 것은 "얼마나 넣었나" 뿐이다
+        // 거리는 표시, 연비만 없음
         assertThat(bare.distance()).isEqualTo(500);
-        // 0 을 주면 "연비 0km/L 인 차" 와 구분되지 않는다
+        // 0 이면 연비 0km/L 와 구분 불가
         assertThat(bare.efficiency()).isNull();
         assertThat(bare.pricePerLiter()).isNull();
         assertThat(bare.liters()).isNull();
@@ -195,7 +195,7 @@ class FuelRecordServiceTest {
     @Test
     @DisplayName("메모를 비우면 빈 문자열이 아니라 null 로 저장한다")
     void blankMemoBecomesNull() {
-        // "없음" 이 null 과 '' 두 모양이면 내보낸 JSON 에도 그대로 나간다 (phone 과 같은 규칙)
+        // 빈 문자열은 null
         Vehicle vehicle = vehicle(10000);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(call -> call.getArgument(0));
@@ -211,11 +211,7 @@ class FuelRecordServiceTest {
     @Test
     @DisplayName("총 유류비가 20억을 넘어도 음수가 되지 않는다")
     void totalCostDoesNotOverflow() {
-        /*
-         * int 로 누적하던 시절 4,000,000,000 원이 -294,967,296 으로 찍혔다.
-         * 홈 요약은 long 이라 같은 데이터에 4,000,000,000 을 주던 상태 —
-         * 같은 값을 두 화면이 다르게 말했다.
-         */
+        // int 누적 시 40억 원이 음수로 넘침. long 합산 확인
         Vehicle vehicle = vehicle(11000);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
@@ -237,7 +233,7 @@ class FuelRecordServiceTest {
 
         FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
-        // 건수는 셋 — 기록 자체는 있었던 일이다
+        // 건수는 셋
         assertThat(summary.recordCount()).isEqualTo(3);
         assertThat(summary.totalCost()).isEqualTo(110000);
         assertThat(summary.totalLiters()).isEqualByComparingTo("55.00");
@@ -249,7 +245,7 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(12000);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
 
-        // 평소 400km/40L(10km/L) 인데 마지막 구간만 800km — 기록 하나가 빠졌거나 지워진 모양
+        // 평소 400km/40L(10km/L), 마지막 구간만 800km
         List<FuelRecord> ascending = List.of(
                 record(1L, vehicle, 10000, "40.00", 60000),
                 record(2L, vehicle, 10400, "40.00", 60000),
@@ -258,7 +254,7 @@ class FuelRecordServiceTest {
                 record(5L, vehicle, 12000, "40.00", 60000));
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(ascending);
 
-        // 화면 목록은 내림차순
+        // 목록은 내림차순
         Pageable pageable = PageRequest.of(0, 2);
         when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(ascending.get(4), ascending.get(3)), pageable, 5));
@@ -266,13 +262,13 @@ class FuelRecordServiceTest {
         Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, "V10", pageable);
 
         FuelRecordResponse suspicious = page.getContent().get(0);
-        // 값은 지우지 않는다 — 무엇이 이상한지 보려면 20.00 이 남아 있어야 한다
+        // 값 유지
         assertThat(suspicious.efficiency()).isEqualByComparingTo("20.00");
         assertThat(suspicious.missingRecordSuspected()).isTrue();
-        // 50 을 넘지 않아 '불가능'은 아니다. 표시가 둘이면 무엇을 하라는 건지 흐려진다
+        // 50 미만이라 불가능 표시 없음. 한 행에 표시 하나
         assertThat(suspicious.efficiencySuspicious()).isFalse();
 
-        // 평소 구간은 아무 표시도 없다
+        // 평소 구간은 표시 없음
         assertThat(page.getContent().get(1).missingRecordSuspected()).isFalse();
     }
 
@@ -296,7 +292,7 @@ class FuelRecordServiceTest {
 
         fuelRecordService.findByVehicle(1L, "V10", pageable);
 
-        // 이 페이지에는 구간이 하나뿐이라, 전체를 안 읽으면 '평소'를 못 구해 아무것도 못 잡는다
+        // 페이지 안 구간 하나뿐. 전체 조회 없이는 평소 기준 불가
         verify(fuelRecordRepository).findAllByVehicleIdOrderByOdometerAscIdAsc(10L);
     }
 
@@ -316,7 +312,7 @@ class FuelRecordServiceTest {
         assertThat(summary.totalCost()).isEqualTo(160000);
         assertThat(summary.totalLiters()).isEqualByComparingTo("80.00");
         assertThat(summary.totalDistance()).isEqualTo(1000);
-        // 1000km ÷ (80 - 30)L = 20.00. 첫 30L 를 안 빼면 12.50
+        // 1000km ÷ (80 - 30)L = 20.00. 첫 30L 를 빼지 않으면 12.50
         assertThat(summary.averageEfficiency()).isEqualByComparingTo("20.00");
     }
 
@@ -382,7 +378,7 @@ class FuelRecordServiceTest {
         Vehicle vehicle = vehicle(30000);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
-                // 초기화 이전 — 주행거리 오입력으로 연비가 엉망인 구간
+                // 초기화 이전. 주행거리 오입력 구간
                 record(1L, vehicle, 10000, "90.00", 180000),
                 record(2L, vehicle, 10100, "90.00", 180000),
                 // 기준점
@@ -392,16 +388,16 @@ class FuelRecordServiceTest {
 
         FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
-        // 1000km ÷ (80 - 30)L = 20.00. 초기화를 무시하면 11,000km 구간이 끼어듦
+        // 1000km ÷ (80 - 30)L = 20.00. 초기화 무시 시 11,000km 구간 포함
         assertThat(summary.totalDistance()).isEqualTo(1000);
         assertThat(summary.averageEfficiency()).isEqualByComparingTo("20.00");
 
-        // 건수·비용·주유량은 전체 기준. 초기화 대상은 연비뿐
+        // 건수·비용·주유량은 전체 기준. 초기화 대상은 연비만
         assertThat(summary.recordCount()).isEqualTo(5);
         assertThat(summary.totalCost()).isEqualTo(520000);
         assertThat(summary.totalLiters()).isEqualByComparingTo("260.00");
 
-        // 요약이 두 id 를 함께 줌 — 없으면 화면이 목록을 한 번 더 받아야 함
+        // 요약이 두 id 함께 제공
         assertThat(summary.latestRecordId()).isEqualTo("R5");
         assertThat(summary.resetPointId()).isEqualTo("R3");
     }
@@ -431,7 +427,7 @@ class FuelRecordServiceTest {
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));
 
-        // 끄기 전 500km ÷ 25L = 20.00
+        // 해제 전 500km ÷ 25L = 20.00
         FuelRecordResponse before = fuelRecordService.update(1L, "V10", "R2",
                 new FuelRecordUpdateRequest(null, null, null, null, null, null, null, false));
         assertThat(before.efficiency()).isEqualByComparingTo("20.00");

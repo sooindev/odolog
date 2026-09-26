@@ -27,7 +27,7 @@ export function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // 상태 4개 대신 객체 하나. 바뀐 키만 덮어쓰기
+  // 폼 상태 객체 하나
   function change(key: keyof SignUpRequest, value: string) {
     setForm((previous) => ({ ...previous, [key]: value }))
   }
@@ -38,19 +38,17 @@ export function SignUpPage() {
     setPending(true)
 
     try {
-      // 선택 입력이라 빈 값 미전송. '' 를 보내면 nullable 컬럼에 null 이 영영 안 생김
-      // 공백만 친 것도 안 적은 것으로 처리
+      // 선택 입력이라 빈 값·공백은 미전송
       const phone = form.phone?.trim()
       await signUp({ ...form, phone: phone === '' ? undefined : phone })
     } catch (caught) {
-      // 409 = 이메일 중복, 400 = 검증 실패. 둘 다 백엔드 메시지 그대로
+      // 409 = 이메일 중복, 400 = 검증 실패
       setError(caught instanceof ApiError ? caught.message : '회원가입에 실패했습니다.')
       setPending(false)
       return
     }
 
-    // 가입 API 는 세션을 안 만들므로 로그인까지 이어서. 실패를 가입과 따로 받는다 —
-    // 가입은 이미 끝났는데 오류만 띄우면 다시 눌러 409 "이미 가입된 이메일" 을 받는다
+    // 가입은 세션을 만들지 않아 로그인까지 이어서. 로그인 실패는 가입 실패와 별도 처리
     try {
       await login({ email: form.email, password: form.password })
       navigate('/vehicles', { replace: true })
@@ -64,7 +62,7 @@ export function SignUpPage() {
 
   return (
     <Page title="회원가입" description="차량 한 대만 있으면 바로 시작할 수 있습니다.">
-      {/* 폼 + 안내 문구가 한 덩어리. 가로 폭은 AuthLayout 담당 */}
+      {/* 폼 + 안내 문구 한 덩어리. 폭은 AuthLayout 담당 */}
       <div className="flex flex-col gap-6">
         <Card>
           <CardContent>
@@ -82,15 +80,14 @@ export function SignUpPage() {
                 />
               </Field>
 
-              {/* 규칙은 틀리기 전에 */}
+              {/* 규칙 안내를 미리 */}
               <Field label="비밀번호" htmlFor="password" hint={passwordHint(form.password)}>
                 <Input
                   id="password"
                   type="password"
                   required
                   minLength={8}
-                  // 글자 수 상한이라 한글 24자(=72바이트)는 못 막는다. 거친 천장일 뿐이고
-                  // 실제 판정은 위 hint 와 서버의 @MaxBytes 가 한다
+                  // 글자 수 상한은 대략적인 천장. 실제 판정은 hint 와 서버 @MaxBytes
                   maxLength={72}
                   autoComplete="new-password"
                   value={form.password}

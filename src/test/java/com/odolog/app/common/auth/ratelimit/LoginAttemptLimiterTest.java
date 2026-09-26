@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LoginAttemptLimiterTest {
 
-    /** 시계를 밖에서 넣는다. 안에서 now() 를 부르면 잠금 만료를 테스트할 수 없다 */
+    /** 시계 주입. 잠금 만료 테스트용 */
     private static final class MovableClock extends Clock {
         private Instant now = Instant.parse("2026-09-21T00:00:00Z");
 
@@ -73,7 +73,7 @@ class LoginAttemptLimiterTest {
 
         fail(limiter, "signup:10.0.0.1", 10);
 
-        // 리미터가 문구를 들고 있으면 회원가입 화면에 "로그인 시도가…" 가 뜬다
+        // 잠금 문구는 호출하는 쪽이 결정
         assertThatThrownBy(() -> limiter.checkNotLocked("signup:10.0.0.1", "회원가입 시도가 너무 많습니다."))
                 .isInstanceOf(TooManyRequestsException.class)
                 .hasMessageContaining("회원가입 시도가 너무 많습니다.");
@@ -94,7 +94,7 @@ class LoginAttemptLimiterTest {
     @Test
     @DisplayName("실패 사이 간격이 창을 넘으면 처음부터 다시 센다")
     void forgetsOldFailures() {
-        // 하루에 한 번씩 오타를 내는 사람이 열흘 뒤에 잠기면 안 된다
+        // 드문 오타가 누적되어 잠기지 않음
         MovableClock clock = new MovableClock();
         LoginAttemptLimiter limiter = new LoginAttemptLimiter(clock);
 
@@ -121,7 +121,7 @@ class LoginAttemptLimiterTest {
     @Test
     @DisplayName("대소문자와 공백을 다르게 써도 같은 계정으로 센다")
     void normalizesEmailKey() {
-        // 안 맞추면 A@x.com / a@x.com 을 번갈아 보내 제한을 그냥 빠져나간다
+        // 대소문자 교차 우회 차단
         LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());
 
         fail(limiter, "A@Odolog.com", 5);

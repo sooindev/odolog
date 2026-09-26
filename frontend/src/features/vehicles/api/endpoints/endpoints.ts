@@ -7,10 +7,7 @@ import type {
   VehicleUpdateRequest,
 } from '@/features/vehicles/api/types/types'
 
-/**
- * 차량 관련 엔드포인트
- * 화면이 URL 문자열을 직접 들고 있으면 경로가 바뀔 때 여러 파일을 뒤져야 함
- */
+/** 차량 엔드포인트 */
 
 export function fetchVehicles(page: number, size = 10) {
   return api.get<PageResponse<VehicleResponse>>(`/api/vehicles?page=${page}&size=${size}`)

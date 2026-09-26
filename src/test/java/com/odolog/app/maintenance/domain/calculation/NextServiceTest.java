@@ -13,17 +13,14 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * 다음 정비 시점과 "지남" 판정
- * 차량 상세와 홈 요약이 이것을 공유하므로, 여기가 틀리면 두 화면이 함께 틀린다
- */
+/** 다음 정비 시점과 지남 판정. 차량 상세·홈 요약 공용 */
 class NextServiceTest {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 9, 25);
 
     private final Vehicle vehicle = new Vehicle(null, "12가3456", "현대", "아반떼", 2023);
 
-    /** ENGINE_OIL 은 기본 5,000km / 6개월 */
+    /** ENGINE_OIL 기본 5,000km / 6개월 */
     private MaintenanceRecord oil(int odometer, LocalDate date) {
         return record(ServiceType.ENGINE_OIL, odometer, date, 1L);
     }
@@ -41,7 +38,7 @@ class NextServiceTest {
     @Test
     @DisplayName("주행거리를 넘겼으면 지난 것이다")
     void overdueByOdometer() {
-        // 20,000km 에 갈았으니 다음은 25,000km. 지금 26,000km 다
+        // 20,000km 정비 → 다음 25,000km, 현재 26,000km
         assertThat(compute(List.of(oil(20000, LocalDate.of(2026, 9, 1))), 26000))
                 .singleElement()
                 .satisfies(next -> {
@@ -53,10 +50,7 @@ class NextServiceTest {
     @Test
     @DisplayName("날짜를 넘겼으면 주행거리가 남아 있어도 지난 것이다")
     void overdueByDate() {
-        /*
-         * 권장 주기는 "km 또는 개월 중 먼저 오는 것" 이라 하나만 넘겨도 지난 것이다.
-         * 차를 거의 안 타면 주행거리는 한참 남는데 오일은 그래도 굳는다
-         */
+        // km·개월 중 먼저 오는 쪽 기준. 하나만 넘어도 지남
         assertThat(compute(List.of(oil(20000, LocalDate.of(2026, 1, 1))), 20100))
                 .singleElement()
                 .satisfies(next -> {
@@ -100,9 +94,9 @@ class NextServiceTest {
     @DisplayName("지난 것이 먼저 온다 — 이 목록은 '뭘 해야 하나' 를 보는 자리다")
     void overdueComesFirst() {
         List<MaintenanceRecord> records = List.of(
-                // WIPER 는 개월만(12) — 아직 멀었다
+                // WIPER 는 개월(12)만, 아직 남음
                 record(ServiceType.WIPER, 20000, LocalDate.of(2026, 9, 1), 1L),
-                // ENGINE_OIL 은 선언 순서가 더 앞이지만 지났다
+                // ENGINE_OIL 은 선언 순서가 앞이지만 지남
                 record(ServiceType.ENGINE_OIL, 10000, LocalDate.of(2020, 1, 1), 2L),
                 record(ServiceType.BRAKE_PAD, 20000, LocalDate.of(2026, 9, 1), 3L));
 
@@ -110,7 +104,7 @@ class NextServiceTest {
 
         assertThat(results.get(0).type()).isEqualTo(ServiceType.ENGINE_OIL);
         assertThat(results.get(0).overdue()).isTrue();
-        // 지나지 않은 것끼리는 enum 선언 순서 그대로 — 안정 정렬이라야 화면이 안 흔들린다
+        // 지나지 않은 것끼리는 선언 순서 유지(안정 정렬)
         assertThat(results).extracting(NextService::type)
                 .containsExactly(ServiceType.ENGINE_OIL, ServiceType.BRAKE_PAD, ServiceType.WIPER);
     }
@@ -124,7 +118,7 @@ class NextServiceTest {
 
         assertThat(compute(records, 31000)).singleElement().satisfies(next -> {
             assertThat(next.lastOdometer()).isEqualTo(30000);
-            // 최신 기록 기준이면 35,000km 라 아직이다. 옛 기록을 봤다면 지났다고 했을 것이다
+            // 최신 기록 기준 35,000km 라 아직. 옛 기록 기준이면 지남
             assertThat(next.overdue()).isFalse();
         });
     }
@@ -138,11 +132,8 @@ class NextServiceTest {
     @Test
     @DisplayName("차량별 주기가 있으면 그것을 쓴다 — 합성유는 5,000km 가 아니다")
     void vehicleIntervalWins() {
-        /*
-         * 기본값(5,000km)이면 25,000km 에서 지났다고 한다.
-         * 합성유를 쓰는 차에 10,000km 를 걸어 두면 30,000km 까지는 아직이다 —
-         * 이 손잡이가 없으면 `지남` 이 늘 켜져 있는 경고등이 되고, 그러면 아무도 안 본다
-         */
+        // 기본값(5,000km)이면 25,000km 에서 지남
+        // 10,000km 설정 시 30,000km 까지 아직
         List<MaintenanceRecord> records = List.of(oil(20000, LocalDate.of(2026, 9, 1)));
         List<ServiceInterval> overrides =
                 List.of(new ServiceInterval(vehicle, ServiceType.ENGINE_OIL, 10000, null));
@@ -160,7 +151,7 @@ class NextServiceTest {
     @Test
     @DisplayName("한쪽만 덮어쓰면 나머지는 기본값이 남는다")
     void partialOverrideKeepsDefault() {
-        // 합성유는 거리만 늘고 기간(6개월)은 그대로인 게 보통이다
+        // 거리만 늘리고 기간은 기본값
         List<ServiceInterval> overrides =
                 List.of(new ServiceInterval(vehicle, ServiceType.ENGINE_OIL, 10000, null));
 
@@ -168,7 +159,7 @@ class NextServiceTest {
                 .singleElement()
                 .satisfies(next -> {
                     assertThat(next.intervalMonths()).isEqualTo(6);
-                    // 거리는 남았지만 6개월이 지났다 → 여전히 지남
+                    // 거리는 남았지만 6개월 경과 → 지남
                     assertThat(next.overdue()).isTrue();
                 });
     }

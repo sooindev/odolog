@@ -82,7 +82,7 @@ class AccountExportServiceTest {
     @Test
     @DisplayName("이력을 각 차량 밑으로 나눠 담는다")
     void nestsRecordsUnderOwningVehicle() {
-        // 평평하게 내보내면 어느 기록이 어느 차의 것인지 우리 DB 안에서만 뜻이 있는 id 로만 알 수 있다
+        // 기록은 차량 밑에 중첩
         when(userService.findById(1L)).thenReturn(owner);
         when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(first, second));
         when(maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(1L))
@@ -103,7 +103,7 @@ class AccountExportServiceTest {
     @Test
     @DisplayName("비밀번호 해시는 담지 않는다")
     void neverExportsPasswordHash() {
-        // 백업에 넣을 이유가 없고 새어 나갈 경로만 늘린다
+        // 비밀번호 해시 제외
         when(userService.findById(1L)).thenReturn(owner);
         when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of());
         when(maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(1L))

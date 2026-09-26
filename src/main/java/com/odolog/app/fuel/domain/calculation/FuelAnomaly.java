@@ -9,30 +9,27 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 기록이 빠진 구간 탐지. 기록을 한 번 빼먹으면 그 구간 연비가 정확히 두 배
- * 절대 임계값으로는 못 잡아(25 는 불가능한 값이 아님) 그 차량의 평소 구간과 비교
- * 기준은 평균이 아니라 중앙값 — 평균은 잡으려는 이상값 자체에 끌려 올라감
- *
- * 기록을 지우는 것도 같은 사건이다 — 거리는 앞 기록까지 늘어나는데 지워진 기록의
- * 주유량은 사라지므로, 깜빡하고 안 적은 것과 남는 데이터가 똑같다
+ * 빠진 주유 기록 탐지. 기록 하나가 빠지면 그 구간 연비가 두 배
+ * 절대 임계값 대신 그 차량의 평소 구간과 비교. 기준은 중앙값(평균은 이상값에 끌려감)
+ * 기록 삭제도 같은 경우로 취급
  */
 public final class FuelAnomaly {
 
-    /** 이 위는 내연기관에서 안 나옴. 입력 오류 */
+    /** 내연기관 연비 상한. 초과는 입력 오류 */
     private static final BigDecimal MAX_REALISTIC = BigDecimal.valueOf(50);
-    /** 이 아래도 마찬가지 */
+    /** 연비 하한 */
     private static final BigDecimal MIN_REALISTIC = BigDecimal.valueOf(2);
 
-    /** 의심 배수. 1.8 = 한 번 빼먹음(2배)은 잡고 계절 편차(1.5배쯤)는 통과 */
+    /** 의심 배수. 누락(2배)은 탐지, 계절 편차(1.5배 안팎)는 통과 */
     private static final BigDecimal SUSPICION_RATIO = BigDecimal.valueOf(1.8);
 
-    /** 중앙값이 뜻을 가지는 최소 구간 수 */
+    /** 중앙값을 쓸 최소 구간 수 */
     private static final int MIN_SEGMENTS_FOR_MEDIAN = 3;
 
     private FuelAnomaly() {
     }
 
-    /** 물리적으로 불가능한 연비인지. 미계산이면 false */
+    /** 물리적으로 불가능한 연비 여부. 미계산이면 false */
     public static boolean isImpossible(BigDecimal kmPerLiter) {
         if (kmPerLiter == null) {
             return false;
@@ -41,14 +38,14 @@ public final class FuelAnomaly {
     }
 
     /**
-     * 그 차량의 '평소 구간'. 임계값을 한 번 계산해 두고 구간마다 물어본다
+     * 그 차량의 평소 구간 기준. 한 번 계산 후 구간마다 판정
      *
      * @param records 주행거리 오름차순 정렬된 한 차량의 주유 기록
      */
     public static Baseline baselineOf(List<FuelRecord> records) {
         List<Segment> segments = segments(records);
         if (segments.size() < MIN_SEGMENTS_FOR_MEDIAN) {
-            // 구간이 두엇뿐이면 '평소'가 없음. 판단 보류
+            // 구간이 부족하면 판단 보류
             return Baseline.NONE;
         }
 
@@ -61,21 +58,18 @@ public final class FuelAnomaly {
     }
 
     /**
-     * 평소 구간과 견주는 기준. NONE 이면 아무것도 의심하지 않는다
+     * 평소 구간 기준. NONE 이면 판정 안 함
      *
-     * @param distanceThreshold    이 거리를 넘으면 '평소보다 긴 구간'
-     * @param efficiencyThreshold  이 연비를 넘으면 '평소보다 잘 나온 구간'
+     * @param distanceThreshold    초과 시 평소보다 긴 구간
+     * @param efficiencyThreshold  초과 시 평소보다 잘 나온 구간
      */
     public record Baseline(BigDecimal distanceThreshold, BigDecimal efficiencyThreshold) {
 
         public static final Baseline NONE = new Baseline(null, null);
 
         /**
-         * 이 구간에 주유 기록이 빠졌다고 볼 수 있는가
-         *
-         * 거리와 연비가 둘 다 평소를 넘어야 한다. 거리만 보면 장거리 여행을 잡는다 —
-         * 멀리 갔으면 그만큼 넣었으므로 거리는 길어도 연비는 평소와 비슷하다.
-         * 기록이 빠진 구간은 거리만 늘고 주유량은 그대로라 연비까지 함께 뛴다
+         * 주유 기록 누락 의심 여부
+         * 거리와 연비가 둘 다 평소 초과일 때만. 장거리 여행(거리만 김) 제외
          */
         public boolean suspectsMissingRecord(int distance, BigDecimal efficiency) {
             if (distanceThreshold == null || efficiency == null) {
@@ -87,7 +81,7 @@ public final class FuelAnomaly {
         }
     }
 
-    /** 성립하는 구간만. 연비 계산과 같은 규칙이라야 두 숫자가 어긋나지 않는다 */
+    /** 성립하는 구간만. 연비 계산과 같은 규칙 */
     private record Segment(int distance, BigDecimal efficiency) {
     }
 
@@ -95,14 +89,14 @@ public final class FuelAnomaly {
         List<Segment> segments = new ArrayList<>();
 
         for (int i = 1; i < records.size(); i++) {
-            // 기준점은 직전과의 연결을 끊음 — 연비 계산과 같은 규칙
+            // 기준점은 직전과 연결 끊김
             if (records.get(i).isResetPoint()) {
                 continue;
             }
 
             int distance = records.get(i).getOdometer() - records.get(i - 1).getOdometer();
             BigDecimal used = records.get(i).getLiters();
-            // 연비 계산과 같은 규칙 — 주유량을 안 적은 구간은 '평소' 를 재는 표본에서도 빠진다
+            // 주유량 없는 구간은 표본에서 제외
             if (distance <= 0 || used == null || used.compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }

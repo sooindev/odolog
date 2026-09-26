@@ -22,8 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 
 /**
- * 경로는 /api/users/me 지만 패키지는 account
- * UserController 에 두면 user 가 account 를 알게 되어 순환
+ * 경로는 /api/users/me, 패키지는 account
+ * UserController 에 두면 user → account 순환
  */
 @RestController
 public class AccountController {
@@ -44,39 +44,34 @@ public class AccountController {
     }
 
     /**
-     * 계정의 기록 전부를 내려준다. 탈퇴 전에 챙겨 갈 수 있어야 한다
-     * "오늘"을 여기서 만들어 넘긴다 — 서비스가 now() 를 부르면 테스트에서 고정할 수 없다
+     * 계정 기록 전체 내보내기
+     * 오늘 날짜는 여기서 생성. 서비스 안의 now() 는 테스트 고정 불가
      */
     @GetMapping("/api/users/me/export")
     public AccountExportResponse export(@LoginUser Long userId) {
         return accountExportService.export(userId, LocalDateTime.now());
     }
 
-    /**
-     * 내보낸 JSON 을 되돌려 넣는다. 200 + 무엇이 들어갔는지
-     *
-     * 같은 파일을 두 번 넣어도 두 배가 되지 않는다 — 날짜·주행거리가 같으면 건너뛴다.
-     * 하나라도 검증에 걸리면 전부 안 들어간다
-     */
+    /** 내보낸 JSON 복원. 같은 기록은 건너뜀, 하나라도 검증 실패면 전체 취소 */
     @PostMapping("/api/users/me/restore")
     public AccountRestoreResponse restore(@Valid @RequestBody AccountRestoreRequest request,
                                             @LoginUser Long userId) {
         return accountRestoreService.restore(userId, request);
     }
 
-    /** 본문 있는 DELETE. 비밀번호를 URL 에 넣으면 접근 로그·브라우저 기록에 평문으로 남음 */
+    /** 본문 있는 DELETE. URL 의 비밀번호는 접근 로그·브라우저 기록에 남음 */
     @DeleteMapping("/api/users/me")
     public ResponseEntity<Void> withdraw(@Valid @RequestBody WithdrawRequest request,
                                            @LoginUser Long userId,
                                            HttpServletRequest httpRequest) {
         accountWithdrawalService.withdraw(userId, request);
 
-        // 세션도 끊기. 없는 사용자 id 를 든 세션이 남으면 다음 요청에서 500
+        // 현재 세션 종료. 없는 사용자 id 가 남으면 다음 요청 500
         HttpSession session = httpRequest.getSession(false);
         if (session != null) {
             session.invalidate();
         }
-        // 다른 기기의 세션까지. 여기서 안 끊으면 그쪽은 최대 14일 동안 500 을 받는다
+        // 다른 기기 세션까지 종료
         sessionRegistry.invalidateAll(userId);
 
         return ResponseEntity.noContent().build();

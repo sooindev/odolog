@@ -57,11 +57,11 @@ class PasswordResetTokenRepositoryTest {
     @Test
     @DisplayName("같은 해시를 두 번 저장할 수 없다")
     void rejectsDuplicateHash() {
-        // 제약이 없으면 findByTokenHash 가 2건을 만나 예외가 난다
+        // 유니크 제약 없으면 findByTokenHash 가 2건을 만나 예외
         passwordResetTokenRepository.save(token("abc123"));
         entityManager.flush();
 
-        // IDENTITY 라 save() 시점에 바로 INSERT 된다 — 예외도 거기서 난다
+        // IDENTITY 라 save() 시점에 INSERT, 예외도 그 시점
         assertThatThrownBy(() -> {
             passwordResetTokenRepository.save(token("abc123"));
             entityManager.flush();
@@ -71,7 +71,7 @@ class PasswordResetTokenRepositoryTest {
     @Test
     @DisplayName("사용자의 토큰을 한 번에 지운다")
     void deletesAllTokensOfUser() {
-        // 새로 발급할 때와 탈퇴할 때 둘 다 쓴다
+        // 재발급·탈퇴 공용
         passwordResetTokenRepository.save(token("aaa"));
         passwordResetTokenRepository.save(token("bbb"));
         entityManager.flush();

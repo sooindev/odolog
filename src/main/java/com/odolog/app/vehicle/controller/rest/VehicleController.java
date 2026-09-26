@@ -47,7 +47,7 @@ public class VehicleController {
             @ParameterObject
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        // 서비스가 DTO 를 돌려준다 — 지남 수가 엔티티에 없는 계산값이라서
+        // 서비스가 DTO 반환. 지남 수가 계산값이라서
         PageResponse<VehicleResponse> vehicles =
                 PageResponse.from(vehicleService.findMyVehicles(ownerId, pageable));
 
@@ -60,7 +60,7 @@ public class VehicleController {
         return ResponseEntity.ok(VehicleResponse.from(vehicle));
     }
 
-    // 주행거리는 별도 엔드포인트 — 감소 금지 규칙이 붙어 성격이 다르고 쓰는 순간도 다름
+    // 주행거리는 별도 엔드포인트. 감소 금지 규칙
     @PatchMapping("/{vehicleId}")
     public ResponseEntity<VehicleResponse> update(@PathVariable String vehicleId,
                                                     @Valid @RequestBody VehicleUpdateRequest request,

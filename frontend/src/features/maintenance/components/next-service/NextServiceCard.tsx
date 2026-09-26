@@ -18,10 +18,8 @@ import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import type { NextServiceResponse, ServiceType } from '@/features/maintenance/api/types/types'
 
 /**
- * 종류별 다음 정비 시점. 요청 1번
- * 종류마다 요청하던 방식(15요청)을 버리며 "일부만 뜨는" 부분 실패 상태도 사라짐
- * 이력 있는 종류만 옴 — 15줄 중 13줄이 "이력 없음"이면 빈칸 목록이 됨
- * 재조회 장치가 없는 이유 — 부모가 key 를 바꿔 새로 만듦
+ * 종류별 다음 정비 시점. 요청 1번, 이력 있는 종류만
+ * 재조회는 부모의 key 변경
  */
 export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
   const load = useCallback(() => fetchNextServices(vehicleId), [vehicleId])
@@ -32,10 +30,10 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
     reload,
   } = useAsyncData(load, '다음 정비 시점을 불러오지 못했습니다.')
 
-  // 주기를 고치는 중인 종류. 한 번에 하나만 연다 — 여럿이 열리면 어느 줄을 고치는지 흐려진다
+  // 주기 편집 중인 종류. 한 번에 하나
   const [editing, setEditing] = useState<ServiceType | null>(null)
 
-  // 껍데기는 항상 렌더. 카드가 통째로 사라지면 아래 내용이 위로 튐
+  // 껍데기는 항상 렌더. 아래 내용 튐 방지
   return (
     <Card>
       <CardHeader>
@@ -63,14 +61,10 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
         )}
 
         {!loading && error === null && results !== null && results.length > 0 && (
-          // divide-y — 항목마다 테두리를 붙이지 않고 "사이"에만. 첫 줄 위·마지막 줄 아래에 선이 안 생김
+          // divide-y: 항목 사이에만 선
           <ul className="divide-y divide-border">
             {results.map((result) => (
-              /*
-                넓은 화면 3열(종류 / 마지막 정비 / 다음 정비), 좁으면 2열
-                가운데 "마지막 정비"는 sm 미만에서 숨김 — 좁은 화면에서는 결론만
-                lastServiceOdometer 는 백엔드가 계속 주고 있었으나 화면이 안 쓰던 값
-              */
+              // 넓은 화면 3열(종류 / 마지막 정비 / 다음 정비), 좁으면 2열
               <li
                 key={result.type}
                 className="grid grid-cols-[1fr_auto] items-baseline gap-x-6 gap-y-1.5 py-5 first:pt-0 last:pb-0 sm:grid-cols-[8rem_minmax(0,1fr)_auto]"
@@ -79,12 +73,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                   <span className="truncate text-body font-medium tracking-[-0.015em] text-strong">
                     {SERVICE_TYPE_LABELS[result.type]}
                   </span>
-                  {/*
-                    빨강을 쓰지 않는다. 빨강은 "실패" 를 나르는 기능색이고(디자인 규칙 3)
-                    주유 목록의 `확인 필요`(입력 오류)가 이미 그 뜻으로 쓰고 있다.
-                    정비 시기가 지난 것은 잘못이 아니라 할 일이라, 모노톤 시스템의 방식대로
-                    대비를 올려서 말한다 — 테두리 친 라벨 + 아래 값도 strong 으로
-                  */}
+                  {/* 지남 표시. 빨강(실패) 대신 테두리 + strong */}
                   {result.overdue && (
                     <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
                       지남
@@ -104,10 +93,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                   >
                     {describeNext(result)}
                   </span>
-                  {/*
-                    주기를 고치는 손잡이. 이게 없으면 `지남` 이 늘 켜져 있는 경고등이 된다 —
-                    엔진오일 기본값은 광유 기준 5,000km 인데 합성유는 10,000~15,000km 다
-                  */}
+                  {/* 주기 편집 버튼 */}
                   <button
                     type="button"
                     className="shrink-0 text-unit text-muted-foreground underline-offset-4 transition-opacity duration-200 ease-apple hover:opacity-70 hover:underline"
@@ -118,7 +104,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                 </span>
 
                 {editing === result.type && (
-                  // 행 전체 폭을 쓴다. 오른쪽 끝에서 열면 입력칸 두 개가 들어갈 자리가 없다
+                  // 편집 폼은 행 전체 폭
                   <div className="col-span-full">
                     <IntervalForm
                       vehicleId={vehicleId}
@@ -140,10 +126,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
   )
 }
 
-/**
- * 이 차량에서 쓸 주기. 비우면 기본값으로 되돌아간다
- * 두 칸을 언제나 함께 보낸다 — 서버가 "안 보냄" 과 "비움" 을 가르지 않는다(전체 교체)
- */
+/** 차량별 주기 편집. 두 칸을 항상 함께 전송(전체 교체), 비우면 기본값 */
 function IntervalForm({
   vehicleId,
   result,
@@ -155,15 +138,8 @@ function IntervalForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  /*
-   * 덮어쓴 적이 없으면 **빈 칸으로 연다.** 적용 중인 값(=기본값)을 채워 두면
-   * 아무것도 안 고치고 저장했을 때 기본값과 똑같은 커스텀 설정이 생기고,
-   * 버튼이 "주기 변경됨" 으로 바뀐다 — 값은 같은데 상태만 달라진다.
-   * 나중에 기본 권장 주기를 손보면 그 차만 옛 값에 묶인 채 아무도 모른다.
-   *
-   * 도움말("비우면 기본값을 씁니다")과도 그래야 앞뒤가 맞는다.
-   * 지금 적용 중인 값은 placeholder 로 보여 준다
-   */
+  // 덮어쓴 적이 없으면 빈 칸으로 시작. 기본값을 채우면 그대로 저장 시 customized 로 바뀜
+  // 적용 중인 값은 placeholder
   const [km, setKm] = useState(
     result.customized && result.intervalKm !== null ? String(result.intervalKm) : '',
   )
@@ -191,7 +167,7 @@ function IntervalForm({
   }
 
   return (
-    // 정비 폼과 같은 펼침 연출. 닫을 때는 연출 없음
+    // 펼침 연출. 닫을 때는 없음
     <form className="form-open" onSubmit={handleSubmit}>
       <div className="flex flex-col gap-4 bg-sunken p-4">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -250,7 +226,7 @@ function IntervalForm({
   )
 }
 
-/** 근거 — 마지막으로 이 정비를 한 시점 */
+/** 마지막 정비 시점 */
 function describeLast(result: NextServiceResponse) {
   if (result.lastServiceDate === null) {
     return ''
@@ -264,8 +240,7 @@ function describeLast(result: NextServiceResponse) {
   return `마지막 ${parts.join(' · ')}`
 }
 
-/** 결론 — 권장 주기 없음(OTHER) / 정상 계산 두 경우
- *  이력 없는 종류는 서버가 안 보내므로 여기서 다룰 필요 없음 */
+/** 다음 정비 시점. 주기 없음(OTHER) 또는 계산값 */
 function describeNext(result: NextServiceResponse) {
   const parts: string[] = []
   if (result.nextServiceOdometer !== null) {

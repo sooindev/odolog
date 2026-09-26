@@ -18,7 +18,7 @@ export function VehicleNewPage() {
   const [plateNumber, setPlateNumber] = useState('')
   const [manufacturer, setManufacturer] = useState('')
   const [modelName, setModelName] = useState('')
-  // 숫자도 문자열 보관 — 입력 도중의 빈 문자열을 숫자로 표현할 수 없음
+  // 입력 중 빈 값 표현을 위해 문자열 보관
   const [modelYear, setModelYear] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -33,7 +33,7 @@ export function VehicleNewPage() {
         plateNumber,
         manufacturer,
         modelName,
-        // 전송 직전 숫자 변환. 문자열이면 백엔드가 400
+        // 전송 직전 숫자 변환
         modelYear: Number(modelYear),
       })
       navigate(`/vehicles/${vehicle.id}`, { replace: true })
@@ -46,11 +46,9 @@ export function VehicleNewPage() {
   }
 
   return (
-    // back — 목록에서 파고든 화면이라 돌아갈 길을 머리말에
-    // 폼 아래 "취소" 와 역할이 다름. 취소는 입력을 버리는 것, 이건 단순 이동
+    // back: 목록으로 이동. 입력을 버리는 취소와 별개
     <Page back={{ to: '/vehicles', label: '내 차량' }} eyebrow="Garage" title="차량 등록">
-      {/* 폼만 가운데 좁게 두면 양옆이 빔
-          설명을 왼쪽 열로 빼 남는 폭을 여백이 아니라 정보로 */}
+      {/* 왼쪽 설명 / 오른쪽 폼 2단 */}
       <Section
         title="차량 정보"
         description="번호판은 내 차량 안에서만 중복되지 않으면 됩니다. 다른 사람이 같은 번호판을 등록해 두었더라도 상관없습니다."
@@ -68,7 +66,7 @@ export function VehicleNewPage() {
                 />
               </Field>
 
-              {/* 제조사와 모델명은 함께 읽히는 한 쌍. 좁은 화면에서만 위아래로 */}
+              {/* 제조사·모델명 한 줄. 좁은 화면만 위아래 */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="제조사" htmlFor="manufacturer">
                   <Input
@@ -99,7 +97,7 @@ export function VehicleNewPage() {
                   min={1900}
                   max={2100}
                   placeholder="2023"
-                  // tabular-nums — 입력 중 글자 흔들림 방지
+                  // tabular-nums: 입력 중 흔들림 방지
                   className="tabular-nums"
                   value={modelYear}
                   onChange={(event) => setModelYear(event.target.value)}

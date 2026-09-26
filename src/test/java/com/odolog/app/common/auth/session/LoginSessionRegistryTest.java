@@ -43,7 +43,7 @@ class LoginSessionRegistryTest {
     @Test
     @DisplayName("같은 브라우저에서 다른 계정으로 다시 로그인하면 옛 계정 목록에서 빠진다")
     void movesSessionToNewOwner() {
-        // 로그인은 세션을 새로 만들지 않고 id 만 바꿔 다시 쓴다 — 같은 객체가 두 사람 목록에 남을 수 있다
+        // 로그인은 세션 id 만 바꿔 재사용. 같은 객체가 두 목록에 남을 가능성
         MockHttpSession browser = new MockHttpSession();
         registry.register(1L, browser);
         registry.register(2L, browser);
@@ -74,7 +74,7 @@ class LoginSessionRegistryTest {
 
         registry.sessionDestroyed(new HttpSessionEvent(loggedOut));
 
-        // 목록에 남아 있었다면 여기서 invalidate() 가 다시 불려 IllegalStateException
+        // 목록에 남아 있었다면 invalidate() 재호출로 예외
         assertThat(loggedOut.isInvalid()).isFalse();
         registry.invalidateAll(1L);
         assertThat(loggedOut.isInvalid()).isFalse();

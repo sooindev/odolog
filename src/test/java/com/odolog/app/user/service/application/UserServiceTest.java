@@ -173,11 +173,11 @@ class UserServiceTest {
         long wrongPassword = fastestLogin("test@odolog.com");
         long unknownEmail = fastestLogin("nobody@odolog.com");
 
-        // BCrypt 한 번이 수십 ms 라 건너뛰면 수백 배 차이가 난다. 절반 선은 부하가 있어도 넉넉하다
+        // BCrypt 생략 시 수백 배 차이. 절반 기준은 부하가 있어도 여유
         assertThat(unknownEmail).isGreaterThan(wrongPassword / 2);
     }
 
-    /** 가장 빠른 한 번(ns). 평균은 GC·JIT 한 번에 끌려가서 최솟값으로 본다 */
+    /** 5회 중 최솟값(ns). 평균은 GC·JIT 에 흔들림 */
     private long fastestLogin(String email) {
         long fastest = Long.MAX_VALUE;
         for (int i = 0; i < 5; i++) {
@@ -185,7 +185,7 @@ class UserServiceTest {
             try {
                 userService.login(new LoginRequest(email, "wrongpassword"));
             } catch (AuthenticationFailedException expected) {
-                // 둘 다 실패하는 것이 정상. 걸린 시간만 본다
+                // 둘 다 실패가 정상. 시간만 측정
             }
             fastest = Math.min(fastest, System.nanoTime() - start);
         }

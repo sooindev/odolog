@@ -1,4 +1,4 @@
-# 커밋마다 테스트를 돌린다. 사람 기억에 기대면 언젠가 빠뜨린다
+# 커밋마다 테스트
 name: CI
 
 on:
@@ -11,15 +11,13 @@ jobs:
     name: 백엔드 테스트
     runs-on: ubuntu-latest
 
-    # 이 저장소의 테스트는 H2 가 아니라 진짜 MariaDB 를 쓴다
-    # ddl-auto 가 만드는 스키마가 DB 구현마다 달라, 운영과 다른 DB 로 검증하면
-    # "테스트는 통과하는데 운영만 안 바뀌는" 상황을 이 저장소는 이미 두 번 겪었다
+    # 실제 MariaDB 사용. H2 는 ddl-auto 스키마가 운영과 다름
     services:
       mariadb:
         image: mariadb:12.3
         env:
           MARIADB_ROOT_PASSWORD: root
-          # src/test/resources/application.yml 이 이 값을 그대로 적고 있다
+          # src/test/resources/application.yml 과 같은 값
           MARIADB_DATABASE: odolog_test
           MARIADB_USER: odolog_test
           MARIADB_PASSWORD: odolog_test
@@ -40,8 +38,7 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      # cleanTest 를 붙이는 이유: 그냥 test 는 up-to-date 로 건너뛴다
-      # 캐시가 복원된 실행에서 초록불만 보고 넘어가는 일을 막는다
+      # cleanTest: 캐시 복원 시 test 가 up-to-date 로 건너뛰는 것 방지
       - run: ./gradlew cleanTest test
 
       - if: failure()
@@ -66,12 +63,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # ci 는 package-lock.json 을 그대로 설치한다. install 과 달리 락을 고쳐 쓰지 않음
+      # package-lock.json 그대로 설치
       - run: npm ci
 
       - run: npm run lint
 
       - run: npm run test
 
-      # build 안에 tsc -b 가 들어 있다. 타입 검사와 번들을 한 번에
+      # build 에 tsc -b 포함
       - run: npm run build

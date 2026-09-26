@@ -9,7 +9,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
       data-slot="textarea"
       className={cn(
         controlClassName,
-        // field-sizing-content — 입력 줄 수만큼 높이 자동 확장
+        // field-sizing-content: 줄 수만큼 높이 확장
         "field-sizing-content min-h-20 resize-none py-3 leading-relaxed",
         className
       )}

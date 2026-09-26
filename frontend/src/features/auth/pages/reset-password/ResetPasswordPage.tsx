@@ -26,7 +26,7 @@ export function ResetPasswordPage() {
     event.preventDefault()
     setError(null)
 
-    // 확인란은 서버로 보내지 않는다. 오타 방지 장치일 뿐이다
+    // 확인란은 전송하지 않음
     if (newPassword !== confirmPassword) {
       setError('새 비밀번호가 서로 다릅니다.')
       return
@@ -36,10 +36,7 @@ export function ResetPasswordPage() {
 
     try {
       await confirmPasswordReset({ token: token ?? '', newPassword })
-      // 바꾼 비밀번호로 직접 로그인하게 한다 — 여기서 자동 로그인시키면
-      // 메일 링크를 누른 사람이 곧 계정 주인이라고 믿는 셈이 된다
-      // 로그인 화면이 아무 말도 안 하면 바뀐 건지 몰라 재설정을 한 번 더 시도하게 된다.
-      // 쿼리가 아니라 state — 주소에 남으면 새로고침할 때마다 다시 뜬다
+      // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
       navigate('/login', {
         replace: true,
         state: { notice: '비밀번호를 바꿨습니다. 새 비밀번호로 로그인해 주세요.' },
@@ -51,7 +48,7 @@ export function ResetPasswordPage() {
     }
   }
 
-  // 토큰 없이 들어온 경우. 주소를 직접 친 사람이다
+  // 토큰 없이 직접 들어온 경우
   if (token === null || token === '') {
     return (
       <Page title="새 비밀번호" description="메일로 받은 링크에서만 들어올 수 있습니다.">
@@ -82,8 +79,7 @@ export function ResetPasswordPage() {
               required
               autoFocus
               minLength={8}
-              // 글자 수 상한이라 한글 24자(=72바이트)는 못 막는다. 거친 천장일 뿐이고
-              // 실제 판정은 위 hint 와 서버의 @MaxBytes 가 한다
+              // 글자 수 상한은 대략적인 천장. 실제 판정은 hint 와 서버 @MaxBytes
               maxLength={72}
               autoComplete="new-password"
               value={newPassword}

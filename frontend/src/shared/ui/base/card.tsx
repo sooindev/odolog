@@ -1,11 +1,8 @@
 import * as React from "react"
 import { cn } from "cn"
 
-/*
- * 카드가 하는 일은 둘뿐 — 아주 옅은 면과 1px 괘선
- * 그림자 없음. 어두운 바탕에서는 보이지도 않으면서 가장자리만 탁해짐
- * 반복되는 목록에는 카드를 씌우지 않고 행을 괘선으로 나눔
- */
+// 옅은 면 + 1px 괘선. 그림자 없음
+// 반복 목록은 카드 대신 괘선 행
 function Card({
   className,
   size = "default",
@@ -37,24 +34,14 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-/*
- * shadcn 원본은 div 지만 h2 로 바꿨다. 이 앱에서 카드 제목은 곧 구역 제목이고,
- * 차량 상세 한 화면에만 카드가 여섯이다 — div 로 두면 스크린리더의 heading 목차에
- * 제목이 h1 하나만 잡혀 화면 전체가 한 덩어리로 보인다.
- * 레벨을 prop 으로 열지 않은 이유: 지금 CardTitle 열 곳이 전부 Page(h1) 직속이라
- * h2 가 맞고, Section(h2) 안에 카드를 넣는 화면이 아직 없다. 생기면 그때 연다.
- */
+// 제목 태그는 h2. 카드 제목 = 구역 제목, 스크린리더 목차용
+// 레벨 prop 은 Section 안 카드가 생길 때
 function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return (
     <h2
       data-slot="card-title"
       className={cn(
-        /*
-         * ⚠️ 타입 스케일 토큰(text-section)을 쓸 수 없는 자리다.
-         * cn 은 커스텀 테마 이름을 **색 유틸리티로 오해**해서 text-strong 과 같은 그룹으로
-         * 묶고 하나만 남긴다 — 여기서는 크기·굵기·자간이 통째로 사라져 있었다.
-         * 임의 값은 크기로 정확히 인식하므로 토큰 값을 그대로 풀어 쓴다(--text-section 과 동일).
-         */
+        // 크기는 임의 값(--text-section 과 동일). cn 이 커스텀 토큰을 색으로 인식해 삭제
         "font-heading text-[1.0625rem] leading-[1.35] font-semibold tracking-[-0.022em] text-strong",
         className
       )}

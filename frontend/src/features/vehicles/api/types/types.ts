@@ -1,7 +1,4 @@
-/**
- * 백엔드 com.odolog.app.vehicle.dto 대응
- * 자동 동기화가 아니므로 백엔드 DTO 를 고치면 여기도 함께
- */
+/** 백엔드 vehicle DTO 대응. 백엔드 변경 시 함께 수정 */
 
 export interface VehicleRegisterRequest {
   plateNumber: string
@@ -10,10 +7,7 @@ export interface VehicleRegisterRequest {
   modelYear: number
 }
 
-/**
- * 부분 수정이라 전부 선택 — 보낸 필드만 변경
- * odometer 제외 — 감소 금지 규칙이 붙어 전용 엔드포인트 사용
- */
+/** 부분 수정. 주행거리는 전용 엔드포인트 */
 export interface VehicleUpdateRequest {
   plateNumber?: string
   manufacturer?: string
@@ -23,25 +17,19 @@ export interface VehicleUpdateRequest {
 
 export interface UpdateOdometerRequest {
   odometer: number
-  /**
-   * 감소를 허용할지. 안 보내면 서버가 막음
-   * 계기판 교체·자리수 오타 정정에만 실어 보냄 — 실수로 낮추는 것은 그대로 걸려야 함
-   */
+  /** 감소 허용 여부. 계기판 교체·자리수 오타 정정 때만 */
   force?: boolean
 }
 
 export interface VehicleResponse {
-  /** 공개 id(12자 무작위). 숫자 PK 는 서버 밖으로 안 나온다 — 번호가 등록 순서를 말하므로 */
+  /** 공개 id(12자) */
   id: string
   plateNumber: string
   manufacturer: string
   modelName: string
-  /** 등록 API 는 NotNull 이지만 컬럼은 nullable — 검증 이전 데이터는 null 가능 */
+  /** 예전 데이터는 null 가능 */
   modelYear: number | null
   odometer: number
-  /**
-   * 권장 주기가 지난 정비 종류 수. **목록 조회에서만 채워진다**
-   * 그 밖에서는 0 이 아니라 null — 0 은 "지난 게 없다" 이고 여기서 할 말은 "안 셌다" 다
-   */
+  /** 권장 주기가 지난 정비 종류 수. 목록 조회에서만 채움, 그 밖에는 null */
   overdueServiceCount: number | null
 }

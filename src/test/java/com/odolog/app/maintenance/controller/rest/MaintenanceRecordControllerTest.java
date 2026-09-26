@@ -95,7 +95,7 @@ class MaintenanceRecordControllerTest {
     @Test
     @DisplayName("미래 날짜로 정비 이력을 등록하면 400")
     void registerFutureDateRejected() throws Exception {
-        // 날짜를 잘못 치면 그 기록이 목록 맨 위에 고정되고 다음 정비 시점까지 그 값으로 계산된다
+        // 미래 날짜 차단. 목록 맨 위 고정·다음 정비 계산 왜곡 방지
         MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.now().plusDays(1));
 
@@ -126,8 +126,7 @@ class MaintenanceRecordControllerTest {
     @Test
     @DisplayName("경로 변수 타입이 안 맞으면 500이 아니라 400")
     void invalidPathVariableType() throws Exception {
-        // MethodArgumentTypeMismatchException 핸들러 검증
-        // 차량·기록 id 가 모두 문자열(공개 id)이 되어 남은 타입 있는 경로 변수는 정비 종류(enum)뿐이다
+        // MethodArgumentTypeMismatchException 처리 확인. 타입 있는 경로 변수는 정비 종류(enum)만
         mockMvc.perform(patch("/api/vehicles/k3Xq9mTa2LpZ/maintenance-records/intervals/NOT_A_TYPE")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -166,11 +165,7 @@ class MaintenanceRecordControllerTest {
     @Test
     @DisplayName("없는 종류를 보내면 400 — 우리 에러 모양으로, 어느 필드인지까지")
     void unknownServiceTypeIsBadRequest() throws Exception {
-        /*
-         * 전에는 핸들러가 없어 스프링 기본 응답(timestamp/status/error/path)이 나갔다.
-         * message 가 없어 화면이 "요청에 실패했습니다 (HTTP 400)" 로 떨어졌고, 무엇이
-         * 틀렸는지 말해 주지 못했다.
-         */
+        // 본문 해석 실패도 message 가 있는 400
         mockMvc.perform(post("/api/vehicles/10/maintenance-records")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -228,7 +223,7 @@ class MaintenanceRecordControllerTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].type").value("ENGINE_OIL"))
                 .andExpect(jsonPath("$[1].type").value("TRANSMISSION_FLUID"))
-                // 지남 여부가 응답에 실려야 화면이 오늘과 직접 비교하지 않는다
+                // 지남 여부는 응답에 포함. 화면이 직접 비교하지 않음
                 .andExpect(jsonPath("$[0].overdue").value(true))
                 .andExpect(jsonPath("$[1].overdue").value(false));
     }

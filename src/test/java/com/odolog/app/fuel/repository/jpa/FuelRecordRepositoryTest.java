@@ -82,7 +82,7 @@ class FuelRecordRepositoryTest {
         FuelRecord first = save(vehicle, 10000, "30.00");
         FuelRecord second = save(vehicle, 10000, "25.00");
 
-        // 둘이 페이지 경계로 갈려도 second 의 짝은 first 다. 전에는 9500 을 잡아 같은 구간이 두 번 보였다
+        // 페이지 경계로 갈려도 second 의 짝은 first
         assertThat(fuelRecordRepository.findPrevious(vehicle.getId(), 10000, second.getId()))
                 .get().extracting(FuelRecord::getId).isEqualTo(first.getId());
     }

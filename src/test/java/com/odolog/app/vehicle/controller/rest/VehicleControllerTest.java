@@ -69,7 +69,7 @@ class VehicleControllerTest {
         mockMvc.perform(get("/api/vehicles").session(loginSessionOf(1L)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].plateNumber").value("12가3456"))
-                // 목록에서만 채워진다 — 홈에만 있고 목록에는 없어 두 화면이 다르게 답하던 자리
+                // 목록에서만 채움
                 .andExpect(jsonPath("$.items[0].overdueServiceCount").value(2))
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
@@ -201,10 +201,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("단건 응답의 지남 수는 0 이 아니라 null — '안 셌다' 와 '없다' 는 다르다")
     void singleResponseLeavesOverdueCountNull() throws Exception {
-        /*
-         * 0 을 넣으면 "지난 게 없다" 로 읽힌다. 나중에 상세 화면이 이 값을 쓰면 항상 "없음" 이
-         * 뜨고 왜 안 나오는지 한참 찾게 된다 — 연비가 구간 미성립일 때 null 인 것과 같은 규칙
-         */
+        // 단건 응답의 지남 수는 null. 0 은 지난 것 없음이라는 다른 뜻
         User owner = new User("owner@odolog.com", "encoded", "닉네임", null);
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
@@ -219,11 +216,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("주행거리에 상한이 있다 — 자리수를 크게 잘못 넣으면 차량이 그 값에 묶인다")
     void updateOdometerUpperBound() throws Exception {
-        /*
-         * liftOdometerTo 가 "지금까지 기록된 최댓값" 을 잡아 두기 때문에, 한 번 20억이 들어가면
-         * 그 뒤 모든 정비·주유 폼이 그 값을 기준으로 말하기 시작한다.
-         * 되돌리는 길은 force 정정 하나뿐이라 애초에 막는다.
-         */
+        // 주행거리 상한. 한 번 들어간 큰 값은 force 정정으로만 복구
         mockMvc.perform(patch("/api/vehicles/10/odometer")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -241,7 +234,7 @@ class VehicleControllerTest {
         when(vehicleService.updateOdometer(eq(1L), eq("10"), any(UpdateOdometerRequest.class)))
                 .thenReturn(vehicle);
 
-        // 200만 km — 실제 차량이 도달할 수 없는 선이라 여기까지는 열어 둔다
+        // 상한 200만 km 까지는 허용
         mockMvc.perform(patch("/api/vehicles/10/odometer")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)

@@ -12,10 +12,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
     Page<Vehicle> findByOwnerId(Long ownerId, Pageable pageable);
 
-    // 탈퇴 전용. 대상이 "한 사람의 전부"라 페이지를 나눌 수 없음 (나누면 첫 장만 지움)
+    // 탈퇴 전용 전체 조회. 페이지 분할 시 첫 장만 삭제되는 문제
     List<Vehicle> findAllByOwnerId(Long ownerId);
 
-    /** URL 의 공개 id 로 찾기. 숫자 id 는 서버 밖으로 나가지 않는다 */
+    /** URL 의 공개 id 로 조회 */
     Optional<Vehicle> findByPublicId(String publicId);
 
     boolean existsByOwnerIdAndPlateNumber(Long ownerId, String plateNumber);

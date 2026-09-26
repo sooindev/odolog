@@ -51,7 +51,7 @@ class PasswordResetControllerTest {
     @Test
     @DisplayName("가입되지 않은 주소여도 똑같이 204")
     void requestHidesWhetherAccountExists() throws Exception {
-        // 응답이 갈리면 그게 곧 가입 여부 조회 API 가 된다
+        // 가입 여부와 무관한 같은 응답
         request(new PasswordResetRequest("nobody@odolog.com"), false)
                 .andExpect(status().isNoContent());
     }
@@ -66,7 +66,7 @@ class PasswordResetControllerTest {
     @Test
     @DisplayName("같은 주소로 너무 자주 요청하면 429")
     void requestIsRateLimited() throws Exception {
-        // 메일 폭탄을 막는다. 로그인 제한과 같은 장치를 키만 갈라 쓴다
+        // 메일 폭주 방지. 로그인 리미터 공용
         doThrow(new TooManyRequestsException("로그인 시도가 너무 많습니다. 10분 후 다시 시도해 주세요."))
                 .when(passwordResetService).request(anyString());
 
@@ -101,7 +101,7 @@ class PasswordResetControllerTest {
     @Test
     @DisplayName("새 비밀번호도 72바이트를 넘으면 400")
     void confirmRejectsPasswordOverByteLimit() throws Exception {
-        // 가입·변경만 막으면 그 둘로 못 만드는 비밀번호가 여기로 우회한다
+        // 새 비밀번호 제한은 가입·변경과 동일
         request(new PasswordResetConfirmRequest("token", "가".repeat(25)), true)
                 .andExpect(status().isBadRequest());
     }

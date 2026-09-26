@@ -40,7 +40,7 @@ public class FuelRecordController {
         return ResponseEntity.status(HttpStatus.CREATED).body(record);
     }
 
-    /** sort 없음. 정렬이 곧 연비 계산의 전제라 서비스가 고정 (FuelRecordService.FIXED_SORT) */
+    /** sort 미사용. 정렬은 서비스가 고정(FIXED_SORT) */
     @GetMapping
     public ResponseEntity<PageResponse<FuelRecordResponse>> findByVehicle(
             @PathVariable String vehicleId,
@@ -51,7 +51,7 @@ public class FuelRecordController {
                 fuelRecordService.findByVehicle(requesterId, vehicleId, pageable)));
     }
 
-    // 리터럴 경로가 {recordId} 보다 우선 매칭
+    // 리터럴 경로가 {recordId} 보다 우선
     @GetMapping("/summary")
     public ResponseEntity<FuelSummaryResponse> summary(@PathVariable String vehicleId,
                                                          @LoginUser Long requesterId) {

@@ -77,10 +77,7 @@ public class User extends BaseTimeEntity {
         this.phone = phone;
     }
 
-    /**
-     * 암호화된 문자열만 받음
-     * 엔티티가 직접 인코딩하면 도메인이 스프링 시큐리티에 묶이고 new User(...) 에 빈이 필요해짐
-     */
+    /** 암호화된 문자열만 받음. 엔티티의 스프링 시큐리티 의존 방지 */
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
     }

@@ -7,12 +7,12 @@ import type {
   FuelSummaryResponse,
 } from '@/features/fuel/api/types/types'
 
-/** 주유 기록은 항상 특정 차량 소속이라 모든 경로가 /api/vehicles/{vehicleId} 아래 */
+/** 모든 경로가 /api/vehicles/{vehicleId} 아래 */
 function base(vehicleId: string) {
   return `/api/vehicles/${vehicleId}/fuel-records`
 }
 
-/** sort 미전송. 서버가 고정 — 정렬이 곧 연비 계산의 전제 */
+/** sort 미전송. 서버 고정 */
 export function fetchFuelRecords(vehicleId: string, page: number, size = 10) {
   return api.get<PageResponse<FuelRecordResponse>>(`${base(vehicleId)}?page=${page}&size=${size}`)
 }

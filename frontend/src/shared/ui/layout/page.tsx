@@ -3,14 +3,11 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 /**
- * 앱 화면 한 장의 껍데기. 머리말과 간격을 여기서만 결정
- * 화면마다 직접 그리면 어긋남 — 차량 상세가 제목 크기를 빠뜨린 전례
+ * 앱 화면 한 장의 껍데기. 머리말과 간격 담당
  *
- * eyebrow  지금 보는 것의 소속. 로그인·회원가입은 비움
- * back     목록에서 파고든 화면에만
+ * eyebrow  소속. 로그인·회원가입은 없음
+ * back     목록에서 들어온 화면만
  * action   이 화면에서 새로 만드는 동작 하나
- *
- * children 은 flex 자식이라 같은 간격. 더 촘촘히 붙일 덩어리는 화면 쪽에서 한 번 더 묶음
  */
 export function Page({
   back,
@@ -47,20 +44,20 @@ export function Page({
                 <p className="text-eyebrow text-muted-foreground uppercase">{eyebrow}</p>
               )}
 
-              {/* text-balance — 둘째 줄에 한 단어만 남는 것 방지 */}
+              {/* text-balance: 둘째 줄 외톨이 단어 방지 */}
               <h1 className="text-title text-balance text-strong">{title}</h1>
             </div>
 
             {action !== undefined && <div className="shrink-0 pb-2">{action}</div>}
           </div>
 
-          {/* 설명은 제목 폭을 따라가지 않고 46ch 에서 */}
+          {/* 설명 폭 46ch */}
           {description !== undefined && (
             <p className="max-w-[46ch] text-lede text-muted-foreground">{description}</p>
           )}
         </header>
 
-        {/* 표제와 내용을 가르는 기준선. 이 화면의 유일한 등장 연출 */}
+        {/* 머리말 아래 기준선. 화면당 하나뿐인 등장 연출 */}
         <hr className="rule-draw border-t border-border" />
       </div>
 
@@ -69,10 +66,7 @@ export function Page({
   )
 }
 
-/**
- * 폼 맨 아래 버튼 줄. 주 동작 먼저, 취소는 ghost 로 오른쪽
- * 취소를 채워진 버튼으로 두면 무엇이 기본 동작인지 흐려짐
- */
+/** 폼 맨 아래 버튼 줄. 주 동작 먼저, 취소는 ghost */
 export function FormActions({ children }: { children: ReactNode }) {
   return <div className="mt-4 flex gap-2">{children}</div>
 }

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 
-/** /api/vehicles/summary 가 아닌 이유 — 정비·주유까지 담아 차량의 하위 자원이 아님 */
+/** /api/summary 경로. 정비·주유까지 담아 차량 하위 자원이 아님 */
 @RestController
 public class GarageSummaryController {
 
@@ -21,7 +21,7 @@ public class GarageSummaryController {
 
     @GetMapping("/api/summary")
     public ResponseEntity<GarageSummaryResponse> summary(@LoginUser Long userId) {
-        // "오늘"은 서비스 밖에서 주입. 안에서 now() 를 부르면 월별 12칸을 테스트에서 못 고정
+        // 오늘 날짜는 밖에서 주입. 월별 12칸 테스트 고정용
         return ResponseEntity.ok(garageSummaryService.summarize(userId, LocalDate.now()));
     }
 }

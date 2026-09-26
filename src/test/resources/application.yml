@@ -2,13 +2,11 @@ spring:
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
     url: jdbc:mariadb://localhost:3306/odolog_test
-    # 로컬 전용 테스트 계정. odolog_test 스키마에만 권한이 있고
-    # 매 실행마다 비워지므로 실제 자격증명이 아니다.
+    # 로컬 테스트 전용 계정. odolog_test 스키마 권한만
     username: odolog_test
     password: odolog_test
 
-  # 값이 있어야 JavaMailSender 빈이 만들어진다. 없으면 @SpringBootTest 가 컨텍스트를 못 띄운다.
-  # 실제로 보내는 테스트는 없다 — 메일러는 전부 mock 이다.
+  # JavaMailSender 빈 생성용 값. 실제 발송 없음
   mail:
     host: localhost
     port: 25
@@ -28,9 +26,7 @@ logging:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
 
-# CSRF 필터를 끈다. @WebMvcTest 가 Filter 빈을 함께 올려서, 켜 두면 기존
-# POST·PATCH·DELETE 테스트가 토큰이 없다는 이유로 전부 403 이 된다.
-# 필터 자체는 CsrfTokenFilterTest 가 직접 호출해 검증한다.
+# CSRF 필터 비활성. @WebMvcTest 쓰기 테스트의 403 방지, 필터는 CsrfTokenFilterTest 에서 검증
 odolog:
   csrf:
     enabled: false

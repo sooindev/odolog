@@ -9,7 +9,7 @@ import type {
   ServiceIntervalRequest,
 } from '@/features/maintenance/api/types/types'
 
-/** 정비 이력은 항상 특정 차량 소속이라 모든 경로가 /api/vehicles/{vehicleId} 아래 */
+/** 모든 경로가 /api/vehicles/{vehicleId} 아래 */
 function basePath(vehicleId: string) {
   return `/api/vehicles/${vehicleId}/maintenance-records`
 }
@@ -42,15 +42,15 @@ export function deleteRecord(vehicleId: string, recordId: string) {
   return api.del(`${basePath(vehicleId)}/${recordId}`)
 }
 
-/** 이력 있는 종류를 한 번에. 종류마다 요청하면 15왕복 */
+/** 이력 있는 종류 전체를 한 번에 */
 export function fetchNextServices(vehicleId: string) {
   return api.get<NextServiceResponse[]>(`${basePath(vehicleId)}/next-services`)
 }
 
 
 /**
- * 이 차량에서 쓸 권장 주기를 정한다. 둘 다 null 이면 기본값으로 되돌아간다
- * 응답이 없어(204) 화면은 곧바로 fetchNextServices 를 다시 부른다
+ * 차량별 권장 주기 설정. 둘 다 null 이면 기본값 복귀
+ * 204 후 fetchNextServices 재호출
  */
 export function changeServiceInterval(
   vehicleId: string,

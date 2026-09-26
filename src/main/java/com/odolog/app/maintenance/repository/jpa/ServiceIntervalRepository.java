@@ -13,9 +13,9 @@ public interface ServiceIntervalRepository extends JpaRepository<ServiceInterval
 
     Optional<ServiceInterval> findByVehicleIdAndType(Long vehicleId, ServiceType type);
 
-    /** 한 사용자의 전부. 홈 요약이 차량마다 조회하지 않게 */
+    /** 한 사용자의 전체 주기. 차량별 조회 방지 */
     List<ServiceInterval> findByVehicle_Owner_Id(Long ownerId);
 
-    /** 차량 삭제 때 같이. FK 제약이라 차량보다 먼저 지워야 한다 */
+    /** 차량 삭제 시 함께. FK 제약이라 차량보다 먼저 */
     void deleteByVehicleId(Long vehicleId);
 }

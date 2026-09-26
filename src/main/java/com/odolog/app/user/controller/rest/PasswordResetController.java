@@ -11,10 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * 로그인하지 않은 사람이 쓰는 유일한 쓰기 엔드포인트 둘
- * UserController 에 두지 않은 이유는 그쪽이 "로그인한 나"를 다루는 자리이기 때문
- */
+/** 비로그인 사용자의 쓰기 엔드포인트. 로그인 사용자용 UserController 와 분리 */
 @RestController
 @RequestMapping("/api/users/password-reset")
 public class PasswordResetController {
@@ -25,7 +22,7 @@ public class PasswordResetController {
         this.passwordResetService = passwordResetService;
     }
 
-    /** 가입 여부와 무관하게 204. 응답이 갈리면 그게 가입 여부 조회가 된다 */
+    /** 가입 여부와 무관하게 204 */
     @PostMapping
     public ResponseEntity<Void> request(@Valid @RequestBody PasswordResetRequest request) {
         passwordResetService.request(request.email());

@@ -13,11 +13,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 계정의 기록 전부. 백업용이라 화면 응답과 달리 계산값을 넣지 않는다
- * 연비·단가는 읽을 때 만들어지는 값이라 여기 담으면 복원 시 원본과 어긋날 수 있다
- *
- * 차량 밑에 이력을 중첩한다 — 평평하게 내보내면 어느 기록이 어느 차의 것인지
- * id 를 따라가야 알 수 있는데, 그 id 는 우리 DB 안에서만 뜻이 있다
+ * 계정 기록 전체. 백업용이라 계산값(연비·단가) 제외
+ * 기록은 차량 밑에 중첩. 우리 DB 의 id 없이도 소속 파악 가능
  */
 public record AccountExportResponse(
         LocalDateTime exportedAt,
@@ -32,7 +29,7 @@ public record AccountExportResponse(
             LocalDateTime createdAt
     ) {
         static UserData from(User user) {
-            // 비밀번호 해시는 담지 않는다. 백업에 넣을 이유가 없고 새어 나갈 경로만 늘린다
+            // 비밀번호 해시 제외
             return new UserData(user.getEmail(), user.getNickname(), user.getPhone(), user.getCreatedAt());
         }
     }
@@ -46,11 +43,7 @@ public record AccountExportResponse(
             LocalDateTime createdAt,
             List<MaintenanceData> maintenanceRecords,
             List<FuelData> fuelRecords,
-            /**
-             * 차량별 권장 주기(2026-09-25 추가)
-             * 이게 빠져 있으면 복원한 차가 기본값으로 돌아가 `지남` 이 다시 늘 켜진다 —
-             * 말없이 사라지는 설정이라 더 나쁘다
-             */
+            /** 차량별 권장 주기. 빠지면 복원한 차가 기본값으로 돌아감 */
             List<IntervalData> serviceIntervals
     ) {
     }

@@ -25,9 +25,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
- * ResponseEntityExceptionHandler 를 이어받는 이유 — 405·415·404 처럼 스프링이 원래 4xx 로 답하던
- * 예외를 부모가 맡아 상태 코드를 지키고, 그 밖의 예외만 맨 아래 handleUnexpected 가 500 으로 받는다.
- * 부모 없이 Exception 을 잡으면 그 4xx 들까지 500 이 된다
+ * ResponseEntityExceptionHandler 상속. 405·415·404 는 부모가 상태 코드 유지
+ * 나머지는 맨 아래 handleUnexpected 가 500 처리
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -59,14 +58,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * 중복 검사와 저장 사이에 끼어든 요청 대비. 진짜 방어선은 유니크 제약, existsBy 는 메시지용
-     * 유니크 위반일 때만 409 — NOT NULL 위반 같은 우리 버그까지 감싸면 500 이 4xx 로 새어 나감
-     *
-     * 유니크가 아니면 **상태 코드는 그대로 500 이다.** 스키마와 엔티티가 어긋난 것은 서버 쪽
-     * 문제이지 요청한 사람이 고칠 수 있는 일이 아니기 때문이다(규칙 11).
-     * 다만 본문은 우리 모양으로 돌려준다 — 전에는 예외를 다시 던져 스프링 기본 응답이 나갔고,
-     * 거기에는 message 가 없어 화면이 "요청에 실패했습니다 (HTTP 500)" 밖에 말하지 못했다.
-     * 예외를 던지지 않으므로 스프링이 대신 찍어 주던 스택도 사라진다. 그래서 여기서 직접 남긴다
+     * 중복 검사와 저장 사이에 끼어든 요청 대비. 최종 방어선은 유니크 제약
+     * UNIQUE 위반만 409. 그 밖의 제약 위반은 서버 문제라 500 + ErrorResponse(규칙 11)
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
@@ -85,20 +78,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * 본문을 읽다 실패한 경우 — 깨진 JSON, 없는 enum 값, 날짜 형식 오류, 타입 불일치
-     *
-     * 전에는 핸들러가 없어 스프링 기본 응답(timestamp/status/error/path)이 그대로 나갔다.
-     * 거기에는 message 가 없어 화면이 "요청에 실패했습니다 (HTTP 400)" 로 떨어졌고,
-     * 덤으로 내부 경로가 응답에 실렸다
-     *
-     * 원인 메시지를 그대로 내보내지 않는 이유: Jackson 의 메시지는 패키지 이름과 클래스 이름을
-     * 그대로 담는다. 대신 어느 필드인지만 뽑아 준다 — 고치는 데 필요한 것은 그것뿐이다
+     * 본문 해석 실패(깨진 JSON·없는 enum·날짜 형식) → 400
+     * Jackson 원문 대신 필드 이름만. 패키지·클래스 이름 노출 방지
      */
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException e,
                                                                   HttpHeaders headers, HttpStatusCode status,
                                                                   WebRequest request) {
-        // @ExceptionHandler 가 아니라 덮어쓰기 — 부모가 이미 같은 예외를 맡고 있어 둘이면 기동이 실패한다
+        // 덮어쓰기 방식. 부모가 같은 예외를 이미 처리해 @ExceptionHandler 중복 시 기동 실패
         String field = fieldOf(e);
         String message = (field == null)
                 ? "요청 본문을 읽을 수 없습니다. 형식을 확인해 주세요."
@@ -107,7 +94,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(message));
     }
 
-    /** 어느 필드에서 막혔는지. 알 수 없으면 null (깨진 JSON 은 필드를 특정할 수 없다) */
+    /** 실패한 필드 경로. 깨진 JSON 은 null */
     private String fieldOf(HttpMessageNotReadableException e) {
         if (!(e.getCause() instanceof com.fasterxml.jackson.databind.JsonMappingException cause)) {
             return null;
@@ -159,10 +146,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(new ErrorResponse(message));
     }
 
-    /**
-     * 부모가 맡은 4xx(405·415·404 등)의 본문도 우리 모양으로. 부모는 ProblemDetail 을 주는데
-     * 거기엔 message 가 없어 화면이 "요청에 실패했습니다 (HTTP 405)" 밖에 말하지 못한다
-     */
+    /** 부모가 처리한 4xx 의 본문도 ErrorResponse 로. ProblemDetail 에는 message 없음 */
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception e, Object body, HttpHeaders headers,
                                                              HttpStatusCode statusCode, WebRequest request) {
@@ -176,8 +160,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * 위에서 못 잡은 것 전부 — 우리 버그다. 상태 코드는 500 그대로(규칙 11), 본문만 우리 모양
-     * 예외 문구는 내보내지 않는다. 내부 클래스 이름·쿼리가 실릴 수 있다. 원인은 로그로
+     * 처리하지 못한 예외 = 우리 버그. 500 유지, 본문만 ErrorResponse
+     * 예외 원문 비공개, 원인은 로그로
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception e) {

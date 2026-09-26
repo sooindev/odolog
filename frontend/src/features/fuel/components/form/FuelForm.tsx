@@ -18,10 +18,7 @@ import {
 } from '@/features/fuel/api/endpoints/endpoints'
 import type { FuelRecordResponse } from '@/features/fuel/api/types/types'
 
-/**
- * 등록·수정 겸용. record 가 null 이면 등록
- * 필드 구성이 같은데 파일을 나누면 한쪽만 고치게 됨 (MaintenanceForm 과 같은 이유)
- */
+/** 등록·수정 겸용. record 가 null 이면 등록 */
 export function FuelForm({
   vehicleId,
   record,
@@ -35,39 +32,30 @@ export function FuelForm({
   onSaved: () => void
   onCancel: () => void
 }) {
-  /*
-   * 폼이 열린 시점의 차량 주행거리를 붙잡아 둔다.
-   * props 를 그대로 쓰면 입력칸(state)은 열 때의 값인데 판정 기준만 최신으로 갱신되어,
-   * 폼이 열려 있는 동안 다른 카드에서 차량 값이 오르면 경고가 어긋난다.
-   * key 로 폼을 재생성하는 방법은 쓸 수 없다 — 입력 중인 내용이 날아간다.
-   */
+  // 폼을 연 시점의 차량 주행거리 고정. 입력칸과 판정 기준의 어긋남 방지
   const [baseOdometer] = useState(defaultOdometer)
 
-  // 숫자도 문자열 보관 — 입력 도중의 빈 문자열을 숫자로 표현할 수 없음
+  // 입력 중 빈 값 표현을 위해 문자열 보관
   const [fueledAt, setFueledAt] = useState(record?.fueledAt ?? todayString())
   const [odometer, setOdometer] = useState(String(record?.odometer ?? defaultOdometer))
-  // record.liters 가 null 일 수 있다 — 안 적고 저장한 기록을 다시 여는 경우
+  // 주유량 없이 저장된 기록 대비
   const [liters, setLiters] = useState(record?.liters == null ? '' : String(record.liters))
   const [totalCost, setTotalCost] = useState(record?.totalCost == null ? '' : String(record.totalCost))
   const [memo, setMemo] = useState(record?.memo ?? '')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  /*
-   * 빈 칸은 0 이 아니라 null 이다. Number('') 가 0 이라 그대로 쓰면
-   * "0L 을 0원에 넣었다" 가 되어 유류비 합계가 조용히 틀어진다
-   */
+  // 빈 칸은 null. Number('') 는 0
   const litersValue = liters === '' ? null : Number(liters)
   const costValue = totalCost === '' ? null : Number(totalCost)
 
-  // 입력 중 단가 표시. 영수증과 대조해 오타를 그 자리에서 잡기 위함
+  // 입력 중 리터당 단가. 영수증 대조용
   const pricePerLiter =
     litersValue !== null && costValue !== null && litersValue > 0
       ? Math.round(costValue / litersValue)
       : null
 
-  // 규칙은 shared/lib/odometer 에. 정비 폼·주행거리 갱신이 같은 것을 본다
-  // 막지 않고 안내만 — 지난달 영수증 정리는 정상적인 사용이고 계기판 교체도 있음
+  // 주행거리 판정 규칙은 shared/lib/odometer. 막지 않고 안내만
   const odometerValue = Number(odometer)
   const past = odometer !== '' && looksPast(odometerValue, baseOdometer)
   const bigJump = odometer !== '' && looksBigJump(odometerValue, baseOdometer)
@@ -76,16 +64,9 @@ export function FuelForm({
     event.preventDefault()
     setError(null)
 
-    /*
-     * 저장은 막지 않는다. 다만 이대로 두면 못 하게 되는 일이 있어서, 저장 직전에 한 번 알린다.
-     * 경고를 모아 한 번만 묻는 이유 — 조건마다 창을 띄우면 두 번 연속 뜨고,
-     * 두 번째 창은 사람이 읽지 않고 누른다.
-     *
-     * 주행거리: 등록 폼은 차량의 현재 값으로 미리 채운다. 계기판을 보고 고쳐 쓰라는 뜻인데,
-     * 그대로 두면 구간 거리가 0 이라 연비가 안 나오고 차량 쪽도 안 올라간다(liftOdometerTo).
-     * 주유량·금액: 비워 두는 것이 정상적인 사용이다 — 영수증을 잃었거나 계기판만 적어 두는 경우.
-     * 대신 각각 무엇을 못 하게 되는지는 달라서 줄을 나눠 적는다.
-     */
+    // 저장 전 경고를 모아 한 번만 확인
+    // 주행거리 그대로: 구간 거리 0, 차량 주행거리 미갱신
+    // 주유량·금액 비움: 각각 못 하게 되는 일 안내
     const warnings: string[] = []
 
     if (record === null && Number(odometer) === baseOdometer) {
@@ -94,8 +75,7 @@ export function FuelForm({
           '  이번 구간의 연비가 계산되지 않고, 차량 주행거리도 올라가지 않습니다.',
       )
     }
-    // 수정일 때는 이번에 새로 비운 경우만 묻는다. 원래 비어 있던 기록의 메모만 고쳐도
-    // 매번 뜨면, 늘 뜨는 창이 되어 아무도 읽지 않는다
+    // 수정 시에는 이번에 새로 비운 경우만
     if (litersValue === null && (record === null || record.liters !== null)) {
       warnings.push('· 주유량이 비어 있어 이번 구간의 연비를 계산할 수 없습니다.')
     }
@@ -103,7 +83,7 @@ export function FuelForm({
       warnings.push('· 결제 금액이 비어 있어 유류비 합계와 리터당 단가에서 빠집니다.')
     }
     if (bigJump) {
-      // 줄이는 쪽보다 되돌리기 어렵다 — 올라간 차량 값은 force 정정으로만 내려온다
+      // 급증은 되돌리기 어려움. force 정정으로만 복구
       warnings.push(
         `· 주행거리가 ${formatKm(baseOdometer)} 에서 ${formatKm(odometerValue)} 로 크게 뜁니다.\n` +
           '  자리수가 틀리면 차량 주행거리가 그 값에 묶입니다.',
@@ -131,10 +111,7 @@ export function FuelForm({
           memo: memo === '' ? undefined : memo,
         })
       } else {
-        /*
-         * 바뀐 필드만. 값 비교로 판단하는 이유 — 0 으로 바꾸는 것과 안 보내는 것은 다름
-         * 비우는 것은 값이 아니라 clear 플래그로 말한다 (DTO 주석 참고)
-         */
+        // 바뀐 필드만. 비움은 clear 플래그
         await updateFuelRecord(vehicleId, record.id, {
           fueledAt: fueledAt === record.fueledAt ? undefined : fueledAt,
           odometer: Number(odometer) === record.odometer ? undefined : Number(odometer),
@@ -163,12 +140,7 @@ export function FuelForm({
         <Field
           label="주행거리 (km)"
           htmlFor="fuel-odometer"
-          /*
-            도움말이 상태에 따라 셋으로 갈린다. 비었을 때를 맨 앞에 두는 이유 —
-            주행거리는 이 앱에서 연비의 재료이지 기록의 장식이 아니다.
-            required 가 저장을 막아 주기는 하지만, 브라우저 기본 문구("이 입력란을
-            작성하세요")는 **왜 필요한지** 말해 주지 않는다. 그 이유를 여기서 말한다.
-          */
+          // 상태별 도움말 셋. 비었을 때 우선
           hint={
             odometer === ''
               ? '주행거리를 적지 않으면 연비를 계산할 수 없습니다.'
@@ -182,7 +154,7 @@ export function FuelForm({
           <Input
             id="fuel-odometer"
             type="number"
-            // 폼을 열면 여기부터 고친다. 날짜는 오늘로 채워져 있고, 계기판 값이 이 폼의 첫 할 일이다
+            // 주행거리에 첫 포커스
             autoFocus
             required
             min={0}
@@ -195,11 +167,11 @@ export function FuelForm({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        {/* step 0.01 — 백엔드가 소수 2자리까지만 받음 */}
+        {/* step 0.01: 소수 2자리 */}
         <Field
           label="주유량 (L)"
           htmlFor="fuel-liters"
-          /* 필수가 아니다. 비워 두면 무엇을 못 하게 되는지만 말해 준다 — 주행거리 칸과 같은 방식 */
+          // 선택 입력. 비우면 못 하게 되는 일만 안내
           hint={liters === '' ? '비우면 이번 구간의 연비를 계산할 수 없습니다.' : undefined}
         >
           <Input

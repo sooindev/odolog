@@ -34,7 +34,7 @@ describe('formatCompact — 축 눈금 전용', () => {
   })
 
   it('만 미만은 줄이지 않는다', () => {
-    // 1,873 을 2천으로 줄이면 축 눈금이 실제 값과 어긋남
+    // 1,873 을 2천으로 줄이면 눈금과 실제 값 불일치
     expect(formatCompact(9_999)).toBe('9,999')
     expect(formatCompact(1_873)).toBe('1,873')
   })
@@ -43,7 +43,7 @@ describe('formatCompact — 축 눈금 전용', () => {
 describe('날짜 표기', () => {
   it('월을 읽을 수 있게 편다', () => {
     expect(formatMonth('2026-07')).toBe('2026년 7월')
-    // 앞의 0 을 떼야 "2026년 01월" 이 안 나옴
+    // 앞자리 0 제거
     expect(formatMonth('2026-01')).toBe('2026년 1월')
   })
 
@@ -58,26 +58,26 @@ describe('todayString — UTC 함정', () => {
     vi.useRealTimers()
   })
 
-  /** 인자가 지역 시각으로 해석되므로 어느 표준시대에서 돌려도 결과가 같음 */
+  /** 인자는 지역 시각. 표준시대와 무관한 결과 */
   function freezeLocal(year: number, month: number, day: number, hour: number, minute: number) {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(year, month - 1, day, hour, minute))
   }
 
   it('자정 직후에도 오늘이다', () => {
-    // toISOString() 은 UTC 기준이라 동쪽(UTC+) 에서 하루 전으로 밀림
+    // toISOString() 은 UTC 기준. 동쪽(UTC+)에서 하루 전
     freezeLocal(2026, 7, 15, 0, 0)
     expect(todayString()).toBe('2026-07-15')
   })
 
   it('자정 직전에도 오늘이다', () => {
-    // 같은 이유로 서쪽(UTC-) 에서는 하루 뒤로 밀림
+    // 서쪽(UTC-)에서는 하루 뒤
     freezeLocal(2026, 7, 15, 23, 59)
     expect(todayString()).toBe('2026-07-15')
   })
 
   it('한 자리 월·일에 0 을 채운다', () => {
-    // 백엔드 LocalDate 와 <input type="date"> 가 둘 다 YYYY-MM-DD 를 요구
+    // 백엔드 LocalDate·<input type=date> 공통 형식 YYYY-MM-DD
     freezeLocal(2026, 1, 5, 12, 0)
     expect(todayString()).toBe('2026-01-05')
   })

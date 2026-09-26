@@ -18,9 +18,8 @@ spring:
         format_sql: true
         default_batch_fetch_size: 100
 
-  # 비밀번호 재설정 메일. 자격증명은 DB 와 같이 환경변수로만 받는다 — 파일에 적지 않는다.
-  # Gmail 이면 2단계 인증을 켜고 "앱 비밀번호"를 발급해 MAIL_PASSWORD 에 넣는다.
-  # 값을 안 주면 발송만 실패하고 앱은 뜬다 — 재설정을 안 쓰는 동안 개발이 막히지 않게.
+  # 비밀번호 재설정 메일. 자격증명은 환경변수로만
+  # Gmail 은 앱 비밀번호 사용. 미설정 시 발송만 실패
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -33,37 +32,26 @@ spring:
           starttls:
             enable: true
 
-# 세션 쿠키 속성을 명시한다. 브라우저 기본값(SameSite=Lax)에 기대지 않는 이유는
-# 그 기본값이 브라우저마다·버전마다 달라서다.
-#
-# secure 는 로컬이 http 라 기본값이 false 다. 켜 두면 쿠키가 아예 전송되지 않아
-# 개발이 막힌다. 배포에서는 SESSION_COOKIE_SECURE=true 로 켠다 — 값을 파일에 박지 않고
-# 환경변수로 뺀 이유는 DB 자격증명과 같다. 프런트를 다른 출처에 두는 배포라면
-# SameSite=None 조합까지 함께 따져야 하고, None 은 secure 없이는 동작하지 않는다.
+# 세션 쿠키 속성 명시. 브라우저 기본값에 기대지 않음
+# secure 는 로컬(http) 기본 false, 배포 시 SESSION_COOKIE_SECURE=true
 server:
   servlet:
     session:
-      # 톰캣 기본은 30분이다. 정비 영수증을 정리하다 잠깐 자리를 비우면 로그아웃됐다 —
-      # 쿠키 속성은 "브라우저 기본값에 기대지 않는다" 며 다 적어 두고 만료만 기본값이었다.
-      # 차량 기록은 은행이 아니라 며칠~몇 주 유지가 맞다
+      # 세션 14일. 톰캣 기본 30분은 기록 도중 로그아웃
       timeout: 14d
       cookie:
         http-only: true
         same-site: lax
         secure: ${SESSION_COOKIE_SECURE:false}
-        # 서버가 14일을 기억해도 쿠키가 세션 쿠키면 브라우저를 닫는 순간 끝난다.
-        # 둘을 같이 늘려야 실제로 유지된다 — 공용 컴퓨터가 그 대가이고,
-        # http-only + same-site 가 이미 걸려 있어 남이 읽어 가기는 어렵다
+        # 쿠키 max-age 도 14일. 세션 쿠키면 브라우저 종료 시 만료
         max-age: 14d
 
 odolog:
-  # 재설정 링크가 가리킬 화면 주소. 메일 본문에 들어가므로 백엔드가 아니라 프런트다
+  # 재설정 링크의 프런트 주소
   app:
     base-url: ${APP_BASE_URL:http://localhost:5173}
 
-# Swagger UI 가 CSRF 쿠키를 읽어 헤더로 실어 보내게 한다.
-# 없으면 문서에서 "Try it out" 으로 POST·PATCH·DELETE 를 못 쏜다.
-# 문서 자체는 아무 인증도 요구하지 않으므로 운영에서는 닫는다 — application-prod.yml.
+# Swagger UI 의 CSRF 헤더 전송. 운영에서는 문서 비활성(application-prod.yml)
 springdoc:
   swagger-ui:
     csrf:
@@ -71,10 +59,8 @@ springdoc:
       cookie-name: XSRF-TOKEN
       header-name: X-XSRF-TOKEN
 
-# ⚠️ 아래 두 줄은 개발 전용이다.
-# bind: trace 는 쿼리에 들어가는 값을 전부 찍는다 — 이메일·닉네임·전화번호와
-# BCrypt 해시가 그대로 로그에 남는다.
-# 끄는 일은 application-prod.yml 이 대신한다 (SPRING_PROFILES_ACTIVE=prod).
+# 개발 전용 SQL 로그. bind: trace 는 이메일·해시까지 출력
+# 운영은 application-prod.yml 이 끔
 logging:
   level:
     org.hibernate.SQL: debug

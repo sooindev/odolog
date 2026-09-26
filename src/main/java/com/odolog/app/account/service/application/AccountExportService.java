@@ -20,15 +20,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 계정의 기록 전부를 한 덩어리로 내보낸다. 탈퇴의 거울상이다 —
- * 한쪽은 전부 지우고 한쪽은 전부 가져간다
- *
- * 리포지토리를 직접 받는다. 원본을 그대로 읽기만 하므로 각 기능의 비즈니스 규칙이 필요 없고,
- * 소유자 id 로 조회하므로 남의 데이터가 섞이지 않는다 (summary 와 같은 이유).
- * 같은 패키지의 AccountWithdrawalService 가 서비스를 받는 것과 다른데, 그쪽은 삭제 순서를
- * 조율해야 하기 때문이다
- *
- * 쿼리는 4번이다. 차량마다 따로 조회하면 차량 수만큼 늘어난다
+ * 계정 기록 전체 내보내기. 탈퇴의 반대편
+ * 읽기만 하므로 서비스 대신 리포지토리 주입. 소유자 id 조회라 남의 데이터 없음
+ * 쿼리 4번. 차량별 조회 시 차량 수만큼 증가
  */
 @Service
 @Transactional(readOnly = true)
@@ -52,7 +46,7 @@ public class AccountExportService {
         this.fuelRecordRepository = fuelRecordRepository;
     }
 
-    /** exportedAt 을 밖에서 받는다 — 안에서 now() 를 부르면 테스트에서 고정할 수 없다 */
+    /** exportedAt 은 밖에서 주입. 테스트 고정용 */
     public AccountExportResponse export(Long userId, LocalDateTime exportedAt) {
         User user = userService.findById(userId);
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(userId);

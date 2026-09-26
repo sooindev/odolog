@@ -14,13 +14,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 재설정 링크 발송
- *
- * 링크는 백엔드가 아니라 **프런트 주소**를 가리킨다 — 토큰을 받아 새 비밀번호를 입력받는 것은
- * 화면의 일이고, 백엔드는 그 화면이 보내 주는 값을 검증할 뿐이다
- *
- * 발송은 커밋 뒤, 다른 스레드에서. 요청 스레드에서 보내면 가입된 주소만 SMTP 시간만큼 늦게 답해
- * 응답 시간이 가입 여부를 알려준다. 커밋 전에 보내면 저장 안 된 토큰이 메일로 나갈 수 있다
+ * 재설정 링크 발송. 링크는 프런트 주소
+ * 커밋 후 다른 스레드에서 발송. 응답 시간 차이 방지, 롤백 시 미발송
  */
 @Component
 public class PasswordResetMailer {
@@ -42,10 +37,10 @@ public class PasswordResetMailer {
         this.from = from;
     }
 
-    /** 곧바로 돌아온다. 실패는 로그로만 — 부른 쪽이 알 방법이 없어야 응답이 갈리지 않는다 */
+    /** 즉시 반환. 실패는 로그로만 */
     public void send(String email, String token, int validMinutes) {
         SimpleMailMessage message = new SimpleMailMessage();
-        // from 이 비어 있으면 스프링이 spring.mail.username 을 쓴다. 둘 다 없으면 발송만 실패한다
+        // from 이 비면 spring.mail.username 사용
         if (!from.isBlank()) {
             message.setFrom(from);
         }
@@ -62,7 +57,7 @@ public class PasswordResetMailer {
 
         Runnable delivery = () -> deliver(message);
 
-        // 트랜잭션 안이면 커밋이 끝난 뒤에. 롤백되면 아예 안 나간다
+        // 트랜잭션 안이면 커밋 후 발송
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -79,7 +74,7 @@ public class PasswordResetMailer {
         try {
             mailSender.send(message);
         } catch (RuntimeException e) {
-            // 메일 설정이 잘못된 것은 운영 쪽 문제. 요청한 사람이 알아서 할 수 있는 일이 아니다
+            // 메일 설정 문제는 운영 쪽 확인 사항
             log.error("비밀번호 재설정 메일 발송 실패. 메일 설정을 확인하세요.", e);
         }
     }

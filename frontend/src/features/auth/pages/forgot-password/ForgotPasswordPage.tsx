@@ -33,14 +33,14 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    // eyebrow 를 비운다 — 로그인 전에는 아직 아무 데도 속하지 않는다
+    // 로그인 전이라 eyebrow 없음
     <Page title="비밀번호 재설정" description="가입할 때 쓴 주소로 재설정 링크를 보냅니다.">
       <div className="flex flex-col gap-6">
         <Card>
           <CardContent>
             {sent ? (
               <div className="flex flex-col gap-4">
-                {/* 가입된 주소인지 알려 주지 않는다 — 알려 주면 가입 여부 조회가 된다 */}
+                {/* 가입 여부 비공개 */}
                 <NoticeText message="가입된 주소라면 재설정 링크를 보냈습니다. 메일함을 확인해 주세요." />
                 <p className="text-caption leading-relaxed text-muted-foreground">
                   링크는 30분 동안만 쓸 수 있고, 한 번 쓰면 사라집니다. 메일이 오지 않으면

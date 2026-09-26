@@ -26,19 +26,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 엔티티가 말하는 nullable·유니크 제약과 실제 DB 를 기동할 때 한 번 대조한다
- *
- * 왜 필요한가: ddl-auto: update 는 제약을 추가만 하고 지우지 않는다. 컬럼을 nullable 로
- * 바꿔도 이미 NOT NULL 인 컬럼은 그대로 남고, 그 사실이 아무 데도 드러나지 않다가
- * 저장하는 순간 500 으로 나타난다. 이 저장소는 같은 함정을 세 번 밟았다
- * (번호판 유니크 · 정비 종류 enum · 주유량 NOT NULL).
- *
- * 왜 ddl-auto: validate 로는 안 되는가: Hibernate 의 스키마 검증은 테이블과 컬럼의
- * 존재와 타입만 본다. nullability 는 보지 않는다 — 실제로 어긋난 스키마에 validate 를
- * 걸어도 앱이 그냥 뜨는 것을 확인했다
- *
- * 막지 않고 경고만 한다. 개발 중에 레거시 컬럼 하나로 앱이 안 뜨면 그게 더 큰 방해다.
- * 대신 고칠 SQL 을 그대로 찍어 준다 — 읽고 나서 무엇을 해야 할지 찾아다니지 않게
+ * 기동 시 엔티티의 nullable·유니크 제약과 실제 DB 대조
+ * ddl-auto: update 는 제약을 지우지 않고, validate 는 nullability 를 보지 않음
+ * 경고만. 고칠 SQL 까지 출력
  */
 @Component
 public class SchemaDriftChecker {
@@ -74,10 +64,7 @@ public class SchemaDriftChecker {
         }
     }
 
-    /**
-     * 어긋난 컬럼 목록. 로그로 찍는 것과 나눠 둔 이유는 테스트가 이 결과를 그대로 보기 위해서다 —
-     * 로그를 가로채 문자열을 뒤지면 문구를 고칠 때마다 테스트가 깨진다
-     */
+    /** 어긋난 항목 목록. 테스트가 로그 대신 이 결과를 직접 검사 */
     List<String> findDrifts() {
         List<String> drifts = new ArrayList<>();
 
@@ -86,7 +73,7 @@ public class SchemaDriftChecker {
                 String table = tableNameOf(entity.getJavaType());
                 Map<String, DbColumn> actual = readColumns(connection, table);
 
-                // 테이블이 통째로 없으면 ddl-auto 가 곧 만든다. 대조할 대상이 아니다
+                // 테이블이 없으면 ddl-auto 가 생성 예정이라 제외
                 if (actual.isEmpty()) {
                     continue;
                 }
@@ -95,7 +82,7 @@ public class SchemaDriftChecker {
                 collectUniqueDrifts(entity.getJavaType(), table, readUniqueConstraints(connection, table), drifts);
             }
         } catch (Exception e) {
-            // 이 검사 때문에 앱이 못 뜨면 본말전도다
+            // 점검 실패로 기동이 막히지 않게
             log.debug("스키마 대조를 건너뛴다", e);
             return List.of();
         }
@@ -103,7 +90,7 @@ public class SchemaDriftChecker {
         return drifts;
     }
 
-    /** 엔티티가 nullable 이라는데 DB 가 NOT NULL 이거나, 그 반대인 컬럼 */
+    /** 엔티티와 DB 의 nullable 이 서로 다른 컬럼 */
     private void collectDrifts(Class<?> type, String table, Map<String, DbColumn> actual,
                                List<String> drifts) {
 
@@ -115,9 +102,7 @@ public class SchemaDriftChecker {
                     continue;
                 }
 
-                // @Column · @JoinColumn 이 붙은 필드만 본다. 애노테이션이 없으면 기본값을
-                // 추측해야 하는데, 기본형(int)에 Hibernate 가 NOT NULL 을 붙이는 등 예외가 많아
-                // 없는 어긋남을 보고하게 된다
+                // @Column·@JoinColumn 이 있는 필드만 대상. 기본값 추측 시 오탐
                 ExpectedColumn expected = expectedOf(field);
                 if (expected == null) {
                     continue;
@@ -142,10 +127,8 @@ public class SchemaDriftChecker {
     }
 
     /**
-     * 유니크 제약을 이름으로 대조. 두 방향 다 이 저장소가 실제로 밟았거나 밟을 뻔한 함정이다 —
-     * DB 에 없음: 제약 생성이 조용히 실패(공개 id) / 엔티티에 없음: 옛 제약이 남음(번호판 유니크)
-     * 이름으로만 보는 이유: 모든 유니크 제약에 이름을 붙인다(규칙 6). 이름 없는 것이 생기면
-     * Hibernate 가 해시 이름을 붙여 "엔티티에 없음" 으로 잘못 보고된다
+     * 유니크 제약 이름 양방향 대조. DB 에 없음(생성 실패) / 엔티티에 없음(옛 제약 잔존)
+     * 모든 유니크에 이름이 있다는 전제(규칙 6)
      */
     private void collectUniqueDrifts(Class<?> type, String table, Set<String> actual, List<String> drifts) {
         Map<String, UniqueConstraint> expected = new LinkedHashMap<>();
@@ -223,12 +206,12 @@ public class SchemaDriftChecker {
         return (table == null || table.name().isBlank()) ? snake(type.getSimpleName()) : table.name();
     }
 
-    /** modelYear → model_year. 이 저장소는 @Column(name=...) 을 다 적지만 기본값도 받아 둔다 */
+    /** modelYear → model_year. @Column(name) 미지정 대비 */
     private String snake(String name) {
         return name.replaceAll("([a-z0-9])([A-Z])", "$1_$2").toLowerCase();
     }
 
-    /** SQL 로그 사이에 묻히지 않게 한 덩어리로 */
+    /** SQL 로그에 묻히지 않게 한 덩어리로 출력 */
     private void report(List<String> drifts) {
         log.warn("""
 

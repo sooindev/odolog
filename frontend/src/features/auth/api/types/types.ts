@@ -1,13 +1,10 @@
-/**
- * 백엔드 com.odolog.app.user.dto 대응. 스펙은 /v3/api-docs
- * 자동 동기화가 아니므로 백엔드 DTO 를 고치면 여기도 함께
- */
+/** 백엔드 user DTO 대응(/v3/api-docs). 백엔드 변경 시 함께 수정 */
 
 export interface SignUpRequest {
   email: string
   password: string
   nickname: string
-  /** 백엔드에 NotBlank 가 없는 선택 항목 */
+  /** 선택 항목 */
   phone?: string
 }
 
@@ -21,13 +18,13 @@ export interface UpdateProfileRequest {
   phone?: string
 }
 
-/** 둘 다 필수. 부분 수정이 아니라 "현재 비밀번호를 대고 바꾸는" 한 동작 */
+/** 둘 다 필수 */
 export interface ChangePasswordRequest {
   currentPassword: string
   newPassword: string
 }
 
-/** 되돌릴 수 없는 동작이라 비밀번호로 본인 재확인 */
+/** 본인 재확인용 비밀번호 */
 export interface WithdrawRequest {
   password: string
 }
@@ -38,10 +35,7 @@ export interface UserResponse {
   phone: string | null
 }
 
-/**
- * 계정의 기록 전부. 백업용이라 연비·단가 같은 계산값이 없다
- * 읽을 때 만들어지는 값이라 담아 두면 원본과 어긋날 수 있다
- */
+/** 계정 기록 전체. 백업용이라 계산값(연비·단가) 없음 */
 export interface AccountExport {
   exportedAt: string
   user: {
@@ -62,7 +56,7 @@ export interface AccountExport {
   }[]
 }
 
-/** 재설정 링크 요청. 가입 여부와 무관하게 응답이 같다 */
+/** 재설정 링크 요청. 가입 여부와 무관하게 같은 응답 */
 export interface PasswordResetRequest {
   email: string
 }
@@ -72,19 +66,15 @@ export interface PasswordResetConfirmRequest {
   newPassword: string
 }
 
-/**
- * 되돌려 넣은 결과
- * 개수를 받는 이유: 같은 파일을 두 번 넣으면 두 번째는 전부 건너뛴다.
- * 그때 아무 말도 없으면 "안 들어갔나?" 하고 또 누르게 된다
- */
+/** 복원 결과. 건너뛴 수까지 공개 */
 export interface AccountRestoreResult {
   addedVehicles: number
   addedMaintenanceRecords: number
   addedFuelRecords: number
-  /** 같은 번호판이 이미 있어 기록만 붙인 차량 수 */
+  /** 같은 번호판이 있어 기록만 붙인 차량 수 */
   mergedVehicles: number
   /** 이미 같은 기록이 있어 건너뛴 수 */
   skippedRecords: number
-  /** 되살린 차량별 주기 수. 이미 설정이 있는 종류는 건드리지 않는다 */
+  /** 되살린 차량별 주기 수 */
   addedServiceIntervals: number
 }

@@ -2,16 +2,18 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* 테스트 파일은 스캔에서 뺀다. 안 빼면 테스트가 적은 클래스 이름이 운영 CSS 에 섞인다 */
+/* 테스트 파일은 스캔 제외. 운영 CSS 오염 방지 */
 @source not "./**/*.test.ts";
 @source not "./**/*.test.tsx";
 
-/* shadcn 기본값(&:is(.dark *))은 후손만 잡아 <html class="dark"> 자체가 빠짐 */
+/* <html class="dark"> 자체 포함(shadcn 기본값은 후손만) */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* 디자인 토큰. 값은 전부 이 파일에만
-   컴포넌트는 bg-card, hover:bg-wash 처럼 역할 이름만 — 색 값을 적으면 반대 테마에서 안 보임
-   조절하는 건 불투명도뿐. 어두운 바닥에 흰색, 밝은 바닥에 검정을 몇 % */
+/*
+  디자인 토큰. 값은 이 파일에만
+  컴포넌트는 역할 이름만 사용(bg-card, hover:bg-wash)
+  조절은 불투명도로만
+*/
 
 @theme inline {
   --font-sans:
@@ -19,11 +21,12 @@
     "Apple SD Gothic Neo", "Helvetica Neue", system-ui, sans-serif;
   --font-heading: var(--font-sans);
 
-  /* 타입 스케일. 글꼴이 하나라 위계는 크기·굵기·자간으로만
-     크기마다 행간·자간을 묶어 둠 — text-[2rem] 처럼 크기만 적으면 자간이 안 따라옴
-     clamp() 인 이유: sm:text-[...] 계단은 분기점을 빠뜨린 화면만 혼자 작아짐 */
+  /*
+    타입 스케일. 크기마다 행간·자간 묶음
+    clamp(): 반응형 계단 누락 방지
+  */
 
-  /* 분류 한 줄. 크기가 아니라 자간(질감)으로 제목과 구분 */
+  /* 분류 한 줄. 자간으로 구분 */
   --text-eyebrow: 0.6875rem;
   --text-eyebrow--line-height: 1;
   --text-eyebrow--letter-spacing: 0.2em;
@@ -35,65 +38,62 @@
   --text-title--letter-spacing: -0.04em;
   --text-title--font-weight: 600;
 
-  /* 히어로 숫자. 굵기 300 — 크기가 이미 강조라 굵기까지 올리면 뭉쳐 보임 */
+  /* 히어로 숫자. 굵기 300 */
   --text-display: clamp(2.5rem, 1.4rem + 4.6vw, 5rem);
   --text-display--line-height: 0.92;
   --text-display--letter-spacing: -0.045em;
   --text-display--font-weight: 300;
 
-  /* 한 단 작은 수치 (목록 행) */
+  /* 목록 행의 수치 */
   --text-figure: 1.375rem;
   --text-figure--line-height: 1.1;
   --text-figure--letter-spacing: -0.03em;
   --text-figure--font-weight: 400;
 
-  /* 구획 제목 (카드·섹션) */
+  /* 카드·섹션 제목 */
   --text-section: 1.0625rem;
   --text-section--line-height: 1.35;
   --text-section--letter-spacing: -0.022em;
   --text-section--font-weight: 600;
 
-  /* 제목 아래 설명. 본문보다 한 눈금 크고 색은 muted */
+  /* 제목 아래 설명 */
   --text-lede: 1rem;
   --text-lede--line-height: 1.65;
   --text-lede--letter-spacing: -0.011em;
 
-  /* 본문. 목록 행의 이름, 헤더 닉네임처럼 그냥 읽는 글 */
+  /* 본문 */
   --text-body: 0.9375rem;
   --text-body--letter-spacing: -0.01em;
 
-  /* 보조. 설명·날짜·부가 정보 — 본문 아래 한 단 */
+  /* 보조(설명·날짜·부가 정보) */
   --text-caption: 0.8125rem;
 
-  /* 랜딩의 구역 제목. title(화면 제목)과 section(카드 제목) 사이가 비어 있었다 */
+  /* 랜딩의 구역 제목 */
   --text-headline: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem);
   --text-headline--line-height: 1.1;
   --text-headline--letter-spacing: -0.035em;
   --text-headline--font-weight: 600;
 
-  /* 단위·부가 라벨. eyebrow 와 크기는 같지만 자간을 벌리지 않는다 —
-     대문자 분류 라벨이 아니라 숫자 옆에 붙는 "L" · "월" 같은 것 */
+  /* 단위·부가 라벨. eyebrow 와 같은 크기, 자간은 기본 */
   --text-unit: 0.6875rem;
 
-  /* 차트 축 눈금. 375px 에서 12칸을 적어야 해서 본문 척도보다 한 단 더 아래다 */
+  /* 차트 축 눈금 */
   --text-axis: 0.625rem;
 
-  /*
-     위 둘에는 행간을 묶지 않는다. 화면에서 `leading-relaxed` 를 붙여 쓰는 자리가 있어서,
-     토큰에 행간을 넣으면 그 자리들이 한꺼번에 달라진다.
-     제목 계열과 달리 본문은 문단 길이에 따라 행간이 달라지는 게 자연스럽다.
-  */
+  /* body·caption 은 행간 미포함. 화면에서 leading-relaxed 를 따로 지정 */
 
   --color-background: var(--background);
 
-  /* 글자 4단계. 앞의 셋은 두 테마 모두 WCAG AA(4.5:1) 통과
-     faint 만 그 아래라 placeholder·장식 아이콘 전용 */
+  /*
+    글자 4단계. 앞의 셋은 WCAG AA 통과
+    faint 는 placeholder·장식 전용
+  */
   --color-strong: var(--strong); /* 제목 */
   --color-foreground: var(--foreground); /* 본문 */
   --color-muted-foreground: var(--muted-foreground); /* 보조. 여기까지가 본문용 */
   --color-faint: var(--faint); /* placeholder·장식 전용 */
 
-  /* --- 면 5종 ------------------------------------------------------------- */
+  /* 면 5종 */
   --color-card: var(--card); /* 카드 */
   --color-card-hover: var(--card-hover); /* 누를 수 있는 카드의 호버 */
   --color-fill: var(--fill); /* 입력창처럼 값이 담기는 면 */
@@ -101,13 +101,13 @@
   --color-wash: var(--wash); /* 투명한 요소(ghost 버튼) 위에 얹는 호버 */
   --color-sunken: var(--sunken); /* 한 겹 들어간 면 */
 
-  /* --- 선 2단계 ----------------------------------------------------------- */
+  /* 선 2단계 */
   --color-border: var(--border);
   --color-border-strong: var(--border-strong); /* 호버에서만 */
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* --- Accent. 배경의 반대색 하나뿐 --------------------------------------- */
+  /* Accent. 배경의 반대색 하나 */
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -119,11 +119,10 @@
   --color-popover: var(--card);
   --color-popover-foreground: var(--foreground);
 
-  /* 모노톤의 유일한 예외. 장식이 아니라 "실패"를 나르는 기능색 */
+  /* 유일한 예외 색. 실패 표시용 */
   --color-destructive: var(--destructive);
 
-  /* 반경은 0 하나뿐. 척도를 남겨 두는 이유 — shadcn 이 새로 받아오는 컴포넌트가
-     rounded-md 를 달고 오는데, 토큰이 0 이면 그것도 각지게 나옴 */
+  /* 반경은 0 하나. 척도 유지 이유: shadcn 컴포넌트의 rounded-* 도 각지게 */
   --radius-sm: 0;
   --radius-md: 0;
   --radius-lg: 0;
@@ -131,10 +130,10 @@
   --radius-2xl: 0;
   --radius-3xl: 0;
 
-  /* 처음에 확 나가고 끝에서 길게 눕는 곡선. 앱 전체가 이것 하나만 사용 */
+  /* 앱 전체 공용 곡선 */
   --ease-apple: var(--ease-out-apple);
   --animate-fade: fade 0.18s var(--ease-out-apple) both;
-  /* 경고·오류는 가장 짧고 가깝게 — 방금 누른 것에 대한 답 */
+  /* 경고·오류 등장. 가장 짧고 가깝게 */
   --animate-alert: alert-in 0.24s var(--ease-out-apple) both;
   --animate-draw: draw-x 0.7s var(--ease-out-apple) both;
   --animate-breathe: breathe 1.6s ease-in-out infinite;
@@ -143,12 +142,10 @@
   --animate-grow-right: grow-right 0.7s var(--ease-out-apple) both;
 }
 
-/* ---------------------------------------------------------------------------
-   라이트 (기본값)
-
-   배경은 순백이 아님. #FFFFFF 는 눈이 부시고 그 위의 흰 카드가 배경과 구분되지 않음
-   옅은 회색을 깔고 카드를 흰색으로 띄워야 층이 생김
-   --------------------------------------------------------------------------- */
+/*
+  라이트(기본값)
+  바닥은 옅은 회색, 카드는 흰색. 층 구분
+*/
 :root {
   color-scheme: light;
 
@@ -157,7 +154,7 @@
   --strong: rgba(0, 0, 0, 0.88); /* #F4F4F6 대비 15.30:1 */
   --foreground: rgba(0, 0, 0, 0.7); /*                 8.16:1 */
   --muted-foreground: rgba(0, 0, 0, 0.56); /*          4.82:1 */
-  --faint: rgba(0, 0, 0, 0.4); /* placeholder·장식 전용 — 본문에 쓰지 않는다 */
+  --faint: rgba(0, 0, 0, 0.4); /* placeholder·장식 전용 */
 
   --card: rgba(255, 255, 255, 0.72);
   --card-hover: rgba(255, 255, 255, 0.96);
@@ -184,26 +181,21 @@
   --ease-out-apple: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ---------------------------------------------------------------------------
-   다크
-
-   본문도 순백이 아님. 검정 위의 #FFF 는 대비가 너무 세서 글자가 번져 보임(halation)
-   제목만 96%로 올려 위계
-
-   바닥도 순검정이 아님(#000000 → #17171A). 순검정 위 흰색 3% 카드는 #080808 이라
-   배경과 구분되지 않음 — 라이트에서 #F4F4F6 을 깐 것과 같은 이유
-   바닥을 올린 만큼 면 토큰 α 도 상향. 글자 4단계는 그대로 두고 계산으로 확인
-   --------------------------------------------------------------------------- */
+/*
+  다크
+  본문 72%, 제목만 96%. 순백 글자의 번짐 방지
+  바닥 #17171A. 순검정 위 카드는 배경과 구분 불가
+*/
 :root.dark {
   color-scheme: dark;
 
   --background: #17171a;
 
-  /* 대비는 배경 위 / 카드(#232325) 위 두 값. 카드 쪽이 더 빡빡해 그쪽이 기준 */
+  /* 대비: 배경 위 / 카드(#232325) 위 */
   --strong: rgba(255, 255, 255, 0.96); /* 16.55 / 14.52 */
   --foreground: rgba(255, 255, 255, 0.72); /*  9.63 /  8.72 */
   --muted-foreground: rgba(255, 255, 255, 0.5); /* 5.26 / 4.98 */
-  --faint: rgba(255, 255, 255, 0.35); /* 3.22 / 3.17 — placeholder·장식 전용 */
+  --faint: rgba(255, 255, 255, 0.35); /* 3.22 / 3.17. placeholder·장식 전용 */
 
   --card: rgba(255, 255, 255, 0.05);
   --card-hover: rgba(255, 255, 255, 0.075);
@@ -257,7 +249,7 @@
   }
 }
 
-/* width 대신 scaleX — width 는 매 프레임 레이아웃 재계산 */
+/* width 대신 scaleX. 레이아웃 재계산 회피 */
 @keyframes draw-x {
   from {
     transform: scaleX(0);
@@ -277,16 +269,16 @@
   }
 }
 
-/* 랜딩 스크롤 진입 연출. animation-timeline: view() 는 시간 대신 "화면에 들어온 정도"가 진행도
- * IntersectionObserver 불필요
- * @supports 필수 — 미지원 브라우저에서 opacity:0 으로 굳으면 내용이 영영 안 보임 */
+/*
+  랜딩 스크롤 진입 연출(animation-timeline: view())
+  @supports 필수. 미지원 브라우저에서 opacity 0 고정 방지
+*/
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .reveal {
       animation: reveal 1s var(--ease-out-apple) both;
       animation-timeline: view();
-      /* 화면 아래에서 8% 들어온 시점에 시작해 32% 에서 종료
-         한가운데까지 끌고 오면 너무 늦게 나타남 */
+      /* 8% 진입 시 시작, 32% 에서 종료 */
       animation-range: entry 8% cover 32%;
     }
   }
@@ -303,7 +295,7 @@
   }
 }
 
-/* 막대 자라기. scaleY 가 아니라 clip-path — transform 은 테두리와 포커스 링까지 같이 누름 */
+/* 막대 자라기는 clip-path. transform 은 테두리·포커스 링까지 변형 */
 @keyframes grow-up {
   from {
     clip-path: inset(100% 0 0 0);
@@ -313,7 +305,7 @@
   }
 }
 
-/* 가로 막대용. 기준선에서 오른쪽으로 */
+/* 가로 막대용 */
 @keyframes grow-right {
   from {
     clip-path: inset(0 100% 0 0);
@@ -342,13 +334,12 @@
 
   body {
     @apply bg-background text-foreground;
-    /* 자간 살짝 당기기. 시스템 폰트 기본값은 본문 기준이라 화면용으로는 약간 넓음 */
+    /* 화면용 자간 조정 */
     letter-spacing: -0.011em;
     margin: 0;
   }
 
-  /* 미세 노이즈는 다크 전용. 어두운 면의 색 띠(banding)를 깨는 용도라
-     밝은 바탕에서는 깰 띠가 없고 얼룩으로만 보임 */
+  /* 미세 노이즈는 다크 전용. 어두운 면의 색 띠(banding) 완화 */
   .dark body::after {
     content: "";
     position: fixed;
@@ -359,13 +350,13 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* 위 두 겹이 z-index 0 이라 실제 화면은 그 위로 */
+  /* 배경 두 겹 위에 실제 화면 */
   #root {
     position: relative;
     z-index: 1;
   }
 
-  /* 호버 워시(4.5%)를 그대로 쓰면 라이트에서 선택 영역이 거의 안 보여 전용 값 */
+  /* 선택 영역 전용 값. 라이트에서 가시성 확보 */
   ::selection {
     background: var(--selection);
     color: var(--strong);
@@ -387,8 +378,7 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
-      /* 지연도 0. 지속 시간만 없애면 차트 막대의 지연이 남아
-         내용이 잠깐 안 보이는 시간으로만 나타남 */
+      /* 지연도 0. 차트 막대가 잠깐 안 보이는 시간 방지 */
       animation-delay: 0ms !important;
       transition-delay: 0ms !important;
     }
@@ -396,10 +386,10 @@
 }
 
 @layer components {
-  /* 폼 펼침. height 대신 grid-template-rows 0fr→1fr — height 는 내용 높이를 JS 로 재야 하고
-   * 창 크기가 바뀔 때마다 다시 재야 함
-   * 안쪽 내용은 0.12s 지연 — 동시면 글자가 늘어나는 것처럼 보임
-   * 미지원 브라우저는 높이만 즉시 바뀌고 페이드는 유지 */
+  /*
+    폼 펼침은 grid-template-rows 0fr → 1fr. 높이 측정 불필요
+    안쪽 내용 0.12s 지연
+  */
   .form-open {
     display: grid;
     animation: form-open 0.36s var(--ease-out-apple) both;
@@ -410,8 +400,7 @@
     animation: fade 0.3s var(--ease-out-apple) 0.12s both;
   }
 
-  /* 터치 기기 최소 판정 영역 44px
-   * 보이는 크기는 그대로 두고 ::after 로 판정 영역만 확대 — 버튼을 키우면 목록 행의 리듬이 무너짐 */
+  /* 터치 기기 판정 영역 44px. ::after 로 영역만 확대 */
   @media (pointer: coarse) {
     [data-slot="button"]::after {
       content: "";
@@ -423,28 +412,24 @@
     }
   }
 
-  /* 괘선 그리기. 축을 왼쪽에 고정해야 '그어짐'으로 보임
-     기본값(가운데)이면 양쪽으로 벌어져 '펼쳐짐'이 됨 */
+  /* 괘선 그리기. 왼쪽 기준 */
   .rule-draw {
     transform-origin: left;
     animation: var(--animate-draw);
   }
 }
 
-/* ============================================================================
-   테마 전환 (View Transitions API)
-
-   기본 교차 페이드를 끄고 새 화면만 누른 버튼 자리에서 원형으로 펼침
-   좌표와 반지름은 ThemeProvider 가 버튼 위치를 재서 주입
-   미지원 브라우저는 연출 없이 즉시 전환
-   ============================================================================ */
+/*
+  테마 전환(View Transitions API)
+  새 화면을 누른 버튼 위치에서 원형으로 펼침. 좌표·반지름은 ThemeProvider 가 주입
+*/
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
 
-/* 옛 화면 아래, 새 화면 위 — 그래야 새 화면이 위로 펼쳐짐 */
+/* 옛 화면 아래, 새 화면 위 */
 ::view-transition-old(root) {
   z-index: 1;
 }

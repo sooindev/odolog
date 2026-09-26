@@ -51,7 +51,7 @@ public class MaintenanceRecordController {
     public ResponseEntity<PageResponse<MaintenanceRecordResponse>> findByVehicle(
             @PathVariable String vehicleId,
             @LoginUser Long requesterId,
-            /** 없으면 전체. 잘못된 값은 MethodArgumentTypeMismatch 로 400 */
+            /** 없으면 전체. 잘못된 값은 400 */
             @RequestParam(required = false) ServiceType type,
             @ParameterObject
             @PageableDefault(size = 20, sort = {"serviceDate", "id"}, direction = Sort.Direction.DESC) Pageable pageable) {
@@ -63,7 +63,7 @@ public class MaintenanceRecordController {
         return ResponseEntity.ok(records);
     }
 
-    /** 종류 전체를 한 번에. 이력 있는 종류만 반환 */
+    /** 전체 종류의 다음 정비 시점. 이력 있는 종류만 */
     @GetMapping("/next-services")
     public ResponseEntity<List<NextServiceResponse>> calculateAllNextServices(
             @PathVariable String vehicleId, @LoginUser Long requesterId) {
@@ -71,12 +71,8 @@ public class MaintenanceRecordController {
     }
 
     /**
-     * 이 차량에서 쓸 권장 주기를 정한다. 204 — 돌려줄 것이 없고, 화면은 곧바로
-     * /next-services 를 다시 불러 바뀐 결과를 받는다
-     *
-     * 뜻은 전체 교체지만 PATCH 를 쓴다 — PUT 을 열면 CORS 의 allowedMethods 와 fetch 래퍼에
-     * 메서드를 하나 더 늘려야 하는데, 이 앱에 PUT 이 필요한 자리가 여기뿐이라 값을 못 한다.
-     * 대신 화면이 두 칸을 언제나 함께 보낸다 — 둘 다 비워 보내면 기본값으로 되돌아간다
+     * 차량별 권장 주기 설정. 204 후 화면이 /next-services 재조회
+     * 의미는 전체 교체지만 PATCH 사용. PUT 추가 비용 회피, 두 값을 항상 함께 전송
      */
     @PatchMapping("/intervals/{type}")
     public ResponseEntity<Void> changeInterval(@PathVariable String vehicleId,

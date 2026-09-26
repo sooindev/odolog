@@ -22,7 +22,7 @@ class FuelAnomalyTest {
                 new BigDecimal(liters), 80000, null);
     }
 
-    /** 주행거리 목록 → 기록 목록. 주유량은 전부 40L 라 구간 연비가 거리에 비례 */
+    /** 주행거리 목록 → 기록 목록. 주유량 전부 40L, 구간 연비가 거리에 비례 */
     private List<FuelRecord> records(int... odometers) {
         List<FuelRecord> list = new ArrayList<>();
         for (int odometer : odometers) {
@@ -31,7 +31,7 @@ class FuelAnomalyTest {
         return list;
     }
 
-    /** 그 목록에서 마지막 구간이 의심받는지 */
+    /** 마지막 구간의 누락 의심 여부 */
     private boolean suspectsLastSegment(List<FuelRecord> records) {
         Baseline baseline = FuelAnomaly.baselineOf(records);
 
@@ -51,14 +51,14 @@ class FuelAnomalyTest {
 
         assertThat(FuelAnomaly.isImpossible(new BigDecimal("12.50"))).isFalse();
         assertThat(FuelAnomaly.isImpossible(new BigDecimal("25.00"))).isFalse();
-        // 미계산은 이상값이 아님
+        // 미계산은 이상값 아님
         assertThat(FuelAnomaly.isImpossible(null)).isFalse();
     }
 
     @Test
     @DisplayName("주유를 한 번 빼먹으면 그 구간이 두 배가 되고, 그걸 잡아낸다")
     void catchesMissedRecord() {
-        // 평소 400km(10km/L). 마지막만 안 적어 800km(20km/L) 구간 발생
+        // 평소 400km(10km/L), 마지막만 800km(20km/L)
         assertThat(suspectsLastSegment(records(10000, 10400, 10800, 11200, 12000))).isTrue();
     }
 
@@ -66,7 +66,7 @@ class FuelAnomalyTest {
     @DisplayName("기록을 지운 것도 같은 모양으로 잡힌다 — 빼먹은 것과 데이터가 같다")
     void catchesDeletedRecord() {
         List<FuelRecord> kept = records(10000, 10400, 10800, 11200, 11600, 12000);
-        // 11,600 기록을 지우면 마지막 구간이 400 → 800 이 된다
+        // 11,600 기록 삭제 시 마지막 구간 400 → 800
         kept.remove(4);
 
         assertThat(suspectsLastSegment(kept)).isTrue();
@@ -76,7 +76,7 @@ class FuelAnomalyTest {
     @DisplayName("⚠️ 장거리 여행은 잡지 않는다 — 거리는 길어도 연비는 평소와 같다")
     void ignoresLongTrip() {
         List<FuelRecord> trip = records(10000, 10400, 10800, 11200);
-        // 800km 를 달리고 그만큼(80L) 넣었다. 거리는 두 배지만 연비는 그대로 10km/L
+        // 800km 에 80L. 거리 두 배, 연비 그대로
         trip.add(at(12000, "80.00"));
 
         assertThat(suspectsLastSegment(trip)).isFalse();
@@ -91,14 +91,14 @@ class FuelAnomalyTest {
     @Test
     @DisplayName("계절 편차 정도(1.5배)는 넘긴다 — 아무 때나 경고하면 아무도 안 본다")
     void toleratesNormalVariation() {
-        // 400 · 400 · 400 · 600 — 1.5배는 계절 편차 수준
+        // 400·400·400·600. 1.5배는 계절 편차 수준
         assertThat(suspectsLastSegment(records(10000, 10400, 10800, 11200, 11800))).isFalse();
     }
 
     @Test
     @DisplayName("구간이 셋 미만이면 '평소'라는 게 없어 의심하지 않는다")
     void needsEnoughSegments() {
-        // 400 · 1200 — 세 배지만 기준 삼을 '평소'가 없음
+        // 400·1200. 기준이 될 평소 구간 부족
         assertThat(suspectsLastSegment(records(10000, 10400, 11600))).isFalse();
         assertThat(FuelAnomaly.baselineOf(records(10000))).isEqualTo(Baseline.NONE);
         assertThat(FuelAnomaly.baselineOf(List.of())).isEqualTo(Baseline.NONE);
@@ -108,7 +108,7 @@ class FuelAnomalyTest {
     @DisplayName("연비 기준점에서는 구간을 세지 않는다 — 연비 계산과 같은 규칙")
     void skipsResetPoint() {
         List<FuelRecord> records = records(10000, 10400, 10800, 11200);
-        // 기준점 앞 구간은 애초에 이어지지 않아 구간이 둘뿐 → 판단 보류
+        // 기준점 앞은 이어지지 않아 구간 둘뿐 → 판단 보류
         records.get(1).changeResetPoint(true);
 
         assertThat(FuelAnomaly.baselineOf(records)).isEqualTo(Baseline.NONE);

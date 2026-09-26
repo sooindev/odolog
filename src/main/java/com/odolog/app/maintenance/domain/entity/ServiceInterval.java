@@ -20,16 +20,9 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * 이 차량에서만 쓰는 권장 주기. 없으면 ServiceType 의 기본값
- *
- * 왜 필요한가: 주기가 enum 상수로 고정돼 있어 엔진오일이 언제나 5,000km(광유 기준)였다.
- * 합성유는 10,000~15,000km 라, 합성유를 쓰는 사람에게는 `지남` 이 늘 켜져 있는 경고등이 된다.
- * 늘 켜진 경고는 아무도 안 본다
- *
- * 차량 단위인 이유: 같은 사람이 디젤과 가솔린을 함께 몰 수 있고, 주기는 사람이 아니라 차의 성질이다
- *
- * km·개월을 따로 비울 수 있다. 한쪽만 바꾸고 싶은 경우가 실제로 있다 —
- * 합성유는 거리만 늘고 기간(6개월)은 그대로인 게 보통이다
+ * 차량별 권장 주기. 없으면 ServiceType 기본값
+ * 차량 단위: 주기는 차의 성질
+ * km·개월 개별 설정 가능(합성유는 거리만 늘리는 경우가 보통)
  */
 @Entity
 @Table(
@@ -50,13 +43,13 @@ public class ServiceInterval extends BaseTimeEntity {
             foreignKey = @ForeignKey(name = "fk_service_intervals_vehicle"))
     private Vehicle vehicle;
 
-    /** JdbcTypeCode(VARCHAR) 필수 — 네이티브 enum 컬럼이면 종류를 더할 때 운영만 깨진다 */
+    /** @JdbcTypeCode(VARCHAR) 필수. 네이티브 enum 방지 */
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 30)
     private ServiceType type;
 
-    /** null 이면 그 기준은 기본값을 쓴다 */
+    /** null 이면 기본값 */
     @Column(name = "interval_km")
     private Integer intervalKm;
 
@@ -78,7 +71,7 @@ public class ServiceInterval extends BaseTimeEntity {
         this.intervalMonths = intervalMonths;
     }
 
-    /** 둘 다 비었으면 덮어쓸 것이 없다 — 이런 행은 남겨 둘 이유가 없어 서비스가 지운다 */
+    /** 둘 다 비었는지. 빈 행은 서비스가 삭제 */
     public boolean isEmpty() {
         return intervalKm == null && intervalMonths == null;
     }

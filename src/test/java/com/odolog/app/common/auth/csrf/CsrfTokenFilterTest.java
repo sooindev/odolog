@@ -9,13 +9,10 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * 필터를 직접 호출해서 본다
- * @WebMvcTest 로 하면 Filter 빈이 같이 올라와 기존 테스트 30여 개가 403 이 된다
- */
+/** 필터 직접 호출. @WebMvcTest 에 필터를 올리면 기존 쓰기 테스트가 403 */
 class CsrfTokenFilterTest {
 
-    // 로컬과 같은 설정(http). Secure 를 켠 경우는 마지막 테스트에서 따로 본다
+    // 로컬과 같은 http 설정. secure 는 마지막 테스트
     private final CsrfTokenFilter filter = new CsrfTokenFilter(false);
 
     private MockHttpServletRequest request(String method, String uri) {
@@ -35,7 +32,7 @@ class CsrfTokenFilterTest {
         Cookie cookie = response.getCookie(CsrfTokenFilter.COOKIE_NAME);
         assertThat(cookie).isNotNull();
         assertThat(cookie.getValue()).isNotBlank();
-        // 화면이 읽어 헤더에 실어야 하므로 HttpOnly 면 안 된다
+        // 화면이 읽어야 하는 값이라 HttpOnly 금지
         assertThat(cookie.isHttpOnly()).isFalse();
         assertThat(chain.getRequest()).isNotNull();
     }
@@ -61,7 +58,7 @@ class CsrfTokenFilterTest {
         filter.doFilter(request, response, chain);
 
         assertThat(response.getStatus()).isEqualTo(403);
-        // 다음 필터로 넘어가지 않아야 한다 — 넘어가면 이미 실행된 것이다
+        // 다음 필터로 진행하지 않음
         assertThat(chain.getRequest()).isNull();
     }
 
@@ -100,14 +97,14 @@ class CsrfTokenFilterTest {
 
         new CsrfTokenFilter(true).doFilter(request("GET", "/api/users/me"), response, new MockFilterChain());
 
-        // 세션 쿠키만 지키고 이쪽이 평문으로 나가면 반쪽짜리다
+        // 세션 쿠키와 같은 secure 설정
         assertThat(response.getCookie(CsrfTokenFilter.COOKIE_NAME).getSecure()).isTrue();
     }
 
     @Test
     @DisplayName("/api 밖은 검사하지 않는다")
     void skipsNonApiPaths() throws Exception {
-        // swagger-ui 와 정적 파일까지 막으면 문서를 못 연다
+        // swagger-ui·정적 파일은 검사 제외
         MockFilterChain chain = new MockFilterChain();
 
         filter.doFilter(request("POST", "/swagger-ui.html"), new MockHttpServletResponse(), chain);

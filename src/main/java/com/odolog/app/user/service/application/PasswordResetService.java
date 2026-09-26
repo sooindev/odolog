@@ -27,21 +27,17 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
 
-/**
- * 비밀번호 재설정
- *
- * 두 단계다: 메일로 링크를 보내고(request), 그 링크의 토큰으로 비밀번호를 바꾼다(confirm)
- */
+/** 비밀번호 재설정. 링크 발송(request) → 토큰으로 변경(confirm) */
 @Service
 @Transactional(readOnly = true)
 public class PasswordResetService {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
 
-    /** 링크 유효 시간. 길면 메일함이 곧 열쇠가 되고, 짧으면 메일 도착 전에 만료된다 */
+    /** 링크 유효 시간(분) */
     public static final int VALID_MINUTES = 30;
 
-    /** 같은 주소로 메일을 쏟아붓지 못하게. 로그인 제한과 같은 장치를 키만 갈라 쓴다 */
+    /** 같은 주소로의 메일 폭주 방지. 로그인 리미터 공용 */
     private static final String RATE_LIMIT_PREFIX = "password-reset:";
 
     private final UserRepository userRepository;
@@ -53,8 +49,7 @@ public class PasswordResetService {
     private final SecureRandom random = new SecureRandom();
     private final Clock clock;
 
-    // 생성자가 둘이라 어느 쪽을 쓸지 스프링에게 알려 줘야 한다.
-    // 아래 것은 시계를 갈아 끼우려고 테스트만 쓰는 통로다
+    // 스프링이 쓸 생성자 지정. 아래 생성자는 테스트의 시계 주입용
     @Autowired
     public PasswordResetService(UserRepository userRepository,
                                 PasswordResetTokenRepository tokenRepository,
@@ -79,27 +74,15 @@ public class PasswordResetService {
         this.clock = clock;
     }
 
-    /**
-     * 재설정 링크를 보낸다
-     *
-     * 가입되지 않은 주소여도 **아무 일도 일어나지 않은 채 정상 응답**한다 —
-     * 여기서 404 를 주면 그게 곧 가입 여부 조회 API 가 된다.
-     * 로그인 실패 메시지를 일부러 통일해 둔 방침과 같은 이유다
-     */
+    /** 재설정 링크 발송. 없는 주소도 같은 정상 응답(가입 여부 노출 방지) */
     @Transactional
     public void request(String email) {
         String limitKey = RATE_LIMIT_PREFIX + email;
         rateLimiter.checkNotLocked(limitKey, "비밀번호 재설정 요청이 너무 많습니다.");
         rateLimiter.recordFailure(limitKey);
 
-        /*
-         * 만료된 토큰을 여기서 같이 치운다
-         *
-         * 스케줄러를 따로 두지 않은 이유: 토큰이 쌓이는 유일한 경로가 이 메서드라,
-         * 여기가 곧 "쌓이는 만큼 치워지는" 자리다. 앱이 안 뜨는 시간에도 돌아야 할 일이 아니다.
-         * 가입 여부를 확인하기 **전에** 부르는 것도 의도다 — 없는 주소로 요청해도 하는 일이
-         * 같아야 응답 시간으로 가입 여부가 드러나지 않는다
-         */
+        // 만료 토큰 정리. 토큰이 쌓이는 유일한 경로라 스케줄러 불필요
+        // 가입 여부 확인 전 실행. 주소 유무와 관계없이 같은 작업
         tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now(clock));
 
         Optional<User> found = userRepository.findByEmail(email);
@@ -108,24 +91,23 @@ public class PasswordResetService {
         }
 
         User user = found.get();
-        // 새로 발급하면 이전 것은 버린다. 메일함에 남은 옛 링크가 계속 열쇠면 안 된다
+        // 재발급 시 이전 토큰 폐기
         tokenRepository.deleteByUserId(user.getId());
 
         String token = generateToken();
         LocalDateTime expiresAt = LocalDateTime.now(clock).plusMinutes(VALID_MINUTES);
         tokenRepository.save(new PasswordResetToken(user, hash(token), expiresAt));
 
-        // 실제 발송은 커밋 뒤 다른 스레드(PasswordResetMailer). 여기서 기다리면
-        // 가입된 주소만 SMTP 시간만큼 늦게 답해 응답 시간이 가입 여부를 알려준다
+        // 실제 발송은 커밋 후 다른 스레드(PasswordResetMailer). 응답 시간 차이 방지
         try {
             mailer.send(user.getEmail(), token, VALID_MINUTES);
         } catch (RuntimeException e) {
-            // 발송 예약조차 실패한 경우. 올려보내면 가입된 주소에서만 500 이 난다
+            // 발송 예약 실패도 삼킴. 가입된 주소에서만 500 이 나는 것 방지
             log.error("비밀번호 재설정 메일 예약 실패.", e);
         }
     }
 
-    /** 토큰으로 비밀번호를 바꾼다. 성공하면 그 토큰은 즉시 죽는다 */
+    /** 토큰으로 비밀번호 변경. 성공 시 토큰 즉시 만료 */
     @Transactional
     public void confirm(PasswordResetConfirmRequest request) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -138,14 +120,14 @@ public class PasswordResetService {
         token.getUser().changePassword(passwordEncoder.encode(request.newPassword()));
         token.markUsed(now);
 
-        // 비밀번호를 바꿨으니 로그인 잠금도 푼다 — 잊어버려서 여러 번 틀린 사람이 여기까지 왔다
+        // 로그인 잠금 해제
         rateLimiter.recordSuccess(token.getUser().getEmail());
 
-        // 열려 있던 세션도 전부 끊는다. 재설정하는 이유가 "누가 들어온 것 같아서" 일 수 있다
+        // 열려 있던 세션 전부 종료
         sessionRegistry.invalidateAll(token.getUser().getId());
     }
 
-    /** 256비트. 추측으로 맞힐 수 없어야 한다 */
+    /** 256비트 난수 */
     private String generateToken() {
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
@@ -154,9 +136,8 @@ public class PasswordResetService {
     }
 
     /**
-     * SHA-256. 비밀번호와 달리 BCrypt 를 쓰지 않는다 —
-     * 토큰은 우리가 만든 256비트 난수라 사전 공격 대상이 아니고,
-     * BCrypt 는 같은 값도 매번 다른 해시를 내놓아 조회 키로 쓸 수 없다
+     * SHA-256. 256비트 난수라 사전 공격 대상 아님
+     * BCrypt 는 같은 값도 매번 다른 해시라 조회 키 불가
      */
     private String hash(String token) {
         try {

@@ -40,10 +40,8 @@ public class MaintenanceRecordService {
     }
 
     /**
-     * 이 차량에서 쓸 권장 주기를 정한다. 둘 다 null 이면 기본값으로 되돌린다
-     *
-     * 되돌릴 때 행을 지우는 이유: 값이 전부 비어 있는 행은 "덮어쓰지 않음" 과 같은 뜻인데,
-     * 남겨 두면 customized 가 true 로 남아 화면이 "기본과 다름" 이라고 거짓말한다
+     * 차량별 권장 주기 설정. 둘 다 null 이면 행 삭제(기본값 복귀)
+     * 빈 행이 남으면 customized 가 거짓으로 true
      */
     @Transactional
     public void changeInterval(Long requesterId, String vehicleId, ServiceType type,
@@ -80,12 +78,11 @@ public class MaintenanceRecordService {
         return maintenanceRecordRepository.save(record);
     }
 
-    /** 화면이 쓰는 것만 정렬 대상 (차량 목록과 같은 이유 — SortGuard 주석 참고) */
+    /** 화면이 쓰는 속성만 정렬 허용 */
     private static final Set<String> SORTABLE =
             Set.of("serviceDate", "id", "cost", "serviceOdometer", "type");
 
-    /** type 이 null 이면 전체. 전용 메서드를 하나 더 만들지 않는 이유 — 호출부가 갈리면
-     *  소유권 검사와 정렬 가드를 두 곳에서 되풀이해야 한다 */
+    /** type 이 null 이면 전체. 소유권 검사·정렬 가드 한 곳 유지 */
     public Page<MaintenanceRecord> findByVehicle(Long requesterId, String vehicleId,
                                                  ServiceType type, Pageable pageable) {
         Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
@@ -97,12 +94,8 @@ public class MaintenanceRecordService {
     }
 
     /**
-     * 전체 종류의 다음 정비 시점을 한 번에. 종류마다 요청하면 15왕복
-     * 이력 없는 종류는 제외 — 15줄 중 13줄이 "기록 없음"이면 빈칸 목록이 됨
-     *
-     * 계산과 "지남" 판정은 NextService 가 한다 — 홈 요약이 같은 것을 쓴다
-     * "오늘"을 밖에서 받지 않고 여기서 만드는 이유: 이 경로는 화면이 바로 부르는 조회라
-     * 고정할 이유가 없고, 고정이 필요한 홈 요약 쪽은 자기가 today 를 넘긴다
+     * 전체 종류의 다음 정비 시점. 이력 없는 종류 제외
+     * 계산·지남 판정은 NextService(홈 요약과 공용)
      */
     public List<NextServiceResponse> calculateAllNextServices(Long requesterId, String vehicleId) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
@@ -135,7 +128,7 @@ public class MaintenanceRecordService {
         }
         if (request.serviceOdometer() != null) {
             record.changeServiceOdometer(request.serviceOdometer());
-            // 수정에도 같은 규칙. 자리수 오타 정정이 흔함
+            // 수정에도 같은 규칙
             record.getVehicle().liftOdometerTo(request.serviceOdometer());
         }
         if (request.serviceDate() != null) {
@@ -153,7 +146,7 @@ public class MaintenanceRecordService {
         maintenanceRecordRepository.delete(record);
     }
 
-    /** 빈 문자열은 "없음" 으로. 주유 메모·프로필 전화번호와 같은 규칙 */
+    /** 빈 문자열은 null */
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value;
     }

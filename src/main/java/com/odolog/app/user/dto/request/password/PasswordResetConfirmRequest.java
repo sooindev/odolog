@@ -4,7 +4,7 @@ import com.odolog.app.common.validation.annotation.MaxBytes;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/** 새 비밀번호 제한은 가입·변경과 같아야 한다 — 느슨하면 여기로 우회가 된다 */
+/** 새 비밀번호 제한은 가입·변경과 동일 */
 public record PasswordResetConfirmRequest(
 
         @NotBlank

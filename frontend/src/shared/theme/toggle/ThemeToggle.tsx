@@ -4,18 +4,15 @@ import { cn } from 'cn'
 import { useTheme } from '@/shared/theme/context/ThemeContext'
 import type { Theme } from '@/shared/theme/context/ThemeContext'
 
-/*
- * macOS 시스템 설정의 '외관' 과 같은 형태. 해/모니터/달 세 칸에 블록 하나가 미끄러짐
- * 아이콘 하나짜리 토글을 안 쓰는 이유 — system 을 표현할 자리가 없고,
- * "지금이 다크"인지 "누르면 다크"인지가 늘 헷갈림
- */
+// 해/모니터/달 세 칸 + 미끄러지는 블록
+// system 을 표현하려고 세 칸
 const OPTIONS = [
   { value: 'light', label: '라이트 모드', Icon: Sun },
   { value: 'system', label: '시스템 설정 따름', Icon: Monitor },
   { value: 'dark', label: '다크 모드', Icon: Moon },
 ] as const satisfies readonly { value: Theme; label: string; Icon: typeof Sun }[]
 
-/** 칸 하나의 크기(px). 블록 이동 거리 계산의 기준 */
+/** 칸 크기(px). 블록 이동 거리 기준 */
 const CELL = 28
 
 export function ThemeToggle({ className }: { className?: string }) {
@@ -24,7 +21,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   const index = OPTIONS.findIndex((option) => option.value === theme)
 
   return (
-    // 버튼 셋을 "화면 모드" 한 덩어리로 읽히게
+    // 버튼 셋을 한 그룹으로
     <div
       role="group"
       aria-label="화면 모드"
@@ -33,10 +30,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         className,
       )}
     >
-      {/*
-        움직이는 블록. 버튼마다 배경을 켜고 끄는 대신 요소 하나를 이동
-        켜고 끄면 두 애니메이션이 따로 돌아 끊겨 보임
-      */}
+      {/* 움직이는 블록 하나. 버튼별 배경 전환 대신 */}
       <span
         aria-hidden="true"
         className="absolute top-[3px] left-[3px] border border-border bg-fill transition-transform duration-300 ease-apple"
@@ -51,10 +45,10 @@ export function ThemeToggle({ className }: { className?: string }) {
           aria-pressed={theme === value}
           aria-label={label}
           title={label}
-          // 누른 버튼 좌표에서 원형으로 번짐
+          // 누른 버튼 위치에서 원형 전환
           onClick={(event) => setTheme(value, event.currentTarget)}
           className={cn(
-            // z-10 — 블록보다 위에 있어야 클릭이 버튼에 닿음
+            // z-10: 블록 위에서 클릭 수신
             'relative z-10 grid place-items-center transition-colors duration-200 ease-apple focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             theme === value ? 'text-strong' : 'text-muted-foreground hover:text-strong',
           )}

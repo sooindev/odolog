@@ -102,7 +102,7 @@ class FuelRecordControllerTest {
     @Test
     @DisplayName("주유량과 결제 금액은 빠뜨려도 201 — 비워 두는 것이 정상적인 사용이다")
     void registerWithoutLitersAndCost() throws Exception {
-        // 영수증을 잃었거나 계기판만 적어 두는 경우. 화면이 저장 전에 무엇을 못 하게 되는지 알린다
+        // 영수증 분실·계기판만 기록하는 경우
         when(fuelRecordService.register(eq(1L), eq("10"), any())).thenReturn(response());
 
         mockMvc.perform(post("/api/vehicles/10/fuel-records")
@@ -117,7 +117,7 @@ class FuelRecordControllerTest {
     @Test
     @DisplayName("빠뜨리는 것과 0 은 다르다 — 0L 은 여전히 400")
     void zeroLitersStillRejected() throws Exception {
-        // 비운 것은 "모름", 0 은 "0리터를 넣었다". 뒤쪽은 연비가 0 으로 나누기가 된다
+        // 비움은 모름, 0 은 0L 주유. 0 은 연비 0 으로 나누기
         mockMvc.perform(post("/api/vehicles/10/fuel-records")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -132,7 +132,7 @@ class FuelRecordControllerTest {
     void updateDistinguishesAbsentFromNull() throws Exception {
         when(fuelRecordService.update(eq(1L), eq("10"), eq("5"), any())).thenReturn(response());
 
-        // liters 키가 아예 없다 → 유지
+        // liters 키 없음 → 유지
         mockMvc.perform(patch("/api/vehicles/10/fuel-records/5")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -143,10 +143,10 @@ class FuelRecordControllerTest {
 
         ArgumentCaptor<FuelRecordUpdateRequest> kept = ArgumentCaptor.forClass(FuelRecordUpdateRequest.class);
         verify(fuelRecordService).update(eq(1L), eq("10"), eq("5"), kept.capture());
-        // null 이면 "안 보냄" — 메모만 고치는 요청이 주유량을 지우면 안 된다
+        // null 은 안 보냄. 메모만 수정해도 주유량 유지
         assertThat(kept.getValue().liters()).isNull();
 
-        // clearLiters 를 명시해야만 비움. null 하나로는 "안 보냄" 과 가를 수 없다
+        // clearLiters 명시 시에만 비움
         mockMvc.perform(patch("/api/vehicles/10/fuel-records/5")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -163,7 +163,7 @@ class FuelRecordControllerTest {
     @Test
     @DisplayName("미래 날짜로 주유를 등록하면 400")
     void registerFutureDateRejected() throws Exception {
-        // 드럼 휠은 미래 년도를 아예 안 만들지만 네이티브 date 와 API 는 그대로 받고 있었다
+        // 미래 날짜는 API 에서도 차단
         String tomorrow = LocalDate.now().plusDays(1).toString();
 
         mockMvc.perform(post("/api/vehicles/10/fuel-records")

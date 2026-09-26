@@ -103,11 +103,7 @@ class VehicleServiceTest {
     @Test
     @DisplayName("허용 목록에 없는 속성으로 정렬하면 InvalidRequestException")
     void rejectsSortOutsideWhitelist() {
-        /*
-         * Spring Data 는 ?sort=owner.password 를 그대로 받아 암묵적 조인을 만든다.
-         * 값이 응답에 실리지는 않지만 정렬 대상이 될 이유가 없다 —
-         * 없는 속성만 400 이 되던 상태(PropertyReferenceException)로는 안 걸렸다.
-         */
+        // ?sort=owner.password 같은 연관 엔티티 정렬 차단
         assertThatThrownBy(() -> vehicleService.findMyVehicles(1L,
                 PageRequest.of(0, 20, Sort.by("owner.password"))))
                 .isInstanceOf(InvalidRequestException.class);
@@ -146,14 +142,14 @@ class VehicleServiceTest {
     @Test
     @DisplayName("없는 차량과 남의 차량은 메시지까지 같다")
     void hidesExistenceOfOthersVehicles() {
-        // 상태 코드만 맞추고 문구가 다르면 그 문구가 존재 여부를 알려준다
+        // 문구까지 같아야 존재 여부가 드러나지 않음
         when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(createVehicle(10L, createOwner(1L))));
         when(vehicleRepository.findByPublicId("V11")).thenReturn(Optional.empty());
 
         String othersVehicle = catchThrowable(() -> vehicleService.findOwnedVehicle(999L, "V10")).getMessage();
         String missingVehicle = catchThrowable(() -> vehicleService.findOwnedVehicle(999L, "V11")).getMessage();
 
-        // id 만 다르고 나머지는 같아야 한다 — 보낸 쪽이 이미 아는 값이다
+        // id 만 다르고 나머지 동일
         assertThat(othersVehicle).isEqualTo("존재하지 않는 차량입니다: V10");
         assertThat(missingVehicle).isEqualTo("존재하지 않는 차량입니다: V11");
     }
@@ -176,7 +172,7 @@ class VehicleServiceTest {
         vehicle.updateOdometer(5000000);
         when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        // 자리수를 잘못 넣은 뒤 고치는 경로. 이게 없으면 되돌릴 방법이 아예 없다
+        // 자리수 오타 복구 경로
         vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(500000, true));
 
         assertThat(vehicle.getOdometer()).isEqualTo(500000);
@@ -225,7 +221,7 @@ class VehicleServiceTest {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        // 번호판을 같은 값으로 전송. 자기를 빼지 않고 검사하면 409
+        // 같은 번호판 전송. 자기 자신 중복 판정 방지
         vehicleService.update(1L, "V10", new VehicleUpdateRequest("12가3456", "기아", null, null));
 
         verify(vehicleRepository, never()).existsByOwnerIdAndPlateNumber(any(), any());
@@ -242,9 +238,9 @@ class VehicleServiceTest {
         Vehicle saved = vehicleService.register(1L,
                 new VehicleRegisterRequest(" 12가3456 ", "현대\u3000", " 아반떼", 2023));
 
-        // 중복 검사도 자른 값으로 — 위 스텁이 "12가3456" 이라 안 자르면 여기서 불일치
+        // 중복 검사도 자른 값 기준
         assertThat(saved.getPlateNumber()).isEqualTo("12가3456");
-        // 전각 공백(U+3000)까지. trim() 이면 남는다
+        // 전각 공백(U+3000)까지 제거
         assertThat(saved.getManufacturer()).isEqualTo("현대");
         assertThat(saved.getModelName()).isEqualTo("아반떼");
     }
@@ -252,7 +248,7 @@ class VehicleServiceTest {
     @Test
     @DisplayName("공백만 지우는 번호판 수정은 자기 자신과 중복으로 잡지 않는다")
     void updateOnlyWhitespaceIsNotDuplicate() {
-        // DB 는 뒤 공백을 무시하고 비교해 "12가3456 " 과 "12가3456" 을 같다고 본다 — 검사하면 자기 자신이 걸린다
+        // DB 는 뒤 공백 무시 비교라 검사 시 자기 자신과 충돌
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.changePlateNumber("12가3456 ");
         when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));

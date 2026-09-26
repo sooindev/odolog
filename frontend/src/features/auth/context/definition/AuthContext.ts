@@ -7,22 +7,22 @@ import type {
 } from '@/features/auth/api/types/types'
 
 export interface AuthContextValue {
-  /** 로그인하지 않았으면 null */
+  /** 비로그인이면 null */
   user: UserResponse | null
   /** 최초 세션 복구 전에는 true */
   loading: boolean
   login: (request: LoginRequest) => Promise<void>
   logout: () => Promise<void>
   /**
-   * 탈퇴. 로그아웃과 같은 자리인 이유 — "성공하면 로그인 상태가 사라짐"이 화면의 사정이 아니라 이 동작의 정의
-   * 실패는 그대로 전달. 로그아웃과 달리 "실패해도 비움"이 성립하지 않음
+   * 탈퇴. 성공 시 로그인 상태 제거
+   * 실패는 그대로 전달
    */
   withdraw: (request: WithdrawRequest) => Promise<void>
-  /** 서버가 새 사용자 정보를 돌려줄 때 갱신용 */
+  /** 서버가 돌려준 사용자 정보로 교체 */
   replaceUser: (user: UserResponse) => void
 }
 
-// 기본값 null — Provider 를 빠뜨리면 조용히 넘어가지 않고 바로 터짐
+// 기본값 null. Provider 누락 시 즉시 오류
 export const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function useAuth() {

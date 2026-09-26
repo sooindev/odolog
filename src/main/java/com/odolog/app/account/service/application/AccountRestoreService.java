@@ -26,22 +26,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 내보낸 JSON 을 되돌려 넣는다. 내보내기의 짝이다
- *
- * 왜 필요했나: 화면이 "탈퇴하면 복구되지 않습니다. 지우기 전에 받아 두세요" 라고 말하면서
- * 받은 파일로 할 수 있는 일이 없었다. **복원할 수 없으면 백업이 아니라 기념품이다**
- *
- * 규칙 셋:
- *   1. 같은 번호판이 있으면 그 차량에 기록만 붙인다. 차량 정보는 건드리지 않는다 —
- *      파일이 옛날 것일 수 있는데 지금 값을 덮어쓸 이유가 없다
- *   2. 같은 기록은 건너뛴다. 같은 파일을 두 번 넣어도 두 배가 되지 않아야 한다 —
- *      "실수로 두 번 눌렀더니 기록이 두 배" 가 이 기능에서 가장 나쁜 결과다
- *   3. 하나라도 검증에 걸리면 전부 안 들어간다(@Transactional). 부분 성공은
- *      "무엇이 들어갔는지 모르는" 상태를 남긴다
- *
- * account 패키지인 이유는 내보내기와 같다 — 여러 기능을 동시에 알아도 되는 조율 층이다.
- * 다만 내보내기와 달리 **쓰기** 라서, 차량 등록 규칙(번호판 중복)을 우회하지 않도록
- * 여기서 직접 확인한다
+ * 내보낸 JSON 복원. 내보내기의 짝
+ * 같은 번호판이면 기록만 추가, 차량 정보는 유지
+ * 같은 기록은 건너뜀. 두 번 넣어도 두 배가 되지 않게
+ * 하나라도 실패하면 전체 롤백
  */
 @Service
 @Transactional(readOnly = true)
@@ -95,7 +83,7 @@ public class AccountRestoreService {
                 mergedVehicles++;
             }
 
-            // 이미 있는 기록의 열쇠를 먼저 모은다. 한 건씩 조회하면 기록 수만큼 쿼리가 난다
+            // 기존 기록 열쇠 일괄 수집. 건별 조회 시 기록 수만큼 쿼리
             Set<String> existingMaintenance = new HashSet<>();
             for (MaintenanceRecord record : maintenanceRecordRepository
                     .findByVehicleIdOrderByServiceDateDescIdDesc(vehicle.getId())) {
@@ -128,8 +116,7 @@ public class AccountRestoreService {
                     continue;
                 }
 
-                // 기준점은 생성자에 없어 따로 찍는다. save() 의 반환이 아니라 넘긴 객체에 —
-                // 같은 인스턴스이고, 반환에 기대면 리포지토리 구현에 매달리는 코드가 된다
+                // 기준점은 생성자에 없어 별도 지정
                 FuelRecord fuel = new FuelRecord(vehicle, record.fueledAt(), record.odometer(),
                         record.liters(), record.totalCost(), blankToNull(record.memo()));
                 fuel.changeResetPoint(record.resetPoint());
@@ -138,7 +125,7 @@ public class AccountRestoreService {
                 addedFuel++;
             }
 
-            // 이미 설정이 있는 종류는 건드리지 않는다 (차량 정보를 안 덮어쓰는 것과 같은 이유)
+            // 이미 설정된 종류는 유지
             Set<ServiceType> settled = new HashSet<>();
             for (ServiceInterval interval : serviceIntervalRepository.findByVehicleId(vehicle.getId())) {
                 settled.add(interval.getType());
@@ -155,7 +142,7 @@ public class AccountRestoreService {
                 addedIntervals++;
             }
 
-            // 기록을 넣은 뒤 한 번만. 파일의 값과 기록들 중 큰 쪽으로 맞춰진다
+            // 기록 추가 후 한 번만. 파일 값과 기존 값 중 큰 쪽
             vehicle.liftOdometerTo(data.odometer());
         }
 
@@ -163,15 +150,8 @@ public class AccountRestoreService {
                 mergedVehicles, skipped, addedIntervals);
     }
 
-    /*
-     * 중복 판정 열쇠
-     *
-     * id 로는 판정할 수 없다 — 내보낸 JSON 에 id 가 없기 때문이다(우리 DB 안에서만 뜻이 있는
-     * 값이라 일부러 뺐다). 대신 사람이 보기에 같은 기록이면 같다고 본다.
-     *
-     * 정비는 종류·날짜·주행거리, 주유는 날짜·주행거리다. 같은 날 같은 계기판에서
-     * 같은 종류의 정비를 두 번 받는 일은 없다
-     */
+    // 중복 판정 열쇠. JSON 에 id 가 없어 내용으로 판정
+    // 정비: 종류·날짜·주행거리 / 주유: 날짜·주행거리
     private String maintenanceKey(MaintenanceRecord record) {
         return record.getType() + "|" + record.getServiceDate() + "|" + record.getServiceOdometer();
     }
@@ -188,15 +168,12 @@ public class AccountRestoreService {
         return record.fueledAt() + "|" + record.odometer();
     }
 
-    /**
-     * 같은 차인지 가르는 열쇠. DB 유니크 제약과 같은 기준(앞뒤 공백·대소문자 무시)이라야 한다 —
-     * 자바에서 다르다고 보고 새로 저장하면 DB 가 같다고 보고 막아 가져오기 전체가 실패한다
-     */
+    /** 같은 차 판정 열쇠. DB 유니크와 같은 기준(앞뒤 공백·대소문자 무시) */
     private String plateKey(String plateNumber) {
         return plateNumber.strip().toLowerCase(Locale.ROOT);
     }
 
-    /** 빈 문자열은 "없음" 으로. 서비스들이 쓰는 규칙과 같다 */
+    /** 빈 문자열은 null */
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value;
     }

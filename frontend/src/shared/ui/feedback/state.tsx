@@ -1,11 +1,11 @@
 import { cn } from 'cn'
 
 /**
- * 로딩·에러·안내 표시. shadcn 이 아니라 우리 파일
- * 빈 상태는 제외 — 화면마다 생김새가 달라(카드+버튼 / 한 줄 문장) 한 컴포넌트로 덮으면 옵션만 늘어남
+ * 로딩·에러·안내 표시
+ * 빈 상태는 화면마다 달라 제외
  */
 
-/** 스피너 대신 밝기만 오가는 점. 회전은 시선을 너무 끎 */
+/** 스피너 대신 밝기만 오가는 점 */
 export function LoadingText({ className }: { className?: string }) {
   return (
     <div
@@ -19,16 +19,15 @@ export function LoadingText({ className }: { className?: string }) {
 }
 
 /**
- * 빨간 글씨 한 줄이 아니라 옅은 면 — 글씨만으로는 "영역"으로 안 읽힘
- * role="alert" 로 스크린리더 즉시 읽기
- * 앱에서 가장 짧은 등장(0.24s/4px). 방금 누른 것에 대한 답이라 늦으면 안 됨
+ * 옅은 면의 오류 표시. role="alert"
+ * 가장 짧은 등장(0.24s/4px)
  */
 export function ErrorText({ message, className }: { message: string; className?: string }) {
   return (
     <p
       role="alert"
       className={cn(
-        // 크기는 임의 값으로. cn 이 커스텀 토큰을 색으로 오해해 지운다 (card.tsx 주석 참고)
+        // 크기는 임의 값. cn 의 토큰 삭제 문제(card.tsx 참고)
         'animate-alert border border-destructive/20 bg-destructive/[0.07] px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-destructive',
         className,
       )}
@@ -38,10 +37,7 @@ export function ErrorText({ message, className }: { message: string; className?:
   )
 }
 
-/**
- * 실패가 아닌 안내. 색 없이 농도만
- * 등장은 에러와 같은 박자 — 같은 자리에 뜨므로 속도가 다르면 헷갈림
- */
+/** 실패가 아닌 안내. 색 없이 농도만, 등장은 에러와 동일 */
 export function NoticeText({ message, className }: { message: string; className?: string }) {
   return (
     <p
@@ -56,10 +52,7 @@ export function NoticeText({ message, className }: { message: string; className?
   )
 }
 
-/**
- * 로딩 자리를 미리 차지하는 덩어리. 데이터가 도착해도 레이아웃이 안 튐
- * 좌우로 흐르는 띠로 멈춘 화면이 아님을 표시
- */
+/** 로딩 자리 확보용 덩어리. 좌우로 흐르는 띠 */
 export function Skeleton({ className }: { className?: string }) {
   return (
     <div

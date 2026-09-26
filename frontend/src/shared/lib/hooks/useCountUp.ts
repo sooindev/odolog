@@ -1,30 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * 직전 값에서 새 값으로 굴러가는 숫자
- * 첫 렌더에서는 정지 — 0 부터 세면 값을 읽기까지 기다려야 함. 값이 실제로 바뀐 순간에만 동작
- * 지속 시간은 변화 폭에 비례. 10km 와 20,000km 가 같은 시간이면 작은 변화는 굼뜸
- * running 은 글자 폭용 — 매 프레임 폭이 다르면 떨려서 움직이는 동안만 tabular-nums
+ * 직전 값에서 새 값으로 굴러가는 숫자. 첫 렌더는 정지
+ * 지속 시간은 변화 폭에 비례
+ * running: 움직이는 동안만 tabular-nums
  */
 export function useCountUp(target: number): { value: number; running: boolean } {
   const [value, setValue] = useState(target)
   const [running, setRunning] = useState(false)
 
-  // 직전 값. 첫 렌더에서는 target 과 같아 무동작
+  // 직전 목표값
   const fromRef = useRef(target)
-  // 지금 화면에 찍혀 있는 값. 연출 도중에 target 이 또 바뀌면 여기서 이어간다
+  // 현재 표시 중인 값. 도중 변경 시 출발점
   const shownRef = useRef(target)
 
   useEffect(() => {
     const from = fromRef.current
     if (from === target) {
-      // 도중에 끊긴 연출이 지금 보이는 값에서 멈춘 경우. 끝난 상태로 돌려놓아야
-      // tabular-nums 가 멈춘 숫자에 남지 않는다. 첫 렌더에서는 이미 false 라 아무 일도 없다
+      // 도중에 끊긴 연출이 현재 값에서 멈춘 경우. running 해제
       setRunning(false)
       return
     }
 
-    // 1,000 당 약 0.1초, 0.45~1.4초로 제한
+    // 1,000 당 약 0.1초, 0.45~1.4초 범위
     const distance = Math.abs(target - from)
     const duration = Math.min(1400, Math.max(450, (distance / 1000) * 100 + 400))
 
@@ -33,7 +31,7 @@ export function useCountUp(target: number): { value: number; running: boolean } 
 
     function tick(now: number) {
       const progress = Math.min(1, (now - start) / duration)
-      // ease-out quart. CSS 의 ease-apple 과 같은 성격
+      // ease-out quart
       const eased = 1 - (1 - progress) ** 4
 
       shownRef.current = Math.round(from + (target - from) * eased)
@@ -47,7 +45,7 @@ export function useCountUp(target: number): { value: number; running: boolean } 
       }
     }
 
-    // effect 안에서 동기 setState 금지 — 렌더가 한 번 더 돌고 린터에 걸림. 첫 프레임에서 시작
+    // effect 안 동기 setState 회피. 첫 프레임에서 시작
     frame = requestAnimationFrame((now) => {
       // 연출을 끈 사용자에게는 결과만
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -63,11 +61,7 @@ export function useCountUp(target: number): { value: number; running: boolean } 
 
     return () => {
       cancelAnimationFrame(frame)
-      /*
-       * 끝까지 갔으면 shownRef 가 곧 target 이라 결과가 같고,
-       * 도중에 끊겼으면 **화면에 보이던 그 값**에서 다음 연출이 출발한다.
-       * 전에는 옛 target 을 넣어서, 굴러가는 중에 값이 또 바뀌면 숫자가 한 번 튀었다
-       */
+      // 다음 출발점은 화면에 보이던 값. 숫자 튐 방지
       fromRef.current = shownRef.current
     }
   }, [target])

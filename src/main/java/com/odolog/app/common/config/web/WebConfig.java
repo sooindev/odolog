@@ -22,8 +22,8 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     /**
-     * CORS 는 필터 체인 맨 앞. addCorsMappings 는 필터 뒤(MVC)에서 붙어서,
-     * CsrfTokenFilter 가 직접 쓴 403 에는 헤더가 없었다 — 브라우저가 네트워크 오류로 읽는다
+     * CORS 는 필터 체인 맨 앞
+     * addCorsMappings 는 MVC 단계라 CsrfTokenFilter 의 403 에 헤더 누락
      */
     @Bean
     public FilterRegistrationBean<CorsFilter> corsFilter() {

@@ -32,7 +32,7 @@ public class MaintenanceRecord extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** URL·API 용 식별자. id 는 서버 밖으로 내보내지 않는다 — 차량과 같은 이유(규칙 9-1) */
+    /** URL·API 용 공개 id(규칙 9-1) */
     @Column(name = "public_id", nullable = false, updatable = false, length = PublicId.LENGTH)
     private String publicId;
 
@@ -44,13 +44,9 @@ public class MaintenanceRecord extends BaseTimeEntity {
     )
     private Vehicle vehicle;
 
-    /*
-     * JdbcTypeCode(VARCHAR) 필수
-     * 없으면 Hibernate 6 이 MariaDB 에서 네이티브 enum(...) 컬럼을 만듦
-     * → 종류를 더할 때마다 운영 DB 에 ALTER 필요, ddl-auto 는 컬럼 타입을 안 바꿔 줌
-     * → 테스트는 create-drop 이라 통과하고 운영만 데이터 잘림
-     * length 30 — 현재 최장 TRANSMISSION_FLUID(18자)
-     */
+    // @JdbcTypeCode(VARCHAR) 필수. 없으면 MariaDB 네이티브 enum 컬럼 생성
+    // 네이티브 enum 은 종류 추가 시 운영 DB 만 데이터 잘림
+    // length 30: 최장 이름 TRANSMISSION_FLUID(18자) 기준 여유
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 30)

@@ -13,8 +13,8 @@ import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.ElementType.RECORD_COMPONENT;
 
 /**
- * UTF-8 바이트 길이 상한. @Size 는 글자 수라 한글에서 3배로 벌어진다
- * BCrypt 가 72바이트를 넘기면 예외를 던지는데, @Size(max = 100) 은 한글 25자를 통과시킨다
+ * UTF-8 바이트 상한. @Size 는 글자 수 기준이라 한글에서 3배 차이
+ * BCrypt 72바이트 상한 대응
  */
 @Documented
 @Constraint(validatedBy = com.odolog.app.common.validation.validator.MaxBytesValidator.class)

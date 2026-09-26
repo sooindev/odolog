@@ -2,10 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '@/shared/ui/base/button'
 
-/**
- * 목록 페이지 이동. 목록 화면들이 공유
- * 숫자에 tabular-nums — 없으면 1 → 2 로 바뀔 때 "1 / 12" 전체가 흔들림
- */
+/** 목록 페이지 이동. 숫자는 tabular-nums */
 export function Pagination({
   page,
   totalPages,
@@ -17,7 +14,7 @@ export function Pagination({
   hasNext: boolean
   onChange: (updater: (current: number) => number) => void
 }) {
-  // 1장뿐이면 이동 UI 자체를 숨김
+  // 한 장뿐이면 숨김
   if (totalPages <= 1) {
     return null
   }

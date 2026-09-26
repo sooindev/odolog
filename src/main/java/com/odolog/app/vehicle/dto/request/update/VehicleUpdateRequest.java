@@ -6,9 +6,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * 부분 수정이라 전부 nullable — 보낸 필드만 변경
- * NotBlank 대신 Size(min=1) + Pattern — NotBlank 는 null 도 막아 "안 보냄"이 불가능해짐
- * odometer 제외 — 감소 금지 규칙이 붙어 전용 엔드포인트가 따로 있음
+ * 부분 수정. 보낸 필드만 변경
+ * @NotBlank 대신 @Size(min=1) + @Pattern. null(안 보냄) 허용
+ * 주행거리는 전용 엔드포인트
  */
 public record VehicleUpdateRequest(
 

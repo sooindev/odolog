@@ -19,7 +19,7 @@ class PublicIdTest {
     @Test
     @DisplayName("만 번 만들어도 겹치지 않는다")
     void doesNotRepeat() {
-        // 71비트라 실제 충돌 확률은 사실상 0. 겹치면 생성 로직이 고장 난 것
+        // 71비트라 충돌 확률 사실상 0. 겹치면 생성 로직 고장
         Set<String> seen = new HashSet<>();
         for (int i = 0; i < 10_000; i++) {
             seen.add(PublicId.generate());
