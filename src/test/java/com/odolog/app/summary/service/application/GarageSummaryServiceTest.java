@@ -166,6 +166,21 @@ class GarageSummaryServiceTest {
     }
 
     @Test
+    @DisplayName("최근 활동: 금액을 안 적은 주유는 0 이 아니라 null — 한 건 표시에서 0 은 \"0원에 넣었다\" 로 읽힌다")
+    void recentKeepsUnknownCostAsNull() {
+        Vehicle car = vehicle(10L, "12가3456", 50000);
+        FuelRecord bare = new FuelRecord(car, LocalDate.of(2026, 9, 12), 50000, null, null, null);
+        ReflectionTestUtils.setField(bare, "id", 1L);
+        given(List.of(car), List.of(), List.of(bare));
+
+        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY);
+
+        assertThat(summary.recent().get(0).cost()).isNull();
+        // 합계에서는 여전히 0 으로 친다 — 더할 때만은 "없음" 과 0 이 같은 뜻
+        assertThat(summary.fuelCost()).isZero();
+    }
+
+    @Test
     @DisplayName("최근 활동은 날짜 내림차순, 같은 날이면 정비가 주유보다 앞선다")
     void recentOrder() {
         Vehicle car = vehicle(10L, "12가3456", 50000);

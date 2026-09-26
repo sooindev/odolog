@@ -77,7 +77,8 @@ public record GarageSummaryResponse(
             /** 공개 id */
             String vehicleId,
             String vehicleName,
-            long cost,
+            /** 주유는 금액을 안 적었으면 null — 0 이면 "0원에 넣었다" 로 읽힌다(합계와 달리 한 건 표시라서) */
+            Long cost,
             /** 정비만 */
             ServiceType type,
             /** 주유만 */

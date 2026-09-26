@@ -40,7 +40,8 @@ export function MonthlyCostChart({ monthly }: { monthly: MonthlyCost[] }) {
               {[max, max / 2, 0].map((tick) => (
                 <div key={tick} className="flex h-0 items-center gap-3">
                   <span className="w-8 shrink-0 text-right text-axis tabular-nums text-muted-foreground sm:w-10">
-                    {formatCompact(tick)}
+                    {/* 12개월이 전부 0원이면 niceMax 가 1 을 줘 "1 · 0.5" 가 찍힌다. 선은 두고 0 만 적는다 */}
+                    {peak > 0 || tick === 0 ? formatCompact(tick) : ''}
                   </span>
                   <div className="h-px flex-1 bg-border" />
                 </div>

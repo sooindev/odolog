@@ -193,13 +193,14 @@ public class GarageSummaryService {
             Long vehicleId = record.getVehicle().getId();
             all.add(new Candidate(new RecentActivity("MAINTENANCE", record.getPublicId(),
                     record.getServiceDate(), publicIds.get(vehicleId), names.get(vehicleId),
-                    record.getCost(), record.getType(), null), record.getId()));
+                    (long) record.getCost(), record.getType(), null), record.getId()));
         }
         for (FuelRecord record : fuels) {
             Long vehicleId = record.getVehicle().getId();
             all.add(new Candidate(new RecentActivity("FUEL", record.getPublicId(),
                     record.getFueledAt(), publicIds.get(vehicleId), names.get(vehicleId),
-                    record.totalCostOrZero(), null, record.getLiters()), record.getId()));
+                    record.getTotalCost() == null ? null : record.getTotalCost().longValue(),
+                    null, record.getLiters()), record.getId()));
         }
 
         return all.stream()

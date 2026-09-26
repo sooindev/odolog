@@ -33,7 +33,6 @@ export interface WithdrawRequest {
 }
 
 export interface UserResponse {
-  id: number
   email: string
   nickname: string
   phone: string | null

@@ -42,14 +42,23 @@ export function SignUpPage() {
       // 공백만 친 것도 안 적은 것으로 처리
       const phone = form.phone?.trim()
       await signUp({ ...form, phone: phone === '' ? undefined : phone })
-      // 가입 API 는 세션을 안 만들므로 로그인까지 이어서
-      await login({ email: form.email, password: form.password })
-      navigate('/vehicles', { replace: true })
     } catch (caught) {
       // 409 = 이메일 중복, 400 = 검증 실패. 둘 다 백엔드 메시지 그대로
       setError(caught instanceof ApiError ? caught.message : '회원가입에 실패했습니다.')
-    } finally {
       setPending(false)
+      return
+    }
+
+    // 가입 API 는 세션을 안 만들므로 로그인까지 이어서. 실패를 가입과 따로 받는다 —
+    // 가입은 이미 끝났는데 오류만 띄우면 다시 눌러 409 "이미 가입된 이메일" 을 받는다
+    try {
+      await login({ email: form.email, password: form.password })
+      navigate('/vehicles', { replace: true })
+    } catch {
+      navigate('/login', {
+        replace: true,
+        state: { notice: '가입했습니다. 로그인해 주세요.' },
+      })
     }
   }
 
@@ -82,7 +91,7 @@ export function SignUpPage() {
                   minLength={8}
                   // 글자 수 상한이라 한글 24자(=72바이트)는 못 막는다. 거친 천장일 뿐이고
                   // 실제 판정은 위 hint 와 서버의 @MaxBytes 가 한다
-                maxLength={72}
+                  maxLength={72}
                   autoComplete="new-password"
                   value={form.password}
                   onChange={(event) => change('password', event.target.value)}

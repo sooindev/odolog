@@ -65,4 +65,37 @@ class SchemaDriftCheckerTest {
             jdbcTemplate.execute("ALTER TABLE fuel_records MODIFY COLUMN odometer INT NOT NULL");
         }
     }
+
+    @Test
+    @DisplayName("엔티티의 유니크 제약이 DB 에 없으면 잡는다 — 제약 생성이 조용히 실패한 경우")
+    void detectsMissingUniqueConstraint() {
+        // 공개 id 를 SQL 없이 띄웠다면: ddl-auto 가 '' 로 채운 뒤 유니크 생성이 실패하고 앱은 그대로 뜬다
+        jdbcTemplate.execute("ALTER TABLE vehicles DROP INDEX uk_vehicles_public_id");
+
+        try {
+            assertThat(checker.findDrifts())
+                    .anySatisfy(drift -> assertThat(drift)
+                            .contains("uk_vehicles_public_id")
+                            .contains("ALTER TABLE vehicles ADD CONSTRAINT uk_vehicles_public_id UNIQUE (public_id);"));
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE vehicles ADD CONSTRAINT uk_vehicles_public_id UNIQUE (public_id)");
+        }
+    }
+
+    @Test
+    @DisplayName("엔티티에 없는 유니크 제약이 DB 에 남아 있으면 잡는다 — 옛 규칙이 계속 막는 경우")
+    void detectsLeftoverUniqueConstraint() {
+        // 2026-09-07 에 실제로 겪은 모양: 번호판 유니크를 소유자별로 바꿨는데 옛 전역 유니크가 남았다.
+        // 데이터와 무관하게 만들 수 있게 이미 유일한 컬럼 조합에 건다
+        jdbcTemplate.execute("ALTER TABLE vehicles ADD CONSTRAINT uk_vehicles_legacy UNIQUE (public_id, plate_number)");
+
+        try {
+            assertThat(checker.findDrifts())
+                    .anySatisfy(drift -> assertThat(drift)
+                            .contains("uk_vehicles_legacy")
+                            .contains("ALTER TABLE vehicles DROP INDEX uk_vehicles_legacy;"));
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE vehicles DROP INDEX uk_vehicles_legacy");
+        }
+    }
 }

@@ -133,6 +133,9 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
+        // 숫자 id 는 응답에 없다 — 가입 순서를 드러낸다(규칙 9-1)
+        assertThat(result.getResponse().getContentAsString()).doesNotContain("\"id\"");
+
         HttpSession session = result.getRequest().getSession(false);
         assertThat(session).isNotNull();
         assertThat(session.getAttribute(SessionConst.LOGIN_USER_ID)).isEqualTo(1L);

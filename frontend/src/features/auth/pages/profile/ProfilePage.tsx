@@ -467,7 +467,12 @@ function ProfileForm({ user }: { user: UserResponse }) {
 
     setPending(true)
     try {
-      replaceUser(await updateProfile(request))
+      const updated = await updateProfile(request)
+      replaceUser(updated)
+      // 입력칸도 서버가 저장한 값으로. 서버가 앞뒤 공백을 자르므로 그대로 두면
+      // 다음 저장에서 "바뀐 것이 있다" 로 보고 같은 요청을 또 보낸다
+      setNickname(updated.nickname)
+      setPhone(updated.phone ?? '')
       setMessage('저장했습니다.')
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : '저장에 실패했습니다.')

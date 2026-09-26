@@ -53,7 +53,8 @@ export interface RecentActivity {
   date: string
   vehicleId: string
   vehicleName: string
-  cost: number
+  /** 주유 금액을 안 적었으면 null. 0 이 아니다 — "0원에 넣었다" 로 읽힌다 */
+  cost: number | null
   type: ServiceType | null
   liters: number | null
 }

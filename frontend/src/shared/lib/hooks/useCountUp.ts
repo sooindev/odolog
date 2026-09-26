@@ -18,6 +18,9 @@ export function useCountUp(target: number): { value: number; running: boolean } 
   useEffect(() => {
     const from = fromRef.current
     if (from === target) {
+      // 도중에 끊긴 연출이 지금 보이는 값에서 멈춘 경우. 끝난 상태로 돌려놓아야
+      // tabular-nums 가 멈춘 숫자에 남지 않는다. 첫 렌더에서는 이미 false 라 아무 일도 없다
+      setRunning(false)
       return
     }
 

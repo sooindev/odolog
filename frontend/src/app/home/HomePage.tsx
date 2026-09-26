@@ -216,7 +216,8 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
 
                 <div className="shrink-0 text-right">
                   <p className="text-body tabular-nums text-strong">
-                    {formatWon(item.cost)}
+                    {/* 안 적은 금액은 "0원" 이 아니라 "— 원". 주유 목록과 같은 표기 */}
+                    {item.cost === null ? '— 원' : formatWon(item.cost)}
                   </p>
                   <p className="text-caption tabular-nums text-muted-foreground">
                     {formatDate(item.date)}

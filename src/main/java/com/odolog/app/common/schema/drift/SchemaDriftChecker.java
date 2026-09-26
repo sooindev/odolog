@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.metamodel.EntityType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,11 +20,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * 엔티티가 말하는 nullable 과 실제 DB 컬럼을 기동할 때 한 번 대조한다
+ * 엔티티가 말하는 nullable·유니크 제약과 실제 DB 를 기동할 때 한 번 대조한다
  *
  * 왜 필요한가: ddl-auto: update 는 제약을 추가만 하고 지우지 않는다. 컬럼을 nullable 로
  * 바꿔도 이미 NOT NULL 인 컬럼은 그대로 남고, 그 사실이 아무 데도 드러나지 않다가
@@ -46,6 +49,12 @@ public class SchemaDriftChecker {
             SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_TYPE
             FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+            """;
+
+    private static final String UNIQUE_QUERY = """
+            SELECT CONSTRAINT_NAME
+            FROM information_schema.TABLE_CONSTRAINTS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_TYPE = 'UNIQUE'
             """;
 
     private final EntityManagerFactory entityManagerFactory;
@@ -83,6 +92,7 @@ public class SchemaDriftChecker {
                 }
 
                 collectDrifts(entity.getJavaType(), table, actual, drifts);
+                collectUniqueDrifts(entity.getJavaType(), table, readUniqueConstraints(connection, table), drifts);
             }
         } catch (Exception e) {
             // 이 검사 때문에 앱이 못 뜨면 본말전도다
@@ -129,6 +139,49 @@ public class SchemaDriftChecker {
                 }
             }
         }
+    }
+
+    /**
+     * 유니크 제약을 이름으로 대조. 두 방향 다 이 저장소가 실제로 밟았거나 밟을 뻔한 함정이다 —
+     * DB 에 없음: 제약 생성이 조용히 실패(공개 id) / 엔티티에 없음: 옛 제약이 남음(번호판 유니크)
+     * 이름으로만 보는 이유: 모든 유니크 제약에 이름을 붙인다(규칙 6). 이름 없는 것이 생기면
+     * Hibernate 가 해시 이름을 붙여 "엔티티에 없음" 으로 잘못 보고된다
+     */
+    private void collectUniqueDrifts(Class<?> type, String table, Set<String> actual, List<String> drifts) {
+        Map<String, UniqueConstraint> expected = new LinkedHashMap<>();
+        Table annotation = type.getAnnotation(Table.class);
+        if (annotation != null) {
+            for (UniqueConstraint constraint : annotation.uniqueConstraints()) {
+                expected.put(constraint.name().toLowerCase(), constraint);
+            }
+        }
+
+        expected.forEach((name, constraint) -> {
+            if (!actual.contains(name)) {
+                drifts.add("  %s — 유니크 제약 %s 가 DB 에 없음(중복이 그대로 들어간다)%n      ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s);"
+                        .formatted(table, constraint.name(), table, constraint.name(),
+                                String.join(", ", constraint.columnNames())));
+            }
+        });
+        for (String name : actual) {
+            if (!expected.containsKey(name)) {
+                drifts.add("  %s — 엔티티에 없는 유니크 제약 %s 가 DB 에 남아 있음(옛 규칙이 계속 막는다)%n      ALTER TABLE %s DROP INDEX %s;"
+                        .formatted(table, name, table, name));
+            }
+        }
+    }
+
+    private Set<String> readUniqueConstraints(Connection connection, String table) throws Exception {
+        Set<String> names = new LinkedHashSet<>();
+        try (PreparedStatement statement = connection.prepareStatement(UNIQUE_QUERY)) {
+            statement.setString(1, table);
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    names.add(rows.getString("CONSTRAINT_NAME").toLowerCase());
+                }
+            }
+        }
+        return names;
     }
 
     private ExpectedColumn expectedOf(Field field) {
@@ -182,7 +235,7 @@ public class SchemaDriftChecker {
                 ╔═══════════════════════════════════════════════════════════════════════
                 ║ 스키마가 엔티티와 어긋나 있습니다 ({}곳)
                 ║ ddl-auto: update 는 제약을 추가만 하고 지우지 않습니다.
-                ║ 아래를 한 번 실행하세요. 그대로 두면 저장할 때 500 이 납니다.
+                ║ 아래를 한 번 실행하세요. 그대로 두면 저장이 500 이 나거나 중복이 그대로 들어갑니다.
                 ╚═══════════════════════════════════════════════════════════════════════
                 {}
                 """, drifts.size(), String.join(System.lineSeparator(), drifts));

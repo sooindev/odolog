@@ -121,4 +121,24 @@ describe('useCountUp', () => {
     expect(result.current.value).toBe(52_000)
     expect(result.current.running).toBe(false)
   })
+
+  it('굴러가는 도중 지금 보이는 값으로 목표가 바뀌면 연출이 끝난 상태로 돌아간다', async () => {
+    // running 이 true 로 남으면 멈춘 숫자에 tabular-nums 가 계속 붙어 폭이 달라진다
+    const { result, rerender } = renderHook(({ target }) => useCountUp(target), {
+      initialProps: { target: 50_000 },
+    })
+
+    rerender({ target: 60_000 })
+    await act(async () => {
+      vi.advanceTimersByTime(200)
+    })
+    const shown = result.current.value
+    expect(result.current.running).toBe(true)
+
+    rerender({ target: shown })
+    await runToEnd()
+
+    expect(result.current.value).toBe(shown)
+    expect(result.current.running).toBe(false)
+  })
 })
