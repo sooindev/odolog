@@ -44,7 +44,8 @@ public record GarageSummaryResponse(
     }
 
     public record VehicleLine(
-            Long id,
+            /** 공개 id. 차량 상세 링크에 쓴다 */
+            String id,
             String plateNumber,
             String manufacturer,
             String modelName,
@@ -72,7 +73,8 @@ public record GarageSummaryResponse(
             String kind,
             Long recordId,
             LocalDate date,
-            Long vehicleId,
+            /** 공개 id */
+            String vehicleId,
             String vehicleName,
             long cost,
             /** 정비만 */

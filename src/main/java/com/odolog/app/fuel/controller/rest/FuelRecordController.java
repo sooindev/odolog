@@ -33,7 +33,7 @@ public class FuelRecordController {
     }
 
     @PostMapping
-    public ResponseEntity<FuelRecordResponse> register(@PathVariable Long vehicleId,
+    public ResponseEntity<FuelRecordResponse> register(@PathVariable String vehicleId,
                                                          @Valid @RequestBody FuelRecordRegisterRequest request,
                                                          @LoginUser Long requesterId) {
         FuelRecordResponse record = fuelRecordService.register(requesterId, vehicleId, request);
@@ -43,7 +43,7 @@ public class FuelRecordController {
     /** sort 없음. 정렬이 곧 연비 계산의 전제라 서비스가 고정 (FuelRecordService.FIXED_SORT) */
     @GetMapping
     public ResponseEntity<PageResponse<FuelRecordResponse>> findByVehicle(
-            @PathVariable Long vehicleId,
+            @PathVariable String vehicleId,
             @LoginUser Long requesterId,
             @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
 
@@ -53,14 +53,14 @@ public class FuelRecordController {
 
     // 리터럴 경로가 {recordId} 보다 우선 매칭
     @GetMapping("/summary")
-    public ResponseEntity<FuelSummaryResponse> summary(@PathVariable Long vehicleId,
+    public ResponseEntity<FuelSummaryResponse> summary(@PathVariable String vehicleId,
                                                          @LoginUser Long requesterId) {
         return ResponseEntity.ok(fuelRecordService.summary(requesterId, vehicleId));
     }
 
 
     @PatchMapping("/{recordId}")
-    public ResponseEntity<FuelRecordResponse> update(@PathVariable Long vehicleId,
+    public ResponseEntity<FuelRecordResponse> update(@PathVariable String vehicleId,
                                                        @PathVariable Long recordId,
                                                        @Valid @RequestBody FuelRecordUpdateRequest request,
                                                        @LoginUser Long requesterId) {
@@ -68,7 +68,7 @@ public class FuelRecordController {
     }
 
     @DeleteMapping("/{recordId}")
-    public ResponseEntity<Void> delete(@PathVariable Long vehicleId,
+    public ResponseEntity<Void> delete(@PathVariable String vehicleId,
                                          @PathVariable Long recordId,
                                          @LoginUser Long requesterId) {
         fuelRecordService.delete(requesterId, vehicleId, recordId);

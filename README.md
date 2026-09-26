@@ -213,6 +213,26 @@ MAIL_PASSWORD=<앱 비밀번호>      # Gmail 이면 2단계 인증 후 발급
 `ddl-auto: validate` 로는 안 된다. Hibernate 의 스키마 검증은 테이블과 컬럼의 **존재와 타입만**
 보고 nullability 는 아예 보지 않는다 — 어긋난 스키마에 걸어도 앱이 그냥 뜨는 것을 확인했다.
 
+### ⚠️ 이미 쓰던 DB 가 있다면 — 차량 공개 id (2026-09-26)
+
+차량 주소가 `/vehicles/1` 에서 `/vehicles/k3Xq9mTa2LpZ` 처럼 바뀌었다. 차량마다 12자 무작위
+`public_id` 가 생겼고, 숫자 id 는 더 이상 URL·API 로 나가지 않는다.
+**새로 스키마를 만드는 경우에는 할 일이 없다.** 차량이 이미 있는 DB 에만, **앱을 띄우기 전에** 한 번 실행한다.
+
+```
+/opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog;
+  ALTER TABLE vehicles ADD COLUMN public_id VARCHAR(12) NULL;
+  UPDATE vehicles SET public_id = LEFT(REPLACE(REPLACE(REPLACE(
+    TO_BASE64(RANDOM_BYTES(24)), '+', ''), '/', ''), '=', ''), 12);
+  ALTER TABLE vehicles MODIFY public_id VARCHAR(12) NOT NULL;
+  ALTER TABLE vehicles ADD CONSTRAINT uk_vehicles_public_id UNIQUE (public_id);"
+```
+
+순서가 중요하다. SQL 없이 앱부터 띄우면 `ddl-auto: update` 가 `NOT NULL` 컬럼을 더하면서 기존 행을
+전부 `''` 로 채우고, 이어서 유니크 제약을 만들다 `''` 중복으로 실패한다. **이 실패는 경고 로그만
+남기고 앱은 그대로 뜬다** — 그러면 기존 차량의 링크가 전부 `/vehicles/` 로 깨진다.
+`RANDOM_BYTES` 는 암호학적 난수라 앱의 `SecureRandom` 과 같은 성질이다.
+
 ### ⚠️ 이미 쓰던 DB 가 있다면 — 정비 종류 확장 (2026-09-16)
 
 정비 종류를 5개에서 15개로 늘리면서 `maintenance_records.type` 컬럼 타입을 바꿨다.
@@ -313,7 +333,7 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 보존된다.
 | 회원 탈퇴 | `DELETE /api/users/me` |
 | 홈 요약 (통계·차트·최근 활동) | `GET /api/summary` |
 | 차량 등록/목록조회 | `POST`, `GET /api/vehicles` |
-| 차량 상세조회 | `GET /api/vehicles/{vehicleId}` |
+| 차량 상세조회 | `GET /api/vehicles/{vehicleId}` — `vehicleId` 는 12자 공개 id |
 | 차량 정보 수정 | `PATCH /api/vehicles/{vehicleId}` |
 | 주행거리 갱신 | `PATCH /api/vehicles/{vehicleId}/odometer` |
 | 차량 삭제 | `DELETE /api/vehicles/{vehicleId}` |
@@ -368,7 +388,7 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 보존된다.
 화면은 입력값이 현재보다 작을 때 한 번 확인한 뒤 이 플래그를 싣는다.
 
 ```json
-PATCH /api/vehicles/1/odometer
+PATCH /api/vehicles/k3Xq9mTa2LpZ/odometer
 {"odometer": 50000}                 → 409 (현재보다 작으면)
 {"odometer": 50000, "force": true}  → 200
 ```

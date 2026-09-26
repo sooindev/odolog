@@ -23,7 +23,7 @@ import type { NextServiceResponse, ServiceType } from '@/features/maintenance/ap
  * 이력 있는 종류만 옴 — 15줄 중 13줄이 "이력 없음"이면 빈칸 목록이 됨
  * 재조회 장치가 없는 이유 — 부모가 key 를 바꿔 새로 만듦
  */
-export function NextServiceCard({ vehicleId }: { vehicleId: number }) {
+export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
   const load = useCallback(() => fetchNextServices(vehicleId), [vehicleId])
   const {
     data: results,
@@ -150,7 +150,7 @@ function IntervalForm({
   onSaved,
   onCancel,
 }: {
-  vehicleId: number
+  vehicleId: string
   result: NextServiceResponse
   onSaved: () => void
   onCancel: () => void

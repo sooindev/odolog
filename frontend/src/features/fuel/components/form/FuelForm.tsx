@@ -29,7 +29,7 @@ export function FuelForm({
   onSaved,
   onCancel,
 }: {
-  vehicleId: number
+  vehicleId: string
   record: FuelRecordResponse | null
   defaultOdometer: number
   onSaved: () => void

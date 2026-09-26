@@ -127,9 +127,9 @@ class VehicleServiceTest {
     @Test
     @DisplayName("존재하지 않는 차량에 접근하면 ResourceNotFoundException")
     void findOwnedVehicleNotFound() {
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.empty());
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> vehicleService.findOwnedVehicle(1L, 10L))
+        assertThatThrownBy(() -> vehicleService.findOwnedVehicle(1L, "V10"))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -137,9 +137,9 @@ class VehicleServiceTest {
     @DisplayName("본인 소유가 아닌 차량에 접근하면 없는 것처럼 ResourceNotFoundException")
     void findOwnedVehicleForbidden() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        assertThatThrownBy(() -> vehicleService.findOwnedVehicle(999L, 10L))
+        assertThatThrownBy(() -> vehicleService.findOwnedVehicle(999L, "V10"))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -147,15 +147,15 @@ class VehicleServiceTest {
     @DisplayName("없는 차량과 남의 차량은 메시지까지 같다")
     void hidesExistenceOfOthersVehicles() {
         // 상태 코드만 맞추고 문구가 다르면 그 문구가 존재 여부를 알려준다
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(createVehicle(10L, createOwner(1L))));
-        when(vehicleRepository.findById(11L)).thenReturn(Optional.empty());
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(createVehicle(10L, createOwner(1L))));
+        when(vehicleRepository.findByPublicId("V11")).thenReturn(Optional.empty());
 
-        String othersVehicle = catchThrowable(() -> vehicleService.findOwnedVehicle(999L, 10L)).getMessage();
-        String missingVehicle = catchThrowable(() -> vehicleService.findOwnedVehicle(999L, 11L)).getMessage();
+        String othersVehicle = catchThrowable(() -> vehicleService.findOwnedVehicle(999L, "V10")).getMessage();
+        String missingVehicle = catchThrowable(() -> vehicleService.findOwnedVehicle(999L, "V11")).getMessage();
 
         // id 만 다르고 나머지는 같아야 한다 — 보낸 쪽이 이미 아는 값이다
-        assertThat(othersVehicle).isEqualTo("존재하지 않는 차량입니다: 10");
-        assertThat(missingVehicle).isEqualTo("존재하지 않는 차량입니다: 11");
+        assertThat(othersVehicle).isEqualTo("존재하지 않는 차량입니다: V10");
+        assertThat(missingVehicle).isEqualTo("존재하지 않는 차량입니다: V11");
     }
 
     @Test
@@ -163,9 +163,9 @@ class VehicleServiceTest {
     void updateOdometerDecreaseFails() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.updateOdometer(50000);
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        assertThatThrownBy(() -> vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(40000, null)))
+        assertThatThrownBy(() -> vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(40000, null)))
                 .isInstanceOf(ConflictException.class);
     }
 
@@ -174,10 +174,10 @@ class VehicleServiceTest {
     void updateOdometerForcedDecrease() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.updateOdometer(5000000);
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         // 자리수를 잘못 넣은 뒤 고치는 경로. 이게 없으면 되돌릴 방법이 아예 없다
-        vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(500000, true));
+        vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(500000, true));
 
         assertThat(vehicle.getOdometer()).isEqualTo(500000);
     }
@@ -187,9 +187,9 @@ class VehicleServiceTest {
     void updateOdometerForceFalseStillBlocks() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.updateOdometer(50000);
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        assertThatThrownBy(() -> vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(40000, false)))
+        assertThatThrownBy(() -> vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(40000, false)))
                 .isInstanceOf(ConflictException.class);
     }
 
@@ -198,9 +198,9 @@ class VehicleServiceTest {
     void updateOdometerForcedIncrease() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.updateOdometer(50000);
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        vehicleService.updateOdometer(1L, 10L, new UpdateOdometerRequest(60000, true));
+        vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(60000, true));
 
         assertThat(vehicle.getOdometer()).isEqualTo(60000);
     }
@@ -209,9 +209,9 @@ class VehicleServiceTest {
     @DisplayName("차량 수정은 보낸 필드만 바꾸고 나머지는 건드리지 않는다")
     void updateChangesOnlyGivenFields() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        vehicleService.update(1L, 10L, new VehicleUpdateRequest(null, "기아", null, null));
+        vehicleService.update(1L, "V10", new VehicleUpdateRequest(null, "기아", null, null));
 
         assertThat(vehicle.getManufacturer()).isEqualTo("기아");
         assertThat(vehicle.getPlateNumber()).isEqualTo("12가3456");
@@ -223,10 +223,10 @@ class VehicleServiceTest {
     @DisplayName("번호판을 그대로 둔 채 다른 필드만 고치면 중복 검사를 아예 하지 않는다")
     void updateSkipsDuplicateCheckWhenPlateNumberUnchanged() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         // 번호판을 같은 값으로 전송. 자기를 빼지 않고 검사하면 409
-        vehicleService.update(1L, 10L, new VehicleUpdateRequest("12가3456", "기아", null, null));
+        vehicleService.update(1L, "V10", new VehicleUpdateRequest("12가3456", "기아", null, null));
 
         verify(vehicleRepository, never()).existsByOwnerIdAndPlateNumber(any(), any());
         assertThat(vehicle.getManufacturer()).isEqualTo("기아");
@@ -236,10 +236,10 @@ class VehicleServiceTest {
     @DisplayName("번호판을 이미 가진 다른 차량의 번호로 바꾸면 예외가 발생한다")
     void updateDuplicatePlateNumberFails() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
         when(vehicleRepository.existsByOwnerIdAndPlateNumber(1L, "99하9999")).thenReturn(true);
 
-        assertThatThrownBy(() -> vehicleService.update(1L, 10L,
+        assertThatThrownBy(() -> vehicleService.update(1L, "V10",
                 new VehicleUpdateRequest("99하9999", null, null, null)))
                 .isInstanceOf(ConflictException.class);
 
@@ -250,9 +250,9 @@ class VehicleServiceTest {
     @DisplayName("남의 차량은 수정할 수 없다")
     void updateOtherUsersVehicleFails() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        assertThatThrownBy(() -> vehicleService.update(999L, 10L,
+        assertThatThrownBy(() -> vehicleService.update(999L, "V10",
                 new VehicleUpdateRequest(null, "기아", null, null)))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
@@ -261,9 +261,9 @@ class VehicleServiceTest {
     @DisplayName("차량 삭제 시 정비 이력을 먼저 지운 뒤 차량을 지운다")
     void deleteRemovesMaintenanceRecordsBeforeVehicle() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findById(10L)).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        vehicleService.delete(1L, 10L);
+        vehicleService.delete(1L, "V10");
 
         // 자식(정비·주유) 먼저, 차량 마지막
         InOrder order = inOrder(maintenanceRecordRepository, fuelRecordRepository, vehicleRepository);

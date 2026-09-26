@@ -52,14 +52,14 @@ class MaintenanceRecordServiceTest {
     @DisplayName("정비 이력 등록 성공")
     void registerSuccess() {
         Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.of(2026, 1, 1));
 
-        MaintenanceRecord saved = maintenanceRecordService.register(1L, 10L, request);
+        MaintenanceRecord saved = maintenanceRecordService.register(1L, "V10", request);
 
         assertThat(saved.getVehicle()).isEqualTo(vehicle);
         assertThat(saved.getType()).isEqualTo(ServiceType.ENGINE_OIL);
@@ -75,13 +75,13 @@ class MaintenanceRecordServiceTest {
         Vehicle vehicle = createVehicle(10L);
         MaintenanceRecord record = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "기존 메모",
                 50000, 40000, LocalDate.of(2026, 1, 1));
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByIdAndVehicleId(100L, 10L)).thenReturn(Optional.of(record));
 
         MaintenanceRecordUpdateRequest request = new MaintenanceRecordUpdateRequest(
                 null, "수정된 메모", null, null, null);
 
-        MaintenanceRecord updated = maintenanceRecordService.update(1L, 10L, 100L, request);
+        MaintenanceRecord updated = maintenanceRecordService.update(1L, "V10", 100L, request);
 
         assertThat(updated.getDescription()).isEqualTo("수정된 메모");
         assertThat(updated.getCost()).isEqualTo(50000);
@@ -92,13 +92,13 @@ class MaintenanceRecordServiceTest {
     @DisplayName("다른 차량 소속의 정비 이력 id로 접근하면 ResourceNotFoundException")
     void updateRecordNotBelongingToVehicle() {
         Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByIdAndVehicleId(999L, 10L)).thenReturn(Optional.empty());
 
         MaintenanceRecordUpdateRequest request = new MaintenanceRecordUpdateRequest(
                 null, "수정된 메모", null, null, null);
 
-        assertThatThrownBy(() -> maintenanceRecordService.update(1L, 10L, 999L, request))
+        assertThatThrownBy(() -> maintenanceRecordService.update(1L, "V10", 999L, request))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -115,7 +115,7 @@ class MaintenanceRecordServiceTest {
     @DisplayName("전체 조회는 이력이 있는 종류만, 종류별 최신 1건으로 돌려준다")
     void calculateAllNextServices() {
         Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         // 정렬된 목록이라 같은 종류는 앞이 최신
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of(
@@ -124,7 +124,7 @@ class MaintenanceRecordServiceTest {
                         record(1L, vehicle, ServiceType.ENGINE_OIL, 10000, LocalDate.of(2026, 1, 1))));
 
         List<NextServiceResponse> responses =
-                maintenanceRecordService.calculateAllNextServices(1L, 10L);
+                maintenanceRecordService.calculateAllNextServices(1L, "V10");
 
         // 15개 중 이력 있는 2개만. 빈 줄 제외
         assertThat(responses).hasSize(2);
@@ -140,21 +140,21 @@ class MaintenanceRecordServiceTest {
     @DisplayName("이력이 하나도 없으면 전체 조회 결과가 빈 목록이다")
     void calculateAllNextServicesEmpty() {
         Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of());
 
-        assertThat(maintenanceRecordService.calculateAllNextServices(1L, 10L)).isEmpty();
+        assertThat(maintenanceRecordService.calculateAllNextServices(1L, "V10")).isEmpty();
     }
 
     /** 종류 하나짜리 목록 헬퍼. 일괄 조회로 개별 종류 계산 검증 */
     private NextServiceResponse onlyType(Vehicle vehicle, MaintenanceRecord record) {
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of(record));
 
         List<NextServiceResponse> responses =
-                maintenanceRecordService.calculateAllNextServices(1L, 10L);
+                maintenanceRecordService.calculateAllNextServices(1L, "V10");
         assertThat(responses).hasSize(1);
         return responses.get(0);
     }
@@ -220,11 +220,11 @@ class MaintenanceRecordServiceTest {
     void registerLiftsVehicleOdometer() {
         Vehicle vehicle = createVehicle(10L);
         vehicle.updateOdometer(30000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        maintenanceRecordService.register(1L, 10L, new MaintenanceRecordRegisterRequest(
+        maintenanceRecordService.register(1L, "V10", new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, null, 80000, 50000, LocalDate.of(2026, 9, 1)));
 
         // 같은 숫자를 주행거리 갱신에 다시 넣지 않아도 됨
@@ -236,12 +236,12 @@ class MaintenanceRecordServiceTest {
     void registerDoesNotLowerVehicleOdometer() {
         Vehicle vehicle = createVehicle(10L);
         vehicle.updateOdometer(50000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // 작은 값에 예외를 던지면 과거 기록 입력 자체가 막힘
-        maintenanceRecordService.register(1L, 10L, new MaintenanceRecordRegisterRequest(
+        maintenanceRecordService.register(1L, "V10", new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, null, 80000, 20000, LocalDate.of(2026, 1, 1)));
 
         assertThat(vehicle.getOdometer()).isEqualTo(50000);
@@ -254,12 +254,12 @@ class MaintenanceRecordServiceTest {
         vehicle.updateOdometer(30000);
         MaintenanceRecord existing = record(100L, vehicle, ServiceType.ENGINE_OIL, 30000,
                 LocalDate.of(2026, 9, 1));
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByIdAndVehicleId(100L, 10L))
                 .thenReturn(Optional.of(existing));
 
         // 자리수 오타 정정
-        maintenanceRecordService.update(1L, 10L, 100L, new MaintenanceRecordUpdateRequest(
+        maintenanceRecordService.update(1L, "V10", 100L, new MaintenanceRecordUpdateRequest(
                 null, null, null, 60000, null));
 
         assertThat(existing.getServiceOdometer()).isEqualTo(60000);

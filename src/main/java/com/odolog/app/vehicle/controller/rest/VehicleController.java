@@ -55,14 +55,14 @@ public class VehicleController {
     }
 
     @GetMapping("/{vehicleId}")
-    public ResponseEntity<VehicleResponse> findOne(@PathVariable Long vehicleId, @LoginUser Long requesterId) {
+    public ResponseEntity<VehicleResponse> findOne(@PathVariable String vehicleId, @LoginUser Long requesterId) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
         return ResponseEntity.ok(VehicleResponse.from(vehicle));
     }
 
     // 주행거리는 별도 엔드포인트 — 감소 금지 규칙이 붙어 성격이 다르고 쓰는 순간도 다름
     @PatchMapping("/{vehicleId}")
-    public ResponseEntity<VehicleResponse> update(@PathVariable Long vehicleId,
+    public ResponseEntity<VehicleResponse> update(@PathVariable String vehicleId,
                                                     @Valid @RequestBody VehicleUpdateRequest request,
                                                     @LoginUser Long requesterId) {
         Vehicle vehicle = vehicleService.update(requesterId, vehicleId, request);
@@ -70,7 +70,7 @@ public class VehicleController {
     }
 
     @PatchMapping("/{vehicleId}/odometer")
-    public ResponseEntity<VehicleResponse> updateOdometer(@PathVariable Long vehicleId,
+    public ResponseEntity<VehicleResponse> updateOdometer(@PathVariable String vehicleId,
                                                             @Valid @RequestBody UpdateOdometerRequest request,
                                                             @LoginUser Long requesterId) {
         Vehicle vehicle = vehicleService.updateOdometer(requesterId, vehicleId, request);
@@ -78,7 +78,7 @@ public class VehicleController {
     }
 
     @DeleteMapping("/{vehicleId}")
-    public ResponseEntity<Void> delete(@PathVariable Long vehicleId, @LoginUser Long requesterId) {
+    public ResponseEntity<Void> delete(@PathVariable String vehicleId, @LoginUser Long requesterId) {
         vehicleService.delete(requesterId, vehicleId);
         return ResponseEntity.noContent().build();
     }

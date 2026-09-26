@@ -157,7 +157,7 @@ class VehicleControllerTest {
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
 
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "10")).thenReturn(vehicle);
 
         mockMvc.perform(get("/api/vehicles/10").session(loginSessionOf(1L)))
                 .andExpect(status().isOk())
@@ -167,7 +167,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("존재하지 않는 차량을 조회하면 404")
     void findOneNotFound() throws Exception {
-        when(vehicleService.findOwnedVehicle(1L, 999L))
+        when(vehicleService.findOwnedVehicle(1L, "999"))
                 .thenThrow(new ResourceNotFoundException("존재하지 않는 차량입니다: 999"));
 
         mockMvc.perform(get("/api/vehicles/999").session(loginSessionOf(1L)))
@@ -177,7 +177,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("본인 소유가 아닌 차량의 주행거리를 갱신하려 하면 404 — 존재 자체를 알리지 않는다")
     void updateOdometerForbidden() throws Exception {
-        when(vehicleService.updateOdometer(eq(1L), eq(10L), any(UpdateOdometerRequest.class)))
+        when(vehicleService.updateOdometer(eq(1L), eq("10"), any(UpdateOdometerRequest.class)))
                 .thenThrow(new ResourceNotFoundException("존재하지 않는 차량입니다: 1"));
 
         mockMvc.perform(patch("/api/vehicles/10/odometer")
@@ -208,7 +208,7 @@ class VehicleControllerTest {
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "10")).thenReturn(vehicle);
 
         mockMvc.perform(get("/api/vehicles/10").session(loginSessionOf(1L)))
                 .andExpect(status().isOk())
@@ -237,7 +237,7 @@ class VehicleControllerTest {
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
-        when(vehicleService.updateOdometer(eq(1L), eq(10L), any(UpdateOdometerRequest.class)))
+        when(vehicleService.updateOdometer(eq(1L), eq("10"), any(UpdateOdometerRequest.class)))
                 .thenReturn(vehicle);
 
         // 200만 km — 실제 차량이 도달할 수 없는 선이라 여기까지는 열어 둔다
@@ -256,7 +256,7 @@ class VehicleControllerTest {
         Vehicle vehicle = new Vehicle(owner, "12가3456", "기아", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
 
-        when(vehicleService.update(eq(1L), eq(10L), any(VehicleUpdateRequest.class))).thenReturn(vehicle);
+        when(vehicleService.update(eq(1L), eq("10"), any(VehicleUpdateRequest.class))).thenReturn(vehicle);
 
         mockMvc.perform(patch("/api/vehicles/10")
                         .session(loginSessionOf(1L))
@@ -284,7 +284,7 @@ class VehicleControllerTest {
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
 
-        when(vehicleService.update(eq(1L), eq(10L), any(VehicleUpdateRequest.class))).thenReturn(vehicle);
+        when(vehicleService.update(eq(1L), eq("10"), any(VehicleUpdateRequest.class))).thenReturn(vehicle);
 
         mockMvc.perform(patch("/api/vehicles/10")
                         .session(loginSessionOf(1L))

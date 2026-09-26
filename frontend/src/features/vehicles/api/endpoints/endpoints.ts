@@ -16,7 +16,7 @@ export function fetchVehicles(page: number, size = 10) {
   return api.get<PageResponse<VehicleResponse>>(`/api/vehicles?page=${page}&size=${size}`)
 }
 
-export function fetchVehicle(vehicleId: number) {
+export function fetchVehicle(vehicleId: string) {
   return api.get<VehicleResponse>(`/api/vehicles/${vehicleId}`)
 }
 
@@ -24,14 +24,14 @@ export function registerVehicle(request: VehicleRegisterRequest) {
   return api.post<VehicleResponse>('/api/vehicles', request)
 }
 
-export function updateVehicle(vehicleId: number, request: VehicleUpdateRequest) {
+export function updateVehicle(vehicleId: string, request: VehicleUpdateRequest) {
   return api.patch<VehicleResponse>(`/api/vehicles/${vehicleId}`, request)
 }
 
-export function updateOdometer(vehicleId: number, request: UpdateOdometerRequest) {
+export function updateOdometer(vehicleId: string, request: UpdateOdometerRequest) {
   return api.patch<VehicleResponse>(`/api/vehicles/${vehicleId}/odometer`, request)
 }
 
-export function deleteVehicle(vehicleId: number) {
+export function deleteVehicle(vehicleId: string) {
   return api.del(`/api/vehicles/${vehicleId}`)
 }

@@ -109,7 +109,7 @@ public class VehicleService {
     }
 
     @Transactional
-    public Vehicle update(Long requesterId, Long vehicleId, VehicleUpdateRequest request) {
+    public Vehicle update(Long requesterId, String vehicleId, VehicleUpdateRequest request) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
 
         // 번호판 먼저. 다른 필드를 먼저 바꾸면 dirty 상태가 되고 exists 직전에 자동 flush —
@@ -137,7 +137,7 @@ public class VehicleService {
     }
 
     @Transactional
-    public Vehicle updateOdometer(Long requesterId, Long vehicleId, UpdateOdometerRequest request) {
+    public Vehicle updateOdometer(Long requesterId, String vehicleId, UpdateOdometerRequest request) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
 
         // 기본은 감소 금지. force 를 실어야만 정정 경로로 간다
@@ -151,7 +151,7 @@ public class VehicleService {
     }
 
     @Transactional
-    public void delete(Long requesterId, Long vehicleId) {
+    public void delete(Long requesterId, String vehicleId) {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
         // 자식 먼저, 차량 나중 — 바꾸면 FK 제약 위반
         maintenanceRecordRepository.deleteByVehicleId(vehicle.getId());
@@ -188,8 +188,9 @@ public class VehicleService {
      *
      * 상태 코드만 맞추고 문구를 달리하면 소용없다. 그래서 두 경우가 **같은 예외를 만들어 쓴다**
      */
-    public Vehicle findOwnedVehicle(Long requesterId, Long vehicleId) {
-        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+    public Vehicle findOwnedVehicle(Long requesterId, String vehicleId) {
+        // 공개 id 로 찾는다. 예전 숫자 주소(/vehicles/1)는 그냥 없는 차량이다
+        Vehicle vehicle = vehicleRepository.findByPublicId(vehicleId)
                 .orElseThrow(() -> notFound(vehicleId));
 
         if (!vehicle.getOwner().getId().equals(requesterId)) {
@@ -199,7 +200,7 @@ public class VehicleService {
         return vehicle;
     }
 
-    private ResourceNotFoundException notFound(Long vehicleId) {
+    private ResourceNotFoundException notFound(String vehicleId) {
         return new ResourceNotFoundException("존재하지 않는 차량입니다: " + vehicleId);
     }
 }

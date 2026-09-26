@@ -17,7 +17,7 @@ export function FuelSummaryCard({
   vehicleId,
   onChanged,
 }: {
-  vehicleId: number
+  vehicleId: string
   /** 기준점이 바뀌면 목록의 구간 연비도 달라지므로 부모에게 알림 */
   onChanged: () => void
 }) {

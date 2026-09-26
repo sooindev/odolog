@@ -31,7 +31,8 @@ export interface UpdateOdometerRequest {
 }
 
 export interface VehicleResponse {
-  id: number
+  /** 공개 id(12자 무작위). 숫자 PK 는 서버 밖으로 안 나온다 — 번호가 등록 순서를 말하므로 */
+  id: string
   plateNumber: string
   manufacturer: string
   modelName: string

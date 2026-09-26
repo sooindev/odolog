@@ -57,6 +57,18 @@ class VehicleRepositoryTest {
     }
 
     @Test
+    @DisplayName("공개 id 로 찾는다. 숫자 id 문자열로는 못 찾는다 — 예전 주소는 없는 차량")
+    void findByPublicId() {
+        Vehicle saved = vehicleRepository.save(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
+        em.flush();
+        em.clear();
+
+        assertThat(vehicleRepository.findByPublicId(saved.getPublicId()))
+                .get().extracting(Vehicle::getId).isEqualTo(saved.getId());
+        assertThat(vehicleRepository.findByPublicId(String.valueOf(saved.getId()))).isEmpty();
+    }
+
+    @Test
     @DisplayName("findByOwnerId 는 owner 의 id 로 페이지 단위 조회를 한다")
     void findByOwnerId() {
         em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));

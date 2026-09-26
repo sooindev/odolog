@@ -43,9 +43,10 @@ public class FuelRecordService {
     }
 
     @Transactional
-    public FuelRecordResponse register(Long requesterId, Long vehicleId,
+    public FuelRecordResponse register(Long requesterId, String vehicleId,
                                        FuelRecordRegisterRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Long id = vehicle.getId();
 
         FuelRecord record = fuelRecordRepository.save(new FuelRecord(
                 vehicle, request.fueledAt(), request.odometer(),
@@ -54,8 +55,7 @@ public class FuelRecordService {
         // 계기판 값이 더 최신이면 차량 쪽도 갱신
         vehicle.liftOdometerTo(request.odometer());
 
-        return FuelRecordResponse.of(record, findPrevious(vehicleId, record),
-                baselineOf(vehicleId));
+        return FuelRecordResponse.of(record, findPrevious(id, record), baselineOf(id));
     }
 
     /**
@@ -65,10 +65,10 @@ public class FuelRecordService {
      * 세 번째는 '평소 구간'을 구하는 전체 조회다. 페이지 안에서만 중앙값을 내면
      * 같은 기록이 1페이지와 2페이지에서 다르게 판정된다 — 기준은 이력 전체라야 한 벌이다
      */
-    public Page<FuelRecordResponse> findByVehicle(Long requesterId, Long vehicleId, Pageable pageable) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
+    public Page<FuelRecordResponse> findByVehicle(Long requesterId, String vehicleId, Pageable pageable) {
+        Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
 
-        Page<FuelRecord> page = fuelRecordRepository.findByVehicleId(vehicleId,
+        Page<FuelRecord> page = fuelRecordRepository.findByVehicleId(id,
                 PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), FIXED_SORT));
 
         List<FuelRecord> items = page.getContent();
@@ -77,9 +77,9 @@ public class FuelRecordService {
         }
 
         // 내림차순이라 맨 끝이 가장 오래된 기록. 그것의 직전 한 건
-        FuelRecord beforePage = findPrevious(vehicleId, items.get(items.size() - 1));
+        FuelRecord beforePage = findPrevious(id, items.get(items.size() - 1));
 
-        FuelAnomaly.Baseline baseline = baselineOf(vehicleId);
+        FuelAnomaly.Baseline baseline = baselineOf(id);
 
         List<FuelRecordResponse> responses = new ArrayList<>(items.size());
         for (int i = 0; i < items.size(); i++) {
@@ -92,7 +92,7 @@ public class FuelRecordService {
 
 
     @Transactional
-    public FuelRecordResponse update(Long requesterId, Long vehicleId, Long recordId,
+    public FuelRecordResponse update(Long requesterId, String vehicleId, Long recordId,
                                      FuelRecordUpdateRequest request) {
         FuelRecord record = findRecordInVehicle(requesterId, vehicleId, recordId);
 
@@ -116,19 +116,19 @@ public class FuelRecordService {
         if (request.memo() != null) record.changeMemo(blankToNull(request.memo()));
         if (request.resetPoint() != null) record.changeResetPoint(request.resetPoint());
 
-        return FuelRecordResponse.of(record, findPrevious(vehicleId, record),
-                baselineOf(vehicleId));
+        Long id = record.getVehicle().getId();
+        return FuelRecordResponse.of(record, findPrevious(id, record), baselineOf(id));
     }
 
     @Transactional
-    public void delete(Long requesterId, Long vehicleId, Long recordId) {
+    public void delete(Long requesterId, String vehicleId, Long recordId) {
         fuelRecordRepository.delete(findRecordInVehicle(requesterId, vehicleId, recordId));
     }
 
-    public FuelSummaryResponse summary(Long requesterId, Long vehicleId) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
+    public FuelSummaryResponse summary(Long requesterId, String vehicleId) {
+        Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
 
-        List<FuelRecord> records = fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId);
+        List<FuelRecord> records = fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(id);
 
         // 건수·비용·주유량은 전체 기준. 초기화 대상은 연비뿐
         long totalCost = 0;
@@ -190,10 +190,10 @@ public class FuelRecordService {
                 .orElse(null);
     }
 
-    private FuelRecord findRecordInVehicle(Long requesterId, Long vehicleId, Long recordId) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
+    private FuelRecord findRecordInVehicle(Long requesterId, String vehicleId, Long recordId) {
+        Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
 
-        return fuelRecordRepository.findByIdAndVehicleId(recordId, vehicleId)
+        return fuelRecordRepository.findByIdAndVehicleId(recordId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 주유 기록입니다: " + recordId));
     }
 }

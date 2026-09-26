@@ -46,12 +46,12 @@ public class MaintenanceRecordService {
      * 남겨 두면 customized 가 true 로 남아 화면이 "기본과 다름" 이라고 거짓말한다
      */
     @Transactional
-    public void changeInterval(Long requesterId, Long vehicleId, ServiceType type,
+    public void changeInterval(Long requesterId, String vehicleId, ServiceType type,
                                Integer intervalKm, Integer intervalMonths) {
 
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
 
-        serviceIntervalRepository.findByVehicleIdAndType(vehicleId, type).ifPresentOrElse(
+        serviceIntervalRepository.findByVehicleIdAndType(vehicle.getId(), type).ifPresentOrElse(
                 existing -> {
                     existing.change(intervalKm, intervalMonths);
                     if (existing.isEmpty()) {
@@ -67,7 +67,7 @@ public class MaintenanceRecordService {
     }
 
     @Transactional
-    public MaintenanceRecord register(Long requesterId, Long vehicleId, MaintenanceRecordRegisterRequest request) {
+    public MaintenanceRecord register(Long requesterId, String vehicleId, MaintenanceRecordRegisterRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
 
         MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(),
@@ -86,14 +86,14 @@ public class MaintenanceRecordService {
 
     /** type 이 null 이면 전체. 전용 메서드를 하나 더 만들지 않는 이유 — 호출부가 갈리면
      *  소유권 검사와 정렬 가드를 두 곳에서 되풀이해야 한다 */
-    public Page<MaintenanceRecord> findByVehicle(Long requesterId, Long vehicleId,
+    public Page<MaintenanceRecord> findByVehicle(Long requesterId, String vehicleId,
                                                  ServiceType type, Pageable pageable) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
         SortGuard.allowOnly(pageable, SORTABLE);
 
         return type == null
-                ? maintenanceRecordRepository.findByVehicleId(vehicleId, pageable)
-                : maintenanceRecordRepository.findByVehicleIdAndType(vehicleId, type, pageable);
+                ? maintenanceRecordRepository.findByVehicleId(id, pageable)
+                : maintenanceRecordRepository.findByVehicleIdAndType(id, type, pageable);
     }
 
     /**
@@ -104,12 +104,12 @@ public class MaintenanceRecordService {
      * "오늘"을 밖에서 받지 않고 여기서 만드는 이유: 이 경로는 화면이 바로 부르는 조회라
      * 고정할 이유가 없고, 고정이 필요한 홈 요약 쪽은 자기가 today 를 넘긴다
      */
-    public List<NextServiceResponse> calculateAllNextServices(Long requesterId, Long vehicleId) {
+    public List<NextServiceResponse> calculateAllNextServices(Long requesterId, String vehicleId) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
 
         return NextService.of(
-                        maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(vehicleId),
-                        serviceIntervalRepository.findByVehicleId(vehicleId),
+                        maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(vehicle.getId()),
+                        serviceIntervalRepository.findByVehicleId(vehicle.getId()),
                         vehicle.getOdometer(), LocalDate.now())
                 .stream()
                 .map(NextServiceResponse::from)
@@ -119,10 +119,10 @@ public class MaintenanceRecordService {
 
 
     @Transactional
-    public MaintenanceRecord update(Long requesterId, Long vehicleId, Long recordId,
+    public MaintenanceRecord update(Long requesterId, String vehicleId, Long recordId,
                                      MaintenanceRecordUpdateRequest request) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
-        MaintenanceRecord record = findRecordInVehicle(vehicleId, recordId);
+        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        MaintenanceRecord record = findRecordInVehicle(vehicle.getId(), recordId);
 
         if (request.type() != null) {
             record.changeType(request.type());
@@ -146,9 +146,9 @@ public class MaintenanceRecordService {
     }
 
     @Transactional
-    public void delete(Long requesterId, Long vehicleId, Long recordId) {
-        vehicleService.findOwnedVehicle(requesterId, vehicleId);
-        MaintenanceRecord record = findRecordInVehicle(vehicleId, recordId);
+    public void delete(Long requesterId, String vehicleId, Long recordId) {
+        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        MaintenanceRecord record = findRecordInVehicle(vehicle.getId(), recordId);
 
         maintenanceRecordRepository.delete(record);
     }

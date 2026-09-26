@@ -24,7 +24,7 @@ import type {
 } from '@/features/maintenance/api/types/types'
 
 interface Props {
-  vehicleId: number
+  vehicleId: string
   /** null 이면 등록, 값이 있으면 그 이력 수정 */
   record: MaintenanceRecordResponse | null
   /** 등록 시 주행거리 기본값 (차량의 현재 주행거리) */

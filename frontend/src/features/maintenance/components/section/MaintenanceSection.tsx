@@ -15,7 +15,7 @@ import { cn } from 'cn'
 import type { MaintenanceRecordResponse, ServiceType } from '@/features/maintenance/api/types/types'
 
 interface Props {
-  vehicleId: number
+  vehicleId: string
   currentOdometer: number
   /** 이력이 바뀌면 부모에게 알려 다음 정비 시점도 재계산 */
   onChanged: () => void

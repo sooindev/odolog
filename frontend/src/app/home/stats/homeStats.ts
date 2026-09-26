@@ -26,7 +26,8 @@ export interface TypeCost {
 }
 
 export interface VehicleLine {
-  id: number
+  /** 차량 공개 id */
+  id: string
   plateNumber: string
   manufacturer: string
   modelName: string
@@ -49,7 +50,7 @@ export interface RecentActivity {
   recordId: number
   /** 'YYYY-MM-DD' */
   date: string
-  vehicleId: number
+  vehicleId: string
   vehicleName: string
   cost: number
   type: ServiceType | null

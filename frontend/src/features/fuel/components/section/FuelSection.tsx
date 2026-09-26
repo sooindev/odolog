@@ -12,7 +12,7 @@ import { deleteFuelRecord, fetchFuelRecords } from '@/features/fuel/api/endpoint
 import type { FuelRecordResponse } from '@/features/fuel/api/types/types'
 
 interface Props {
-  vehicleId: number
+  vehicleId: string
   currentOdometer: number
   /** 기록이 바뀌면 부모에게 알려 연비 요약과 차량 주행거리 재조회 */
   onChanged: () => void

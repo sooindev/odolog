@@ -3,6 +3,7 @@ package com.odolog.app.vehicle.domain.entity;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.common.domain.entity.BaseTimeEntity;
+import com.odolog.app.common.domain.identifier.PublicId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -19,16 +20,24 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(
         name = "vehicles",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_vehicles_user_plate_number",
-                columnNames = {"user_id", "plate_number"}
-        )
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_vehicles_user_plate_number",
+                        columnNames = {"user_id", "plate_number"}),
+                @UniqueConstraint(
+                        name = "uk_vehicles_public_id",
+                        columnNames = "public_id")
+        }
 )
 public class Vehicle extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** URL·API 용 식별자. id 는 서버 밖으로 내보내지 않는다 — 번호가 등록 순서를 말한다 */
+    @Column(name = "public_id", nullable = false, updatable = false, length = PublicId.LENGTH)
+    private String publicId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
@@ -58,6 +67,7 @@ public class Vehicle extends BaseTimeEntity {
     }
 
     public Vehicle(User owner, String plateNumber, String manufacturer, String modelName, Integer modelYear) {
+        this.publicId = PublicId.generate();
         this.owner = owner;
         this.plateNumber = plateNumber;
         this.manufacturer = manufacturer;
@@ -113,6 +123,10 @@ public class Vehicle extends BaseTimeEntity {
 
     public Long getId() {
         return id;
+    }
+
+    public String getPublicId() {
+        return publicId;
     }
 
     public User getOwner() {

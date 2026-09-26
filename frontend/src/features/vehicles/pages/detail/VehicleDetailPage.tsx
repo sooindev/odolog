@@ -27,7 +27,8 @@ export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate = useNavigate()
 
-  const id = Number(vehicleId)
+  // 공개 id 문자열 그대로. 라우트가 :vehicleId 를 요구하므로 비는 일은 없지만 타입이 string | undefined 다
+  const id = vehicleId ?? ''
 
   // 남의 차량도 없는 차량도 서버가 404 하나로 답함 — 존재 자체를 숨기는 쪽이 백엔드
   const load = useCallback(() => fetchVehicle(id), [id])

@@ -40,7 +40,7 @@ public class MaintenanceRecordController {
     }
 
     @PostMapping
-    public ResponseEntity<MaintenanceRecordResponse> register(@PathVariable Long vehicleId,
+    public ResponseEntity<MaintenanceRecordResponse> register(@PathVariable String vehicleId,
                                                                 @Valid @RequestBody MaintenanceRecordRegisterRequest request,
                                                                 @LoginUser Long requesterId) {
         MaintenanceRecord record = maintenanceRecordService.register(requesterId, vehicleId, request);
@@ -49,7 +49,7 @@ public class MaintenanceRecordController {
 
     @GetMapping
     public ResponseEntity<PageResponse<MaintenanceRecordResponse>> findByVehicle(
-            @PathVariable Long vehicleId,
+            @PathVariable String vehicleId,
             @LoginUser Long requesterId,
             /** 없으면 전체. 잘못된 값은 MethodArgumentTypeMismatch 로 400 */
             @RequestParam(required = false) ServiceType type,
@@ -66,7 +66,7 @@ public class MaintenanceRecordController {
     /** 종류 전체를 한 번에. 이력 있는 종류만 반환 */
     @GetMapping("/next-services")
     public ResponseEntity<List<NextServiceResponse>> calculateAllNextServices(
-            @PathVariable Long vehicleId, @LoginUser Long requesterId) {
+            @PathVariable String vehicleId, @LoginUser Long requesterId) {
         return ResponseEntity.ok(maintenanceRecordService.calculateAllNextServices(requesterId, vehicleId));
     }
 
@@ -79,7 +79,7 @@ public class MaintenanceRecordController {
      * 대신 화면이 두 칸을 언제나 함께 보낸다 — 둘 다 비워 보내면 기본값으로 되돌아간다
      */
     @PatchMapping("/intervals/{type}")
-    public ResponseEntity<Void> changeInterval(@PathVariable Long vehicleId,
+    public ResponseEntity<Void> changeInterval(@PathVariable String vehicleId,
                                                  @PathVariable ServiceType type,
                                                  @Valid @RequestBody ServiceIntervalRequest request,
                                                  @LoginUser Long requesterId) {
@@ -90,7 +90,7 @@ public class MaintenanceRecordController {
     }
 
     @PatchMapping("/{recordId}")
-    public ResponseEntity<MaintenanceRecordResponse> update(@PathVariable Long vehicleId,
+    public ResponseEntity<MaintenanceRecordResponse> update(@PathVariable String vehicleId,
                                                               @PathVariable Long recordId,
                                                               @Valid @RequestBody MaintenanceRecordUpdateRequest request,
                                                               @LoginUser Long requesterId) {
@@ -99,7 +99,7 @@ public class MaintenanceRecordController {
     }
 
     @DeleteMapping("/{recordId}")
-    public ResponseEntity<Void> delete(@PathVariable Long vehicleId,
+    public ResponseEntity<Void> delete(@PathVariable String vehicleId,
                                         @PathVariable Long recordId,
                                         @LoginUser Long requesterId) {
         maintenanceRecordService.delete(requesterId, vehicleId, recordId);

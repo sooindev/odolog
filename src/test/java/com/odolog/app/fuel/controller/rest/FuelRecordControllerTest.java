@@ -63,7 +63,7 @@ class FuelRecordControllerTest {
     @Test
     @DisplayName("주유 기록 등록 성공 시 201과 연비를 함께 반환한다")
     void registerSuccess() throws Exception {
-        when(fuelRecordService.register(eq(1L), eq(10L), any())).thenReturn(response());
+        when(fuelRecordService.register(eq(1L), eq("10"), any())).thenReturn(response());
 
         mockMvc.perform(post("/api/vehicles/10/fuel-records")
                         .session(loginSessionOf(1L))
@@ -103,7 +103,7 @@ class FuelRecordControllerTest {
     @DisplayName("주유량과 결제 금액은 빠뜨려도 201 — 비워 두는 것이 정상적인 사용이다")
     void registerWithoutLitersAndCost() throws Exception {
         // 영수증을 잃었거나 계기판만 적어 두는 경우. 화면이 저장 전에 무엇을 못 하게 되는지 알린다
-        when(fuelRecordService.register(eq(1L), eq(10L), any())).thenReturn(response());
+        when(fuelRecordService.register(eq(1L), eq("10"), any())).thenReturn(response());
 
         mockMvc.perform(post("/api/vehicles/10/fuel-records")
                         .session(loginSessionOf(1L))
@@ -130,7 +130,7 @@ class FuelRecordControllerTest {
     @Test
     @DisplayName("수정은 clearLiters 로만 비운다 — 키가 없으면 유지")
     void updateDistinguishesAbsentFromNull() throws Exception {
-        when(fuelRecordService.update(eq(1L), eq(10L), eq(5L), any())).thenReturn(response());
+        when(fuelRecordService.update(eq(1L), eq("10"), eq(5L), any())).thenReturn(response());
 
         // liters 키가 아예 없다 → 유지
         mockMvc.perform(patch("/api/vehicles/10/fuel-records/5")
@@ -142,7 +142,7 @@ class FuelRecordControllerTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<FuelRecordUpdateRequest> kept = ArgumentCaptor.forClass(FuelRecordUpdateRequest.class);
-        verify(fuelRecordService).update(eq(1L), eq(10L), eq(5L), kept.capture());
+        verify(fuelRecordService).update(eq(1L), eq("10"), eq(5L), kept.capture());
         // null 이면 "안 보냄" — 메모만 고치는 요청이 주유량을 지우면 안 된다
         assertThat(kept.getValue().liters()).isNull();
 
@@ -156,7 +156,7 @@ class FuelRecordControllerTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<FuelRecordUpdateRequest> cleared = ArgumentCaptor.forClass(FuelRecordUpdateRequest.class);
-        verify(fuelRecordService, times(2)).update(eq(1L), eq(10L), eq(5L), cleared.capture());
+        verify(fuelRecordService, times(2)).update(eq(1L), eq("10"), eq(5L), cleared.capture());
         assertThat(cleared.getValue().clearLiters()).isTrue();
     }
 
@@ -190,7 +190,7 @@ class FuelRecordControllerTest {
     @DisplayName("목록은 페이지 형태로 반환한다")
     void findByVehiclePaged() throws Exception {
         Pageable pageable = PageRequest.of(0, 20);
-        when(fuelRecordService.findByVehicle(eq(1L), eq(10L), any(Pageable.class)))
+        when(fuelRecordService.findByVehicle(eq(1L), eq("10"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(response()), pageable, 1));
 
         mockMvc.perform(get("/api/vehicles/10/fuel-records").session(loginSessionOf(1L)))
@@ -203,7 +203,7 @@ class FuelRecordControllerTest {
     @Test
     @DisplayName("/summary 는 {recordId} 보다 먼저 매칭된다")
     void summaryRoutesBeforePathVariable() throws Exception {
-        when(fuelRecordService.summary(1L, 10L)).thenReturn(new FuelSummaryResponse(
+        when(fuelRecordService.summary(1L, "10")).thenReturn(new FuelSummaryResponse(
                 3, 160000, new BigDecimal("80.00"), 1000, new BigDecimal("20.00"),
                 3L, null, 0, 0, List.of()));
 

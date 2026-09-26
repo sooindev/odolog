@@ -3,7 +3,8 @@ package com.odolog.app.vehicle.dto.response.vehicle;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 
 public record VehicleResponse(
-        Long id,
+        /** 공개 id(12자). 숫자 PK 가 아니다 */
+        String id,
         String plateNumber,
         String manufacturer,
         String modelName,
@@ -28,7 +29,8 @@ public record VehicleResponse(
 
     public static VehicleResponse of(Vehicle vehicle, Integer overdueServiceCount) {
         return new VehicleResponse(
-                vehicle.getId(),
+                // 숫자 PK 가 아니라 공개 id. 화면은 이 값만 안다
+                vehicle.getPublicId(),
                 vehicle.getPlateNumber(),
                 vehicle.getManufacturer(),
                 vehicle.getModelName(),

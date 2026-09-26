@@ -74,12 +74,12 @@ class FuelRecordServiceTest {
     @DisplayName("직전 기록이 없으면 연비와 주행거리가 null 이다")
     void firstRecordHasNoEfficiency() {
         Vehicle vehicle = vehicle(0);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
-        FuelRecordResponse response = fuelRecordService.register(1L, 10L,
+        FuelRecordResponse response = fuelRecordService.register(1L, "V10",
                 new FuelRecordRegisterRequest(LocalDate.of(2026, 9, 1), 10000,
                         new BigDecimal("30.00"), 60000, null));
 
@@ -93,13 +93,13 @@ class FuelRecordServiceTest {
     @DisplayName("연비는 직전 주유 이후 달린 거리를 이번 주유량으로 나눈 값이다")
     void efficiencyFromPrevious() {
         Vehicle vehicle = vehicle(10000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any()))
                 .thenReturn(Optional.of(record(1L, vehicle, 10000, "30.00", 60000)));
 
-        FuelRecordResponse response = fuelRecordService.register(1L, 10L,
+        FuelRecordResponse response = fuelRecordService.register(1L, "V10",
                 new FuelRecordRegisterRequest(LocalDate.of(2026, 9, 10), 10500,
                         new BigDecimal("25.00"), 50000, null));
 
@@ -111,12 +111,12 @@ class FuelRecordServiceTest {
     @DisplayName("주유 기록의 주행거리가 더 크면 차량의 주행거리도 따라 올라간다")
     void registerUpdatesVehicleOdometer() {
         Vehicle vehicle = vehicle(9000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
-        fuelRecordService.register(1L, 10L, new FuelRecordRegisterRequest(
+        fuelRecordService.register(1L, "V10", new FuelRecordRegisterRequest(
                 LocalDate.of(2026, 9, 1), 10000, new BigDecimal("30.00"), 60000, null));
 
         assertThat(vehicle.getOdometer()).isEqualTo(10000);
@@ -126,12 +126,12 @@ class FuelRecordServiceTest {
     @DisplayName("과거 주유를 뒤늦게 입력해도 차량의 주행거리는 내려가지 않는다")
     void registerDoesNotLowerVehicleOdometer() {
         Vehicle vehicle = vehicle(50000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
-        fuelRecordService.register(1L, 10L, new FuelRecordRegisterRequest(
+        fuelRecordService.register(1L, "V10", new FuelRecordRegisterRequest(
                 LocalDate.of(2026, 1, 1), 10000, new BigDecimal("30.00"), 60000, null));
 
         assertThat(vehicle.getOdometer()).isEqualTo(50000);
@@ -141,7 +141,7 @@ class FuelRecordServiceTest {
     @DisplayName("목록의 마지막 행만 직전 기록을 따로 조회한다 — 행마다 조회하면 N+1")
     void listQueriesPreviousOnlyOnce() {
         Vehicle vehicle = vehicle(11000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
 
         // 내림차순 11000 → 10500 이 한 페이지. 10500 의 짝(10000)은 다음 페이지
         List<FuelRecord> items = List.of(
@@ -153,7 +153,7 @@ class FuelRecordServiceTest {
         when(fuelRecordRepository.findPrevious(eq(10L), eq(10500), any()))
                 .thenReturn(Optional.of(record(1L, vehicle, 10000, "30.00", 60000)));
 
-        Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, 10L, pageable);
+        Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, "V10", pageable);
 
         // 첫 행은 페이지 안쪽끼리 짝 (11000 - 10500) / 25
         assertThat(page.getContent().get(0).efficiency()).isEqualByComparingTo("20.00");
@@ -169,7 +169,7 @@ class FuelRecordServiceTest {
     @DisplayName("주유량·금액을 안 적은 기록은 연비도 단가도 0 이 아니라 null 이다")
     void bareRecordHasNoDerivedValues() {
         Vehicle vehicle = vehicle(11000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
 
         Pageable pageable = PageRequest.of(0, 2);
         when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
@@ -177,7 +177,7 @@ class FuelRecordServiceTest {
                         bare(2L, vehicle, 10500),
                         record(1L, vehicle, 10000, "30.00", 60000)), pageable, 2));
 
-        FuelRecordResponse bare = fuelRecordService.findByVehicle(1L, 10L, pageable).getContent().get(0);
+        FuelRecordResponse bare = fuelRecordService.findByVehicle(1L, "V10", pageable).getContent().get(0);
 
         // 거리는 안다 — 모르는 것은 "얼마나 넣었나" 뿐이다
         assertThat(bare.distance()).isEqualTo(500);
@@ -193,10 +193,10 @@ class FuelRecordServiceTest {
     void blankMemoBecomesNull() {
         // "없음" 이 null 과 '' 두 모양이면 내보낸 JSON 에도 그대로 나간다 (phone 과 같은 규칙)
         Vehicle vehicle = vehicle(10000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(call -> call.getArgument(0));
 
-        fuelRecordService.register(1L, 10L, new FuelRecordRegisterRequest(
+        fuelRecordService.register(1L, "V10", new FuelRecordRegisterRequest(
                 LocalDate.of(2026, 9, 1), 10500, new BigDecimal("25.00"), 50000, "   "));
 
         ArgumentCaptor<FuelRecord> saved = ArgumentCaptor.forClass(FuelRecord.class);
@@ -213,25 +213,25 @@ class FuelRecordServiceTest {
          * 같은 값을 두 화면이 다르게 말했다.
          */
         Vehicle vehicle = vehicle(11000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
                 record(1L, vehicle, 10000, "10.00", 2_000_000_000),
                 record(2L, vehicle, 10500, "10.00", 2_000_000_000)));
 
-        assertThat(fuelRecordService.summary(1L, 10L).totalCost()).isEqualTo(4_000_000_000L);
+        assertThat(fuelRecordService.summary(1L, "V10").totalCost()).isEqualTo(4_000_000_000L);
     }
 
     @Test
     @DisplayName("요약의 합계는 적힌 것만 더한다 — 안 적은 기록이 0 으로 섞이지 않는다")
     void summarySkipsUnrecordedValues() {
         Vehicle vehicle = vehicle(11000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
                 record(1L, vehicle, 10000, "30.00", 60000),
                 bare(2L, vehicle, 10500),
                 record(3L, vehicle, 11000, "25.00", 50000)));
 
-        FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
         // 건수는 셋 — 기록 자체는 있었던 일이다
         assertThat(summary.recordCount()).isEqualTo(3);
@@ -243,7 +243,7 @@ class FuelRecordServiceTest {
     @DisplayName("기록이 빠진 것으로 보이는 구간은 목록 행에 표시된다")
     void listMarksMissingRecordSegment() {
         Vehicle vehicle = vehicle(12000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
 
         // 평소 400km/40L(10km/L) 인데 마지막 구간만 800km — 기록 하나가 빠졌거나 지워진 모양
         List<FuelRecord> ascending = List.of(
@@ -259,7 +259,7 @@ class FuelRecordServiceTest {
         when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(ascending.get(4), ascending.get(3)), pageable, 5));
 
-        Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, 10L, pageable);
+        Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, "V10", pageable);
 
         FuelRecordResponse suspicious = page.getContent().get(0);
         // 값은 지우지 않는다 — 무엇이 이상한지 보려면 20.00 이 남아 있어야 한다
@@ -276,7 +276,7 @@ class FuelRecordServiceTest {
     @DisplayName("기준을 페이지가 아니라 이력 전체에서 잡는다 — 같은 행이 페이지마다 달리 판정되면 안 된다")
     void baselineComesFromWholeHistory() {
         Vehicle vehicle = vehicle(12000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
 
         List<FuelRecord> ascending = List.of(
                 record(1L, vehicle, 10000, "40.00", 60000),
@@ -290,7 +290,7 @@ class FuelRecordServiceTest {
         when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(ascending.get(4), ascending.get(3)), pageable, 5));
 
-        fuelRecordService.findByVehicle(1L, 10L, pageable);
+        fuelRecordService.findByVehicle(1L, "V10", pageable);
 
         // 이 페이지에는 구간이 하나뿐이라, 전체를 안 읽으면 '평소'를 못 구해 아무것도 못 잡는다
         verify(fuelRecordRepository).findAllByVehicleIdOrderByOdometerAscIdAsc(10L);
@@ -300,13 +300,13 @@ class FuelRecordServiceTest {
     @DisplayName("평균 연비는 첫 주유량을 뺀 나머지로 나눈다")
     void averageEfficiencyExcludesFirstFill() {
         Vehicle vehicle = vehicle(11000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
                 record(1L, vehicle, 10000, "30.00", 60000),
                 record(2L, vehicle, 10500, "25.00", 50000),
                 record(3L, vehicle, 11000, "25.00", 50000)));
 
-        FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
         assertThat(summary.recordCount()).isEqualTo(3);
         assertThat(summary.totalCost()).isEqualTo(160000);
@@ -320,11 +320,11 @@ class FuelRecordServiceTest {
     @DisplayName("기록이 1건뿐이면 평균 연비를 낼 수 없다")
     void averageEfficiencyNeedsTwoRecords() {
         Vehicle vehicle = vehicle(10000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
                 .thenReturn(List.of(record(1L, vehicle, 10000, "30.00", 60000)));
 
-        FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
         assertThat(summary.totalDistance()).isNull();
         assertThat(summary.averageEfficiency()).isNull();
@@ -336,13 +336,13 @@ class FuelRecordServiceTest {
     void updateLiftsVehicleOdometer() {
         Vehicle vehicle = vehicle(10000);
         FuelRecord existing = record(1L, vehicle, 10000, "30.00", 60000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findByIdAndVehicleId(1L, 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
         // 자리수 오타 정정
-        fuelRecordService.update(1L, 10L, 1L,
+        fuelRecordService.update(1L, "V10", 1L,
                 new FuelRecordUpdateRequest(null, 100000, null, null, null, null, null, null));
 
         assertThat(existing.getOdometer()).isEqualTo(100000);
@@ -354,12 +354,12 @@ class FuelRecordServiceTest {
     void updateDoesNotLowerVehicleOdometer() {
         Vehicle vehicle = vehicle(50000);
         FuelRecord existing = record(1L, vehicle, 20000, "30.00", 60000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findByIdAndVehicleId(1L, 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
-        fuelRecordService.update(1L, 10L, 1L,
+        fuelRecordService.update(1L, "V10", 1L,
                 new FuelRecordUpdateRequest(null, 15000, null, null, null, null, null, null));
 
         assertThat(existing.getOdometer()).isEqualTo(15000);
@@ -376,7 +376,7 @@ class FuelRecordServiceTest {
     @DisplayName("연비 초기화 이후 구간만으로 평균을 낸다")
     void averageEfficiencySinceResetPoint() {
         Vehicle vehicle = vehicle(30000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
                 // 초기화 이전 — 주행거리 오입력으로 연비가 엉망인 구간
                 record(1L, vehicle, 10000, "90.00", 180000),
@@ -386,7 +386,7 @@ class FuelRecordServiceTest {
                 record(4L, vehicle, 20500, "25.00", 50000),
                 record(5L, vehicle, 21000, "25.00", 50000)));
 
-        FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
         // 1000km ÷ (80 - 30)L = 20.00. 초기화를 무시하면 11,000km 구간이 끼어듦
         assertThat(summary.totalDistance()).isEqualTo(1000);
@@ -406,12 +406,12 @@ class FuelRecordServiceTest {
     @DisplayName("기준점이 가장 마지막 기록이면 평균 연비를 낼 수 없다 — 다음 주유부터 계산된다")
     void resetPointAtLatestLeavesNoAverage() {
         Vehicle vehicle = vehicle(20000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
                 record(1L, vehicle, 10000, "30.00", 60000),
                 resetPointAt(2L, vehicle, 20000, "30.00", 60000)));
 
-        FuelSummaryResponse summary = fuelRecordService.summary(1L, 10L);
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
         assertThat(summary.averageEfficiency()).isNull();
         assertThat(summary.totalDistance()).isNull();
@@ -422,17 +422,17 @@ class FuelRecordServiceTest {
     void resetPointBreaksSegment() {
         Vehicle vehicle = vehicle(20000);
         FuelRecord existing = record(2L, vehicle, 20000, "25.00", 50000);
-        when(vehicleService.findOwnedVehicle(1L, 10L)).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findByIdAndVehicleId(2L, 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));
 
         // 끄기 전 500km ÷ 25L = 20.00
-        FuelRecordResponse before = fuelRecordService.update(1L, 10L, 2L,
+        FuelRecordResponse before = fuelRecordService.update(1L, "V10", 2L,
                 new FuelRecordUpdateRequest(null, null, null, null, null, null, null, false));
         assertThat(before.efficiency()).isEqualByComparingTo("20.00");
 
-        FuelRecordResponse after = fuelRecordService.update(1L, 10L, 2L,
+        FuelRecordResponse after = fuelRecordService.update(1L, "V10", 2L,
                 new FuelRecordUpdateRequest(null, null, null, null, null, null, null, true));
 
         assertThat(after.resetPoint()).isTrue();

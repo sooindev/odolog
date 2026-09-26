@@ -157,7 +157,7 @@ public class GarageSummaryService {
                     .count();
 
             lines.add(new VehicleLine(
-                    vehicle.getId(), vehicle.getPlateNumber(), vehicle.getManufacturer(),
+                    vehicle.getPublicId(), vehicle.getPlateNumber(), vehicle.getManufacturer(),
                     vehicle.getModelName(), vehicle.getOdometer(),
                     mine.size(),
                     // serviceDate 내림차순이라 첫 줄이 최근
@@ -177,20 +177,23 @@ public class GarageSummaryService {
          * 1차 캐시가 받아 주긴 하나 그 사실에 기대는 코드가 됨
          */
         Map<Long, String> names = new LinkedHashMap<>();
+        // 숫자 PK → 공개 id. 응답에는 공개 id 만 나간다
+        Map<Long, String> publicIds = new LinkedHashMap<>();
         for (Vehicle vehicle : vehicles) {
             names.put(vehicle.getId(), vehicle.getManufacturer() + " " + vehicle.getModelName());
+            publicIds.put(vehicle.getId(), vehicle.getPublicId());
         }
 
         List<RecentActivity> all = new ArrayList<>(records.size() + fuels.size());
         for (MaintenanceRecord record : records) {
             Long vehicleId = record.getVehicle().getId();
             all.add(new RecentActivity("MAINTENANCE", record.getId(), record.getServiceDate(),
-                    vehicleId, names.get(vehicleId), record.getCost(), record.getType(), null));
+                    publicIds.get(vehicleId), names.get(vehicleId), record.getCost(), record.getType(), null));
         }
         for (FuelRecord record : fuels) {
             Long vehicleId = record.getVehicle().getId();
             all.add(new RecentActivity("FUEL", record.getId(), record.getFueledAt(),
-                    vehicleId, names.get(vehicleId), record.totalCostOrZero(), null,
+                    publicIds.get(vehicleId), names.get(vehicleId), record.totalCostOrZero(), null,
                     record.getLiters()));
         }
 

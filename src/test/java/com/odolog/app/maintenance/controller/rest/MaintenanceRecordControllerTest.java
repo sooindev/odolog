@@ -25,6 +25,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
@@ -58,7 +59,7 @@ class MaintenanceRecordControllerTest {
         MaintenanceRecord record = new MaintenanceRecord(null, ServiceType.ENGINE_OIL, "정기 교체",
                 50000, 40000, LocalDate.of(2026, 1, 1));
 
-        when(maintenanceRecordService.findByVehicle(eq(1L), eq(10L), isNull(), any(Pageable.class)))
+        when(maintenanceRecordService.findByVehicle(eq(1L), eq("10"), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(record), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/vehicles/10/maintenance-records").session(loginSessionOf(1L)))
@@ -73,7 +74,7 @@ class MaintenanceRecordControllerTest {
     @Test
     @DisplayName("type 을 주면 그 종류만 조회한다 — 이력이 쌓이면 페이지를 넘겨 가며 찾게 된다")
     void findByVehicleFilteredByType() throws Exception {
-        when(maintenanceRecordService.findByVehicle(eq(1L), eq(10L), eq(ServiceType.ENGINE_OIL),
+        when(maintenanceRecordService.findByVehicle(eq(1L), eq("10"), eq(ServiceType.ENGINE_OIL),
                 any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
@@ -110,7 +111,7 @@ class MaintenanceRecordControllerTest {
         MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.now());
 
-        when(maintenanceRecordService.register(anyLong(), anyLong(), any(MaintenanceRecordRegisterRequest.class)))
+        when(maintenanceRecordService.register(anyLong(), anyString(), any(MaintenanceRecordRegisterRequest.class)))
                 .thenReturn(new MaintenanceRecord(null, ServiceType.ENGINE_OIL, "정기 교체",
                         50000, 40000, LocalDate.now()));
 
@@ -125,8 +126,8 @@ class MaintenanceRecordControllerTest {
     @DisplayName("경로 변수 타입이 안 맞으면 500이 아니라 400")
     void invalidPathVariableType() throws Exception {
         // MethodArgumentTypeMismatchException 핸들러 검증
-        // 겨냥하던 /next-service 를 걷어내며 경로 변수로 옮김 — 핸들러 자체는 범용
-        mockMvc.perform(get("/api/vehicles/abc/maintenance-records")
+        // 차량 id 는 문자열(공개 id)이 되어 아무 값이나 받으므로, 아직 숫자인 recordId 로 본다
+        mockMvc.perform(delete("/api/vehicles/k3Xq9mTa2LpZ/maintenance-records/abc")
                         .session(loginSessionOf(1L)))
                 .andExpect(status().isBadRequest());
     }
@@ -136,7 +137,7 @@ class MaintenanceRecordControllerTest {
     @Test
     @DisplayName("존재하지 않는 차량에 정비 이력을 등록하려 하면 404")
     void registerVehicleNotFound() throws Exception {
-        when(maintenanceRecordService.register(anyLong(), anyLong(), any(MaintenanceRecordRegisterRequest.class)))
+        when(maintenanceRecordService.register(anyLong(), anyString(), any(MaintenanceRecordRegisterRequest.class)))
                 .thenThrow(new ResourceNotFoundException("존재하지 않는 차량입니다: 999"));
 
         MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
@@ -212,7 +213,7 @@ class MaintenanceRecordControllerTest {
     @Test
     @DisplayName("/next-services 는 이력 있는 종류를 한 번에 돌려준다")
     void calculateAllNextServices() throws Exception {
-        when(maintenanceRecordService.calculateAllNextServices(1L, 10L)).thenReturn(List.of(
+        when(maintenanceRecordService.calculateAllNextServices(1L, "10")).thenReturn(List.of(
                 new NextServiceResponse(ServiceType.ENGINE_OIL, 20000, 25000,
                         LocalDate.of(2026, 9, 1), LocalDate.of(2027, 3, 1), true, 5000, 6, false),
                 new NextServiceResponse(ServiceType.TRANSMISSION_FLUID, 15000, 75000,

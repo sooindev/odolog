@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.service.application;
 
+import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.repository.jpa.UserRepository;
@@ -37,13 +38,17 @@ class VehicleServiceTransactionTest {
 
     private Long ownerId;
     private Long vehicleId;
+    // 서비스는 공개 id 로 부르고, 결과 확인은 숫자 PK 로 다시 읽는다
+    private String vehiclePublicId;
 
     @BeforeEach
     void setUp() {
         ownerId = userRepository.save(
                 new User("tx@odolog.com", "encoded-pw", "차주", "010-1111-2222")).getId();
-        vehicleId = vehicleService.register(ownerId,
-                new VehicleRegisterRequest("99하9999", "현대", "아반떼", 2020)).getId();
+        Vehicle registered = vehicleService.register(ownerId,
+                new VehicleRegisterRequest("99하9999", "현대", "아반떼", 2020));
+        vehicleId = registered.getId();
+        vehiclePublicId = registered.getPublicId();
     }
 
     @AfterEach
@@ -57,7 +62,7 @@ class VehicleServiceTransactionTest {
     @Test
     @DisplayName("updateOdometer 는 save() 호출 없이 dirty checking 으로 DB 까지 반영된다")
     void updateOdometerIsFlushedToDatabase() {
-        vehicleService.updateOdometer(ownerId, vehicleId, new UpdateOdometerRequest(45000, null));
+        vehicleService.updateOdometer(ownerId, vehiclePublicId, new UpdateOdometerRequest(45000, null));
 
         // 서비스 트랜잭션이 끝난 뒤 새로 읽기. readOnly 였다면 UPDATE 가 안 나가 0 이 남음
         assertThat(vehicleRepository.findById(vehicleId).orElseThrow().getOdometer())
