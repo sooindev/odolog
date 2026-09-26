@@ -162,4 +162,33 @@ class UserServiceTest {
 
         assertThat(user.getPassword()).isEqualTo(original);
     }
+
+    @Test
+    @DisplayName("없는 이메일도 있는 이메일과 비슷한 시간이 걸린다 — 응답 시간으로 가입 여부를 알 수 없게")
+    void unknownEmailTakesAsLongAsWrongPassword() {
+        User user = new User("test@odolog.com", new BCryptPasswordEncoder().encode("password1234"), "나", null);
+        when(userRepository.findByEmail("test@odolog.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("nobody@odolog.com")).thenReturn(Optional.empty());
+
+        long wrongPassword = fastestLogin("test@odolog.com");
+        long unknownEmail = fastestLogin("nobody@odolog.com");
+
+        // BCrypt 한 번이 수십 ms 라 건너뛰면 수백 배 차이가 난다. 절반 선은 부하가 있어도 넉넉하다
+        assertThat(unknownEmail).isGreaterThan(wrongPassword / 2);
+    }
+
+    /** 가장 빠른 한 번(ns). 평균은 GC·JIT 한 번에 끌려가서 최솟값으로 본다 */
+    private long fastestLogin(String email) {
+        long fastest = Long.MAX_VALUE;
+        for (int i = 0; i < 5; i++) {
+            long start = System.nanoTime();
+            try {
+                userService.login(new LoginRequest(email, "wrongpassword"));
+            } catch (AuthenticationFailedException expected) {
+                // 둘 다 실패하는 것이 정상. 걸린 시간만 본다
+            }
+            fastest = Math.min(fastest, System.nanoTime() - start);
+        }
+        return fastest;
+    }
 }

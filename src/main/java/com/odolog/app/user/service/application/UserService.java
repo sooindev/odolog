@@ -25,6 +25,9 @@ public class UserService {
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    /** 없는 계정의 비교 상대. 같은 인코더로 만들어야 비용(라운드 수)이 실제 해시와 같다 */
+    private final String dummyHash = passwordEncoder.encode("no-such-account");
+
     public UserService(UserRepository userRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
                        LoginAttemptLimiter loginAttemptLimiter) {
@@ -52,10 +55,13 @@ public class UserService {
         loginAttemptLimiter.checkNotLocked(request.email(), "로그인 시도가 너무 많습니다.");
 
         try {
-            User user = userRepository.findByEmail(request.email())
-                    .orElseThrow(() -> new AuthenticationFailedException("이메일 또는 비밀번호가 올바르지 않습니다."));
+            User user = userRepository.findByEmail(request.email()).orElse(null);
 
-            if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            // 없는 계정도 BCrypt 를 한 번 돌린다. 건너뛰면 그쪽만 수십 ms 빨라 응답 시간이 가입 여부를 알려준다
+            String hash = (user == null) ? dummyHash : user.getPassword();
+            boolean matches = passwordEncoder.matches(request.password(), hash);
+
+            if (user == null || !matches) {
                 throw new AuthenticationFailedException("이메일 또는 비밀번호가 올바르지 않습니다.");
             }
 
