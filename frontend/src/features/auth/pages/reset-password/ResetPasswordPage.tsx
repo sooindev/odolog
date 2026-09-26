@@ -38,7 +38,12 @@ export function ResetPasswordPage() {
       await confirmPasswordReset({ token: token ?? '', newPassword })
       // 바꾼 비밀번호로 직접 로그인하게 한다 — 여기서 자동 로그인시키면
       // 메일 링크를 누른 사람이 곧 계정 주인이라고 믿는 셈이 된다
-      navigate('/login', { replace: true })
+      // 로그인 화면이 아무 말도 안 하면 바뀐 건지 몰라 재설정을 한 번 더 시도하게 된다.
+      // 쿼리가 아니라 state — 주소에 남으면 새로고침할 때마다 다시 뜬다
+      navigate('/login', {
+        replace: true,
+        state: { notice: '비밀번호를 바꿨습니다. 새 비밀번호로 로그인해 주세요.' },
+      })
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : '비밀번호 재설정에 실패했습니다.')
     } finally {
@@ -51,14 +56,14 @@ export function ResetPasswordPage() {
     return (
       <Page title="새 비밀번호" description="메일로 받은 링크에서만 들어올 수 있습니다.">
         <Card>
-        <CardContent className="flex flex-col gap-4">
-          <ErrorText message="재설정 링크가 올바르지 않습니다." />
-          <p className="text-caption leading-relaxed text-muted-foreground">
-            메일에 있는 링크를 그대로 눌러 주세요. 링크가 만료됐다면 다시 요청할 수 있습니다.
-          </p>
-          <FormActions>
-            <Button render={<Link to="/forgot-password" />}>재설정 링크 다시 받기</Button>
-          </FormActions>
+          <CardContent className="flex flex-col gap-4">
+            <ErrorText message="재설정 링크가 올바르지 않습니다." />
+            <p className="text-caption leading-relaxed text-muted-foreground">
+              메일에 있는 링크를 그대로 눌러 주세요. 링크가 만료됐다면 다시 요청할 수 있습니다.
+            </p>
+            <FormActions>
+              <Button render={<Link to="/forgot-password" />}>재설정 링크 다시 받기</Button>
+            </FormActions>
           </CardContent>
         </Card>
       </Page>

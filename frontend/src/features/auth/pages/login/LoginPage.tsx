@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/shared/ui/base/card'
 import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
-import { ErrorText } from '@/shared/ui/feedback/state'
+import { ErrorText, NoticeText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 
 export function LoginPage() {
@@ -21,8 +21,10 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // ProtectedRoute 가 기억해 둔 목적지. 없으면 차량 목록
-  const from = (location.state as { from?: string } | null)?.from ?? '/vehicles'
+  // ProtectedRoute 가 기억해 둔 목적지(from)와 앞 화면이 남긴 안내(notice). 둘 다 이번 이동에만 붙는다
+  const state = location.state as { from?: string; notice?: string } | null
+  const from = state?.from ?? '/vehicles'
+  const notice = state?.notice ?? null
 
   if (user !== null) {
     return <Navigate to={from} replace />
@@ -75,7 +77,12 @@ export function LoginPage() {
                 />
               </Field>
 
-              {error !== null && <ErrorText message={error} />}
+              {/* 실패가 나면 안내 대신 실패를 보인다 — 둘이 같이 있으면 무엇이 지금 일인지 흐려진다 */}
+              {error !== null ? (
+                <ErrorText message={error} />
+              ) : (
+                notice !== null && <NoticeText message={notice} />
+              )}
 
               <FormActions>
                 <Button type="submit" disabled={pending}>
