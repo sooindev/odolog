@@ -1,6 +1,9 @@
 /** 백엔드 user DTO 대응(/v3/api-docs). 백엔드 변경 시 함께 수정 */
 
-export interface SignUpRequest {
+import type { Language, Preferences, UnitSystem } from '@/shared/lib/locale/preferences'
+
+/** 설정 넷은 선택. 화면이 브라우저 값으로 채움 */
+export interface SignUpRequest extends Preferences {
   email: string
   password: string
   nickname: string
@@ -13,7 +16,7 @@ export interface LoginRequest {
   password: string
 }
 
-export interface UpdateProfileRequest {
+export interface UpdateProfileRequest extends Preferences {
   nickname?: string
   phone?: string
 }
@@ -33,6 +36,10 @@ export interface UserResponse {
   email: string
   nickname: string
   phone: string | null
+  language: Language
+  timeZone: string
+  currency: string
+  unitSystem: UnitSystem
 }
 
 /** 계정 기록 전체. 백업용이라 계산값(연비·단가) 없음 */

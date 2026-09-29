@@ -11,6 +11,7 @@ import { FormActions, Page } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
 import { passwordHint } from '@/shared/lib/limits/limits'
+import { detectPreferences } from '@/shared/lib/locale/preferences'
 import { signUp } from '@/features/auth/api/endpoints/endpoints'
 import type { SignUpRequest } from '@/features/auth/api/types/types'
 
@@ -40,7 +41,8 @@ export function SignUpPage() {
     try {
       // 선택 입력이라 빈 값·공백은 미전송
       const phone = form.phone?.trim()
-      await signUp({ ...form, phone: phone === '' ? undefined : phone })
+      // 설정은 입력칸 없이 브라우저 값. 모르는 값은 undefined 라 JSON 에서 빠짐
+      await signUp({ ...form, ...detectPreferences(), phone: phone === '' ? undefined : phone })
     } catch (caught) {
       // 409 = 이메일 중복, 400 = 검증 실패
       setError(caught instanceof ApiError ? caught.message : '회원가입에 실패했습니다.')
