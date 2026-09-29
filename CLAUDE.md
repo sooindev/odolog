@@ -86,6 +86,17 @@
   제대로 붙었다. `@ColumnDefault("false")` 를 붙여 둔 덕에 이미 있던 3건이 무엇으로 채워질지를
   DB 구현에 맡기지 않았다. 여기는 손댈 것이 없었다.
 
+  **2026-09-29에 세 번째 모양을 만났다**: `@Enumerated(STRING)` 은 `@JdbcTypeCode(VARCHAR)` 를 붙여도
+  `CHECK (type in ('ENGINE_OIL', …))` 를 **값 목록째** 붙이고, `ddl-auto: update` 는 컬럼을 추가할 때만
+  그걸 쓰고 **목록을 갱신하지 않는다.** enum 에 값을 더하면 테스트(create-drop)는 통과하고 운영만
+  저장이 실패한다. `columnDefinition` 으로도 안 사라진다(실험으로 확인).
+  **그래서 새 enum 컬럼은 `@Convert`(enum 안의 `Converter`)로 매핑한다** — `User.language`·`unitSystem` 이 첫 사례다.
+  ⚠️ **운영 `service_intervals.type` 에는 이미 이 CHECK 가 붙어 있다**(`maintenance_records.type` 은 9/16 에
+  손으로 바꿔서 없다). `ServiceType` 에 값을 더하기 전에 둘 다 `@Convert` 로 옮기고 아래를 한 번 실행한다:
+
+      /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults \
+        -e "USE odolog; ALTER TABLE service_intervals DROP CONSTRAINT \`type\`;"
+
   (`SHOW INDEX` 보다 `SHOW CREATE TABLE` 이 낫다. 복합 유니크가 `user_id` 로 시작하면 외래키용
   인덱스 `fk_vehicles_user` 가 그 역할을 대신해 `SHOW INDEX` 목록에서 사라지는데, FK 제약 자체는
   멀쩡히 살아 있다. `SHOW CREATE TABLE` 은 그걸 그대로 보여준다.)
@@ -557,7 +568,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   ├── domain/
     │   │   └── entity/
     │   │       ├── User.java                 @Entity(users). uk_users_email 유니크 제약.
-    │   │       │                             changeNickname()/changePhone() — setter 없음
+    │   │       │                             changeNickname()/changePhone() — setter 없음.
+    │   │       │                             설정 넷(language·timeZone·currency·unitSystem, Phase 7).
+    │   │       │                             시간대는 IANA 지역 이름만(고정 오프셋은 서머타임 미반영),
+    │   │       │                             통화는 ISO 4217 만 — 검증은 JDK 목록에 맡긴다
     │   │       └── PasswordResetToken.java   @Entity. **원본이 아니라 SHA-256 해시를 저장한다** —
     │   │                                     DB 가 새어도 그것만으로 남의 비밀번호를 못 바꾼다.
     │   │                                     한 번 쓰면 used_at 이 찍혀 죽는다
@@ -1006,7 +1020,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 264개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 268개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -2067,10 +2081,11 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 
 순서는 의존 관계다. **7-1 이 나머지 전부의 바탕이다** — 설정을 저장할 자리가 먼저 있어야 한다.
 
-- [ ] **7-1 사용자 설정 칸** — `User` 에 `locale`(`en`/`ko`) · `timeZone` · `currency` · `unitSystem`.
-      기존 행은 `ko` / `Asia/Seoul` / `KRW` / `KM_PER_L` (`@ColumnDefault` — `reset_point` 때와 같은 방식).
-      가입 요청에 선택 필드로, 프로필 PATCH 로 바꾼다. `UserResponse` 에 싣는다.
-      → 운영 DB 에 컬럼이 실제로 붙었는지 `SHOW CREATE TABLE users` 로 확인(ddl-auto 함정)
+- [x] **7-1a 엔티티** (2026-09-29) — `user/domain/type/{UnitSystem,Language}` + `User` 칸 넷.
+      기존 행은 `KO` / `Asia/Seoul` / `KRW` / `KM_PER_L`(`@ColumnDefault`). enum 은 `@Convert` — 위 "개발 환경" 의 CHECK 함정.
+      `odolog_test` 에 옛 `users` 를 만들어 `ddl-auto: update` 로 띄워 봤다: 기존 행이 기본값으로 채워지고 CHECK 없음
+- [ ] **7-1a 운영 반영 확인** — IntelliJ 로 한 번 띄운 뒤 `SHOW CREATE TABLE users` 에 칸 넷이 있고 **CHECK 가 없는지**
+- [ ] **7-1b API** — 가입 요청에 선택 필드로(화면이 브라우저 값을 채운다), 프로필 PATCH 로 변경, `UserResponse` 에 싣기
 - [ ] **7-2 시간대** — 서버의 `LocalDate.now()` 를 사용자 시간대로:
       `GarageSummaryController` · `VehicleService`(지남 수) · `MaintenanceRecordService`(다음 정비).
       **`@PastOrPresent` 6곳은 서비스 검사로 옮긴다**(정비·주유 등록/수정, 가져오기) —
@@ -2127,7 +2142,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (264개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (268개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (45개)
 
 ---
