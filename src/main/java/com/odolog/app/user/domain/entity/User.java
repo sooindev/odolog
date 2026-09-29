@@ -2,6 +2,7 @@ package com.odolog.app.user.domain.entity;
 
 import com.odolog.app.common.domain.entity.BaseTimeEntity;
 import com.odolog.app.common.exception.type.InvalidRequestException;
+import com.odolog.app.common.money.CurrencyCode;
 import com.odolog.app.user.domain.type.Language;
 import com.odolog.app.user.domain.type.UnitSystem;
 import jakarta.persistence.Column;
@@ -15,7 +16,6 @@ import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.ZoneId;
-import java.util.Currency;
 
 
 @Entity
@@ -136,9 +136,7 @@ public class User extends BaseTimeEntity {
     }
 
     public void changeCurrency(String currency) {
-        boolean known = Currency.getAvailableCurrencies().stream()
-                .anyMatch(candidate -> candidate.getCurrencyCode().equals(currency));
-        if (!known) {
+        if (!CurrencyCode.isKnown(currency)) {
             throw new InvalidRequestException("지원하지 않는 통화입니다: " + currency);
         }
         this.currency = currency;

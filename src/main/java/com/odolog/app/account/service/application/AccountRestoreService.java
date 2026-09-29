@@ -1,5 +1,7 @@
 package com.odolog.app.account.service.application;
 
+import com.odolog.app.common.exception.type.InvalidRequestException;
+import com.odolog.app.common.money.CurrencyCode;
 import com.odolog.app.account.dto.request.restore.AccountRestoreRequest;
 import com.odolog.app.account.dto.response.restore.AccountRestoreResponse;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
@@ -109,7 +111,7 @@ public class AccountRestoreService {
                 }
 
                 maintenanceRecordRepository.save(new MaintenanceRecord(vehicle, record.type(),
-                        blankToNull(record.description()), record.cost(), owner.getCurrency(),
+                        blankToNull(record.description()), record.cost(), currencyOf(record.currency()),
                         record.serviceOdometer(), record.serviceDate()));
                 addedMaintenance++;
             }
@@ -123,7 +125,8 @@ public class AccountRestoreService {
 
                 // 기준점은 생성자에 없어 별도 지정
                 FuelRecord fuel = new FuelRecord(vehicle, record.fueledAt(), record.odometer(),
-                        record.liters(), record.totalCost(), owner.getCurrency(), blankToNull(record.memo()));
+                        record.liters(), record.totalCost(), currencyOf(record.currency()),
+                        blankToNull(record.memo()));
                 fuel.changeResetPoint(record.resetPoint());
 
                 fuelRecordRepository.save(fuel);
@@ -165,6 +168,17 @@ public class AccountRestoreService {
                 userToday.rejectFuture(userId, record.fueledAt(), "fuelRecords.fueledAt");
             }
         }
+    }
+
+    /** 파일의 통화. 칸 없는 옛 파일은 원화, 지금 사용자 설정이 아님 */
+    private String currencyOf(String code) {
+        if (code == null) {
+            return CurrencyCode.LEGACY;
+        }
+        if (!CurrencyCode.isKnown(code)) {
+            throw new InvalidRequestException("currency: 지원하지 않는 통화입니다: " + code);
+        }
+        return code;
     }
 
     // 중복 판정 열쇠. JSON 에 id 가 없어 내용으로 판정

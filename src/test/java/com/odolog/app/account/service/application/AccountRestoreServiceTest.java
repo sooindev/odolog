@@ -17,6 +17,7 @@ import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -69,13 +70,60 @@ class AccountRestoreServiceTest {
     }
 
     private AccountRestoreRequest.MaintenanceData oilData(LocalDate date, int odometer) {
+        return oilData(date, odometer, null);
+    }
+
+    private AccountRestoreRequest.MaintenanceData oilData(LocalDate date, int odometer, String currency) {
         return new AccountRestoreRequest.MaintenanceData(
-                ServiceType.ENGINE_OIL, null, 80000, odometer, date);
+                ServiceType.ENGINE_OIL, null, 80000, currency, odometer, date);
     }
 
     private AccountRestoreRequest.FuelData fuelData(LocalDate date, int odometer) {
         return new AccountRestoreRequest.FuelData(date, odometer, new BigDecimal("50.00"),
-                90000, null, false);
+                90000, null, null, false);
+    }
+
+    /** 빈 계정 + 차량 저장 시 id 부여 */
+    private void emptyAccount() {
+        when(userService.findById(1L)).thenReturn(owner);
+        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of());
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(call -> {
+            Vehicle saved = call.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 10L);
+            return saved;
+        });
+    }
+
+    private MaintenanceRecord restoreOneOil(String currency) {
+        emptyAccount();
+        accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                List.of(oilData(LocalDate.of(2026, 5, 1), 30000, currency)), List.of()))));
+
+        ArgumentCaptor<MaintenanceRecord> saved = ArgumentCaptor.forClass(MaintenanceRecord.class);
+        verify(maintenanceRecordRepository).save(saved.capture());
+        return saved.getValue();
+    }
+
+    @Test
+    @DisplayName("통화 칸이 없는 옛 파일은 지금 설정이 달러여도 원화로 읽는다")
+    void legacyFileIsKrw() {
+        // 옛 파일은 전부 원화 시절. 지금 설정을 붙이면 50,000원이 $500.00
+        owner.changeCurrency("USD");
+
+        assertThat(restoreOneOil(null).getCurrency()).isEqualTo("KRW");
+    }
+
+    @Test
+    @DisplayName("파일에 적힌 통화를 그대로 쓴다")
+    void usesFileCurrency() {
+        assertThat(restoreOneOil("USD").getCurrency()).isEqualTo("USD");
+    }
+
+    @Test
+    @DisplayName("모르는 통화는 400")
+    void rejectsUnknownCurrency() {
+        assertThatThrownBy(() -> restoreOneOil("XYZ"))
+                .isInstanceOf(InvalidRequestException.class);
     }
 
     private Vehicle existing(String plate, Long id) {

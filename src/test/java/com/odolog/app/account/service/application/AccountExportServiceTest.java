@@ -96,6 +96,9 @@ class AccountExportServiceTest {
         assertThat(response.vehicles().get(0).plateNumber()).isEqualTo("12가3456");
         assertThat(response.vehicles().get(0).maintenanceRecords()).hasSize(1);
         assertThat(response.vehicles().get(0).fuelRecords()).hasSize(1);
+        // 통화가 빠지면 복원 때 금액의 뜻을 모름
+        assertThat(response.vehicles().get(0).maintenanceRecords().get(0).currency()).isEqualTo("KRW");
+        assertThat(response.vehicles().get(0).fuelRecords().get(0).currency()).isEqualTo("KRW");
         assertThat(response.vehicles().get(1).maintenanceRecords()).hasSize(2);
         assertThat(response.vehicles().get(1).fuelRecords()).isEmpty();
     }

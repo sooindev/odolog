@@ -63,6 +63,8 @@ public record AccountExportResponse(
             String type,
             String description,
             int cost,
+            /** ISO 4217. 금액은 이 통화의 최소 단위 */
+            String currency,
             int serviceOdometer,
             LocalDate serviceDate,
             LocalDateTime createdAt
@@ -72,6 +74,7 @@ public record AccountExportResponse(
                     record.getType().name(),
                     record.getDescription(),
                     record.getCost(),
+                    record.getCurrency(),
                     record.getServiceOdometer(),
                     record.getServiceDate(),
                     record.getCreatedAt());
@@ -83,6 +86,7 @@ public record AccountExportResponse(
             int odometer,
             BigDecimal liters,
             Integer totalCost,
+            String currency,
             String memo,
             boolean resetPoint,
             LocalDateTime createdAt
@@ -93,6 +97,7 @@ public record AccountExportResponse(
                     record.getOdometer(),
                     record.getLiters(),
                     record.getTotalCost(),
+                    record.getCurrency(),
                     record.getMemo(),
                     record.isResetPoint(),
                     record.getCreatedAt());

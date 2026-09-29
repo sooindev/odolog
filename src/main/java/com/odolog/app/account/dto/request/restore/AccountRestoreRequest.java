@@ -61,6 +61,8 @@ public record AccountRestoreRequest(
             @NotNull ServiceType type,
             @Size(max = 255) String description,
             @NotNull @PositiveOrZero @Max(InputLimits.MAX_AMOUNT) Integer cost,
+            // 없으면 옛 파일(원화). 목록 검사는 서비스
+            @Size(max = 3) String currency,
             @NotNull @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer serviceOdometer,
             @NotNull LocalDate serviceDate
     ) {
@@ -71,6 +73,7 @@ public record AccountRestoreRequest(
             @NotNull @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer odometer,
             @Positive @Digits(integer = 4, fraction = 2) @DecimalMax("9999.99") BigDecimal liters,
             @PositiveOrZero @Max(InputLimits.MAX_AMOUNT) Integer totalCost,
+            @Size(max = 3) String currency,
             @Size(max = 255) String memo,
             boolean resetPoint
     ) {
