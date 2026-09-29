@@ -10,6 +10,7 @@ import com.odolog.app.maintenance.dto.response.schedule.NextServiceResponse;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
+import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +60,9 @@ class MaintenanceRecordServiceTest {
     }
 
     private Vehicle createVehicle(Long id) {
-        Vehicle vehicle = new Vehicle(null, "12가3456", "현대", "아반떼", 2023);
+        // 등록 시 소유자의 통화를 읽으므로 소유자 필요
+        User owner = new User("me@odolog.com", "encoded", "나", null);
+        Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", id);
         return vehicle;
     }
@@ -76,6 +79,24 @@ class MaintenanceRecordServiceTest {
                 new MaintenanceRecordRegisterRequest(ServiceType.ENGINE_OIL, null, 50000, 40000, tomorrow)))
                 .isInstanceOf(InvalidRequestException.class);
         verify(maintenanceRecordRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("기록의 통화는 등록 시점 소유자의 통화")
+    void registerTakesOwnerCurrency() {
+        Vehicle vehicle = createVehicle(10L);
+        vehicle.getOwner().changeCurrency("USD");
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        MaintenanceRecord saved = maintenanceRecordService.register(1L, "V10",
+                new MaintenanceRecordRegisterRequest(ServiceType.ENGINE_OIL, null, 4567, 40000,
+                        LocalDate.of(2026, 1, 1)));
+
+        // 4567 = $45.67. 금액은 그대로, 뜻은 통화가 정함
+        assertThat(saved.getCost()).isEqualTo(4567);
+        assertThat(saved.getCurrency()).isEqualTo("USD");
     }
 
     @Test
@@ -104,7 +125,7 @@ class MaintenanceRecordServiceTest {
     void updatePartialFields() {
         Vehicle vehicle = createVehicle(10L);
         MaintenanceRecord record = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "기존 메모",
-                50000, 40000, LocalDate.of(2026, 1, 1));
+                50000, "KRW", 40000, LocalDate.of(2026, 1, 1));
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L)).thenReturn(Optional.of(record));
 
@@ -134,7 +155,7 @@ class MaintenanceRecordServiceTest {
 
     private MaintenanceRecord record(Long id, Vehicle vehicle, ServiceType type,
                                      int odometer, LocalDate date) {
-        MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, 0, odometer, date);
+        MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, 0, "KRW", odometer, date);
         ReflectionTestUtils.setField(record, "id", id);
         // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);

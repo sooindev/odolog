@@ -72,9 +72,11 @@ public class MaintenanceRecordService {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
         userToday.rejectFuture(requesterId, request.serviceDate(), "serviceDate");
 
+        // 통화는 기록 시점의 사용자 설정
         MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(),
                 blankToNull(request.description()),
-                request.cost(), request.serviceOdometer(), request.serviceDate());
+                request.cost(), vehicle.getOwner().getCurrency(),
+                request.serviceOdometer(), request.serviceDate());
 
         // 정비 시점 주행거리가 더 크면 차량도 갱신. 주유와 같은 규칙
         vehicle.liftOdometerTo(request.serviceOdometer());

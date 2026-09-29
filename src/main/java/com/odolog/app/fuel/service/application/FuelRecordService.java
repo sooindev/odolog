@@ -53,9 +53,11 @@ public class FuelRecordService {
         Long id = vehicle.getId();
         userToday.rejectFuture(requesterId, request.fueledAt(), "fueledAt");
 
+        // 통화는 기록 시점의 사용자 설정
         FuelRecord record = fuelRecordRepository.save(new FuelRecord(
                 vehicle, request.fueledAt(), request.odometer(),
-                request.liters(), request.totalCost(), blankToNull(request.memo())));
+                request.liters(), request.totalCost(), vehicle.getOwner().getCurrency(),
+                blankToNull(request.memo())));
 
         // 계기판 값이 더 크면 차량 주행거리도 갱신
         vehicle.liftOdometerTo(request.odometer());

@@ -70,13 +70,13 @@ class AccountExportServiceTest {
     }
 
     private MaintenanceRecord maintenance(Vehicle vehicle) {
-        return new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "엔진오일", 80_000,
+        return new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "엔진오일", 80_000, "KRW",
                 45_000, LocalDate.of(2026, 7, 15));
     }
 
     private FuelRecord fuel(Vehicle vehicle) {
         return new FuelRecord(vehicle, LocalDate.of(2026, 8, 1), 48_000,
-                new BigDecimal("32.45"), 60_000, "메모");
+                new BigDecimal("32.45"), 60_000, "KRW", "메모");
     }
 
     @Test

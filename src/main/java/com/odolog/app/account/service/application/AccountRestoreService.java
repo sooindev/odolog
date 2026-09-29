@@ -109,7 +109,7 @@ public class AccountRestoreService {
                 }
 
                 maintenanceRecordRepository.save(new MaintenanceRecord(vehicle, record.type(),
-                        blankToNull(record.description()), record.cost(),
+                        blankToNull(record.description()), record.cost(), owner.getCurrency(),
                         record.serviceOdometer(), record.serviceDate()));
                 addedMaintenance++;
             }
@@ -123,7 +123,7 @@ public class AccountRestoreService {
 
                 // 기준점은 생성자에 없어 별도 지정
                 FuelRecord fuel = new FuelRecord(vehicle, record.fueledAt(), record.odometer(),
-                        record.liters(), record.totalCost(), blankToNull(record.memo()));
+                        record.liters(), record.totalCost(), owner.getCurrency(), blankToNull(record.memo()));
                 fuel.changeResetPoint(record.resetPoint());
 
                 fuelRecordRepository.save(fuel);

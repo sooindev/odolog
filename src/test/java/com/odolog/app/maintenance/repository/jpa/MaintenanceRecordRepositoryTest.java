@@ -55,9 +55,9 @@ class MaintenanceRecordRepositoryTest {
         LocalDate sameDay = LocalDate.of(2026, 3, 1);
 
         // 먼저 등록(오입력)
-        em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "오타", 50000, 10000, sameDay));
+        em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "오타", 50000, "KRW", 10000, sameDay));
         // 나중에 등록(정정)
-        em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "정정", 50000, 20000, sameDay));
+        em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "정정", 50000, "KRW", 20000, sameDay));
         em.flush();
         em.clear();
 
@@ -72,11 +72,11 @@ class MaintenanceRecordRepositoryTest {
     @Test
     @DisplayName("findByVehicleId 는 그 차량의 이력만 페이지 단위로 가져온다")
     void findByVehicleId() {
-        em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "엔진오일", 50000, 10000,
+        em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "엔진오일", 50000, "KRW", 10000,
                 LocalDate.of(2026, 1, 1)));
-        em.persist(new MaintenanceRecord(vehicle, ServiceType.TIRE, "타이어", 300000, 12000,
+        em.persist(new MaintenanceRecord(vehicle, ServiceType.TIRE, "타이어", 300000, "KRW", 12000,
                 LocalDate.of(2026, 2, 1)));
-        em.persist(new MaintenanceRecord(otherVehicle, ServiceType.TIRE, "남의 차", 300000, 5000,
+        em.persist(new MaintenanceRecord(otherVehicle, ServiceType.TIRE, "남의 차", 300000, "KRW", 5000,
                 LocalDate.of(2026, 2, 1)));
         em.flush();
         em.clear();
@@ -94,7 +94,7 @@ class MaintenanceRecordRepositoryTest {
     @DisplayName("공개 id 로 찾는다. 숫자 id 문자열로는 못 찾는다")
     void findByPublicId() {
         MaintenanceRecord mine = new MaintenanceRecord(vehicle, ServiceType.TIRE, null,
-                300000, 5000, LocalDate.of(2026, 2, 1));
+                300000, "KRW", 5000, LocalDate.of(2026, 2, 1));
         em.persist(mine);
         em.flush();
         em.clear();
@@ -109,7 +109,7 @@ class MaintenanceRecordRepositoryTest {
     @DisplayName("findByPublicIdAndVehicleId 는 다른 차량 소속 이력을 찾지 못한다")
     void findByPublicIdAndVehicleIdBlocksOtherVehicle() {
         MaintenanceRecord otherRecord = new MaintenanceRecord(otherVehicle, ServiceType.TIRE, "남의 차",
-                300000, 5000, LocalDate.of(2026, 2, 1));
+                300000, "KRW", 5000, LocalDate.of(2026, 2, 1));
         em.persist(otherRecord);
         em.flush();
         em.clear();
@@ -123,9 +123,9 @@ class MaintenanceRecordRepositoryTest {
     @Test
     @DisplayName("deleteByVehicleId 는 그 차량의 이력만 지운다")
     void deleteByVehicleId() {
-        em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "엔진오일", 50000, 10000,
+        em.persist(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "엔진오일", 50000, "KRW", 10000,
                 LocalDate.of(2026, 1, 1)));
-        em.persist(new MaintenanceRecord(otherVehicle, ServiceType.TIRE, "남의 차", 300000, 5000,
+        em.persist(new MaintenanceRecord(otherVehicle, ServiceType.TIRE, "남의 차", 300000, "KRW", 5000,
                 LocalDate.of(2026, 2, 1)));
         em.flush();
 

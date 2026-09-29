@@ -132,9 +132,9 @@ class AccountRestoreServiceTest {
         when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
 
         MaintenanceRecord already = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL,
-                null, 80000, 30000, LocalDate.of(2026, 5, 1));
+                null, 80000, "KRW", 30000, LocalDate.of(2026, 5, 1));
         FuelRecord alreadyFuel = new FuelRecord(vehicle, LocalDate.of(2026, 5, 2), 30100,
-                new BigDecimal("50.00"), 90000, null);
+                new BigDecimal("50.00"), 90000, "KRW", null);
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of(already));
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))

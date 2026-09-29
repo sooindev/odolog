@@ -47,7 +47,7 @@ class FuelRecordRepositoryTest {
 
     private FuelRecord save(Vehicle target, int odometer, String liters) {
         FuelRecord record = new FuelRecord(target, LocalDate.of(2026, 9, 1), odometer,
-                new BigDecimal(liters), 60000, null);
+                new BigDecimal(liters), 60000, "KRW", null);
         em.persist(record);
         return record;
     }

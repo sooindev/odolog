@@ -66,7 +66,7 @@ class FuelRecordServiceTest {
 
     private FuelRecord record(Long id, Vehicle vehicle, int odometer, String liters, int cost) {
         FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer,
-                new BigDecimal(liters), cost, null);
+                new BigDecimal(liters), cost, "KRW", null);
         ReflectionTestUtils.setField(record, "id", id);
         // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
@@ -75,7 +75,7 @@ class FuelRecordServiceTest {
 
     /** 주유량·금액 없는 기록 */
     private FuelRecord bare(Long id, Vehicle vehicle, int odometer) {
-        FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, null, null);
+        FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, null, "KRW", null);
         ReflectionTestUtils.setField(record, "id", id);
         // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);

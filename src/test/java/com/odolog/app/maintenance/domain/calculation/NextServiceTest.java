@@ -26,7 +26,7 @@ class NextServiceTest {
     }
 
     private MaintenanceRecord record(ServiceType type, int odometer, LocalDate date, Long id) {
-        MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, 80000, odometer, date);
+        MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, 80000, "KRW", odometer, date);
         ReflectionTestUtils.setField(record, "id", id);
         return record;
     }

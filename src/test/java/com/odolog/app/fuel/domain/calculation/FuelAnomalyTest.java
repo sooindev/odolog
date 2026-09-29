@@ -19,7 +19,7 @@ class FuelAnomalyTest {
 
     private FuelRecord at(int odometer, String liters) {
         return new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer,
-                new BigDecimal(liters), 80000, null);
+                new BigDecimal(liters), 80000, "KRW", null);
     }
 
     /** 주행거리 목록 → 기록 목록. 주유량 전부 40L, 구간 연비가 거리에 비례 */

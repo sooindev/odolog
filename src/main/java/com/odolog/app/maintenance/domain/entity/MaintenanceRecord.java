@@ -8,6 +8,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import jakarta.persistence.FetchType;
@@ -55,8 +56,14 @@ public class MaintenanceRecord extends BaseTimeEntity {
     @Column(length = 255)
     private String description;
 
+    /** 통화의 최소 단위(원·센트) */
     @Column(nullable = false)
     private int cost;
+
+    /** ISO 4217. 기록마다 저장, 사용자 설정을 바꿔도 옛 기록의 뜻 유지 */
+    @ColumnDefault("'KRW'")
+    @Column(nullable = false, length = 3)
+    private String currency;
 
     @Column(name = "service_odometer", nullable = false)
     private int serviceOdometer;
@@ -69,12 +76,13 @@ public class MaintenanceRecord extends BaseTimeEntity {
     }
 
     public MaintenanceRecord(Vehicle vehicle, ServiceType type, String description,
-                              int cost, int serviceOdometer, LocalDate serviceDate) {
+                              int cost, String currency, int serviceOdometer, LocalDate serviceDate) {
         this.publicId = PublicId.generate();
         this.vehicle = vehicle;
         this.type = type;
         this.description = description;
         this.cost = cost;
+        this.currency = currency;
         this.serviceOdometer = serviceOdometer;
         this.serviceDate = serviceDate;
     }
@@ -90,6 +98,10 @@ public class MaintenanceRecord extends BaseTimeEntity {
 
     public Vehicle getVehicle() {
         return vehicle;
+    }
+
+    public String getCurrency() {
+        return currency;
     }
 
     public ServiceType getType() {

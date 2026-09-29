@@ -55,7 +55,7 @@ class GarageSummaryServiceTest {
     }
 
     private MaintenanceRecord record(Long id, Vehicle vehicle, ServiceType type, int cost, LocalDate date) {
-        MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, cost, 10000, date);
+        MaintenanceRecord record = new MaintenanceRecord(vehicle, type, null, cost, "KRW", 10000, date);
         ReflectionTestUtils.setField(record, "id", id);
         // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
@@ -63,7 +63,7 @@ class GarageSummaryServiceTest {
     }
 
     private FuelRecord fuel(Long id, Vehicle vehicle, int odometer, String liters, int cost, LocalDate date) {
-        FuelRecord record = new FuelRecord(vehicle, date, odometer, new BigDecimal(liters), cost, null);
+        FuelRecord record = new FuelRecord(vehicle, date, odometer, new BigDecimal(liters), cost, "KRW", null);
         ReflectionTestUtils.setField(record, "id", id);
         // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
@@ -169,7 +169,7 @@ class GarageSummaryServiceTest {
     @DisplayName("최근 활동: 금액을 안 적은 주유는 0 이 아니라 null — 한 건 표시에서 0 은 \"0원에 넣었다\" 로 읽힌다")
     void recentKeepsUnknownCostAsNull() {
         Vehicle car = vehicle(10L, "12가3456", 50000);
-        FuelRecord bare = new FuelRecord(car, LocalDate.of(2026, 9, 12), 50000, null, null, null);
+        FuelRecord bare = new FuelRecord(car, LocalDate.of(2026, 9, 12), 50000, null, null, "KRW", null);
         ReflectionTestUtils.setField(bare, "id", 1L);
         given(List.of(car), List.of(), List.of(bare));
 

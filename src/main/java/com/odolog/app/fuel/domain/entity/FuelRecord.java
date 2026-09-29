@@ -57,11 +57,16 @@ public class FuelRecord extends BaseTimeEntity {
     private BigDecimal liters;
 
     /**
-     * 총 결제액(원). 단가 대신 총액 저장, 영수증과 일치
+     * 총 결제액(통화의 최소 단위). 단가 대신 총액 저장, 영수증과 일치
      * 비울 수 있어 Integer
      */
     @Column(name = "total_cost")
     private Integer totalCost;
+
+    /** ISO 4217. 기록마다 저장, 사용자 설정을 바꿔도 옛 기록의 뜻 유지 */
+    @ColumnDefault("'KRW'")
+    @Column(nullable = false, length = 3)
+    private String currency;
 
     @Column(length = 255)
     private String memo;
@@ -78,13 +83,14 @@ public class FuelRecord extends BaseTimeEntity {
     }
 
     public FuelRecord(Vehicle vehicle, LocalDate fueledAt, int odometer, BigDecimal liters,
-                      Integer totalCost, String memo) {
+                      Integer totalCost, String currency, String memo) {
         this.publicId = PublicId.generate();
         this.vehicle = vehicle;
         this.fueledAt = fueledAt;
         this.odometer = odometer;
         this.liters = liters;
         this.totalCost = totalCost;
+        this.currency = currency;
         this.memo = memo;
     }
 
@@ -130,6 +136,10 @@ public class FuelRecord extends BaseTimeEntity {
 
     public int getOdometer() {
         return odometer;
+    }
+
+    public String getCurrency() {
+        return currency;
     }
 
     public BigDecimal getLiters() {

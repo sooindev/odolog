@@ -11,6 +11,7 @@ public record MaintenanceRecordResponse(
         ServiceType type,
         String description,
         int cost,
+        String currency,
         int serviceOdometer,
         LocalDate serviceDate
 ) {
@@ -21,6 +22,7 @@ public record MaintenanceRecordResponse(
                 record.getType(),
                 record.getDescription(),
                 record.getCost(),
+                record.getCurrency(),
                 record.getServiceOdometer(),
                 record.getServiceDate()
         );

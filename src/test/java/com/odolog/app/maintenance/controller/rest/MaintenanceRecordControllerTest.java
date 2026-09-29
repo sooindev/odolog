@@ -59,7 +59,7 @@ class MaintenanceRecordControllerTest {
     @DisplayName("정비 이력 목록은 페이지 형태로 반환한다")
     void findByVehiclePaged() throws Exception {
         MaintenanceRecord record = new MaintenanceRecord(null, ServiceType.ENGINE_OIL, "정기 교체",
-                50000, 40000, LocalDate.of(2026, 1, 1));
+                50000, "KRW", 40000, LocalDate.of(2026, 1, 1));
 
         when(maintenanceRecordService.findByVehicle(eq(1L), eq("10"), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(record), PageRequest.of(0, 20), 1));
@@ -117,7 +117,7 @@ class MaintenanceRecordControllerTest {
 
         when(maintenanceRecordService.register(anyLong(), anyString(), any(MaintenanceRecordRegisterRequest.class)))
                 .thenReturn(new MaintenanceRecord(null, ServiceType.ENGINE_OIL, "정기 교체",
-                        50000, 40000, LocalDate.now()));
+                        50000, "KRW", 40000, LocalDate.now()));
 
         mockMvc.perform(post("/api/vehicles/10/maintenance-records")
                         .session(loginSessionOf(1L))

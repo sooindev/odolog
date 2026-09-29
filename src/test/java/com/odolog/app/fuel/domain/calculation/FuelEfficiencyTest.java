@@ -19,12 +19,12 @@ class FuelEfficiencyTest {
 
     private FuelRecord record(int odometer, String liters) {
         return new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer,
-                new BigDecimal(liters), 80000, null);
+                new BigDecimal(liters), 80000, "KRW", null);
     }
 
     /** 주유량 없는 기록 */
     private FuelRecord withoutLiters(int odometer) {
-        return new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, 80000, null);
+        return new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, 80000, "KRW", null);
     }
 
     private List<FuelRecord> ascending(FuelRecord... records) {

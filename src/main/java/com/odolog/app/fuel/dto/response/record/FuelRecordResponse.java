@@ -18,11 +18,12 @@ public record FuelRecordResponse(
         int odometer,
         BigDecimal liters,
         Integer totalCost,
+        String currency,
         String memo,
         /** 연비 재계산 기준점 여부 */
         boolean resetPoint,
 
-        /** 리터당 단가(원). 총액 ÷ 리터 반올림. 둘 중 하나라도 없으면 null */
+        /** 리터당 단가(통화의 최소 단위). 총액 ÷ 리터 반올림. 둘 중 하나라도 없으면 null */
         Integer pricePerLiter,
         /** 직전 주유 이후 거리(km). 직전 없으면 null */
         Integer distance,
@@ -59,6 +60,7 @@ public record FuelRecordResponse(
                 record.getOdometer(),
                 record.getLiters(),
                 record.getTotalCost(),
+                record.getCurrency(),
                 record.getMemo(),
                 record.isResetPoint(),
                 pricePerLiter(record),
