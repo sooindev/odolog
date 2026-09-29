@@ -2,6 +2,7 @@ package com.odolog.app.account.service.application;
 
 import com.odolog.app.account.dto.request.restore.AccountRestoreRequest;
 import com.odolog.app.account.dto.response.restore.AccountRestoreResponse;
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
@@ -10,6 +11,7 @@ import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.service.application.UserService;
+import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -25,7 +27,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -48,6 +52,9 @@ class AccountRestoreServiceTest {
 
     @Mock
     private FuelRecordRepository fuelRecordRepository;
+
+    @Mock
+    private UserToday userToday;
 
     @InjectMocks
     private AccountRestoreService accountRestoreService;
@@ -75,6 +82,23 @@ class AccountRestoreServiceTest {
         Vehicle vehicle = new Vehicle(owner, plate, "기아", "카니발", 2020);
         ReflectionTestUtils.setField(vehicle, "id", id);
         return vehicle;
+    }
+
+    @Test
+    @DisplayName("기록 하나라도 미래 날짜면 차량까지 아무것도 들어가지 않는다")
+    void rejectsWholeFileWithFutureDate() {
+        LocalDate tomorrow = LocalDate.of(2026, 9, 30);
+        when(userService.findById(1L)).thenReturn(owner);
+        // 정상 날짜의 호출도 있어 lenient. 엄격 모드는 인자가 다른 호출을 실수로 봄
+        lenient().doThrow(new InvalidRequestException("fuelRecords.fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
+                .when(userToday).rejectFuture(1L, tomorrow, "fuelRecords.fueledAt");
+
+        assertThatThrownBy(() -> accountRestoreService.restore(1L,
+                new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                        List.of(oilData(LocalDate.of(2026, 5, 1), 30000)),
+                        List.of(fuelData(tomorrow, 30100)))))))
+                .isInstanceOf(InvalidRequestException.class);
+        verify(vehicleRepository, never()).save(any());
     }
 
     @Test

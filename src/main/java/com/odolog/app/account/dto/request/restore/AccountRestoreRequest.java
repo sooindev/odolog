@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -63,12 +62,12 @@ public record AccountRestoreRequest(
             @Size(max = 255) String description,
             @NotNull @PositiveOrZero @Max(InputLimits.MAX_AMOUNT) Integer cost,
             @NotNull @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer serviceOdometer,
-            @NotNull @PastOrPresent LocalDate serviceDate
+            @NotNull LocalDate serviceDate
     ) {
     }
 
     public record FuelData(
-            @NotNull @PastOrPresent LocalDate fueledAt,
+            @NotNull LocalDate fueledAt,
             @NotNull @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer odometer,
             @Positive @Digits(integer = 4, fraction = 2) @DecimalMax("9999.99") BigDecimal liters,
             @PositiveOrZero @Max(InputLimits.MAX_AMOUNT) Integer totalCost,

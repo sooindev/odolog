@@ -4,7 +4,6 @@ import com.odolog.app.common.validation.limit.InputLimits;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -18,8 +17,6 @@ import java.time.LocalDate;
  * JSON 의 키 없음과 null 이 같게 도착해서 null 로는 비움 표현 불가. Optional 도 같은 문제
  */
 public record FuelRecordUpdateRequest(
-
-        @PastOrPresent
         LocalDate fueledAt,
 
         @PositiveOrZero

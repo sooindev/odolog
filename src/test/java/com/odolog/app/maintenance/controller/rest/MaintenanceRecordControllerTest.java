@@ -1,5 +1,6 @@
 package com.odolog.app.maintenance.controller.rest;
 
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.maintenance.domain.type.ServiceType;
@@ -95,9 +96,11 @@ class MaintenanceRecordControllerTest {
     @Test
     @DisplayName("미래 날짜로 정비 이력을 등록하면 400")
     void registerFutureDateRejected() throws Exception {
-        // 미래 날짜 차단. 목록 맨 위 고정·다음 정비 계산 왜곡 방지
+        // 판정은 사용자 시간대를 아는 서비스. 여기서는 400 과 문구 전달만
         MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
-                ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.now().plusDays(1));
+                ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.of(2026, 9, 30));
+        when(maintenanceRecordService.register(anyLong(), anyString(), any(MaintenanceRecordRegisterRequest.class)))
+                .thenThrow(new InvalidRequestException("serviceDate: 오늘 이후 날짜는 입력할 수 없습니다."));
 
         mockMvc.perform(post("/api/vehicles/10/maintenance-records")
                         .session(loginSessionOf(1L))

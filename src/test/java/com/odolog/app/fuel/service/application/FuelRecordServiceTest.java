@@ -1,5 +1,6 @@
 package com.odolog.app.fuel.service.application;
 
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.dto.request.register.FuelRecordRegisterRequest;
 import com.odolog.app.fuel.dto.request.update.FuelRecordUpdateRequest;
@@ -7,6 +8,7 @@ import com.odolog.app.fuel.dto.response.record.FuelRecordResponse;
 import com.odolog.app.fuel.dto.response.summary.FuelSummaryResponse;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.user.domain.entity.User;
+import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import org.junit.jupiter.api.DisplayName;
@@ -28,10 +30,13 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +48,9 @@ class FuelRecordServiceTest {
 
     @Mock
     private VehicleService vehicleService;
+
+    @Mock
+    private UserToday userToday;
 
     @InjectMocks
     private FuelRecordService fuelRecordService;
@@ -72,6 +80,20 @@ class FuelRecordServiceTest {
         // 단언용 공개 id 고정
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
+    }
+
+    @Test
+    @DisplayName("사용자 기준 미래 날짜면 저장하지 않는다")
+    void registerRejectsFutureDate() {
+        LocalDate tomorrow = LocalDate.of(2026, 9, 30);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle(0));
+        doThrow(new InvalidRequestException("fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
+                .when(userToday).rejectFuture(1L, tomorrow, "fueledAt");
+
+        assertThatThrownBy(() -> fuelRecordService.register(1L, "V10",
+                new FuelRecordRegisterRequest(tomorrow, 10000, new BigDecimal("30.00"), 60000, null)))
+                .isInstanceOf(InvalidRequestException.class);
+        verify(fuelRecordRepository, never()).save(any());
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.service.application.UserService;
+import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
 import org.springframework.stereotype.Service;
@@ -40,22 +41,26 @@ public class AccountRestoreService {
     private final MaintenanceRecordRepository maintenanceRecordRepository;
     private final ServiceIntervalRepository serviceIntervalRepository;
     private final FuelRecordRepository fuelRecordRepository;
+    private final UserToday userToday;
 
     public AccountRestoreService(UserService userService,
                                  VehicleRepository vehicleRepository,
                                  MaintenanceRecordRepository maintenanceRecordRepository,
                                  ServiceIntervalRepository serviceIntervalRepository,
-                                 FuelRecordRepository fuelRecordRepository) {
+                                 FuelRecordRepository fuelRecordRepository,
+                                 UserToday userToday) {
         this.userService = userService;
         this.vehicleRepository = vehicleRepository;
         this.maintenanceRecordRepository = maintenanceRecordRepository;
         this.serviceIntervalRepository = serviceIntervalRepository;
         this.fuelRecordRepository = fuelRecordRepository;
+        this.userToday = userToday;
     }
 
     @Transactional
     public AccountRestoreResponse restore(Long userId, AccountRestoreRequest request) {
         User owner = userService.findById(userId);
+        rejectFutureDates(userId, request);
 
         Map<String, Vehicle> byPlate = new LinkedHashMap<>();
         for (Vehicle vehicle : vehicleRepository.findAllByOwnerId(userId)) {
@@ -148,6 +153,18 @@ public class AccountRestoreService {
 
         return new AccountRestoreResponse(addedVehicles, addedMaintenance, addedFuel,
                 mergedVehicles, skipped, addedIntervals);
+    }
+
+    /** 저장 전에 전부 검사. 하나라도 미래면 아무것도 안 들어감 */
+    private void rejectFutureDates(Long userId, AccountRestoreRequest request) {
+        for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
+            for (AccountRestoreRequest.MaintenanceData record : data.maintenanceRecords()) {
+                userToday.rejectFuture(userId, record.serviceDate(), "maintenanceRecords.serviceDate");
+            }
+            for (AccountRestoreRequest.FuelData record : data.fuelRecords()) {
+                userToday.rejectFuture(userId, record.fueledAt(), "fuelRecords.fueledAt");
+            }
+        }
     }
 
     // 중복 판정 열쇠. JSON 에 id 가 없어 내용으로 판정

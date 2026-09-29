@@ -10,6 +10,7 @@ import com.odolog.app.fuel.dto.response.record.FuelRecordResponse;
 import com.odolog.app.fuel.dto.response.summary.FuelSummaryResponse;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
+import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -36,10 +37,13 @@ public class FuelRecordService {
 
     private final FuelRecordRepository fuelRecordRepository;
     private final VehicleService vehicleService;
+    private final UserToday userToday;
 
-    public FuelRecordService(FuelRecordRepository fuelRecordRepository, VehicleService vehicleService) {
+    public FuelRecordService(FuelRecordRepository fuelRecordRepository, VehicleService vehicleService,
+                             UserToday userToday) {
         this.fuelRecordRepository = fuelRecordRepository;
         this.vehicleService = vehicleService;
+        this.userToday = userToday;
     }
 
     @Transactional
@@ -47,6 +51,7 @@ public class FuelRecordService {
                                        FuelRecordRegisterRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
         Long id = vehicle.getId();
+        userToday.rejectFuture(requesterId, request.fueledAt(), "fueledAt");
 
         FuelRecord record = fuelRecordRepository.save(new FuelRecord(
                 vehicle, request.fueledAt(), request.odometer(),
@@ -92,6 +97,7 @@ public class FuelRecordService {
     public FuelRecordResponse update(Long requesterId, String vehicleId, String recordId,
                                      FuelRecordUpdateRequest request) {
         FuelRecord record = findRecordInVehicle(requesterId, vehicleId, recordId);
+        userToday.rejectFuture(requesterId, request.fueledAt(), "fueledAt");
 
         if (request.fueledAt() != null) record.changeFueledAt(request.fueledAt());
         if (request.odometer() != null) {

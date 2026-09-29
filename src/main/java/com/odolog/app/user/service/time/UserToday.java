@@ -1,5 +1,6 @@
 package com.odolog.app.user.service.time;
 
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.repository.jpa.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,5 +36,12 @@ public class UserToday {
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + userId));
 
         return LocalDate.now(clock.withZone(ZoneId.of(user.getTimeZone())));
+    }
+
+    /** 사용자의 오늘 이후면 400. null 은 통과(안 보낸 값). @PastOrPresent 는 서버 시간대 기준이라 미사용 */
+    public void rejectFuture(Long userId, LocalDate date, String field) {
+        if (date != null && date.isAfter(of(userId))) {
+            throw new InvalidRequestException(field + ": 오늘 이후 날짜는 입력할 수 없습니다.");
+        }
     }
 }

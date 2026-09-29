@@ -1,6 +1,8 @@
 package com.odolog.app.fuel.controller.rest;
 
 import com.odolog.app.common.auth.constant.SessionConst;
+import com.odolog.app.common.exception.type.InvalidRequestException;
+import com.odolog.app.fuel.dto.request.register.FuelRecordRegisterRequest;
 import com.odolog.app.fuel.dto.request.update.FuelRecordUpdateRequest;
 import com.odolog.app.fuel.dto.response.record.FuelRecordResponse;
 import com.odolog.app.fuel.dto.response.summary.FuelSummaryResponse;
@@ -24,6 +26,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -163,8 +167,10 @@ class FuelRecordControllerTest {
     @Test
     @DisplayName("미래 날짜로 주유를 등록하면 400")
     void registerFutureDateRejected() throws Exception {
-        // 미래 날짜는 API 에서도 차단
-        String tomorrow = LocalDate.now().plusDays(1).toString();
+        // 판정은 사용자 시간대를 아는 서비스. 여기서는 400 과 문구 전달만
+        String tomorrow = LocalDate.of(2026, 9, 30).toString();
+        when(fuelRecordService.register(anyLong(), anyString(), any(FuelRecordRegisterRequest.class)))
+                .thenThrow(new InvalidRequestException("fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."));
 
         mockMvc.perform(post("/api/vehicles/10/fuel-records")
                         .session(loginSessionOf(1L))

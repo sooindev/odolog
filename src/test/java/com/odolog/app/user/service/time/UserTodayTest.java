@@ -1,5 +1,6 @@
 package com.odolog.app.user.service.time;
 
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.repository.jpa.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,8 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -21,14 +24,18 @@ class UserTodayTest {
     // 서울 09-29 21:00 = 오클랜드(서머타임 UTC+13) 09-30 01:00 = 로스앤젤레스 09-29 05:00
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-09-29T12:00:00Z"), ZoneOffset.UTC);
 
-    private LocalDate todayIn(String timeZone) {
+    private UserToday userTodayIn(String timeZone) {
         User user = new User("a@b.com", "encoded", "nick", null);
         user.changeTimeZone(timeZone);
 
         UserRepository repository = mock(UserRepository.class);
         when(repository.findById(1L)).thenReturn(Optional.of(user));
 
-        return new UserToday(repository, CLOCK).of(1L);
+        return new UserToday(repository, CLOCK);
+    }
+
+    private LocalDate todayIn(String timeZone) {
+        return userTodayIn(timeZone).of(1L);
     }
 
     @Test
@@ -46,5 +53,26 @@ class UserTodayTest {
         assertThat(LocalDate.now(CLOCK.withZone(ZoneId.of("Asia/Seoul"))))
                 .isEqualTo(LocalDate.of(2026, 9, 29));
         assertThat(todayIn("Pacific/Auckland")).isEqualTo(LocalDate.of(2026, 9, 30));
+    }
+
+    @Test
+    @DisplayName("오클랜드의 오늘(30일)은 서울이 아직 29일이어도 저장된다")
+    void acceptsTodayAheadOfSeoul() {
+        UserToday auckland = userTodayIn("Pacific/Auckland");
+
+        assertThatCode(() -> auckland.rejectFuture(1L, LocalDate.of(2026, 9, 30), "serviceDate"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("사용자의 내일은 400, 안 보낸 날짜(null)는 통과")
+    void rejectsTomorrowButNotNull() {
+        UserToday seoul = userTodayIn("Asia/Seoul");
+
+        assertThatThrownBy(() -> seoul.rejectFuture(1L, LocalDate.of(2026, 9, 30), "serviceDate"))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageStartingWith("serviceDate: ");
+        assertThatCode(() -> seoul.rejectFuture(1L, null, "serviceDate"))
+                .doesNotThrowAnyException();
     }
 }

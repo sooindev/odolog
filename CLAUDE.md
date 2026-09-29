@@ -554,9 +554,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     com/odolog/app/
     ├── OdoLogApplication.java                @SpringBootApplication.
     │                                         **앱 시간대를 Asia/Seoul 로 고정한다**(2026-09-23).
-    │                                         @PastOrPresent 와 LocalDate.now() 가 JVM 기본
-    │                                         시간대를 따라서, UTC 서버면 한국 사용자가 고른
-    │                                         "오늘" 이 미래라 매일 오전 9시까지 400 이 난다.
+    │                                         "오늘" 판정은 Phase 7 에서 사용자 시간대(UserToday)로
+    │                                         옮겨서, 지금 이 설정은 createdAt 같은 기록 시각에만
+    │                                         남는다. 바꾸면 저장된 시각의 뜻이 9시간 밀린다.
     │                                         run() 보다 먼저 부른다 — 커넥션 풀과 Hibernate 가
     │                                         뜰 때 한 번 읽어 가므로 그 뒤엔 늦다.
     │                                         **이 파일만 더 내려가지 못한다.** 컴포넌트 스캔이
@@ -761,7 +761,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     평균은 잡으려는 이상값 자체에 끌려 올라간다
     │   ├── dto/
     │   │   ├── request/{register,update}/    liters 는 @Positive — 0 이면 연비가 0으로 나누기다.
-    │   │   │                                 날짜에 @PastOrPresent (2026-09-18).
+    │   │   │                                 날짜의 미래 검사는 서비스가 사용자 시간대로(UserToday).
     │   │   │                                 **liters·totalCost 에 @NotNull 이 없다**(2026-09-23).
     │   │   │                                 수정 쪽은 clearLiters·clearTotalCost 플래그가 따로 있다 —
     │   │   │                                 JSON 은 "키가 없음"과 "null"이 서버에 똑같이 도착해서
@@ -1026,7 +1026,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 274개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 279개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -2108,8 +2108,11 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [x] **7-2a "오늘" 을 사용자 기준으로** (2026-09-29) — `user/service/time/UserToday`.
       `GarageSummaryController` · `VehicleService`(지남 수) · `MaintenanceRecordService`(다음 정비) 세 곳.
       `main` 에 `LocalDate.now()` 는 이제 0건이다 — 새로 생기면 그게 버그다
-- [ ] **7-2b 미래 날짜 검사** — **`@PastOrPresent` 6곳을 서비스 검사로 옮긴다**(정비·주유 등록/수정, 가져오기) —
-      애노테이션은 JVM 시간대만 알고 사용자를 모른다. 던지는 예외는 `InvalidRequestException`(400)
+- [x] **7-2b 미래 날짜 검사** (2026-09-29) — `@PastOrPresent` 6곳을 걷어내고 `UserToday.rejectFuture` 로.
+      정비·주유 등록/수정 네 곳 + 가져오기(저장 전에 전부 검사 — 하나라도 미래면 차량도 안 들어간다).
+      **새 날짜 필드에 `@PastOrPresent` 를 다시 붙이지 않는다** — JVM 시간대만 알고 사용자를 모른다.
+      화면의 `max`·드럼 휠은 여전히 **브라우저** 시간대다. 프로필 시간대와 브라우저가 다른 사람은
+      화면이 허용한 날짜가 400 이 될 수 있다 — 7-1e 에서 화면이 프로필 시간대를 쓰게 맞춘다
 - [ ] **7-3 금액** — `MaintenanceRecord.cost`(int) · `FuelRecord.totalCost`(Integer) → `long` + 통화.
       `InputLimits.MAX_AMOUNT`(1억) 를 최소 단위 기준으로 다시 정한다 — 원화 1억은 1억 센트($1M)와 같은 숫자다.
       입력칸의 소수 자리는 통화에서 얻는다(`Intl.NumberFormat(…, {currency}).resolvedOptions().maximumFractionDigits`).
@@ -2162,7 +2165,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (274개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (279개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (50개)
 
 ---

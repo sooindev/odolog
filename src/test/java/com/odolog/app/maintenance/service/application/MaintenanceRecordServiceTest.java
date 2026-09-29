@@ -1,5 +1,6 @@
 package com.odolog.app.maintenance.service.application;
 
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.type.ServiceType;
@@ -27,6 +28,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +62,20 @@ class MaintenanceRecordServiceTest {
         Vehicle vehicle = new Vehicle(null, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", id);
         return vehicle;
+    }
+
+    @Test
+    @DisplayName("사용자 기준 미래 날짜면 저장하지 않는다")
+    void registerRejectsFutureDate() {
+        LocalDate tomorrow = LocalDate.of(2026, 9, 30);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(createVehicle(10L));
+        doThrow(new InvalidRequestException("serviceDate: 오늘 이후 날짜는 입력할 수 없습니다."))
+                .when(userToday).rejectFuture(1L, tomorrow, "serviceDate");
+
+        assertThatThrownBy(() -> maintenanceRecordService.register(1L, "V10",
+                new MaintenanceRecordRegisterRequest(ServiceType.ENGINE_OIL, null, 50000, 40000, tomorrow)))
+                .isInstanceOf(InvalidRequestException.class);
+        verify(maintenanceRecordRepository, never()).save(any());
     }
 
     @Test

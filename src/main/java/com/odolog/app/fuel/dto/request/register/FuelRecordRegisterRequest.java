@@ -4,7 +4,6 @@ import com.odolog.app.common.validation.limit.InputLimits;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -21,7 +20,6 @@ import java.time.LocalDate;
 public record FuelRecordRegisterRequest(
 
         @NotNull
-        @PastOrPresent
         LocalDate fueledAt,
 
         @NotNull

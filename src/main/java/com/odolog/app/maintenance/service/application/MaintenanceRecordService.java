@@ -70,6 +70,7 @@ public class MaintenanceRecordService {
     @Transactional
     public MaintenanceRecord register(Long requesterId, String vehicleId, MaintenanceRecordRegisterRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        userToday.rejectFuture(requesterId, request.serviceDate(), "serviceDate");
 
         MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(),
                 blankToNull(request.description()),
@@ -119,6 +120,7 @@ public class MaintenanceRecordService {
                                      MaintenanceRecordUpdateRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
         MaintenanceRecord record = findRecordInVehicle(vehicle.getId(), recordId);
+        userToday.rejectFuture(requesterId, request.serviceDate(), "serviceDate");
 
         if (request.type() != null) {
             record.changeType(request.type());
