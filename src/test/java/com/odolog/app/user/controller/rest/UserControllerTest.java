@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -190,6 +191,22 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nickname\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("없는 단위 체계는 서비스에 닿기 전에 400")
+    void updateProfileUnknownUnitSystem() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+
+        mockMvc.perform(patch("/api/users/me")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"unitSystem\":\"MPH\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("unitSystem: 값의 형식이 올바르지 않습니다."));
+
+        verify(userService, never()).updateProfile(any(), any());
     }
 
     @Test

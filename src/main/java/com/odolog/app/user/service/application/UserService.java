@@ -125,6 +125,18 @@ public class UserService {
             String phone = request.phone().isBlank() ? null : request.phone();
             user.changePhone(phone);
         }
+        if (request.language() != null) {
+            user.changeLanguage(request.language());
+        }
+        if (request.timeZone() != null) {
+            user.changeTimeZone(request.timeZone());
+        }
+        if (request.currency() != null) {
+            user.changeCurrency(request.currency());
+        }
+        if (request.unitSystem() != null) {
+            user.changeUnitSystem(request.unitSystem());
+        }
 
         return user;
     }

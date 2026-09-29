@@ -5,6 +5,8 @@ import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.user.domain.entity.User;
+import com.odolog.app.user.domain.type.Language;
+import com.odolog.app.user.domain.type.UnitSystem;
 import com.odolog.app.user.repository.jpa.PasswordResetTokenRepository;
 import com.odolog.app.user.dto.request.login.LoginRequest;
 import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
@@ -128,9 +130,26 @@ class UserServiceTest {
         User user = new User("test@odolog.com", "encoded", "기존닉네임", "010-0000-0000");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        User result = userService.updateProfile(1L, new UpdateProfileRequest("새닉네임", null));
+        User result = userService.updateProfile(1L, new UpdateProfileRequest("새닉네임", null, null, null, null, null));
 
         assertThat(result.getNickname()).isEqualTo("새닉네임");
+        assertThat(result.getPhone()).isEqualTo("010-0000-0000");
+    }
+
+    @Test
+    @DisplayName("설정만 보내면 설정만 바뀌고 닉네임·전화번호는 그대로")
+    void updateProfileSettingsOnly() {
+        User user = new User("test@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        User result = userService.updateProfile(1L, new UpdateProfileRequest(
+                null, null, Language.EN, "America/New_York", "USD", UnitSystem.MPG_US));
+
+        assertThat(result.getLanguage()).isEqualTo(Language.EN);
+        assertThat(result.getTimeZone()).isEqualTo("America/New_York");
+        assertThat(result.getCurrency()).isEqualTo("USD");
+        assertThat(result.getUnitSystem()).isEqualTo(UnitSystem.MPG_US);
+        assertThat(result.getNickname()).isEqualTo("닉네임");
         assertThat(result.getPhone()).isEqualTo("010-0000-0000");
     }
 
