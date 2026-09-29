@@ -3,6 +3,7 @@ package com.odolog.app.summary.controller.rest;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.summary.dto.response.garage.GarageSummaryResponse;
 import com.odolog.app.summary.service.application.GarageSummaryService;
+import com.odolog.app.user.service.time.UserToday;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,13 +31,17 @@ class GarageSummaryControllerTest {
     @MockitoBean
     private GarageSummaryService garageSummaryService;
 
+    @MockitoBean
+    private UserToday userToday;
+
     @Test
     @DisplayName("요약 조회 성공 시 200과 합계·구성을 함께 반환한다")
     void summarySuccess() throws Exception {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
 
-        when(garageSummaryService.summarize(eq(1L), any(LocalDate.class))).thenReturn(
+        when(userToday.of(1L)).thenReturn(LocalDate.of(2026, 9, 29));
+        when(garageSummaryService.summarize(eq(1L), eq(LocalDate.of(2026, 9, 29)))).thenReturn(
                 new GarageSummaryResponse(2, 90000, 5, 148000, 80000, 68000,
                         List.of(new GarageSummaryResponse.MonthlyCost("2026-09", 148000, 80000, 68000, 2)),
                         List.of(), List.of(), List.of()));

@@ -601,6 +601,11 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │       └── profile/
     │   │           └── UserResponse.java     from() 팩토리. password는 절대 담지 않음
     │   ├── service/
+    │   │   ├── time/
+    │   │   │   └── UserToday.java            사용자 시간대 기준 "오늘"(Phase 7). 서버 시간대와 무관.
+    │   │   │                                 지남 판정·다음 정비·홈 월별 12칸이 공유 — 한 곳이라도
+    │   │   │                                 LocalDate.now() 로 남으면 화면마다 오늘이 갈린다.
+    │   │   │                                 사용자 조회 1번이 붙는다
     │   │   ├── mail/
     │   │   │   └── PasswordResetMailer.java  링크는 백엔드가 아니라 **프런트 주소**를 가리킨다 —
     │   │   │                                 토큰을 받아 입력받는 것은 화면의 일이다.
@@ -1021,7 +1026,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 272개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 274개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -2100,9 +2105,10 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
       입력칸은 없다. **Phase 6 눈 확인 전에 화면을 건드린 예외**(사용자 결정) — 확인 항목은 B-09-1
 - [ ] **7-1e 프로필의 설정 칸** — 추정이 틀린 사람(한국어 브라우저로 미국에 사는 사람)이 고칠 자리.
       API 는 이미 있다. 화면 작업이라 6-B 뒤로
-- [ ] **7-2 시간대** — 서버의 `LocalDate.now()` 를 사용자 시간대로:
-      `GarageSummaryController` · `VehicleService`(지남 수) · `MaintenanceRecordService`(다음 정비).
-      **`@PastOrPresent` 6곳은 서비스 검사로 옮긴다**(정비·주유 등록/수정, 가져오기) —
+- [x] **7-2a "오늘" 을 사용자 기준으로** (2026-09-29) — `user/service/time/UserToday`.
+      `GarageSummaryController` · `VehicleService`(지남 수) · `MaintenanceRecordService`(다음 정비) 세 곳.
+      `main` 에 `LocalDate.now()` 는 이제 0건이다 — 새로 생기면 그게 버그다
+- [ ] **7-2b 미래 날짜 검사** — **`@PastOrPresent` 6곳을 서비스 검사로 옮긴다**(정비·주유 등록/수정, 가져오기) —
       애노테이션은 JVM 시간대만 알고 사용자를 모른다. 던지는 예외는 `InvalidRequestException`(400)
 - [ ] **7-3 금액** — `MaintenanceRecord.cost`(int) · `FuelRecord.totalCost`(Integer) → `long` + 통화.
       `InputLimits.MAX_AMOUNT`(1억) 를 최소 단위 기준으로 다시 정한다 — 원화 1억은 1억 센트($1M)와 같은 숫자다.
@@ -2156,7 +2162,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (272개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (274개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (50개)
 
 ---

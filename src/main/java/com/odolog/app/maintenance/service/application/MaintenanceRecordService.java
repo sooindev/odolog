@@ -12,13 +12,13 @@ import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.common.dto.request.page.SortGuard;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
+import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.service.application.VehicleService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
@@ -30,13 +30,16 @@ public class MaintenanceRecordService {
     private final MaintenanceRecordRepository maintenanceRecordRepository;
     private final ServiceIntervalRepository serviceIntervalRepository;
     private final VehicleService vehicleService;
+    private final UserToday userToday;
 
     public MaintenanceRecordService(MaintenanceRecordRepository maintenanceRecordRepository,
                                      ServiceIntervalRepository serviceIntervalRepository,
-                                     VehicleService vehicleService) {
+                                     VehicleService vehicleService,
+                                     UserToday userToday) {
         this.maintenanceRecordRepository = maintenanceRecordRepository;
         this.serviceIntervalRepository = serviceIntervalRepository;
         this.vehicleService = vehicleService;
+        this.userToday = userToday;
     }
 
     /**
@@ -103,7 +106,7 @@ public class MaintenanceRecordService {
         return NextService.of(
                         maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(vehicle.getId()),
                         serviceIntervalRepository.findByVehicleId(vehicle.getId()),
-                        vehicle.getOdometer(), LocalDate.now())
+                        vehicle.getOdometer(), userToday.of(requesterId))
                 .stream()
                 .map(NextServiceResponse::from)
                 .toList();

@@ -9,7 +9,9 @@ import com.odolog.app.maintenance.dto.response.schedule.NextServiceResponse;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
+import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.service.application.VehicleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,8 +42,17 @@ class MaintenanceRecordServiceTest {
     @Mock
     private VehicleService vehicleService;
 
+    @Mock
+    private UserToday userToday;
+
     @InjectMocks
     private MaintenanceRecordService maintenanceRecordService;
+
+    @BeforeEach
+    void today() {
+        // 다음 정비 계산 테스트만 사용. 나머지 테스트에서 안 불려도 실패하지 않게 lenient
+        lenient().when(userToday.of(1L)).thenReturn(LocalDate.now());
+    }
 
     private Vehicle createVehicle(Long id) {
         Vehicle vehicle = new Vehicle(null, "12가3456", "현대", "아반떼", 2023);

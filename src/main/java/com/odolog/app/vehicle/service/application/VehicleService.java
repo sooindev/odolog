@@ -16,6 +16,7 @@ import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.repository.jpa.UserRepository;
+import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.dto.response.vehicle.VehicleResponse;
 import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
 import org.springframework.data.domain.Page;
@@ -37,16 +38,19 @@ public class VehicleService {
     private final ServiceIntervalRepository serviceIntervalRepository;
     // 서비스 대신 리포지토리 주입. FuelRecordService → VehicleService 순환 방지
     private final FuelRecordRepository fuelRecordRepository;
+    private final UserToday userToday;
 
     public VehicleService(VehicleRepository vehicleRepository, UserRepository userRepository,
                            MaintenanceRecordRepository maintenanceRecordRepository,
                            ServiceIntervalRepository serviceIntervalRepository,
-                           FuelRecordRepository fuelRecordRepository) {
+                           FuelRecordRepository fuelRecordRepository,
+                           UserToday userToday) {
         this.vehicleRepository = vehicleRepository;
         this.userRepository = userRepository;
         this.maintenanceRecordRepository = maintenanceRecordRepository;
         this.serviceIntervalRepository = serviceIntervalRepository;
         this.fuelRecordRepository = fuelRecordRepository;
+        this.userToday = userToday;
     }
 
     @Transactional
@@ -84,7 +88,7 @@ public class VehicleService {
         List<MaintenanceRecord> records =
                 maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(ownerId);
         List<ServiceInterval> intervals = serviceIntervalRepository.findByVehicle_Owner_Id(ownerId);
-        LocalDate today = LocalDate.now();
+        LocalDate today = userToday.of(ownerId);
 
         return page.map(vehicle -> VehicleResponse.of(vehicle,
                 overdueCountOf(vehicle, records, intervals, today)));

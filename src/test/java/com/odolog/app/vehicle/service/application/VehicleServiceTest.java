@@ -12,6 +12,7 @@ import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.repository.jpa.UserRepository;
+import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.dto.request.odometer.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.register.VehicleRegisterRequest;
@@ -57,6 +58,9 @@ class VehicleServiceTest {
 
     @Mock
     private FuelRecordRepository fuelRecordRepository;
+
+    @Mock
+    private UserToday userToday;
 
     @InjectMocks
     private VehicleService vehicleService;
