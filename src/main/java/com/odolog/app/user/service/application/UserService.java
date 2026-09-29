@@ -4,6 +4,8 @@ import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.text.InputText;
 import com.odolog.app.user.domain.entity.User;
+import com.odolog.app.user.domain.type.Language;
+import com.odolog.app.user.domain.type.UnitSystem;
 import com.odolog.app.user.dto.request.login.LoginRequest;
 import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
 import com.odolog.app.user.dto.request.signup.SignUpRequest;
@@ -47,8 +49,26 @@ public class UserService {
         // 빈 전화번호는 null
         String phone = (request.phone() == null || request.phone().isBlank()) ? null : request.phone();
         User user = new User(request.email(), encodedPassword, InputText.strip(request.nickname()), phone);
+        applySettings(user, request.language(), request.timeZone(), request.currency(), request.unitSystem());
 
         return userRepository.save(user);
+    }
+
+    /** null 이 아닌 설정만 반영. 가입·프로필 수정 공용 */
+    private void applySettings(User user, Language language, String timeZone,
+                               String currency, UnitSystem unitSystem) {
+        if (language != null) {
+            user.changeLanguage(language);
+        }
+        if (timeZone != null) {
+            user.changeTimeZone(timeZone);
+        }
+        if (currency != null) {
+            user.changeCurrency(currency);
+        }
+        if (unitSystem != null) {
+            user.changeUnitSystem(unitSystem);
+        }
     }
 
     public User login(LoginRequest request) {
@@ -125,18 +145,7 @@ public class UserService {
             String phone = request.phone().isBlank() ? null : request.phone();
             user.changePhone(phone);
         }
-        if (request.language() != null) {
-            user.changeLanguage(request.language());
-        }
-        if (request.timeZone() != null) {
-            user.changeTimeZone(request.timeZone());
-        }
-        if (request.currency() != null) {
-            user.changeCurrency(request.currency());
-        }
-        if (request.unitSystem() != null) {
-            user.changeUnitSystem(request.unitSystem());
-        }
+        applySettings(user, request.language(), request.timeZone(), request.currency(), request.unitSystem());
 
         return user;
     }

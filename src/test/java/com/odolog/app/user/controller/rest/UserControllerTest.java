@@ -67,7 +67,7 @@ class UserControllerTest {
         doThrow(new TooManyRequestsException("회원가입 시도가 너무 많습니다. 10분 후 다시 시도해 주세요."))
                 .when(attemptLimiter).checkNotLocked(any(), any());
 
-        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", null);
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", null, null, null, null, null);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -84,7 +84,7 @@ class UserControllerTest {
         ReflectionTestUtils.setField(user, "id", 1L);
         when(userService.signUp(any())).thenReturn(user);
 
-        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000");
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000", null, null, null, null);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -98,7 +98,7 @@ class UserControllerTest {
     @DisplayName("전화번호가 20자를 넘으면 400 (DB까지 가서 500이 나면 안 된다)")
     void signUpWithTooLongPhone() throws Exception {
         SignUpRequest request = new SignUpRequest(
-                "test@odolog.com", "password1234", "닉네임", "0".repeat(21));
+                "test@odolog.com", "password1234", "닉네임", "0".repeat(21), null, null, null, null);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -111,7 +111,7 @@ class UserControllerTest {
     void signUpDuplicateEmail() throws Exception {
         when(userService.signUp(any())).thenThrow(new ConflictException("이미 가입된 이메일입니다."));
 
-        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000");
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000", null, null, null, null);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -220,7 +220,7 @@ class UserControllerTest {
         when(userService.signUp(any()))
                 .thenThrow(new DataIntegrityViolationException("could not execute statement", unique));
 
-        SignUpRequest request = new SignUpRequest("test@odolog.com", "password123", "닉네임", null);
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password123", "닉네임", null, null, null, null, null);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -291,7 +291,7 @@ class UserControllerTest {
     void signUpRejectsPasswordOverByteLimit() throws Exception {
         // BCrypt 72바이트 상한. 글자 수 제한으로는 한글 25자를 막지 못함
         String password = "가".repeat(25);
-        SignUpRequest request = new SignUpRequest("test@odolog.com", password, "닉네임", null);
+        SignUpRequest request = new SignUpRequest("test@odolog.com", password, "닉네임", null, null, null, null, null);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -309,7 +309,7 @@ class UserControllerTest {
         when(userService.signUp(any())).thenReturn(user);
 
         String password = "가".repeat(24);
-        SignUpRequest request = new SignUpRequest("test@odolog.com", password, "닉네임", null);
+        SignUpRequest request = new SignUpRequest("test@odolog.com", password, "닉네임", null, null, null, null, null);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)

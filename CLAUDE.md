@@ -1021,7 +1021,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 270개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 272개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -2088,7 +2088,10 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] **7-1a 운영 반영 확인** — IntelliJ 로 한 번 띄운 뒤 `SHOW CREATE TABLE users` 에 칸 넷이 있고 **CHECK 가 없는지**
 - [x] **7-1b 프로필 API** (2026-09-29) — `PATCH /api/users/me` 가 설정 넷을 받고 `UserResponse` 에 싣는다.
       목록 검사(IANA·ISO 4217)는 엔티티, DTO 는 길이만. 없는 enum 이름은 역직렬화에서 400
-- [ ] **7-1c 가입 API** — 가입 요청에 선택 필드로. 화면이 브라우저 값(시간대·언어)을 채운다
+- [x] **7-1c 가입 API** (2026-09-29) — 가입 요청에 설정 넷을 선택 필드로. 안 보내면 엔티티 기본값.
+      가입·프로필이 `UserService.applySettings` 하나를 공유한다
+- [ ] **7-1d 가입 화면** — 브라우저 값으로 채워 보낸다. 시간대는 `Intl…timeZone`, 언어는 `navigator.language`,
+      통화·단위는 지역(`en-US` 의 `US`)에서 추정 — 모르는 지역이면 안 보내 기본값에 맡긴다
 - [ ] **7-2 시간대** — 서버의 `LocalDate.now()` 를 사용자 시간대로:
       `GarageSummaryController` · `VehicleService`(지남 수) · `MaintenanceRecordService`(다음 정비).
       **`@PastOrPresent` 6곳은 서비스 검사로 옮긴다**(정비·주유 등록/수정, 가져오기) —
@@ -2145,7 +2148,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (270개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (272개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (45개)
 
 ---

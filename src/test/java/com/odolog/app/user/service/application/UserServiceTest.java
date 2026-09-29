@@ -60,7 +60,7 @@ class UserServiceTest {
     @Test
     @DisplayName("회원가입 시 비밀번호는 암호화되어 저장된다")
     void signUpEncodesPassword() {
-        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000");
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000", null, null, null, null);
         when(userRepository.existsByEmail(request.email())).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -73,7 +73,7 @@ class UserServiceTest {
     @Test
     @DisplayName("가입 때 빈 전화번호는 null 로 저장한다 — '없음' 이 두 모양이 되지 않게")
     void signUpBlankPhoneBecomesNull() {
-        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "  ");
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "  ", null, null, null, null);
         when(userRepository.existsByEmail(request.email())).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -81,9 +81,37 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("가입 때 보낸 설정으로 시작한다 — 미국 사용자가 Asia/Seoul 로 시작하지 않게")
+    void signUpWithSettings() {
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", null,
+                Language.EN, "America/Chicago", "USD", UnitSystem.MPG_US);
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User saved = userService.signUp(request);
+
+        assertThat(saved.getLanguage()).isEqualTo(Language.EN);
+        assertThat(saved.getTimeZone()).isEqualTo("America/Chicago");
+        assertThat(saved.getCurrency()).isEqualTo("USD");
+        assertThat(saved.getUnitSystem()).isEqualTo(UnitSystem.MPG_US);
+    }
+
+    @Test
+    @DisplayName("가입 때 없는 시간대를 보내면 400 이고 저장하지 않는다")
+    void signUpUnknownTimeZone() {
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", null,
+                null, "Mars/Olympus", null, null);
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.signUp(request))
+                .isInstanceOf(InvalidRequestException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("이미 가입된 이메일이면 예외가 발생하고 저장하지 않는다")
     void signUpDuplicateEmail() {
-        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000");
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", "010-0000-0000", null, null, null, null);
         when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
         assertThatThrownBy(() -> userService.signUp(request))

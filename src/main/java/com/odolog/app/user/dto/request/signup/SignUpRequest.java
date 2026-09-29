@@ -1,6 +1,8 @@
 package com.odolog.app.user.dto.request.signup;
 
 import com.odolog.app.common.validation.annotation.MaxBytes;
+import com.odolog.app.user.domain.type.Language;
+import com.odolog.app.user.domain.type.UnitSystem;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -24,6 +26,17 @@ public record SignUpRequest(
 
         // phone 컬럼 길이 20과 동일
         @Size(max = 20)
-        String phone
+        String phone,
+
+        // 설정 넷은 선택. 안 보내면 엔티티 기본값. 화면이 브라우저 값으로 채움
+        Language language,
+
+        @Size(max = 64)
+        String timeZone,
+
+        @Size(max = 3)
+        String currency,
+
+        UnitSystem unitSystem
 ) {
 }
