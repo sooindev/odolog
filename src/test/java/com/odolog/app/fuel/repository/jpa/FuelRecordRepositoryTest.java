@@ -35,7 +35,7 @@ class FuelRecordRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        User owner = new User("owner@odolog.com", "encoded-pw", "차주", "010-1111-2222");
+        User owner = new User("owner@odolog.com", "encoded-pw", "차주");
         em.persist(owner);
 
         vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2020);

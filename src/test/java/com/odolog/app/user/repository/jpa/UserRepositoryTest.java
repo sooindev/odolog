@@ -33,7 +33,7 @@ class UserRepositoryTest {
     @Test
     @DisplayName("사용자를 저장하면 id와 createdAt이 채워진다")
     void save() {
-        User user = new User("a@odolog.com", "encoded-pw", "차주A", "010-1111-2222");
+        User user = new User("a@odolog.com", "encoded-pw", "차주A");
 
         User saved = userRepository.save(user);
 
@@ -45,7 +45,7 @@ class UserRepositoryTest {
     @Test
     @DisplayName("findByEmail 은 이메일로 사용자를 찾고, 없으면 빈 Optional 을 준다")
     void findByEmail() {
-        em.persist(new User("b@odolog.com", "encoded-pw", "차주B", null));
+        em.persist(new User("b@odolog.com", "encoded-pw", "차주B"));
         em.flush();
         em.clear();
 
@@ -60,7 +60,7 @@ class UserRepositoryTest {
     @Test
     @DisplayName("existsByEmail 은 가입 여부만 boolean 으로 알려준다")
     void existsByEmail() {
-        em.persist(new User("c@odolog.com", "encoded-pw", "차주C", null));
+        em.persist(new User("c@odolog.com", "encoded-pw", "차주C"));
         em.flush();
 
         assertThat(userRepository.existsByEmail("c@odolog.com")).isTrue();
@@ -70,11 +70,11 @@ class UserRepositoryTest {
     @Test
     @DisplayName("같은 이메일을 두 번 저장하면 유니크 제약이 막는다")
     void duplicateEmailHitsUniqueConstraint() {
-        userRepository.saveAndFlush(new User("dup@odolog.com", "encoded-pw", "차주A", null));
+        userRepository.saveAndFlush(new User("dup@odolog.com", "encoded-pw", "차주A"));
 
         // 핸들러가 기대는 예외 모양(ConstraintViolationException, UNIQUE) 고정
         assertThatThrownBy(() -> userRepository.saveAndFlush(
-                new User("dup@odolog.com", "encoded-pw", "차주B", null)))
+                new User("dup@odolog.com", "encoded-pw", "차주B")))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .cause()
                 .isInstanceOf(ConstraintViolationException.class)

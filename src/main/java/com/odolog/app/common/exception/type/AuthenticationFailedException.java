@@ -1,8 +1,11 @@
 package com.odolog.app.common.exception.type;
 
-public class AuthenticationFailedException extends RuntimeException {
+import com.odolog.app.common.exception.code.ErrorCode;
 
-    public AuthenticationFailedException(String message) {
-        super(message);
+/** 401 전용 */
+public class AuthenticationFailedException extends ApiException {
+
+    public AuthenticationFailedException(ErrorCode code, String message) {
+        super(code, message, null);
     }
 }

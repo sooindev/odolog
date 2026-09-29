@@ -5,8 +5,8 @@ import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { Pagination } from '@/shared/ui/nav/pagination'
 import { ErrorText, Skeleton } from '@/shared/ui/feedback/state'
-import { ApiError } from '@/shared/api/client/client'
-import { formatDate, formatKm, formatWon } from '@/shared/lib/format/format'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { deleteFuelRecord, fetchFuelRecords } from '@/features/fuel/api/endpoints/endpoints'
 import type { FuelRecordResponse } from '@/features/fuel/api/types/types'
@@ -19,16 +19,17 @@ interface Props {
 }
 
 export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
+  const { t, f } = useI18n()
   const [page, setPage] = useState(0)
   const [editing, setEditing] = useState<'closed' | 'new' | FuelRecordResponse>('closed')
   const [actionError, setActionError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(() => fetchFuelRecords(vehicleId, page), [vehicleId, page])
-  const { data, loading, error, reload } = useAsyncData(load, '주유 기록을 불러오지 못했습니다.')
+  const { data, loading, error, reload } = useAsyncData(load, t.fuel.loadFailed)
 
   // 변수로 받아 타입 좁히기
-  const errorMessage = error ?? actionError
+  const shownError = error ?? actionError
 
   function refresh() {
     setEditing('closed')
@@ -39,12 +40,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
 
   async function handleDelete(recordId: string) {
     // 삭제 시 다음 기록 연비 상승 안내. 구간이 적으면 서버가 못 잡는 경우 대비
-    if (
-      !window.confirm(
-        '이 주유 기록을 삭제할까요?\n\n' +
-          '지운 기록의 주유량이 함께 사라져 다음 기록의 연비가 실제보다 높게 나옵니다.',
-      )
-    ) {
+    if (!window.confirm(t.fuel.deleteConfirm)) {
       return
     }
 
@@ -63,7 +59,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
         refresh()
       }
     } catch (caught) {
-      setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
+      setActionError(errorMessage(caught, t, t.fuel.deleteFailed))
     } finally {
       setDeletingId(null)
     }
@@ -73,10 +69,10 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
     <Card>
       {/* 좁은 화면은 줄바꿈으로 접기 */}
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-3">
-        <CardTitle className="min-w-0">주유 기록</CardTitle>
+        <CardTitle className="min-w-0">{t.fuel.title}</CardTitle>
         {editing === 'closed' && (
           <Button size="sm" variant="secondary" onClick={() => setEditing('new')}>
-            주유 추가
+            {t.fuel.add}
           </Button>
         )}
       </CardHeader>
@@ -97,7 +93,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
           </div>
         )}
 
-        {errorMessage !== null && <ErrorText message={errorMessage} />}
+        {shownError !== null && <ErrorText message={shownError} />}
 
         {loading ? (
           <div className="flex flex-col gap-4">
@@ -106,9 +102,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
             ))}
           </div>
         ) : data === null || data.items.length === 0 ? (
-          <p className="text-caption text-muted-foreground">
-            아직 주유 기록이 없습니다. 두 번째 기록부터 연비가 계산됩니다.
-          </p>
+          <p className="text-caption text-muted-foreground">{t.fuel.empty}</p>
         ) : (
           <>
             <ul className="border-t border-border">
@@ -125,37 +119,37 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                           <span className="text-caption text-muted-foreground">
                             {record.distance !== null && record.liters === null ? (
                               <>
-                                주유량 없음
-                                <span className="ml-1 text-muted-foreground">· 연비 계산 안 됨</span>
+                                {t.fuel.noLiters}
+                                <span className="ml-1 text-muted-foreground">{t.fuel.noEfficiency}</span>
                               </>
                             ) : (
                               <>
-                                {record.resetPoint ? '연비 기준점' : '기준 기록'}
+                                {record.resetPoint ? t.fuel.resetPoint : t.fuel.baseline}
                                 {/* 읽어야 하는 문구라 faint 미사용 */}
-                                <span className="ml-1 text-muted-foreground">· 다음 주유부터 계산</span>
+                                <span className="ml-1 text-muted-foreground">{t.fuel.fromNext}</span>
                               </>
                             )}
                           </span>
                         ) : (
                           <span className="flex items-baseline gap-1.5">
                             <span className="text-figure tabular-nums text-strong">
-                              {record.efficiency.toFixed(2)}
-                              <span className="ml-1 text-caption text-muted-foreground">km/L</span>
+                              {f.efficiencyNumber(record.efficiency)}
+                              <span className="ml-1 text-caption text-muted-foreground">{f.efficiencyUnit}</span>
                             </span>
                             {/* 불가능한 값. 숫자 유지 + 확인 필요 */}
                             {record.efficiencySuspicious && (
-                              <span className="text-unit text-destructive">확인 필요</span>
+                              <span className="text-unit text-destructive">{t.fuel.suspicious}</span>
                             )}
                             {/* 기록 누락 구간. 잘못이 아닌 빈자리라 회색 */}
                             {record.missingRecordSuspected && (
-                              <span className="text-unit text-muted-foreground">기록 빠짐?</span>
+                              <span className="text-unit text-muted-foreground">{t.fuel.missing}</span>
                             )}
                           </span>
                         )}
                       </div>
                       <span className="text-caption text-muted-foreground">
-                        {formatDate(record.fueledAt)} · {formatKm(record.odometer)}
-                        {record.distance !== null && ` · +${formatKm(record.distance)}`}
+                        {f.date(record.fueledAt)} · {f.distance(record.odometer)}
+                        {record.distance !== null && ` · +${f.distance(record.distance)}`}
                       </span>
                       {record.memo !== null && record.memo !== '' && (
                         <span className="truncate text-caption text-muted-foreground">
@@ -167,10 +161,10 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                     <div className="flex flex-col items-end gap-1 tabular-nums">
                       {/* 안 적은 값은 — */}
                       <span className="text-strong">
-                        {record.liters === null ? '— L' : `${record.liters.toFixed(2)} L`}
+                        {record.liters === null ? `— ${f.volumeUnit}` : f.volume(record.liters)}
                       </span>
                       <span className="text-caption text-muted-foreground">
-                        {record.totalCost === null ? '— 원' : formatWon(record.totalCost)}
+                        {record.totalCost === null ? '—' : f.money(record.totalCost, record.currency)}
                       </span>
                     </div>
 
@@ -181,7 +175,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         onClick={() => setEditing(record)}
                         disabled={deletingId === record.id}
                       >
-                        수정
+                        {t.common.edit}
                       </Button>
                       <Button
                         size="sm"
@@ -189,7 +183,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         onClick={() => handleDelete(record.id)}
                         disabled={deletingId === record.id}
                       >
-                        {deletingId === record.id ? '삭제 중…' : '삭제'}
+                        {deletingId === record.id ? t.common.deleting : t.common.delete}
                       </Button>
                     </div>
                   </div>

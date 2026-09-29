@@ -3,6 +3,8 @@ package com.odolog.app.summary.controller.rest;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.summary.dto.response.garage.GarageSummaryResponse;
 import com.odolog.app.summary.service.application.GarageSummaryService;
+import com.odolog.app.user.domain.entity.User;
+import com.odolog.app.user.service.application.UserService;
 import com.odolog.app.user.service.time.UserToday;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,9 @@ class GarageSummaryControllerTest {
     @MockitoBean
     private UserToday userToday;
 
+    @MockitoBean
+    private UserService userService;
+
     @Test
     @DisplayName("요약 조회 성공 시 200과 합계·구성을 함께 반환한다")
     void summarySuccess() throws Exception {
@@ -41,8 +46,9 @@ class GarageSummaryControllerTest {
         session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
 
         when(userToday.of(1L)).thenReturn(LocalDate.of(2026, 9, 29));
-        when(garageSummaryService.summarize(eq(1L), eq(LocalDate.of(2026, 9, 29)))).thenReturn(
-                new GarageSummaryResponse(2, 90000, 5, 148000, 80000, 68000,
+        when(userService.findById(1L)).thenReturn(new User("a@b.com", "encoded", "nick"));
+        when(garageSummaryService.summarize(eq(1L), eq(LocalDate.of(2026, 9, 29)), eq("KRW"))).thenReturn(
+                new GarageSummaryResponse(2, 90000, 5, "KRW", 0, 148000, 80000, 68000,
                         List.of(new GarageSummaryResponse.MonthlyCost("2026-09", 148000, 80000, 68000, 2)),
                         List.of(), List.of(), List.of()));
 

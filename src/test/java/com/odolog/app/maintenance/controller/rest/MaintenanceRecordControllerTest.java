@@ -1,5 +1,6 @@
 package com.odolog.app.maintenance.controller.rest;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
@@ -100,7 +101,7 @@ class MaintenanceRecordControllerTest {
         MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.of(2026, 9, 30));
         when(maintenanceRecordService.register(anyLong(), anyString(), any(MaintenanceRecordRegisterRequest.class)))
-                .thenThrow(new InvalidRequestException("serviceDate: 오늘 이후 날짜는 입력할 수 없습니다."));
+                .thenThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "serviceDate: 오늘 이후 날짜는 입력할 수 없습니다."));
 
         mockMvc.perform(post("/api/vehicles/10/maintenance-records")
                         .session(loginSessionOf(1L))
@@ -143,7 +144,7 @@ class MaintenanceRecordControllerTest {
     @DisplayName("존재하지 않는 차량에 정비 이력을 등록하려 하면 404")
     void registerVehicleNotFound() throws Exception {
         when(maintenanceRecordService.register(anyLong(), anyString(), any(MaintenanceRecordRegisterRequest.class)))
-                .thenThrow(new ResourceNotFoundException("존재하지 않는 차량입니다: 999"));
+                .thenThrow(new ResourceNotFoundException(ErrorCode.VEHICLE_NOT_FOUND, "존재하지 않는 차량입니다: 999"));
 
         MaintenanceRecordRegisterRequest request = new MaintenanceRecordRegisterRequest(
                 ServiceType.ENGINE_OIL, "정기 교체", 50000, 40000, LocalDate.of(2026, 1, 1));

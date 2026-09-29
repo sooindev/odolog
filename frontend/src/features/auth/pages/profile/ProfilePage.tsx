@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
+import { useNavigate } from 'react-router'
+import { ChevronDown } from 'lucide-react'
+import { cn } from 'cn'
 
 import { useAuth } from '@/features/auth/context/definition/AuthContext'
 import { useTheme } from '@/shared/theme/context/ThemeContext'
@@ -7,6 +10,7 @@ import { ThemeToggle } from '@/shared/theme/toggle/ThemeToggle'
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent } from '@/shared/ui/base/card'
 import { Field } from '@/shared/ui/form/field'
+import { controlClassName } from '@/shared/ui/form/control'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
 import { Section } from '@/shared/ui/layout/section'
@@ -14,13 +18,14 @@ import {
   changePassword,
   exportAccount,
   restoreAccount,
+  updateProfile,
 } from '@/features/auth/api/endpoints/endpoints'
-import { useNavigate } from 'react-router'
 import { ErrorText, NoticeText } from '@/shared/ui/feedback/state'
-import { ApiError } from '@/shared/api/client/client'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { todayString } from '@/shared/lib/format/format'
 import { passwordHint } from '@/shared/lib/limits/limits'
-import { updateProfile } from '@/features/auth/api/endpoints/endpoints'
+import type { Language, UnitSystem } from '@/shared/lib/locale/preferences'
 import type {
   AccountExport,
   AccountRestoreResult,
@@ -30,6 +35,7 @@ import type {
 
 export function ProfilePage() {
   const { user } = useAuth()
+  const { t } = useI18n()
 
   // null 은 여기서 거르고 폼에는 확정된 user 전달
   if (user === null) {
@@ -37,36 +43,32 @@ export function ProfilePage() {
   }
 
   return (
-    <Page eyebrow="Account" title="내 정보">
-      <Section title="계정" description="닉네임과 전화번호를 바꿀 수 있습니다. 이메일은 변경할 수 없습니다.">
+    <Page eyebrow="Account" title={t.profile.title}>
+      <Section title={t.profile.account.title} description={t.profile.account.description}>
         <ProfileForm user={user} />
       </Section>
 
       {/* 계정 성격이라 화면 설정보다 앞 */}
-      <Section
-        title="비밀번호"
-        description="바꾸려면 현재 비밀번호를 함께 입력해야 합니다. 변경해도 로그인은 유지됩니다."
-      >
+      <Section title={t.profile.password.title} description={t.profile.password.description}>
         <PasswordForm />
       </Section>
 
+      {/* 저장하면 화면 언어·단위가 바로 바뀜 */}
+      <Section title={t.profile.region.title} description={t.profile.region.description}>
+        <RegionForm user={user} />
+      </Section>
+
       {/* 헤더 토글과 같은 상태 공유. 여기서는 현재 설정 확인용 */}
-      <Section title="화면" description="라이트·다크 중 하나를 고르거나, 기기 설정을 그대로 따를 수 있습니다.">
+      <Section title={t.profile.appearance.title} description={t.profile.appearance.description}>
         <AppearanceCard />
       </Section>
 
-      <Section
-        title="내 기록"
-        description="차량·정비 이력·주유 기록을 JSON 파일 하나로 내려받습니다. 비밀번호는 담기지 않습니다."
-      >
+      <Section title={t.profile.data.title} description={t.profile.data.description}>
         <ExportCard />
       </Section>
 
       {/* 되돌릴 수 없는 동작은 맨 아래 */}
-      <Section
-        title="회원 탈퇴"
-        description="계정과 등록한 차량, 정비 이력과 주유 기록이 모두 삭제됩니다. 되돌릴 수 없습니다."
-      >
+      <Section title={t.profile.withdraw.title} description={t.profile.withdraw.description}>
         <WithdrawCard />
       </Section>
     </Page>
@@ -74,6 +76,7 @@ export function ProfilePage() {
 }
 
 function ExportCard() {
+  const { t, timeZone } = useI18n()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -90,13 +93,13 @@ function ExportCard() {
       )
       const link = document.createElement('a')
       link.href = url
-      link.download = `odolog-${todayString()}.json`
+      link.download = `odolog-${todayString(timeZone)}.json`
       link.click()
 
       // revoke 는 다음 틱에. 즉시 해제 시 다운로드 취소·0바이트 파일
       setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '내보내기에 실패했습니다.')
+      setError(errorMessage(caught, t, t.profile.data.exportFailed))
     } finally {
       setPending(false)
     }
@@ -106,11 +109,9 @@ function ExportCard() {
     <Card>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="min-w-0 text-caption text-muted-foreground">
-            탈퇴하면 기록은 복구되지 않습니다. 지우기 전에 받아 두세요.
-          </p>
+          <p className="min-w-0 text-caption text-muted-foreground">{t.profile.data.exportNote}</p>
           <Button variant="secondary" onClick={handleExport} disabled={pending} className="shrink-0">
-            {pending ? '준비 중…' : 'JSON 내려받기'}
+            {pending ? t.profile.data.exporting : t.profile.data.export}
           </Button>
         </div>
         {error !== null && <ErrorText message={error} />}
@@ -128,6 +129,7 @@ function ExportCard() {
  * 브라우저에서 읽어 JSON 전송. multipart 미사용
  */
 function RestoreForm() {
+  const { t } = useI18n()
   const [result, setResult] = useState<AccountRestoreResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -148,17 +150,15 @@ function RestoreForm() {
       const parsed = JSON.parse(await file.text()) as { vehicles?: AccountExport['vehicles'] }
       if (!Array.isArray(parsed.vehicles)) {
         // 형식이 다른 파일은 전송 전 안내
-        throw new SyntaxError('vehicles 없음')
+        throw new SyntaxError('vehicles missing')
       }
 
       setResult(await restoreAccount(parsed.vehicles))
     } catch (caught) {
       setError(
         caught instanceof SyntaxError
-          ? '오도로그에서 내려받은 JSON 파일이 맞는지 확인해 주세요.'
-          : caught instanceof ApiError
-            ? caught.message
-            : '가져오기에 실패했습니다.',
+          ? t.profile.data.notOurFile
+          : errorMessage(caught, t, t.profile.data.importFailed),
       )
     } finally {
       setPending(false)
@@ -168,9 +168,7 @@ function RestoreForm() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="min-w-0 text-caption text-muted-foreground">
-          받아 둔 파일을 다시 넣습니다. 같은 기록은 건너뛰므로 두 번 넣어도 늘지 않습니다.
-        </p>
+        <p className="min-w-0 text-caption text-muted-foreground">{t.profile.data.importNote}</p>
         {/* label 로 감싼 버튼형 파일 입력. 기본 모양은 테마 미반영 */}
         <label className="shrink-0">
           <span
@@ -179,7 +177,7 @@ function RestoreForm() {
               'text-caption text-strong transition-colors duration-200 ease-apple hover:bg-card-hover'
             }
           >
-            {pending ? '가져오는 중…' : 'JSON 가져오기'}
+            {pending ? t.profile.data.importing : t.profile.data.import}
           </span>
           <input
             type="file"
@@ -195,17 +193,13 @@ function RestoreForm() {
       {result !== null && (
         <NoticeText
           message={
-            `차량 ${result.addedVehicles}대와 기록 ` +
-            `${result.addedMaintenanceRecords + result.addedFuelRecords}건을 넣었습니다.` +
-            (result.mergedVehicles > 0
-              ? ` 이미 있던 차량 ${result.mergedVehicles}대에는 기록만 붙였습니다.`
-              : '') +
-            (result.addedServiceIntervals > 0
-              ? ` 차량별 정비 주기 ${result.addedServiceIntervals}개도 되살렸습니다.`
-              : '') +
-            (result.skippedRecords > 0
-              ? ` 이미 같은 기록이 있어 ${result.skippedRecords}건은 건너뛰었습니다.`
-              : '')
+            t.profile.data.imported(
+              result.addedVehicles,
+              result.addedMaintenanceRecords + result.addedFuelRecords,
+            ) +
+            (result.mergedVehicles > 0 ? t.profile.data.merged(result.mergedVehicles) : '') +
+            (result.addedServiceIntervals > 0 ? t.profile.data.intervals(result.addedServiceIntervals) : '') +
+            (result.skippedRecords > 0 ? t.profile.data.skipped(result.skippedRecords) : '')
           }
         />
       )}
@@ -216,6 +210,7 @@ function RestoreForm() {
 }
 
 function PasswordForm() {
+  const { t } = useI18n()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -230,7 +225,7 @@ function PasswordForm() {
 
     // 확인란은 전송하지 않음
     if (newPassword !== confirmPassword) {
-      setError('새 비밀번호가 서로 다릅니다.')
+      setError(t.password.mismatch)
       return
     }
 
@@ -238,14 +233,14 @@ function PasswordForm() {
 
     try {
       await changePassword({ currentPassword, newPassword })
-      setMessage('비밀번호를 변경했습니다.')
+      setMessage(t.profile.password.changed)
       // 성공 시 입력칸 비움
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
     } catch (caught) {
       // 401 = 현재 비밀번호 오류
-      setError(caught instanceof ApiError ? caught.message : '비밀번호 변경에 실패했습니다.')
+      setError(errorMessage(caught, t, t.profile.password.failed))
     } finally {
       setPending(false)
     }
@@ -256,7 +251,7 @@ function PasswordForm() {
       <CardContent>
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
           {/* autoComplete 로 비밀번호 관리자의 현재·새 비밀번호 구분 */}
-          <Field label="현재 비밀번호" htmlFor="current-password">
+          <Field label={t.password.current} htmlFor="current-password">
             <Input
               id="current-password"
               type="password"
@@ -268,7 +263,7 @@ function PasswordForm() {
           </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="새 비밀번호" htmlFor="new-password" hint={passwordHint(newPassword)}>
+            <Field label={t.password.newPassword} htmlFor="new-password" hint={passwordHint(newPassword, t)}>
               <Input
                 id="new-password"
                 type="password"
@@ -282,7 +277,7 @@ function PasswordForm() {
               />
             </Field>
 
-            <Field label="새 비밀번호 확인" htmlFor="confirm-password">
+            <Field label={t.password.confirm} htmlFor="confirm-password">
               <Input
                 id="confirm-password"
                 type="password"
@@ -299,7 +294,7 @@ function PasswordForm() {
 
           <FormActions>
             <Button type="submit" disabled={pending}>
-              {pending ? '변경 중…' : '비밀번호 변경'}
+              {pending ? t.profile.password.submitting : t.profile.password.submit}
             </Button>
           </FormActions>
         </form>
@@ -310,6 +305,7 @@ function PasswordForm() {
 
 function WithdrawCard() {
   const { withdraw } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
 
   const [open, setOpen] = useState(false)
@@ -328,7 +324,7 @@ function WithdrawCard() {
       navigate('/', { replace: true })
     } catch (caught) {
       // 401 = 비밀번호 오류. 전역 401 처리 제외 경로
-      setError(caught instanceof ApiError ? caught.message : '탈퇴에 실패했습니다.')
+      setError(errorMessage(caught, t, t.profile.withdraw.failed))
       // 성공 시 화면 이탈, 실패 시에만 복구
       setPending(false)
     }
@@ -343,9 +339,9 @@ function WithdrawCard() {
               <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
                 {/* 본인 확인용 비밀번호 */}
                 <Field
-                  label="비밀번호"
+                  label={t.common.password}
                   htmlFor="withdraw-password"
-                  hint="본인 확인을 위해 현재 비밀번호를 입력하세요."
+                  hint={t.profile.withdraw.passwordHint}
                 >
                   <Input
                     id="withdraw-password"
@@ -361,7 +357,7 @@ function WithdrawCard() {
 
                 <FormActions>
                   <Button type="submit" variant="destructive" disabled={pending}>
-                    {pending ? '탈퇴 중…' : '탈퇴하기'}
+                    {pending ? t.profile.withdraw.submitting : t.profile.withdraw.submit}
                   </Button>
                   <Button
                     type="button"
@@ -372,7 +368,7 @@ function WithdrawCard() {
                       setError(null)
                     }}
                   >
-                    취소
+                    {t.common.cancel}
                   </Button>
                 </FormActions>
               </form>
@@ -381,9 +377,7 @@ function WithdrawCard() {
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3">
             {/* min-w-0: 버튼 밀림 방지 */}
-            <p className="min-w-0 text-caption text-muted-foreground">
-              탈퇴하면 같은 이메일로 다시 가입할 수 있지만, 기록은 복구되지 않습니다.
-            </p>
+            <p className="min-w-0 text-caption text-muted-foreground">{t.profile.withdraw.note}</p>
             {/* 채우지 않은 빨간 버튼 */}
             <Button
               variant="destructive"
@@ -391,7 +385,7 @@ function WithdrawCard() {
               className="shrink-0"
               onClick={() => setOpen(true)}
             >
-              회원 탈퇴
+              {t.profile.withdraw.open}
             </Button>
           </div>
         )}
@@ -402,12 +396,13 @@ function WithdrawCard() {
 
 function AppearanceCard() {
   const { theme, resolved } = useTheme()
+  const { t } = useI18n()
 
   // system 일 때 현재 적용 모드 표시
   const detail =
     theme === 'system'
-      ? `기기 설정을 따릅니다. 지금은 ${resolved === 'dark' ? '다크' : '라이트'}입니다.`
-      : `${theme === 'dark' ? '다크' : '라이트'}로 고정되어 있습니다.`
+      ? t.profile.appearance.followsSystem(resolved === 'dark')
+      : t.profile.appearance.fixed(theme === 'dark')
 
   return (
     <Card>
@@ -417,7 +412,7 @@ function AppearanceCard() {
       */}
       <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-body text-strong">화면 모드</p>
+          <p className="text-body text-strong">{t.profile.appearance.mode}</p>
           <p className="text-caption text-muted-foreground">{detail}</p>
         </div>
         <ThemeToggle className="shrink-0" />
@@ -428,9 +423,9 @@ function AppearanceCard() {
 
 function ProfileForm({ user }: { user: UserResponse }) {
   const { replaceUser } = useAuth()
+  const { t } = useI18n()
 
   const [nickname, setNickname] = useState(user.nickname)
-  const [phone, setPhone] = useState(user.phone ?? '')
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -440,26 +435,20 @@ function ProfileForm({ user }: { user: UserResponse }) {
     setMessage(null)
     setError(null)
 
-    // 바뀐 필드만
-    const request: UpdateProfileRequest = {}
-    if (nickname !== user.nickname) request.nickname = nickname
-    if (phone !== (user.phone ?? '')) request.phone = phone
-
-    if (Object.keys(request).length === 0) {
-      setMessage('변경된 내용이 없습니다.')
+    if (nickname === user.nickname) {
+      setMessage(t.common.noChanges)
       return
     }
 
     setPending(true)
     try {
-      const updated = await updateProfile(request)
+      const updated = await updateProfile({ nickname })
       replaceUser(updated)
       // 입력칸도 서버 저장값으로. 공백 정리 후 재전송 방지
       setNickname(updated.nickname)
-      setPhone(updated.phone ?? '')
-      setMessage('저장했습니다.')
+      setMessage(t.common.saved)
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '저장에 실패했습니다.')
+      setError(errorMessage(caught, t, t.profile.account.failed))
     } finally {
       setPending(false)
     }
@@ -469,30 +458,19 @@ function ProfileForm({ user }: { user: UserResponse }) {
     <Card>
       <CardContent>
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          {/* 이메일은 표시만 */}
-          <Field label="이메일" htmlFor="email">
-            <Input id="email" value={user.email} disabled />
-          </Field>
-
-          {/* 넓은 화면은 두 칸 나란히 */}
+          {/* 넓은 화면은 두 칸 나란히. 이메일은 표시만 */}
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="닉네임" htmlFor="nickname">
+            <Field label={t.common.email} htmlFor="email">
+              <Input id="email" value={user.email} disabled />
+            </Field>
+
+            <Field label={t.common.nickname} htmlFor="nickname">
               <Input
                 id="nickname"
                 required
                 maxLength={30}
                 value={nickname}
                 onChange={(event) => setNickname(event.target.value)}
-              />
-            </Field>
-
-            <Field label="전화번호" htmlFor="phone">
-              <Input
-                id="phone"
-                maxLength={20}
-                placeholder="010-0000-0000"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
               />
             </Field>
           </div>
@@ -502,11 +480,172 @@ function ProfileForm({ user }: { user: UserResponse }) {
 
           <FormActions>
             <Button type="submit" disabled={pending}>
-              {pending ? '저장 중…' : '저장'}
+              {pending ? t.common.saving : t.common.save}
             </Button>
           </FormActions>
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+const LANGUAGES: Language[] = ['KO', 'EN']
+const UNIT_SYSTEMS: UnitSystem[] = ['KM_PER_L', 'L_PER_100KM', 'MPG_US', 'MPG_UK']
+
+/** 목록은 브라우저가 아는 값 전부. 지금 값이 목록에 없으면 앞에 붙임(UTC 등) */
+function withCurrent(values: string[], current: string) {
+  return values.includes(current) ? values : [current, ...values]
+}
+
+/** 언어·단위·통화·시간대. 저장하면 I18nProvider 가 새 값으로 화면 전체를 다시 그림 */
+function RegionForm({ user }: { user: UserResponse }) {
+  const { replaceUser } = useAuth()
+  const { t, locale } = useI18n()
+
+  const [language, setLanguage] = useState(user.language)
+  const [unitSystem, setUnitSystem] = useState(user.unitSystem)
+  const [currency, setCurrency] = useState(user.currency)
+  const [timeZone, setTimeZone] = useState(user.timeZone)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const currencies = useMemo(() => {
+    const names = new Intl.DisplayNames([locale], { type: 'currency' })
+    return withCurrent(Intl.supportedValuesOf('currency'), user.currency).map((code) => ({
+      code,
+      label: `${code} · ${names.of(code) ?? code}`,
+    }))
+  }, [locale, user.currency])
+  const timeZones = useMemo(
+    () => withCurrent(Intl.supportedValuesOf('timeZone'), user.timeZone),
+    [user.timeZone],
+  )
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setMessage(null)
+    setError(null)
+
+    // 바뀐 필드만
+    const request: UpdateProfileRequest = {}
+    if (language !== user.language) request.language = language
+    if (unitSystem !== user.unitSystem) request.unitSystem = unitSystem
+    if (currency !== user.currency) request.currency = currency
+    if (timeZone !== user.timeZone) request.timeZone = timeZone
+
+    if (Object.keys(request).length === 0) {
+      setMessage(t.common.noChanges)
+      return
+    }
+
+    setPending(true)
+    try {
+      replaceUser(await updateProfile(request))
+      setMessage(null)
+    } catch (caught) {
+      setError(errorMessage(caught, t, t.profile.region.failed))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent>
+        <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label={t.profile.region.language} htmlFor="language">
+              <NativeSelect id="language" value={language} onChange={(next) => setLanguage(next as Language)}>
+                {LANGUAGES.map((code) => (
+                  <option key={code} value={code}>
+                    {t.languages[code]}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+
+            <Field label={t.profile.region.unitSystem} htmlFor="unit-system">
+              <NativeSelect
+                id="unit-system"
+                value={unitSystem}
+                onChange={(next) => setUnitSystem(next as UnitSystem)}
+              >
+                {UNIT_SYSTEMS.map((system) => (
+                  <option key={system} value={system}>
+                    {t.units[system]}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+
+            {/* 이미 적은 기록은 원래 통화 그대로. 바꾸기 전에 알게 */}
+            <Field label={t.profile.region.currency} htmlFor="currency" hint={t.profile.region.currencyHint}>
+              <NativeSelect id="currency" value={currency} onChange={setCurrency}>
+                {currencies.map(({ code, label }) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+
+            <Field
+              label={t.profile.region.timeZone}
+              htmlFor="time-zone"
+              hint={t.profile.region.timeZoneHint(browserTimeZone)}
+            >
+              <NativeSelect id="time-zone" value={timeZone} onChange={setTimeZone}>
+                {timeZones.map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+          </div>
+
+          {message !== null && <NoticeText message={message} />}
+          {error !== null && <ErrorText message={error} />}
+
+          <FormActions>
+            <Button type="submit" disabled={pending}>
+              {pending ? t.common.saving : t.common.save}
+            </Button>
+          </FormActions>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** 네이티브 select + 같은 톤 화살표. 정비 폼과 같은 모양 */
+function NativeSelect({
+  id,
+  value,
+  onChange,
+  children,
+}: {
+  id: string
+  value: string
+  onChange: (value: string) => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="relative">
+      <select
+        id={id}
+        className={cn(controlClassName, 'appearance-none pr-10')}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden="true"
+      />
+    </div>
   )
 }

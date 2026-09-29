@@ -24,10 +24,6 @@ public record SignUpRequest(
         @Size(max = 30)
         String nickname,
 
-        // phone 컬럼 길이 20과 동일
-        @Size(max = 20)
-        String phone,
-
         // 설정 넷은 선택. 안 보내면 엔티티 기본값. 화면이 브라우저 값으로 채움
         Language language,
 

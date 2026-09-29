@@ -46,7 +46,7 @@ class GarageSummaryServiceTest {
     private GarageSummaryService garageSummaryService;
 
     private Vehicle vehicle(Long id, String plate, int odometer) {
-        User owner = new User("owner@odolog.com", "encoded", "차주", null);
+        User owner = new User("owner@odolog.com", "encoded", "차주");
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, plate, "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", id);
@@ -78,6 +78,27 @@ class GarageSummaryServiceTest {
     }
 
     @Test
+    @DisplayName("사용자 통화가 아닌 기록은 금액 합계에서 빼고 뺀 수를 밝힌다")
+    void excludesOtherCurrencyFromCost() {
+        Vehicle car = vehicle(10L, "12가3456", 50000);
+        MaintenanceRecord won = record(1L, car, ServiceType.ENGINE_OIL, 80000, TODAY);
+        MaintenanceRecord dollar = record(2L, car, ServiceType.TIRE, 4567, TODAY);
+        ReflectionTestUtils.setField(dollar, "currency", "USD");
+        given(List.of(car), List.of(won, dollar), List.of());
+
+        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY, "KRW");
+
+        // 80000원 + $45.67 을 더하면 어느 통화도 아닌 숫자
+        assertThat(summary.totalCost()).isEqualTo(80000);
+        assertThat(summary.currency()).isEqualTo("KRW");
+        assertThat(summary.otherCurrencyRecordCount()).isEqualTo(1);
+        // 건수는 전체, 종류별 비용은 같은 통화만
+        assertThat(summary.recordCount()).isEqualTo(2);
+        assertThat(summary.byType()).extracting(GarageSummaryResponse.TypeCost::type)
+                .containsExactly(ServiceType.ENGINE_OIL);
+    }
+
+    @Test
     @DisplayName("총 비용은 정비비와 유류비를 합친 값이고, 구성도 함께 준다")
     void totalsIncludeFuel() {
         Vehicle car = vehicle(10L, "12가3456", 50000);
@@ -85,7 +106,7 @@ class GarageSummaryServiceTest {
                 List.of(record(1L, car, ServiceType.ENGINE_OIL, 80000, LocalDate.of(2026, 9, 1))),
                 List.of(fuel(1L, car, 49000, "30.00", 68000, LocalDate.of(2026, 9, 5))));
 
-        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY);
+        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY, "KRW");
 
         assertThat(summary.vehicleCount()).isEqualTo(1);
         assertThat(summary.totalOdometer()).isEqualTo(50000);
@@ -103,7 +124,7 @@ class GarageSummaryServiceTest {
                 List.of(record(1L, car, ServiceType.ENGINE_OIL, 80000, LocalDate.of(2026, 9, 1))),
                 List.of(fuel(1L, car, 49000, "30.00", 68000, LocalDate.of(2026, 9, 5))));
 
-        List<GarageSummaryResponse.MonthlyCost> monthly = garageSummaryService.summarize(1L, TODAY).monthly();
+        List<GarageSummaryResponse.MonthlyCost> monthly = garageSummaryService.summarize(1L, TODAY, "KRW").monthly();
 
         assertThat(monthly).hasSize(12);
         // 2026-09 기준 12칸 → 2025-10 시작
@@ -129,7 +150,7 @@ class GarageSummaryServiceTest {
                 record(3L, car, ServiceType.ENGINE_OIL, 50000, LocalDate.of(2026, 7, 1))),
                 List.of());
 
-        List<GarageSummaryResponse.TypeCost> byType = garageSummaryService.summarize(1L, TODAY).byType();
+        List<GarageSummaryResponse.TypeCost> byType = garageSummaryService.summarize(1L, TODAY, "KRW").byType();
 
         // 15종 중 기록 있는 2종만
         assertThat(byType).hasSize(2);
@@ -149,7 +170,7 @@ class GarageSummaryServiceTest {
                 fuel(2L, car, 10500, "25.00", 50000, LocalDate.of(2026, 8, 1)),
                 fuel(3L, car, 11000, "25.00", 50000, LocalDate.of(2026, 9, 1))));
 
-        GarageSummaryResponse.VehicleLine line = garageSummaryService.summarize(1L, TODAY).vehicles().get(0);
+        GarageSummaryResponse.VehicleLine line = garageSummaryService.summarize(1L, TODAY, "KRW").vehicles().get(0);
 
         // 1000km ÷ (80 - 30)L = 20.00. 첫 30L 를 빼지 않으면 12.50
         assertThat(line.averageEfficiency()).isEqualByComparingTo("20.00");
@@ -162,7 +183,7 @@ class GarageSummaryServiceTest {
         given(List.of(car), List.of(),
                 List.of(fuel(1L, car, 10000, "30.00", 60000, LocalDate.of(2026, 9, 1))));
 
-        assertThat(garageSummaryService.summarize(1L, TODAY).vehicles().get(0).averageEfficiency()).isNull();
+        assertThat(garageSummaryService.summarize(1L, TODAY, "KRW").vehicles().get(0).averageEfficiency()).isNull();
     }
 
     @Test
@@ -173,7 +194,7 @@ class GarageSummaryServiceTest {
         ReflectionTestUtils.setField(bare, "id", 1L);
         given(List.of(car), List.of(), List.of(bare));
 
-        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY);
+        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY, "KRW");
 
         assertThat(summary.recent().get(0).cost()).isNull();
         // 합계에서는 0
@@ -192,7 +213,7 @@ class GarageSummaryServiceTest {
                         fuel(3L, car, 49000, "30.00", 68000, sameDay),
                         fuel(1L, car, 50000, "30.00", 70000, LocalDate.of(2026, 9, 12))));
 
-        List<GarageSummaryResponse.RecentActivity> recent = garageSummaryService.summarize(1L, TODAY).recent();
+        List<GarageSummaryResponse.RecentActivity> recent = garageSummaryService.summarize(1L, TODAY, "KRW").recent();
 
         assertThat(recent).extracting(GarageSummaryResponse.RecentActivity::kind)
                 .containsExactly("FUEL", "MAINTENANCE", "MAINTENANCE", "FUEL");
@@ -208,7 +229,7 @@ class GarageSummaryServiceTest {
     void emptyGarage() {
         given(List.of(), List.of(), List.of());
 
-        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY);
+        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY, "KRW");
 
         assertThat(summary.vehicleCount()).isZero();
         assertThat(summary.totalCost()).isZero();

@@ -12,9 +12,6 @@ public record UpdateProfileRequest(
         @Pattern(regexp = ".*\\S.*", message = "공백만으로는 설정할 수 없습니다")
         String nickname,
 
-        @Size(max = 20)
-        String phone,
-
         Language language,
 
         // 목록 검사는 엔티티. 여기서는 컬럼 길이만

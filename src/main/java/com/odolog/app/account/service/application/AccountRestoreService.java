@@ -1,5 +1,6 @@
 package com.odolog.app.account.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.money.CurrencyCode;
 import com.odolog.app.account.dto.request.restore.AccountRestoreRequest;
@@ -176,7 +177,8 @@ public class AccountRestoreService {
             return CurrencyCode.LEGACY;
         }
         if (!CurrencyCode.isKnown(code)) {
-            throw new InvalidRequestException("currency: 지원하지 않는 통화입니다: " + code);
+            throw new InvalidRequestException(ErrorCode.UNSUPPORTED_CURRENCY,
+                    "currency: 지원하지 않는 통화입니다: " + code, "currency");
         }
         return code;
     }

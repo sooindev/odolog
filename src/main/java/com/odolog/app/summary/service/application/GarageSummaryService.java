@@ -56,26 +56,38 @@ public class GarageSummaryService {
         this.fuelRecordRepository = fuelRecordRepository;
     }
 
-    public GarageSummaryResponse summarize(Long ownerId, LocalDate today) {
+    /** currency: 합계에 넣을 통화(사용자 설정). 다른 통화 기록은 금액 합계에서만 제외 */
+    public GarageSummaryResponse summarize(Long ownerId, LocalDate today, String currency) {
         // 쿼리 3번
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(ownerId);
         List<MaintenanceRecord> records =
                 maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(ownerId);
         List<FuelRecord> fuels = fuelRecordRepository.findByVehicle_Owner_IdOrderByOdometerAscIdAsc(ownerId);
 
-        long maintenanceCost = records.stream().mapToLong(MaintenanceRecord::getCost).sum();
+        // 통화가 다른 금액은 더할 수 없음. 건수·연비·지남은 전체 기준
+        List<MaintenanceRecord> pricedRecords = records.stream()
+                .filter(record -> currency.equals(record.getCurrency()))
+                .toList();
+        List<FuelRecord> pricedFuels = fuels.stream()
+                .filter(record -> currency.equals(record.getCurrency()))
+                .toList();
+        int otherCurrency = (records.size() - pricedRecords.size()) + (fuels.size() - pricedFuels.size());
+
+        long maintenanceCost = pricedRecords.stream().mapToLong(MaintenanceRecord::getCost).sum();
         // 금액을 안 적은 기록은 합계에서 0
-        long fuelCost = fuels.stream().mapToLong(FuelRecord::totalCostOrZero).sum();
+        long fuelCost = pricedFuels.stream().mapToLong(FuelRecord::totalCostOrZero).sum();
 
         return new GarageSummaryResponse(
                 vehicles.size(),
                 vehicles.stream().mapToLong(Vehicle::getOdometer).sum(),
                 records.size() + fuels.size(),
+                currency,
+                otherCurrency,
                 maintenanceCost + fuelCost,
                 maintenanceCost,
                 fuelCost,
-                monthly(records, fuels, today),
-                byType(records),
+                monthly(pricedRecords, pricedFuels, today),
+                byType(pricedRecords),
                 vehicleLines(vehicles, records, fuels,
                         serviceIntervalRepository.findByVehicle_Owner_Id(ownerId), today),
                 recent(records, fuels, vehicles));
@@ -188,14 +200,15 @@ public class GarageSummaryService {
             Long vehicleId = record.getVehicle().getId();
             all.add(new Candidate(new RecentActivity("MAINTENANCE", record.getPublicId(),
                     record.getServiceDate(), publicIds.get(vehicleId), names.get(vehicleId),
-                    (long) record.getCost(), record.getType(), null), record.getId()));
+                    (long) record.getCost(), record.getCurrency(), record.getType(), null),
+                    record.getId()));
         }
         for (FuelRecord record : fuels) {
             Long vehicleId = record.getVehicle().getId();
             all.add(new Candidate(new RecentActivity("FUEL", record.getPublicId(),
                     record.getFueledAt(), publicIds.get(vehicleId), names.get(vehicleId),
                     record.getTotalCost() == null ? null : record.getTotalCost().longValue(),
-                    null, record.getLiters()), record.getId()));
+                    record.getCurrency(), null, record.getLiters()), record.getId()));
         }
 
         return all.stream()

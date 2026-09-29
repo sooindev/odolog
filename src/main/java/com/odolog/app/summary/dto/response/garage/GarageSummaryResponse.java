@@ -13,6 +13,10 @@ public record GarageSummaryResponse(
 
         /** 정비 + 주유 건수 */
         int recordCount,
+        /** 아래 금액들의 통화(사용자 설정). 월별·종류별도 같은 통화만 */
+        String currency,
+        /** 통화가 달라 금액 합계에서 뺀 기록 수. 말없이 빼지 않도록 공개 */
+        int otherCurrencyRecordCount,
         /** 정비비 + 유류비. 구성도 함께 */
         long totalCost,
         long maintenanceCost,
@@ -33,6 +37,7 @@ public record GarageSummaryResponse(
             long cost,
             long maintenanceCost,
             long fuelCost,
+            /** 금액이 합산된 건수 */
             int count
     ) {
     }
@@ -69,6 +74,8 @@ public record GarageSummaryResponse(
             String vehicleName,
             /** 주유 금액을 안 적었으면 null. 한 건 표시라 0 과 구분 */
             Long cost,
+            /** 이 기록의 통화. 한 건 표시라 사용자 통화와 달라도 그대로 */
+            String currency,
             /** 정비만 */
             ServiceType type,
             /** 주유만 */

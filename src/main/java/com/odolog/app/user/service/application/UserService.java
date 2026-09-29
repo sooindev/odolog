@@ -1,5 +1,6 @@
 package com.odolog.app.user.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.text.InputText;
@@ -42,13 +43,11 @@ public class UserService {
     @Transactional
     public User signUp(SignUpRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new ConflictException("이미 가입된 이메일입니다: " + request.email());
+            throw new ConflictException(ErrorCode.EMAIL_DUPLICATE, "이미 가입된 이메일입니다: " + request.email());
         }
 
         String encodedPassword = passwordEncoder.encode(request.password());
-        // 빈 전화번호는 null
-        String phone = (request.phone() == null || request.phone().isBlank()) ? null : request.phone();
-        User user = new User(request.email(), encodedPassword, InputText.strip(request.nickname()), phone);
+        User user = new User(request.email(), encodedPassword, InputText.strip(request.nickname()));
         applySettings(user, request.language(), request.timeZone(), request.currency(), request.unitSystem());
 
         return userRepository.save(user);
@@ -73,7 +72,7 @@ public class UserService {
 
     public User login(LoginRequest request) {
         // 검증보다 먼저. 잠긴 동안은 맞는 비밀번호도 거절
-        loginAttemptLimiter.checkNotLocked(request.email(), "로그인 시도가 너무 많습니다.");
+        loginAttemptLimiter.checkNotLocked(request.email(), ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
 
         try {
             User user = userRepository.findByEmail(request.email()).orElse(null);
@@ -83,7 +82,7 @@ public class UserService {
             boolean matches = passwordEncoder.matches(request.password(), hash);
 
             if (user == null || !matches) {
-                throw new AuthenticationFailedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+                throw new AuthenticationFailedException(ErrorCode.LOGIN_FAILED, "이메일 또는 비밀번호가 올바르지 않습니다.");
             }
 
             loginAttemptLimiter.recordSuccess(request.email());
@@ -105,7 +104,7 @@ public class UserService {
         User user = findById(userId);
 
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
-            throw new AuthenticationFailedException("현재 비밀번호가 올바르지 않습니다.");
+            throw new AuthenticationFailedException(ErrorCode.WRONG_PASSWORD, "현재 비밀번호가 올바르지 않습니다.");
         }
     }
 
@@ -127,7 +126,7 @@ public class UserService {
         // 같은 비밀번호로 변경 거부. 바뀌지 않았는데 바뀐 것처럼 보이는 문제 방지
         // 재설정에는 미적용(옛 비밀번호를 모르는 사용자)
         if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
-            throw new InvalidRequestException("새 비밀번호가 현재 비밀번호와 같습니다.");
+            throw new InvalidRequestException(ErrorCode.SAME_PASSWORD, "새 비밀번호가 현재 비밀번호와 같습니다.");
         }
 
         user.changePassword(passwordEncoder.encode(request.newPassword()));
@@ -139,11 +138,6 @@ public class UserService {
 
         if (request.nickname() != null) {
             user.changeNickname(InputText.strip(request.nickname()));
-        }
-        if (request.phone() != null) {
-            // null 은 안 보냄, 빈 문자열은 지움
-            String phone = request.phone().isBlank() ? null : request.phone();
-            user.changePhone(phone);
         }
         applySettings(user, request.language(), request.timeZone(), request.currency(), request.unitSystem());
 

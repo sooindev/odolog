@@ -25,7 +25,7 @@ class UserTodayTest {
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-09-29T12:00:00Z"), ZoneOffset.UTC);
 
     private UserToday userTodayIn(String timeZone) {
-        User user = new User("a@b.com", "encoded", "nick", null);
+        User user = new User("a@b.com", "encoded", "nick");
         user.changeTimeZone(timeZone);
 
         UserRepository repository = mock(UserRepository.class);

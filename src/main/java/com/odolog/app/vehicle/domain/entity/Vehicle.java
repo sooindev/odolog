@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.domain.entity;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.common.domain.entity.BaseTimeEntity;
@@ -80,7 +81,7 @@ public class Vehicle extends BaseTimeEntity {
     /** 사용자가 직접 고치는 값. 감소 시 409 */
     public void updateOdometer(int odometer) {
         if (odometer < this.odometer) {
-            throw new ConflictException("주행거리는 줄어들 수 없습니다.");
+            throw new ConflictException(ErrorCode.ODOMETER_DECREASE, "주행거리는 줄어들 수 없습니다.");
         }
         this.odometer = odometer;
     }

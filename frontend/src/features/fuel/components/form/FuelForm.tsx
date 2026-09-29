@@ -8,10 +8,13 @@ import { DateInput } from '@/shared/ui/form/date-input'
 import { Textarea } from '@/shared/ui/base/textarea'
 import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/feedback/state'
-import { ApiError } from '@/shared/api/client/client'
-import { formatKm, todayString } from '@/shared/lib/format/format'
-import { MAX_AMOUNT, MAX_ODOMETER } from '@/shared/lib/limits/limits'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
+import { todayString } from '@/shared/lib/format/format'
+import { MAX_ODOMETER } from '@/shared/lib/limits/limits'
+import { fromMinor, inputStep, maxMajor, toMinor } from '@/shared/lib/money/money'
 import { looksBigJump, looksPast } from '@/shared/lib/odometer/odometer'
+import { fromKm, fromLiters, toKm, toLiters } from '@/shared/lib/units/units'
 import {
   registerFuelRecord,
   updateFuelRecord,
@@ -28,37 +31,49 @@ export function FuelForm({
 }: {
   vehicleId: string
   record: FuelRecordResponse | null
+  /** 차량의 현재 주행거리(km) */
   defaultOdometer: number
   onSaved: () => void
   onCancel: () => void
 }) {
-  // 폼을 연 시점의 차량 주행거리 고정. 입력칸과 판정 기준의 어긋남 방지
-  const [baseOdometer] = useState(defaultOdometer)
+  const { t, f, unitSystem, timeZone, currency: userCurrency } = useI18n()
 
-  // 입력 중 빈 값 표현을 위해 문자열 보관
-  const [fueledAt, setFueledAt] = useState(record?.fueledAt ?? todayString())
-  const [odometer, setOdometer] = useState(String(record?.odometer ?? defaultOdometer))
-  // 주유량 없이 저장된 기록 대비
-  const [liters, setLiters] = useState(record?.liters == null ? '' : String(record.liters))
-  const [totalCost, setTotalCost] = useState(record?.totalCost == null ? '' : String(record.totalCost))
+  // 폼을 연 시점의 차량 주행거리 고정(km). 입력칸과 판정 기준의 어긋남 방지
+  const [baseOdometer] = useState(defaultOdometer)
+  // 수정은 기록의 통화, 등록은 지금 사용자 통화. 서버도 같은 규칙
+  const currency = record?.currency ?? userCurrency
+
+  // 입력칸은 화면 단위(마일·갤런·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로
+  const initialOdometerKm = record?.odometer ?? defaultOdometer
+  const [initial] = useState(() => ({
+    odometer: String(Math.round(fromKm(unitSystem, initialOdometerKm))),
+    volume: record?.liters == null ? '' : String(Math.round(fromLiters(unitSystem, record.liters) * 100) / 100),
+    cost: record?.totalCost == null ? '' : String(fromMinor(record.totalCost, currency)),
+  }))
+
+  const [fueledAt, setFueledAt] = useState(record?.fueledAt ?? todayString(timeZone))
+  const [odometer, setOdometer] = useState(initial.odometer)
+  const [volume, setVolume] = useState(initial.volume)
+  const [totalCost, setTotalCost] = useState(initial.cost)
   const [memo, setMemo] = useState(record?.memo ?? '')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // 빈 칸은 null. Number('') 는 0
-  const litersValue = liters === '' ? null : Number(liters)
-  const costValue = totalCost === '' ? null : Number(totalCost)
+  // 저장 단위(km·L·최소 단위)로 바꾼 값. 빈 칸은 null(Number('') 는 0)
+  const odometerKm = odometer === initial.odometer ? initialOdometerKm : toKm(unitSystem, Number(odometer))
+  const liters =
+    volume === '' ? null : volume === initial.volume ? (record?.liters ?? null) : toLiters(unitSystem, Number(volume))
+  const costMinor =
+    totalCost === '' ? null : totalCost === initial.cost ? (record?.totalCost ?? null) : toMinor(Number(totalCost), currency)
 
-  // 입력 중 리터당 단가. 영수증 대조용
-  const pricePerLiter =
-    litersValue !== null && costValue !== null && litersValue > 0
-      ? Math.round(costValue / litersValue)
-      : null
+  // 입력 중 단가(화면 부피 단위당). 영수증 대조용
+  const volumeValue = volume === '' ? null : Number(volume)
+  const pricePerUnit =
+    volumeValue !== null && costMinor !== null && volumeValue > 0 ? Math.round(costMinor / volumeValue) : null
 
   // 주행거리 판정 규칙은 shared/lib/odometer. 막지 않고 안내만
-  const odometerValue = Number(odometer)
-  const past = odometer !== '' && looksPast(odometerValue, baseOdometer)
-  const bigJump = odometer !== '' && looksBigJump(odometerValue, baseOdometer)
+  const past = odometer !== '' && looksPast(odometerKm, baseOdometer)
+  const bigJump = odometer !== '' && looksBigJump(odometerKm, baseOdometer)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -69,30 +84,24 @@ export function FuelForm({
     // 주유량·금액 비움: 각각 못 하게 되는 일 안내
     const warnings: string[] = []
 
-    if (record === null && Number(odometer) === baseOdometer) {
-      warnings.push(
-        `· 주행거리가 차량의 현재 값(${formatKm(baseOdometer)})과 같습니다.\n` +
-          '  이번 구간의 연비가 계산되지 않고, 차량 주행거리도 올라가지 않습니다.',
-      )
+    if (record === null && odometerKm === baseOdometer) {
+      warnings.push(t.fuel.form.warnSameOdometer(f.distance(baseOdometer)))
     }
     // 수정 시에는 이번에 새로 비운 경우만
-    if (litersValue === null && (record === null || record.liters !== null)) {
-      warnings.push('· 주유량이 비어 있어 이번 구간의 연비를 계산할 수 없습니다.')
+    if (liters === null && (record === null || record.liters !== null)) {
+      warnings.push(t.fuel.form.warnNoVolume)
     }
-    if (costValue === null && (record === null || record.totalCost !== null)) {
-      warnings.push('· 결제 금액이 비어 있어 유류비 합계와 리터당 단가에서 빠집니다.')
+    if (costMinor === null && (record === null || record.totalCost !== null)) {
+      warnings.push(t.fuel.form.warnNoCost)
     }
     if (bigJump) {
       // 급증은 되돌리기 어려움. force 정정으로만 복구
-      warnings.push(
-        `· 주행거리가 ${formatKm(baseOdometer)} 에서 ${formatKm(odometerValue)} 로 크게 뜁니다.\n` +
-          '  자리수가 틀리면 차량 주행거리가 그 값에 묶입니다.',
-      )
+      warnings.push(t.fuel.form.warnBigJump(f.distance(baseOdometer), f.distance(odometerKm)))
     }
 
     if (warnings.length > 0) {
       const confirmed = window.confirm(
-        `이대로 저장하면:\n\n${warnings.join('\n')}\n\n계속할까요?`,
+        `${t.fuel.form.confirmIntro}\n\n${warnings.join('\n')}\n\n${t.fuel.form.confirmOutro}`,
       )
       if (!confirmed) {
         return
@@ -105,27 +114,27 @@ export function FuelForm({
       if (record === null) {
         await registerFuelRecord(vehicleId, {
           fueledAt,
-          odometer: Number(odometer),
-          liters: litersValue,
-          totalCost: costValue,
+          odometer: odometerKm,
+          liters,
+          totalCost: costMinor,
           memo: memo === '' ? undefined : memo,
         })
       } else {
         // 바뀐 필드만. 비움은 clear 플래그
         await updateFuelRecord(vehicleId, record.id, {
           fueledAt: fueledAt === record.fueledAt ? undefined : fueledAt,
-          odometer: Number(odometer) === record.odometer ? undefined : Number(odometer),
-          liters: litersValue !== null && litersValue !== record.liters ? litersValue : undefined,
-          clearLiters: litersValue === null && record.liters !== null ? true : undefined,
-          totalCost: costValue !== null && costValue !== record.totalCost ? costValue : undefined,
-          clearTotalCost: costValue === null && record.totalCost !== null ? true : undefined,
+          odometer: odometerKm === record.odometer ? undefined : odometerKm,
+          liters: liters !== null && liters !== record.liters ? liters : undefined,
+          clearLiters: liters === null && record.liters !== null ? true : undefined,
+          totalCost: costMinor !== null && costMinor !== record.totalCost ? costMinor : undefined,
+          clearTotalCost: costMinor === null && record.totalCost !== null ? true : undefined,
           memo: memo === (record.memo ?? '') ? undefined : memo,
         })
       }
 
       onSaved()
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '저장에 실패했습니다.')
+      setError(errorMessage(caught, t, t.fuel.form.failed))
       setPending(false)
     }
   }
@@ -133,22 +142,22 @@ export function FuelForm({
   return (
     <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="주유 날짜" htmlFor="fuel-date">
+        <Field label={t.fuel.form.date} htmlFor="fuel-date">
           <DateInput id="fuel-date" required value={fueledAt} onChange={setFueledAt} />
         </Field>
 
         <Field
-          label="주행거리 (km)"
+          label={t.fuel.form.odometer(f.distanceUnit)}
           htmlFor="fuel-odometer"
-          // 상태별 도움말 셋. 비었을 때 우선
+          // 상태별 도움말. 비었을 때 우선
           hint={
             odometer === ''
-              ? '주행거리를 적지 않으면 연비를 계산할 수 없습니다.'
+              ? t.fuel.form.odometerEmpty
               : past
-                ? `차량에 기록된 ${baseOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
+                ? t.odometerHints.past(f.distance(baseOdometer))
                 : bigJump
-                  ? `차량에 기록된 ${baseOdometer.toLocaleString()}km 에서 크게 뜁니다. 자리수를 확인해 주세요.`
-                  : '계기판 숫자. 이 값이 차량 주행거리보다 크면 차량 쪽도 함께 올라갑니다.'
+                  ? t.odometerHints.bigJump(f.distance(baseOdometer))
+                  : t.fuel.form.odometerHint
           }
         >
           <Input
@@ -158,7 +167,7 @@ export function FuelForm({
             autoFocus
             required
             min={0}
-            max={MAX_ODOMETER}
+            max={Math.floor(fromKm(unitSystem, MAX_ODOMETER))}
             className="tabular-nums"
             value={odometer}
             onChange={(event) => setOdometer(event.target.value)}
@@ -167,34 +176,34 @@ export function FuelForm({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        {/* step 0.01: 소수 2자리 */}
+        {/* step 0.01: 소수 2자리. 상한은 서버 BigDecimal(6,2) 를 화면 단위로 */}
         <Field
-          label="주유량 (L)"
+          label={t.fuel.form.volume(f.volumeUnit)}
           htmlFor="fuel-liters"
           // 선택 입력. 비우면 못 하게 되는 일만 안내
-          hint={liters === '' ? '비우면 이번 구간의 연비를 계산할 수 없습니다.' : undefined}
+          hint={volume === '' ? t.fuel.form.volumeEmpty : undefined}
         >
           <Input
             id="fuel-liters"
             type="number"
             min={0.01}
-            max={9999.99}
+            max={Math.floor(fromLiters(unitSystem, 9999.99) * 100) / 100}
             step={0.01}
             className="tabular-nums"
-            placeholder="32.45"
-            value={liters}
-            onChange={(event) => setLiters(event.target.value)}
+            placeholder={f.volumeUnit === 'gal' ? '9.87' : '32.45'}
+            value={volume}
+            onChange={(event) => setVolume(event.target.value)}
           />
         </Field>
 
         <Field
-          label="결제 금액 (원)"
+          label={t.fuel.form.cost(currency)}
           htmlFor="fuel-cost"
           hint={
-            pricePerLiter !== null
-              ? `리터당 약 ${pricePerLiter.toLocaleString()}원`
+            pricePerUnit !== null
+              ? t.fuel.form.pricePer(f.money(pricePerUnit, currency), f.volumeUnit)
               : totalCost === ''
-                ? '비우면 유류비 합계에서 빠집니다.'
+                ? t.fuel.form.costEmpty
                 : undefined
           }
         >
@@ -202,7 +211,8 @@ export function FuelForm({
             id="fuel-cost"
             type="number"
             min={0}
-            max={MAX_AMOUNT}
+            max={maxMajor(currency)}
+            step={inputStep(currency)}
             className="tabular-nums"
             value={totalCost}
             onChange={(event) => setTotalCost(event.target.value)}
@@ -210,12 +220,12 @@ export function FuelForm({
         </Field>
       </div>
 
-      <Field label="메모" htmlFor="fuel-memo" hint="선택">
+      <Field label={t.fuel.form.memo} htmlFor="fuel-memo" hint={t.common.optional}>
         <Textarea
           id="fuel-memo"
           rows={2}
           maxLength={255}
-          placeholder="주유소 이름 등"
+          placeholder={t.fuel.form.memoPlaceholder}
           value={memo}
           onChange={(event) => setMemo(event.target.value)}
         />
@@ -225,10 +235,10 @@ export function FuelForm({
 
       <FormActions>
         <Button type="submit" disabled={pending}>
-          {pending ? '저장 중…' : record === null ? '등록' : '수정'}
+          {pending ? t.common.saving : record === null ? t.common.register : t.common.save}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          취소
+          {t.common.cancel}
         </Button>
       </FormActions>
     </form>

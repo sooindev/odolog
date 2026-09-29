@@ -1,5 +1,6 @@
 package com.odolog.app.user.domain.entity;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.domain.entity.BaseTimeEntity;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.money.CurrencyCode;
@@ -41,9 +42,6 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 30)
     private String nickname;
 
-    @Column(length = 20)
-    private String phone;
-
     // 기존 행은 @ColumnDefault 로, 새 객체는 필드 초기값으로 채움
     // @Enumerated 대신 @Convert. @Enumerated 는 CHECK(값 목록)를 붙이고 ddl-auto 는 그 목록을 갱신하지 않음
     @Convert(converter = Language.Converter.class)
@@ -70,11 +68,10 @@ public class User extends BaseTimeEntity {
     protected User() {
     }
 
-    public User(String email, String password, String nickname, String phone) {
+    public User(String email, String password, String nickname) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
-        this.phone = phone;
     }
 
 
@@ -92,10 +89,6 @@ public class User extends BaseTimeEntity {
 
     public String getNickname() {
         return nickname;
-    }
-
-    public String getPhone() {
-        return phone;
     }
 
     public Language getLanguage() {
@@ -119,10 +112,6 @@ public class User extends BaseTimeEntity {
         this.nickname = nickname;
     }
 
-    public void changePhone(String phone) {
-        this.phone = phone;
-    }
-
     public void changeLanguage(Language language) {
         this.language = language;
     }
@@ -130,14 +119,16 @@ public class User extends BaseTimeEntity {
     /** 지역 이름만 허용. +09:00 같은 고정 오프셋은 서머타임 미반영이라 거절 */
     public void changeTimeZone(String timeZone) {
         if (!ZoneId.getAvailableZoneIds().contains(timeZone)) {
-            throw new InvalidRequestException("지원하지 않는 시간대입니다: " + timeZone);
+            throw new InvalidRequestException(ErrorCode.UNSUPPORTED_TIME_ZONE,
+                    "지원하지 않는 시간대입니다: " + timeZone, "timeZone");
         }
         this.timeZone = timeZone;
     }
 
     public void changeCurrency(String currency) {
         if (!CurrencyCode.isKnown(currency)) {
-            throw new InvalidRequestException("지원하지 않는 통화입니다: " + currency);
+            throw new InvalidRequestException(ErrorCode.UNSUPPORTED_CURRENCY,
+                    "지원하지 않는 통화입니다: " + currency, "currency");
         }
         this.currency = currency;
     }

@@ -44,7 +44,7 @@ class VehicleServiceTransactionTest {
     @BeforeEach
     void setUp() {
         ownerId = userRepository.save(
-                new User("tx@odolog.com", "encoded-pw", "차주", "010-1111-2222")).getId();
+                new User("tx@odolog.com", "encoded-pw", "차주")).getId();
         Vehicle registered = vehicleService.register(ownerId,
                 new VehicleRegisterRequest("99하9999", "현대", "아반떼", 2020));
         vehicleId = registered.getId();

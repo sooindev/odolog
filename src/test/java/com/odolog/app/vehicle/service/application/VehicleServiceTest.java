@@ -66,7 +66,7 @@ class VehicleServiceTest {
     private VehicleService vehicleService;
 
     private User createOwner(Long id) {
-        User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        User owner = new User("owner@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(owner, "id", id);
         return owner;
     }

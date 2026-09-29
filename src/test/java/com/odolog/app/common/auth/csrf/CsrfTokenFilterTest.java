@@ -58,6 +58,8 @@ class CsrfTokenFilterTest {
         filter.doFilter(request, response, chain);
 
         assertThat(response.getStatus()).isEqualTo(403);
+        // 필터는 핸들러를 안 거쳐 본문을 직접 씀. 코드가 빠지면 화면이 번역 못 함
+        assertThat(response.getContentAsString()).contains("\"code\":\"CSRF_REJECTED\"");
         // 다음 필터로 진행하지 않음
         assertThat(chain.getRequest()).isNull();
     }

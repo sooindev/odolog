@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class UserTest {
 
     private User user() {
-        return new User("a@b.com", "encoded", "nick", null);
+        return new User("a@b.com", "encoded", "nick");
     }
 
     @Test

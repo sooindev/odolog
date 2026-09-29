@@ -7,8 +7,6 @@ export interface SignUpRequest extends Preferences {
   email: string
   password: string
   nickname: string
-  /** 선택 항목 */
-  phone?: string
 }
 
 export interface LoginRequest {
@@ -18,7 +16,6 @@ export interface LoginRequest {
 
 export interface UpdateProfileRequest extends Preferences {
   nickname?: string
-  phone?: string
 }
 
 /** 둘 다 필수 */
@@ -35,7 +32,6 @@ export interface WithdrawRequest {
 export interface UserResponse {
   email: string
   nickname: string
-  phone: string | null
   language: Language
   timeZone: string
   currency: string
@@ -48,7 +44,6 @@ export interface AccountExport {
   user: {
     email: string
     nickname: string
-    phone: string | null
     createdAt: string | null
   }
   vehicles: {

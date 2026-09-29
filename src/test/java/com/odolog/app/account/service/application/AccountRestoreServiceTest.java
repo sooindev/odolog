@@ -1,5 +1,6 @@
 package com.odolog.app.account.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.account.dto.request.restore.AccountRestoreRequest;
 import com.odolog.app.account.dto.response.restore.AccountRestoreResponse;
 import com.odolog.app.common.exception.type.InvalidRequestException;
@@ -60,7 +61,7 @@ class AccountRestoreServiceTest {
     @InjectMocks
     private AccountRestoreService accountRestoreService;
 
-    private final User owner = new User("me@odolog.com", "encoded", "나", null);
+    private final User owner = new User("me@odolog.com", "encoded", "나");
 
     private AccountRestoreRequest.VehicleData vehicleData(String plate,
                                                           List<AccountRestoreRequest.MaintenanceData> maintenance,
@@ -138,7 +139,7 @@ class AccountRestoreServiceTest {
         LocalDate tomorrow = LocalDate.of(2026, 9, 30);
         when(userService.findById(1L)).thenReturn(owner);
         // 정상 날짜의 호출도 있어 lenient. 엄격 모드는 인자가 다른 호출을 실수로 봄
-        lenient().doThrow(new InvalidRequestException("fuelRecords.fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
+        lenient().doThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "fuelRecords.fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
                 .when(userToday).rejectFuture(1L, tomorrow, "fuelRecords.fueledAt");
 
         assertThatThrownBy(() -> accountRestoreService.restore(1L,

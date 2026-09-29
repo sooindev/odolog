@@ -53,7 +53,8 @@ public class CsrfTokenFilter extends OncePerRequestFilter {
             // 403. 요청 출처 확인 실패
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"message\":\"요청을 확인할 수 없습니다. 새로고침 후 다시 시도해 주세요.\"}");
+            response.getWriter().write("{\"code\":\"CSRF_REJECTED\","
+                    + "\"message\":\"요청을 확인할 수 없습니다. 새로고침 후 다시 시도해 주세요.\"}");
             return;
         }
 

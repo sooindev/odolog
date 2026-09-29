@@ -14,8 +14,10 @@ import { Input } from '@/shared/ui/base/input'
 import { Page } from '@/shared/ui/layout/page'
 import { ErrorText, Skeleton } from '@/shared/ui/feedback/state'
 import { ApiError } from '@/shared/api/client/client'
-import { formatKm, formatNumber } from '@/shared/lib/format/format'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { fromKm, toKm } from '@/shared/lib/units/units'
 import { useCountUp } from '@/shared/lib/hooks/useCountUp'
 import { MAX_ODOMETER } from '@/shared/lib/limits/limits'
 import { looksBigJump } from '@/shared/lib/odometer/odometer'
@@ -26,6 +28,7 @@ export function VehicleDetailPage() {
   // URL 파라미터는 문자열
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate = useNavigate()
+  const { t } = useI18n()
 
   // 공개 id 문자열 그대로
   const id = vehicleId ?? ''
@@ -38,7 +41,7 @@ export function VehicleDetailPage() {
     error,
     reload: reloadVehicle,
     setData: setVehicle,
-  } = useAsyncData(load, '차량을 불러오지 못했습니다.')
+  } = useAsyncData(load, t.vehicles.detail.loadFailed)
 
   // 정비 이력 변경 시 증가. 다음 정비 카드 재생성
   const [maintenanceVersion, setMaintenanceVersion] = useState(0)
@@ -54,12 +57,12 @@ export function VehicleDetailPage() {
   }
 
   if (error !== null || vehicle === null) {
-    return <ErrorText message={error ?? '차량을 찾을 수 없습니다.'} />
+    return <ErrorText message={error ?? t.vehicles.detail.notFound} />
   }
 
   async function handleDelete() {
     // 함께 삭제되는 것을 모두 명시
-    if (!window.confirm('이 차량과 정비 이력, 주유 기록이 모두 삭제됩니다. 계속할까요?')) {
+    if (!window.confirm(t.vehicles.detail.deleteConfirm)) {
       return
     }
 
@@ -69,7 +72,7 @@ export function VehicleDetailPage() {
       await deleteVehicle(id)
       navigate('/vehicles', { replace: true })
     } catch (caught) {
-      setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
+      setActionError(errorMessage(caught, t, t.vehicles.detail.deleteFailed))
       // 성공 시 화면 이탈, 실패 시에만 복구
       setDeleting(false)
     }
@@ -78,11 +81,13 @@ export function VehicleDetailPage() {
   return (
     // 머리말은 Page 담당
     <Page
-      back={{ to: '/vehicles', label: '내 차량' }}
+      back={{ to: '/vehicles', label: t.vehicles.myVehicles }}
       // 차량 식별은 번호판
       eyebrow={vehicle.plateNumber}
       title={`${vehicle.manufacturer} ${vehicle.modelName}`}
-      description={vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
+      description={
+        vehicle.modelYear === null ? t.vehicles.unknownYear : t.vehicles.modelYear(vehicle.modelYear)
+      }
     >
       {/*
         왼쪽 현재 상태, 오른쪽 이력·다음 정비
@@ -111,9 +116,7 @@ export function VehicleDetailPage() {
             {actionError !== null && <ErrorText message={actionError} />}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-caption text-muted-foreground">
-                삭제하면 정비 이력과 주유 기록도 함께 사라집니다.
-              </p>
+              <p className="text-caption text-muted-foreground">{t.vehicles.detail.deleteNote}</p>
               <Button
                 variant="destructive"
                 size="sm"
@@ -121,7 +124,7 @@ export function VehicleDetailPage() {
                 disabled={deleting}
                 onClick={handleDelete}
               >
-                {deleting ? '삭제 중…' : '차량 삭제'}
+                {deleting ? t.common.deleting : t.vehicles.detail.delete}
               </Button>
             </div>
           </div>
@@ -200,7 +203,9 @@ function VehicleDetailSkeleton() {
  * tabular-nums 는 굴러가는 동안만
  */
 function OdometerHero({ odometer }: { odometer: number }) {
-  const { value, running } = useCountUp(odometer)
+  const { t, f, unitSystem } = useI18n()
+  // 화면 단위로 바꾼 뒤 굴림. km 로 굴리면 마일 화면에서 중간값이 튐
+  const { value, running } = useCountUp(Math.round(fromKm(unitSystem, odometer)))
 
   return (
     <div className="flex flex-col gap-4 border-b border-border pb-8">
@@ -212,11 +217,11 @@ function OdometerHero({ odometer }: { odometer: number }) {
           running ? 'tabular-nums' : ''
         }`}
       >
-        {formatNumber(value)}
-        <span className="text-eyebrow text-muted-foreground uppercase">km</span>
+        {f.number(value)}
+        <span className="text-eyebrow text-muted-foreground uppercase">{f.distanceUnit}</span>
       </p>
       <p className="sr-only" aria-live="polite" aria-atomic="true">
-        주행거리 {formatKm(odometer)}
+        {t.vehicles.detail.odometerAnnounce(f.distance(odometer))}
       </p>
     </div>
   )
@@ -229,7 +234,10 @@ function OdometerForm({
   vehicle: VehicleResponse
   onUpdated: (vehicle: VehicleResponse) => void
 }) {
-  const [odometer, setOdometer] = useState(String(vehicle.odometer))
+  const { t, f, unitSystem } = useI18n()
+  // 입력칸은 화면 단위. 손대지 않았으면 저장값(km) 그대로 써서 왕복 반올림 오차 차단
+  const initial = String(Math.round(fromKm(unitSystem, vehicle.odometer)))
+  const [odometer, setOdometer] = useState(initial)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -237,14 +245,13 @@ function OdometerForm({
     event.preventDefault()
     setError(null)
 
-    const next = Number(odometer)
+    const next = odometer === initial ? vehicle.odometer : toKm(unitSystem, Number(odometer))
 
     // 감소는 확인 후 force 로. 자리수 오타·계기판 교체의 유일한 복구 경로
     // 급증도 확인. 올라간 값은 force 정정으로만 복구
     if (looksBigJump(next, vehicle.odometer)) {
       const confirmed = window.confirm(
-        `${formatKm(vehicle.odometer)} 에서 ${formatKm(next)} 로 크게 뜁니다.\n` +
-          '자리수를 확인해 주세요.\n\n이대로 저장할까요?',
+        t.vehicles.odometer.bigJump(f.distance(vehicle.odometer), f.distance(next)),
       )
       if (!confirmed) {
         return
@@ -253,10 +260,7 @@ function OdometerForm({
 
     let force = false
     if (next < vehicle.odometer) {
-      const confirmed = window.confirm(
-        `현재 기록된 ${formatKm(vehicle.odometer)} 보다 낮습니다.\n` +
-          '계기판을 교체했거나 잘못 입력한 값을 고치는 경우에만 진행하세요.',
-      )
+      const confirmed = window.confirm(t.vehicles.odometer.decrease(f.distance(vehicle.odometer)))
       if (!confirmed) {
         return
       }
@@ -269,11 +273,12 @@ function OdometerForm({
       onUpdated(await updateOdometer(vehicle.id, { odometer: next, force }))
     } catch (caught) {
       // 409 = 다른 곳에서 값이 오른 경우. 현재 값 함께 표시
-      const message =
+      const message = errorMessage(caught, t, t.vehicles.odometer.failed)
+      setError(
         caught instanceof ApiError && caught.status === 409
-          ? `${caught.message} (현재 ${formatKm(vehicle.odometer)})`
-          : '주행거리 갱신에 실패했습니다.'
-      setError(message)
+          ? t.vehicles.odometer.conflict(message, f.distance(vehicle.odometer))
+          : message,
+      )
     } finally {
       setPending(false)
     }
@@ -282,25 +287,25 @@ function OdometerForm({
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>주행거리 갱신</CardTitle>
+        <CardTitle>{t.vehicles.odometer.title}</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
           {/* 값 하나짜리 폼이라 버튼을 입력칸 옆에 */}
-          <Field label="현재 주행거리 (km)" htmlFor="odometer">
+          <Field label={t.vehicles.odometer.label(f.distanceUnit)} htmlFor="odometer">
             <div className="flex gap-2">
               <Input
                 id="odometer"
                 type="number"
                 required
                 min={0}
-                max={MAX_ODOMETER}
+                max={Math.floor(fromKm(unitSystem, MAX_ODOMETER))}
                 className="flex-1 tabular-nums"
                 value={odometer}
                 onChange={(event) => setOdometer(event.target.value)}
               />
               <Button type="submit" variant="secondary" disabled={pending}>
-                {pending ? '저장 중…' : '갱신'}
+                {pending ? t.common.saving : t.vehicles.odometer.submit}
               </Button>
             </div>
           </Field>

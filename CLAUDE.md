@@ -206,7 +206,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
 13. **서비스는 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드에만 `@Transactional`.**
     메서드 쪽이 클래스 쪽을 덮어쓴다. 새 메서드를 깜빡했을 때 기본이 안전한 쪽(읽기 전용)이라
     쓰기가 실패해서 바로 드러난다. 반대로 하면 아무 일도 안 일어나 영영 모른다.
-14-1. **빈 문자열로 저장하지 않는다.** 선택 입력 칸(전화번호·메모·정비 설명)을 비우면
+14-1. **빈 문자열로 저장하지 않는다.** 선택 입력 칸(메모·정비 설명)을 비우면
     `''` 가 아니라 `null` 로 저장한다(2026-09-23 에 메모·설명까지 맞췄다). 그대로 두면
     "없음" 이 두 모양이 되고, **내보낸 JSON 에도 그 차이가 그대로 나간다.**
     자르는 자리는 서비스다 — DTO 접근자에서 자르면 부분 수정에서 "안 보냄"과 "지움"이 같아진다.
@@ -248,6 +248,20 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     **응답 시간도 같게 맞춘다**(2026-09-26). 없는 이메일이어도 `dummyHash` 와 BCrypt 비교를
     한 번 돌린다 — 건너뛰면 그쪽만 0.1ms, 있는 쪽은 60ms 라 550배 차이가 났다.
     `dummyHash` 는 같은 인코더로 만든다. 상수로 박으면 강도(라운드 수)를 바꿀 때 혼자 옛 비용에 남는다.
+
+16. **오류는 코드로 말한다** (2026-09-29, 영어권 대응). 우리 예외는 전부 `ApiException` 을 이어받고
+    생성자가 `ErrorCode` 를 **필수로** 받는다. 응답은 `{ code, message, field?, retryAfterMinutes? }` 이고
+    화면은 `code` 로 자기 언어의 문구를 고른다. `message` 는 로그·개발자용 한국어 원문이라
+    **화면에 그대로 내보내지 않는다**(영어 사용자에게 한국어가 뜬다).
+    코드를 더하면 세 곳을 같이 고친다: 백엔드 `ErrorCode`, 프론트 `ERROR_CODES`, 사전 두 벌의
+    `errors.codes` — 마지막은 `errorMessage.test.ts` 가 빠진 것을 잡는다.
+
+17. **화면에 문구를 직접 적지 않는다** (2026-09-29). 문구는 `shared/i18n/messages/{ko,en}.ts` 에만 있고
+    화면은 `useI18n().t` 로 읽는다. 숫자·금액·날짜·거리·연비는 **반드시 `f`** 로 — `toLocaleString()`·
+    `toFixed()` 로 직접 적으면 그 자리만 한국어 표기·km 로 남는다.
+    **저장 단위는 km·L·통화의 최소 단위다.** 입력칸은 화면 단위(마일·갤런·달러)로 받고 저장 직전에 바꾼다.
+    손대지 않은 칸은 저장값을 그대로 보낸다 — 마일로 바꿨다 되돌리면 1km 가 어긋나 **아무것도 안 고친
+    수정이 주행거리를 바꾼다.**
 
 ## 디자인 시스템 (프론트엔드)
 
@@ -294,7 +308,8 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
    유리를 받쳐 주던 상단 방사형 광채(`--glow`)도 함께 지웠다 — 유리가 없으니 화면 위쪽이
    뿌옇게 뜨는 얼룩으로만 남았다. 그림자도 여전히 쓰지 않는다.
    지금 면이 하는 일은 둘뿐이다: 아주 옅은 배경 농도, 그리고 1px 괘선.
-6. **폰트는 시스템 폰트만.** `-apple-system` → `SF Pro` → `Apple SD Gothic Neo`(한글).
+6. **폰트는 시스템 폰트만.** `-apple-system` → `SF Pro` → `Apple SD Gothic Neo`(한글) →
+   `Segoe UI`·`Malgun Gothic`(윈도) → `Roboto`·`Noto Sans`(안드로이드·리눅스). 뒤의 넷은 2026-09-29 영어권 대응 때.
    웹폰트를 받지 않으므로 글꼴이 바뀌며 깜빡이는 현상(FOUT)이 없다.
    **글꼴이 하나뿐이므로 위계는 크기·굵기·자간 셋으로만 만든다.** 그래서 단계 사이를
    과감하게 벌린다 — 제목 52px 과 본문 15px 은 3.5배 차이다. 어중간하게 벌리면
@@ -568,7 +583,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   ├── domain/
     │   │   └── entity/
     │   │       ├── User.java                 @Entity(users). uk_users_email 유니크 제약.
-    │   │       │                             changeNickname()/changePhone() — setter 없음.
+    │   │       │                             changeNickname() — setter 없음. 전화번호는 받지 않는다(Phase 7).
     │   │       │                             설정 넷(language·timeZone·currency·unitSystem, Phase 7).
     │   │       │                             시간대는 IANA 지역 이름만(고정 오프셋은 서머타임 미반영),
     │   │       │                             통화는 ISO 4217 만 — 검증은 JDK 목록에 맡긴다
@@ -587,7 +602,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   ├── request/
     │   │   │   ├── signup/
     │   │   │   │   └── SignUpRequest.java    @NotBlank/@Email/@Size(min=8,max=100).
-    │   │   │   │                             phone은 선택이지만 @Size(max=20) 필수
+    │   │   │   │                             설정 넷(언어·시간대·통화·단위)은 선택 — 화면이 브라우저 값으로 채움
     │   │   │   ├── login/
     │   │   │   │   └── LoginRequest.java     email, password
     │   │   │   └── profile/
@@ -599,7 +614,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                                 new 의 길이 제한은 가입과 같아야 한다
     │   │   └── response/
     │   │       └── profile/
-    │   │           └── UserResponse.java     from() 팩토리. password는 절대 담지 않음
+    │   │           └── UserResponse.java     from() 팩토리. password는 절대 담지 않음. 설정 넷 포함
     │   ├── service/
     │   │   ├── time/
     │   │   │   └── UserToday.java            사용자 시간대 기준 "오늘"(Phase 7). 서버 시간대와 무관.
@@ -955,13 +970,19 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │                                 **블랙리스트가 아닌 이유**: 엔티티에 필드를 더하면
         │   │                                 자동으로 정렬 대상이 된다. 막을 것을 세는 쪽은 뒤처진다
         │   └── response/                     요청 DTO가 없어 response만 있다
-        │       ├── error/ErrorResponse.java   record(message)
+        │       ├── error/ErrorResponse.java   record(code, message, field?, retryAfterMinutes?).
+        │       │                              화면은 code 로 자기 언어의 문구를 고른다(Phase 7).
+        │       │                              message 는 로그·개발자용 한국어 원문
         │       └── page/PageResponse.java     record<T>(items/page/size/totalElements/
         │                                      totalPages/hasNext) + Page<T>.from()
         └── exception/                        ※ 기능별로 나누지 않는다. 세 기능이 모두 쓰는
             │                                   것이라 어느 한 기능으로 옮기면 잘못된 방향의
             │                                   의존이 생긴다
+            ├── code/ErrorCode.java           응답 오류의 종류 30개. 이름이 API 계약이라 프론트
+            │                                 shared/api/types 의 ERROR_CODES 와 같아야 한다
             ├── type/                         예외 타입만 모아 둔다 (상태 코드 하나당 하나)
+            │   ├── ApiException.java                   공통 부모. ErrorCode 필수 — 코드 없이
+            │   │                                        던질 수 없게 생성자가 받는다
             │   ├── ConflictException.java              409 전용
             │   ├── InvalidRequestException.java        400 전용. 지금까지 400 은 전부
             │   │                                        프레임워크가 만들었는데, 검증 애노테이션으로
@@ -1028,7 +1049,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 283개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 284개.
 
     src/test/java/com/odolog/app/
     ├── common/
@@ -1158,11 +1179,15 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         ├── env.d.ts                  import.meta.env 타입 선언
         │
         ├── app/  ──────────────────── 조립층. **여러 기능을 동시에 알아도 되는 유일한 자리**
-        │   ├── root/App.tsx          라우트 10개 정의 + Header 배치. 본문 폭 76rem
+        │   ├── root/App.tsx          라우트 12개 정의 + Header·Footer 배치. 본문 폭 76rem
+        │   ├── i18n/I18nProvider.tsx 언어·단위·통화·시간대 공급(Phase 7). 로그인하면 계정 설정,
+        │   │                         아니면 브라우저 추정값. 사용자를 알아야 해서 shared 가 아니라 여기
+        │   ├── legal/LegalPage.tsx   /privacy · /terms. 문구는 사전(t.legal). 운영자 정보는 자리표시자
         │   ├── routing/ProtectedRoute.tsx
         │   │                         로그인 안 했으면 /login으로. loading 중엔 대기
         │   ├── layout/
         │   │   ├── Header.tsx        로고 · 화면 모드 · (로그인 | 닉네임·로그아웃)
+        │   │   ├── Footer.tsx        모든 화면 아래. 약관·개인정보처리방침 링크
         │   │   └── AuthLayout.tsx    로그인·회원가입을 감싸는 2단 레이아웃(lg 이상).
         │   │                         ProtectedRoute 와 같은 "라우트를 감싸는 울타리"라 여기 있다
         │   ├── home/
@@ -1249,6 +1274,13 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
             │   │                         204 처리 / 401 전역 핸들러 등록 창구
             │   └── types/types.ts        PageResponse<T> / ErrorResponse 둘뿐.
             │                             기능별 DTO는 features/*/api/types/ 로 옮겼다
+            ├── i18n/                     화면 문구(Phase 7). 라이브러리 없이 직접 — 사전은 객체라
+            │   │                         t.vehicles.list.title 처럼 쓰고, 키가 틀리면 tsc 가 잡는다
+            │   ├── messages/ko.ts        한국어판. Messages 타입의 원본
+            │   ├── messages/en.ts        영어판. `en: Messages` 라 모양이 다르면 컴파일 실패
+            │   ├── context/I18nContext.ts useI18n() → { t, f, language, locale, timeZone, currency, unitSystem }
+            │   └── errors/errorMessage.ts 잡은 오류 → 문구. 서버 code 로 고르고, 모르면 호출부 문구.
+            │                             **서버 원문(message)은 화면에 내보내지 않는다** — 한국어라서
             ├── theme/                    라이트/다크. AuthContext와 똑같이 3파일로 나뉜다
             │   ├── context/ThemeContext.ts   Theme 타입 + localStorage 키 + useTheme 훅
             │   ├── provider/ThemeProvider.tsx 저장·복원, OS 설정 추적, View Transition 전환
@@ -1257,6 +1289,9 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
             │   ├── locale/preferences.ts 가입 때 브라우저에서 읽는 설정 넷(Phase 7). 통화·단위는
             │   │                         태그에 **적힌** 지역으로만 추정 — maximize() 는 en → US 라
             │   │                         영국 사용자도 달러로 시작한다. 목록 밖 지역은 안 보낸다
+            │   ├── units/units.ts        km·L ↔ 마일·갤런, km/L ↔ L/100km·mpg. **저장은 언제나 km·L**,
+            │   │                         변환은 화면에서만. 주행거리 판정(looksBigJump)도 km 로 바꾼 뒤
+            │   ├── money/money.ts        통화의 최소 단위 ↔ 입력칸 값. 소수 자리는 Intl 에서
             │   ├── limits/limits.ts      주행거리·금액 상한 + 비밀번호 바이트 계산.
             │   │                         maxLength 는 글자 수만 세서 한글 24자(=72바이트)를
             │   │                         못 막는다 — 저장 전에 알려 주려면 직접 세야 한다.
@@ -1317,7 +1352,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 ### 프론트엔드 — 테스트
 
 **테스트는 대상 파일 옆에 둔다**(`format.ts` 옆에 `format.test.ts`). 백엔드가 테스트 경로를
-대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 50개**다.
+대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 70개**다.
 
     cn-usage.test.ts        cn() 과 cva() 인자에 타입 스케일 토큰이 없는지 소스를 훑는다.
                             **이 가드가 없던 8일 동안 CardTitle 이 17px·600 을 잃고
@@ -1416,7 +1451,7 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
 
 새 작업을 마치면 `HISTORY.md` 맨 위에 항목을 더하고, 아래 체크리스트에서 그 줄을 지운다.
 
-**지금 열려 있는 것은 둘이다: Phase 6 의 눈 확인, 그리고 Phase 7 영어권 대응(2026-09-29 착수).**
+**지금 열려 있는 것은 눈 확인이다: Phase 6(6-B~6-E) 과 Phase 7(7-H). Phase 7 의 코드는 끝났다.**
 ## 완성까지의 로드맵
 
 **"완성"의 정의**: 회원/차량/정비 이력을 관리하는 백엔드 API + 그걸 실제로 쓸 수 있는
@@ -1438,7 +1473,7 @@ vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
   이력 목록/등록/수정/삭제, 다음 정비 시점(주행거리+날짜) 표시.
 - **Phase 6 — 다듬기** (코드는 사실상 끝. **눈 확인만 남았다**)
   로딩/에러/빈 상태·반응형·포맷팅은 재설계 때 함께 끝났다. 남은 건 브라우저에서 실제로 보는 일.
-- **Phase 7 — 영어권 대응** (2026-09-29 착수)
+- **Phase 7 — 영어권 대응** (2026-09-29 코드 완료. **눈 확인·운영 DB 확인만 남았다**)
   금액·시간대·단위·언어를 한국 전용에서 풀어낸다. 아래 "Phase 7" 에 순서와 결정이 있다.
   배포는 여전히 범위 밖이다 — 이 단계는 **로컬에서 영어권 사용자로도 쓸 수 있게** 하는 것까지.
 
@@ -2059,9 +2094,9 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ### Phase 6 과의 순서
 
-Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한다. Phase 7 은 화면을 넓게 건드리므로
-**6-B(1회차)를 먼저 도는 것이 원칙상 맞다.** 다만 **7-1 · 7-2 는 백엔드가 대부분이고 화면이 거의 안
-바뀌어서** 1회차와 겹쳐 진행해도 판정을 흐리지 않는다. 7-3 부터는 폼과 표시가 바뀌므로 그 전에 1회차를 끝낸다.
+Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한다. 계획은 7-3 부터 6-B 뒤였지만
+**사용자 결정으로 Phase 7 을 먼저 끝냈다**(2026-09-29). 그래서 6-B 를 돌 때 **화면은 이미 번역·단위가 들어간
+상태**다 — 6-B 항목의 한국어 문구는 한국어 계정 기준으로 그대로 맞고, 영어·단위는 7-H 에서 따로 본다.
 
 ### 먼저 정해 둔 것 (지켜야 할 것)
 
@@ -2095,55 +2130,48 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 
 ### 체크리스트
 
-순서는 의존 관계다. **7-1 이 나머지 전부의 바탕이다** — 설정을 저장할 자리가 먼저 있어야 한다.
+**코드는 2026-09-29 에 전부 끝났다.** 사용자 요청으로 한 번에 진행했다(파일 1~2개 규칙과 "화면은 6-B 뒤"
+순서를 이번에만 풀었다). 무엇을 왜 그렇게 했는지는 `HISTORY.md` 의 같은 날 항목에 있다.
+남은 것은 **운영 DB 확인 · 눈 확인 · 사용자가 채워야 하는 것** 셋이다.
 
-- [x] **7-1a 엔티티** (2026-09-29) — `user/domain/type/{UnitSystem,Language}` + `User` 칸 넷.
-      기존 행은 `KO` / `Asia/Seoul` / `KRW` / `KM_PER_L`(`@ColumnDefault`). enum 은 `@Convert` — 위 "개발 환경" 의 CHECK 함정.
-      `odolog_test` 에 옛 `users` 를 만들어 `ddl-auto: update` 로 띄워 봤다: 기존 행이 기본값으로 채워지고 CHECK 없음
-- [ ] **7-1a 운영 반영 확인** — IntelliJ 로 한 번 띄운 뒤 `SHOW CREATE TABLE users` 에 칸 넷이 있고 **CHECK 가 없는지**
-- [x] **7-1b 프로필 API** (2026-09-29) — `PATCH /api/users/me` 가 설정 넷을 받고 `UserResponse` 에 싣는다.
-      목록 검사(IANA·ISO 4217)는 엔티티, DTO 는 길이만. 없는 enum 이름은 역직렬화에서 400
-- [x] **7-1c 가입 API** (2026-09-29) — 가입 요청에 설정 넷을 선택 필드로. 안 보내면 엔티티 기본값.
-      가입·프로필이 `UserService.applySettings` 하나를 공유한다
-- [x] **7-1d 가입 화면** (2026-09-29) — `shared/lib/locale/preferences` 가 브라우저 값을 읽어 가입 요청에 싣는다.
-      입력칸은 없다. **Phase 6 눈 확인 전에 화면을 건드린 예외**(사용자 결정) — 확인 항목은 B-09-1
-- [ ] **7-1e 프로필의 설정 칸** — 추정이 틀린 사람(한국어 브라우저로 미국에 사는 사람)이 고칠 자리.
-      API 는 이미 있다. 화면 작업이라 6-B 뒤로
-- [x] **7-2a "오늘" 을 사용자 기준으로** (2026-09-29) — `user/service/time/UserToday`.
-      `GarageSummaryController` · `VehicleService`(지남 수) · `MaintenanceRecordService`(다음 정비) 세 곳.
-      `main` 에 `LocalDate.now()` 는 이제 0건이다 — 새로 생기면 그게 버그다
-- [x] **7-2b 미래 날짜 검사** (2026-09-29) — `@PastOrPresent` 6곳을 걷어내고 `UserToday.rejectFuture` 로.
-      정비·주유 등록/수정 네 곳 + 가져오기(저장 전에 전부 검사 — 하나라도 미래면 차량도 안 들어간다).
-      **새 날짜 필드에 `@PastOrPresent` 를 다시 붙이지 않는다** — JVM 시간대만 알고 사용자를 모른다.
-      화면의 `max`·드럼 휠은 여전히 **브라우저** 시간대다. 프로필 시간대와 브라우저가 다른 사람은
-      화면이 허용한 날짜가 400 이 될 수 있다 — 7-1e 에서 화면이 프로필 시간대를 쓰게 맞춘다
-- [x] **7-3a 기록의 통화 칸** (2026-09-29) — `maintenance_records.currency` · `fuel_records.currency`
-      (`varchar(3)`, 기존 행 `KRW`). 등록할 때 소유자 통화를 싣고, 응답 DTO 에도 싣는다.
-      `MAX_AMOUNT` 는 숫자 그대로 두고 뜻만 "최소 단위 1억"(원화 1억 · 달러 100만)으로 바꿨다.
-      ⚠️ **7-3d 전까지는 과도기다**: 폼은 여전히 원 단위 정수를 받는데 미국 브라우저로 가입하면 통화가 `USD` 라,
-      그 사람이 `45` 를 넣으면 $0.45 로 저장된다. 배포 전이라 실제 피해는 없지만 **7-3d 전에 배포하지 않는다**
-- [ ] **7-1a 운영 반영 확인에 더해** — `SHOW CREATE TABLE maintenance_records` · `fuel_records` 에 `currency` 가 붙었는지
-- [x] **7-3b 백업** (2026-09-29) — 내보내기 기록마다 `currency`. 가져오기는 파일의 통화를 쓰고
-      **칸 없는 옛 파일은 `KRW`**(지금 사용자 설정이 아니다), 모르는 통화는 400
-- [ ] **7-3c 합계** — 홈 요약·연비 카드의 합계를 통화별로. 사용자 통화가 아닌 기록은 빼고 **뺀 수를 밝힌다**
-      (연비의 `excludedSegmentCount` 와 같은 방식 — 말없이 빼면 거짓말)
-- [ ] **7-3d 금액 입력** — 입력칸의 소수 자리는 통화에서 얻는다
-      (`Intl.NumberFormat(…, {currency}).resolvedOptions().maximumFractionDigits`). 화면 작업이라 6-B 뒤로
-- [ ] **7-4 표시 포맷** — `format.ts` 를 전부 `Intl` 로. `ko-KR` 고정 · `formatWon` · `formatMonth`(`년 월`) ·
-      `formatDate`(`2026. 7. 15.`) · `formatCompact`(만·억 → `notation: 'compact'` 로 K·M 과 만·억 둘 다).
-      날짜 휠의 년/월/일 순서도 `formatToParts` 로 로케일을 따른다(미국은 월/일/년)
-- [ ] **7-5 단위 변환** — `shared/lib/units` 한 곳에. 폼은 입력을 km·L 로 바꿔 보내고, 표시는 되돌린다.
-      연비는 km/L 로 받아 네 표기로. `리터당 약 N원` 도 부피 단위를 따른다
-- [ ] **7-6 프런트 번역 구조** — 58개 파일, 한국어 약 540줄. 라이브러리(`react-i18next`)와 직접 구현 중 착수 때 정한다
-      (Lombok 을 안 쓰는 것과 같은 학습 관점이면 작은 직접 구현도 대안이다).
-      `index.html` 의 `lang="ko"` · `<title>` · description 도 여기서. 입력 예시(`12가3456` · `현대` · `아반떼`)와
-      비밀번호 안내(`한글은 24자까지`)는 언어별 문구로 흡수된다
-- [ ] **7-7 백엔드 오류 코드** — `ErrorResponse` 에 `code` 를 더해 화면이 번역한다. 번역을 화면 한 곳에 모으려고
-      서버의 `messages_*.properties` 대신 이쪽을 고른다. 백로그의 `fieldErrors` 와 **같이 설계한다.**
-      `message` 를 안 적은 검증 애노테이션은 **서버 JVM 로케일**로 기본 문구가 나간다 — 이것도 코드로 덮는다
-- [ ] **7-8 재설정 메일** — 사용자 `locale` 로 제목·본문 두 벌. 없는 주소는 메일이 안 나가므로 가입 여부 노출과 무관
-- [ ] **7-9 공개 전** — 개인정보처리방침·약관 화면(GDPR·CCPA), **전화번호 수집 제거**(받기만 하고 어디에도
-      안 쓴다 — 최소 수집 원칙), 발송을 Gmail SMTP 에서 전용 서비스로, 폰트 목록에 `lang` 별 대체 글꼴
+#### 운영 DB (IntelliJ 로 한 번 띄운 뒤)
+
+- [ ] `SHOW CREATE TABLE users` — `language` · `time_zone` · `currency` · `unit_system` 넷이 있고 **CHECK 가 없는지**
+- [ ] `SHOW CREATE TABLE maintenance_records` · `fuel_records` — `currency varchar(3) NOT NULL DEFAULT 'KRW'`
+- [ ] **전화번호 컬럼 지우기** — 엔티티에서 뺐지만 `ddl-auto` 는 컬럼을 지우지 않는다. 이미 받은 번호가
+      그대로 남아 있으면 "받지 않는다" 가 거짓말이 된다(README 의 "이미 쓰던 DB" 에 SQL):
+
+          /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; ALTER TABLE users DROP COLUMN phone;"
+
+#### 눈 확인 (7-H) — 6-B 와 같은 규칙: 적어만 두고 한 바퀴 뒤 모아서 고친다
+
+- [ ] **H-1** 브라우저 언어를 영어(`en-US`)로 두고 비로그인 `/` → 랜딩이 영어, 미리보기 숫자가 `mi`·`mpg`·`7/15/2026` 인지
+- [ ] **H-2** 영어로 가입 → Network 의 가입 요청에 `language: EN` · `currency: USD` · `unitSystem: MPG_US` · 시간대
+- [ ] **H-3** 차량 등록 후 주행거리 `10000` 입력 → 저장된 값(DB)이 `16093` km 인지. 다시 열었을 때 `10,000 mi` 인지
+- [ ] **H-4** 정비 비용 `45.67` → DB `4567` + `USD`, 목록 `$45.67`. 원화 사용자의 비용 칸은 **소수점이 막히는지**(step 1)
+- [ ] **H-5** 주유 `10` gal · `$40` → 목록 `10.00 gal`, 입력 중 안내 `About $4.00 per gal`
+- [ ] **H-6** 연비 카드가 `mpg` 로, `L/100km` 로 바꾸면 추이 그래프 아래에 **"작을수록 좋음"** 안내가 붙는지
+- [ ] **H-7** 프로필 → "Language & units" 에서 한국어로 바꾸면 **저장 즉시** 화면 전체가 바뀌는지(새로고침 없이)
+- [ ] **H-8** 통화를 KRW 로 바꾼 뒤 홈 → 달러 기록이 합계에서 빠지고 **"통화가 KRW 가 아닌 기록 N건…"** 안내가 뜨는지.
+      최근 활동의 달러 기록은 **그대로 `$45.67`** 인지(한 건 표시는 자기 통화)
+- [ ] **H-9** 시간대를 `Pacific/Auckland` 로 두고, 서울이 아직 전날인 시각에 **오클랜드의 오늘**로 정비 저장 → 201
+- [ ] **H-10** 영어 화면에서 오류 문구가 전부 영어인지 — 같은 번호판(409), 틀린 비밀번호(401), 백엔드를 끈 채 로그인
+- [ ] **H-11** 날짜 휠(터치 기기) 순서가 영어에서 **월·일·년**, 칸 옆 `년/월/일` 글자가 없는지
+- [ ] **H-12** 푸터의 Privacy · Terms, 가입 폼 아래 동의 문장의 두 링크
+- [ ] **H-13** 영어 비밀번호 재설정 메일 제목이 `[OdoLog] Reset your password` 인지(메일 설정이 있을 때)
+- [ ] **H-14** Windows 에서 글꼴이 `Segoe UI`(영문)·`맑은 고딕`(한글)으로 나오는지
+
+#### 사용자가 채워야 하는 것
+
+- [ ] **약관·개인정보처리방침의 운영자 이름·연락처** — 지금은 `[운영자 이름] · [연락 이메일]` 자리표시자와
+      "공개 전 초안" 안내가 떠 있다(`shared/i18n/messages/{ko,en}.ts` 의 `legal`). **법률 검토 전에 공개하지 않는다**
+- [ ] **메일 발송 서비스** — 코드는 SMTP 설정만 바꾸면 된다(`MAIL_HOST` 등 환경변수). Gmail 은 발송량 제한이 있어
+      공개 서비스에는 전용 서비스(SES·Postmark 등)가 현실적이다. 무엇을 쓸지는 배포를 정할 때
+
+#### 이번에 정하지 않은 것 (백로그로)
+
+- `fieldErrors` — 응답에 `field` 하나는 생겼다(첫 오류의 칸). 여러 칸을 한 번에 돌려주는 것은 여전히 백로그
+- 로그인 전 화면의 언어 전환 버튼 — 지금은 브라우저 언어로만 정한다. 불편하다는 말이 나오면 그때
 
 ---
 
@@ -2177,8 +2205,8 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (283개)
-- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (50개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (284개)
+- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (70개)
 
 ---
 

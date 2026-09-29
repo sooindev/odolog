@@ -1,5 +1,7 @@
 import { cn } from 'cn'
 
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+
 /**
  * 로딩·에러·안내 표시
  * 빈 상태는 화면마다 달라 제외
@@ -7,13 +9,15 @@ import { cn } from 'cn'
 
 /** 스피너 대신 밝기만 오가는 점 */
 export function LoadingText({ className }: { className?: string }) {
+  const { t } = useI18n()
+
   return (
     <div
       role="status"
       className={cn('flex items-center gap-2.5 text-sm text-muted-foreground', className)}
     >
       <span className="size-1.5 animate-breathe bg-current" aria-hidden="true" />
-      <span>불러오는 중…</span>
+      <span>{t.common.loading}</span>
     </div>
   )
 }

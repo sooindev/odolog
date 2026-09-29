@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.controller.rest;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.user.domain.entity.User;
@@ -133,7 +134,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("로그인한 사용자가 차량을 등록하면 201과 응답 바디를 반환한다")
     void registerSuccess() throws Exception {
-        User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        User owner = new User("owner@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
@@ -153,7 +154,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("차량 단건 조회 성공")
     void findOneSuccess() throws Exception {
-        User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        User owner = new User("owner@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
@@ -169,17 +170,20 @@ class VehicleControllerTest {
     @DisplayName("존재하지 않는 차량을 조회하면 404")
     void findOneNotFound() throws Exception {
         when(vehicleService.findOwnedVehicle(1L, "999"))
-                .thenThrow(new ResourceNotFoundException("존재하지 않는 차량입니다: 999"));
+                .thenThrow(new ResourceNotFoundException(ErrorCode.VEHICLE_NOT_FOUND, "존재하지 않는 차량입니다: 999"));
 
         mockMvc.perform(get("/api/vehicles/999").session(loginSessionOf(1L)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("VEHICLE_NOT_FOUND"))
+                // 해당 없는 칸은 null 이 아니라 아예 없음
+                .andExpect(jsonPath("$.field").doesNotExist());
     }
 
     @Test
     @DisplayName("본인 소유가 아닌 차량의 주행거리를 갱신하려 하면 404 — 존재 자체를 알리지 않는다")
     void updateOdometerForbidden() throws Exception {
         when(vehicleService.updateOdometer(eq(1L), eq("10"), any(UpdateOdometerRequest.class)))
-                .thenThrow(new ResourceNotFoundException("존재하지 않는 차량입니다: 1"));
+                .thenThrow(new ResourceNotFoundException(ErrorCode.VEHICLE_NOT_FOUND, "존재하지 않는 차량입니다: 1"));
 
         mockMvc.perform(patch("/api/vehicles/10/odometer")
                         .session(loginSessionOf(1L))
@@ -202,7 +206,7 @@ class VehicleControllerTest {
     @DisplayName("단건 응답의 지남 수는 0 이 아니라 null — '안 셌다' 와 '없다' 는 다르다")
     void singleResponseLeavesOverdueCountNull() throws Exception {
         // 단건 응답의 지남 수는 null. 0 은 지난 것 없음이라는 다른 뜻
-        User owner = new User("owner@odolog.com", "encoded", "닉네임", null);
+        User owner = new User("owner@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
@@ -227,7 +231,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("상한 안쪽은 그대로 통과한다 — 정상 입력을 막으면 안 된다")
     void updateOdometerWithinBound() throws Exception {
-        User owner = new User("owner@odolog.com", "encoded", "닉네임", null);
+        User owner = new User("owner@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
@@ -245,7 +249,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("차량 정보를 수정하면 200과 바뀐 값을 돌려준다")
     void updateVehicle() throws Exception {
-        User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        User owner = new User("owner@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "기아", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
@@ -273,7 +277,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("빈 본문은 아무 필드도 안 바꾸겠다는 뜻이라 통과한다")
     void updateVehicleWithEmptyBodyPasses() throws Exception {
-        User owner = new User("owner@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        User owner = new User("owner@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", 10L);

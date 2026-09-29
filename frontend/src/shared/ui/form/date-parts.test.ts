@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { daysInMonth, join, lastSelectableDay, lastSelectableMonth, parse } from './date-parts'
+import { daysInMonth, join, lastSelectableDay, lastSelectableMonth, parse, partOrder } from './date-parts'
 
 describe('daysInMonth — 윤년을 직접 계산하지 않는다', () => {
   it('달마다 마지막 날이 다르다', () => {
@@ -93,5 +93,13 @@ describe('parse — 빈 값·깨진 값', () => {
     expect(parse('')).toEqual({ year: 2026, month: 7, day: 15 })
     expect(parse('2026-07')).toEqual({ year: 2026, month: 7, day: 15 })
     expect(parse('오늘')).toEqual({ year: 2026, month: 7, day: 15 })
+  })
+})
+
+describe('칸 순서', () => {
+  it('로케일을 따른다', () => {
+    expect(partOrder('ko-KR')).toEqual(['year', 'month', 'day'])
+    expect(partOrder('en-US')).toEqual(['month', 'day', 'year'])
+    expect(partOrder('en-GB')).toEqual(['day', 'month', 'year'])
   })
 })

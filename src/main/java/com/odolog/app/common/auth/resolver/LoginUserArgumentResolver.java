@@ -1,5 +1,6 @@
 package com.odolog.app.common.auth.resolver;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.auth.annotation.LoginUser;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
@@ -26,7 +27,7 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
         HttpSession session = httpRequest.getSession(false);
 
         if (session == null || session.getAttribute(SessionConst.LOGIN_USER_ID) == null) {
-            throw new AuthenticationFailedException("로그인이 필요합니다.");
+            throw new AuthenticationFailedException(ErrorCode.LOGIN_REQUIRED, "로그인이 필요합니다.");
         }
 
         return session.getAttribute(SessionConst.LOGIN_USER_ID);

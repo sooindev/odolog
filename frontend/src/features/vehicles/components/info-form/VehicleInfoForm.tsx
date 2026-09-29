@@ -7,7 +7,8 @@ import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/feedback/state'
-import { ApiError } from '@/shared/api/client/client'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { updateVehicle } from '@/features/vehicles/api/endpoints/endpoints'
 import type {
   VehicleResponse,
@@ -25,15 +26,16 @@ export function VehicleInfoForm({
   vehicle: VehicleResponse
   onUpdated: (vehicle: VehicleResponse) => void
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
 
   return (
     <Card size="sm">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>차량 정보</CardTitle>
+        <CardTitle>{t.vehicles.info.title}</CardTitle>
         {!open && (
           <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-            수정
+            {t.common.edit}
           </Button>
         )}
       </CardHeader>
@@ -55,12 +57,12 @@ export function VehicleInfoForm({
           </div>
         ) : (
           <dl className="flex flex-col gap-3">
-            <InfoRow label="번호판" value={vehicle.plateNumber} />
-            <InfoRow label="제조사" value={vehicle.manufacturer} />
-            <InfoRow label="모델" value={vehicle.modelName} />
+            <InfoRow label={t.vehicles.form.plate} value={vehicle.plateNumber} />
+            <InfoRow label={t.vehicles.form.manufacturer} value={vehicle.manufacturer} />
+            <InfoRow label={t.vehicles.form.model} value={vehicle.modelName} />
             <InfoRow
-              label="연식"
-              value={vehicle.modelYear === null ? '미상' : `${vehicle.modelYear}년`}
+              label={t.vehicles.form.modelYear}
+              value={vehicle.modelYear === null ? t.vehicles.info.unknown : t.vehicles.info.year(vehicle.modelYear)}
             />
           </dl>
         )}
@@ -88,6 +90,7 @@ function EditForm({
   onUpdated: (vehicle: VehicleResponse) => void
   onCancel: () => void
 }) {
+  const { t } = useI18n()
   // 입력 중 빈 값 표현을 위해 문자열 보관
   const [plateNumber, setPlateNumber] = useState(vehicle.plateNumber)
   const [manufacturer, setManufacturer] = useState(vehicle.manufacturer)
@@ -123,9 +126,7 @@ function EditForm({
       onUpdated(await updateVehicle(vehicle.id, request))
     } catch (caught) {
       // 409 = 이미 등록한 번호판
-      setError(
-        caught instanceof ApiError ? caught.message : '차량 정보 수정에 실패했습니다.',
-      )
+      setError(errorMessage(caught, t, t.vehicles.info.failed))
     } finally {
       setPending(false)
     }
@@ -133,7 +134,7 @@ function EditForm({
 
   return (
     <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-      <Field label="번호판" htmlFor="edit-plate-number">
+      <Field label={t.vehicles.form.plate} htmlFor="edit-plate-number">
         <Input
           id="edit-plate-number"
           // 번호판에 첫 포커스
@@ -146,7 +147,7 @@ function EditForm({
       </Field>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="제조사" htmlFor="edit-manufacturer">
+        <Field label={t.vehicles.form.manufacturer} htmlFor="edit-manufacturer">
           <Input
             id="edit-manufacturer"
             required
@@ -156,7 +157,7 @@ function EditForm({
           />
         </Field>
 
-        <Field label="모델" htmlFor="edit-model-name">
+        <Field label={t.vehicles.form.model} htmlFor="edit-model-name">
           <Input
             id="edit-model-name"
             required
@@ -168,7 +169,7 @@ function EditForm({
       </div>
 
       {/* required 없음. 연식 없는 예전 데이터도 다른 칸 수정 가능, 비우면 미전송 */}
-      <Field label="연식" htmlFor="edit-model-year" hint="비워 두면 바꾸지 않습니다">
+      <Field label={t.vehicles.form.modelYear} htmlFor="edit-model-year" hint={t.vehicles.info.yearHint}>
         <Input
           id="edit-model-year"
           type="number"
@@ -184,10 +185,10 @@ function EditForm({
 
       <FormActions>
         <Button type="submit" disabled={pending}>
-          {pending ? '저장 중…' : '저장'}
+          {pending ? t.common.saving : t.common.save}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          취소
+          {t.common.cancel}
         </Button>
       </FormActions>
     </form>

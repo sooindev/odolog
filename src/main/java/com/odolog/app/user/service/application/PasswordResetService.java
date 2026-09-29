@@ -1,5 +1,6 @@
 package com.odolog.app.user.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
 import com.odolog.app.common.auth.session.LoginSessionRegistry;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
@@ -78,7 +79,7 @@ public class PasswordResetService {
     @Transactional
     public void request(String email) {
         String limitKey = RATE_LIMIT_PREFIX + email;
-        rateLimiter.checkNotLocked(limitKey, "비밀번호 재설정 요청이 너무 많습니다.");
+        rateLimiter.checkNotLocked(limitKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
         rateLimiter.recordFailure(limitKey);
 
         // 만료 토큰 정리. 토큰이 쌓이는 유일한 경로라 스케줄러 불필요
@@ -100,7 +101,7 @@ public class PasswordResetService {
 
         // 실제 발송은 커밋 후 다른 스레드(PasswordResetMailer). 응답 시간 차이 방지
         try {
-            mailer.send(user.getEmail(), token, VALID_MINUTES);
+            mailer.send(user.getEmail(), token, VALID_MINUTES, user.getLanguage());
         } catch (RuntimeException e) {
             // 발송 예약 실패도 삼킴. 가입된 주소에서만 500 이 나는 것 방지
             log.error("비밀번호 재설정 메일 예약 실패.", e);
@@ -114,7 +115,7 @@ public class PasswordResetService {
 
         PasswordResetToken token = tokenRepository.findByTokenHash(hash(request.token()))
                 .filter(candidate -> candidate.isUsable(now))
-                .orElseThrow(() -> new AuthenticationFailedException(
+                .orElseThrow(() -> new AuthenticationFailedException(ErrorCode.RESET_LINK_INVALID,
                         "링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요."));
 
         token.getUser().changePassword(passwordEncoder.encode(request.newPassword()));

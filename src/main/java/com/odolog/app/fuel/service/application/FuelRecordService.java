@@ -1,5 +1,6 @@
 package com.odolog.app.fuel.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.fuel.domain.calculation.FuelAnomaly;
 import com.odolog.app.fuel.domain.calculation.FuelEfficiency;
@@ -131,15 +132,23 @@ public class FuelRecordService {
     }
 
     public FuelSummaryResponse summary(Long requesterId, String vehicleId) {
-        Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
+        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Long id = vehicle.getId();
+        String currency = vehicle.getOwner().getCurrency();
 
         List<FuelRecord> records = fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(id);
 
-        // 건수·비용·주유량은 전체 기준. 초기화 대상은 연비만
+        // 건수·주유량은 전체 기준. 초기화 대상은 연비만
+        // 비용은 사용자 통화만. 다른 통화는 더할 수 없어 건수만 공개
         long totalCost = 0;
+        int otherCurrency = 0;
         BigDecimal totalLiters = BigDecimal.ZERO;
         for (FuelRecord record : records) {
-            totalCost += record.totalCostOrZero();
+            if (currency.equals(record.getCurrency())) {
+                totalCost += record.totalCostOrZero();
+            } else {
+                otherCurrency++;
+            }
             // BigDecimal 합산이라 null 직접 제외
             if (record.getLiters() != null) {
                 totalLiters = totalLiters.add(record.getLiters());
@@ -161,7 +170,7 @@ public class FuelRecordService {
         }
 
         // 빠진 구간 수는 평균에서 뺀 개수 그대로 사용
-        return new FuelSummaryResponse(records.size(), totalCost, totalLiters,
+        return new FuelSummaryResponse(records.size(), totalCost, currency, otherCurrency, totalLiters,
                 efficiency.distance(), efficiency.average(), latestId, resetPointId,
                 efficiency.missingSegments(), efficiency.excludedSegments(),
                 // 이미 읽은 records 재사용. 추가 쿼리 없음
@@ -194,6 +203,6 @@ public class FuelRecordService {
         Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
 
         return fuelRecordRepository.findByPublicIdAndVehicleId(recordId, id)
-                .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 주유 기록입니다: " + recordId));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.FUEL_RECORD_NOT_FOUND, "존재하지 않는 주유 기록입니다: " + recordId));
     }
 }

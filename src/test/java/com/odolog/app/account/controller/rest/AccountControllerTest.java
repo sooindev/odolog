@@ -1,5 +1,6 @@
 package com.odolog.app.account.controller.rest;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.auth.session.LoginSessionRegistry;
 import com.odolog.app.account.dto.request.withdraw.WithdrawRequest;
 import com.odolog.app.account.dto.response.export.AccountExportResponse;
@@ -83,7 +84,7 @@ class AccountControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
 
-        doThrow(new AuthenticationFailedException("현재 비밀번호가 올바르지 않습니다."))
+        doThrow(new AuthenticationFailedException(ErrorCode.WRONG_PASSWORD, "현재 비밀번호가 올바르지 않습니다."))
                 .when(accountWithdrawalService).withdraw(any(), any());
 
         mockMvc.perform(delete("/api/users/me")
@@ -116,7 +117,7 @@ class AccountControllerTest {
 
         AccountExportResponse response = new AccountExportResponse(
                 java.time.LocalDateTime.of(2026, 9, 21, 12, 0),
-                new AccountExportResponse.UserData("me@odolog.com", "닉네임", null, null),
+                new AccountExportResponse.UserData("me@odolog.com", "닉네임", null),
                 java.util.List.of());
         when(accountExportService.export(eq(1L), any())).thenReturn(response);
 

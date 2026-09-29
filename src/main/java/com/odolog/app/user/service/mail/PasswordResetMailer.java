@@ -1,5 +1,6 @@
 package com.odolog.app.user.service.mail;
 
+import com.odolog.app.user.domain.type.Language;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,22 +39,8 @@ public class PasswordResetMailer {
     }
 
     /** 즉시 반환. 실패는 로그로만 */
-    public void send(String email, String token, int validMinutes) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        // from 이 비면 spring.mail.username 사용
-        if (!from.isBlank()) {
-            message.setFrom(from);
-        }
-        message.setTo(email);
-        message.setSubject("[오도로그] 비밀번호 재설정");
-        message.setText("""
-                아래 링크에서 새 비밀번호를 설정하세요.
-
-                %s/reset-password?token=%s
-
-                이 링크는 %d분 동안만 쓸 수 있고, 한 번 쓰면 사라집니다.
-                본인이 요청한 것이 아니라면 이 메일을 무시하세요. 비밀번호는 그대로입니다.
-                """.formatted(baseUrl, URLEncoder.encode(token, StandardCharsets.UTF_8), validMinutes));
+    public void send(String email, String token, int validMinutes, Language language) {
+        SimpleMailMessage message = compose(email, token, validMinutes, language);
 
         Runnable delivery = () -> deliver(message);
 
@@ -68,6 +55,43 @@ public class PasswordResetMailer {
         } else {
             taskExecutor.execute(delivery);
         }
+    }
+
+    /** 받는 사람의 언어로 제목·본문. 발송과 분리해 테스트 가능 */
+    SimpleMailMessage compose(String email, String token, int validMinutes, Language language) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        // from 이 비면 spring.mail.username 사용
+        if (!from.isBlank()) {
+            message.setFrom(from);
+        }
+        message.setTo(email);
+
+        String link = baseUrl + "/reset-password?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+        switch (language) {
+            case EN -> {
+                message.setSubject("[OdoLog] Reset your password");
+                message.setText("""
+                        Use the link below to set a new password.
+
+                        %s
+
+                        The link works for %d minutes and only once.
+                        If you didn't ask for this, ignore this email. Your password stays the same.
+                        """.formatted(link, validMinutes));
+            }
+            case KO -> {
+                message.setSubject("[오도로그] 비밀번호 재설정");
+                message.setText("""
+                        아래 링크에서 새 비밀번호를 설정하세요.
+
+                        %s
+
+                        이 링크는 %d분 동안만 쓸 수 있고, 한 번 쓰면 사라집니다.
+                        본인이 요청한 것이 아니라면 이 메일을 무시하세요. 비밀번호는 그대로입니다.
+                        """.formatted(link, validMinutes));
+            }
+        }
+        return message;
     }
 
     private void deliver(SimpleMailMessage message) {

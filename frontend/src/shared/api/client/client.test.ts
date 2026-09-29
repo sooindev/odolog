@@ -87,6 +87,16 @@ describe('응답 처리', () => {
     vi.unstubAllGlobals()
   })
 
+  it('오류 본문의 코드·칸·남은 분을 싣는다', async () => {
+    mockFetch(429, { code: 'TOO_MANY_LOGIN_ATTEMPTS', message: '…', retryAfterMinutes: 7 })
+
+    const caught = (await api.post('/api/users/login', {}).catch((error: unknown) => error)) as ApiError
+
+    expect(caught.code).toBe('TOO_MANY_LOGIN_ATTEMPTS')
+    expect(caught.retryAfterMinutes).toBe(7)
+    expect(caught.field).toBeNull()
+  })
+
   it('204 는 본문을 읽지 않는다', async () => {
     // 빈 본문에 json() 호출 금지
     mockFetch(204)
@@ -109,7 +119,8 @@ describe('서버에 닿지 못했을 때', () => {
 
     expect(caught).toBeInstanceOf(ApiError)
     expect((caught as ApiError).status).toBe(NETWORK_ERROR_STATUS)
-    expect((caught as ApiError).message).toContain('연결하지 못했습니다')
+    // 문구는 화면이 언어에 맞게. 코드는 없음
+    expect((caught as ApiError).code).toBeNull()
   })
 
   it('네트워크 실패를 세션 만료로 오해하지 않는다', async () => {

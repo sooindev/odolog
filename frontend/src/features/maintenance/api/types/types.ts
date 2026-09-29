@@ -21,32 +21,14 @@ export const SERVICE_TYPES = [
 
 export type ServiceType = (typeof SERVICE_TYPES)[number]
 
-export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
-  ENGINE_OIL: '엔진오일',
-  TRANSMISSION_FLUID: '미션오일',
-  SPARK_PLUG: '점화 플러그',
-  TIMING_BELT: '타이밍 벨트',
-  COOLANT: '냉각수',
-  BRAKE_PAD: '브레이크 패드',
-  BRAKE_FLUID: '브레이크액',
-  TIRE: '타이어',
-  TIRE_ROTATION: '타이어 위치 교환',
-  WHEEL_ALIGNMENT: '휠 얼라인먼트',
-  AIR_FILTER: '에어 필터',
-  CABIN_FILTER: '에어컨 필터',
-  BATTERY: '배터리',
-  WIPER: '와이퍼',
-  OTHER: '기타',
-}
-
-/** 선택 목록 구역 */
-export const SERVICE_TYPE_GROUPS: { label: string; types: readonly ServiceType[] }[] = [
-  { label: '엔진·구동', types: ['ENGINE_OIL', 'TRANSMISSION_FLUID', 'SPARK_PLUG', 'TIMING_BELT', 'COOLANT'] },
-  { label: '제동', types: ['BRAKE_PAD', 'BRAKE_FLUID'] },
-  { label: '타이어·조향', types: ['TIRE', 'TIRE_ROTATION', 'WHEEL_ALIGNMENT'] },
-  { label: '소모품', types: ['AIR_FILTER', 'CABIN_FILTER', 'BATTERY', 'WIPER'] },
-  { label: '그 밖', types: ['OTHER'] },
-]
+/** 선택 목록 구역. 이름은 문구 사전(t.serviceTypeGroups), 종류 이름은 t.serviceTypes */
+export const SERVICE_TYPE_GROUPS = [
+  { key: 'engine', types: ['ENGINE_OIL', 'TRANSMISSION_FLUID', 'SPARK_PLUG', 'TIMING_BELT', 'COOLANT'] },
+  { key: 'brakes', types: ['BRAKE_PAD', 'BRAKE_FLUID'] },
+  { key: 'tires', types: ['TIRE', 'TIRE_ROTATION', 'WHEEL_ALIGNMENT'] },
+  { key: 'consumables', types: ['AIR_FILTER', 'CABIN_FILTER', 'BATTERY', 'WIPER'] },
+  { key: 'other', types: ['OTHER'] },
+] as const satisfies readonly { key: string; types: readonly ServiceType[] }[]
 
 export interface MaintenanceRecordRegisterRequest {
   type: ServiceType
@@ -70,7 +52,10 @@ export interface MaintenanceRecordResponse {
   id: string
   type: ServiceType
   description: string | null
+  /** 통화의 최소 단위 */
   cost: number
+  /** ISO 4217. 기록할 때의 사용자 통화 */
+  currency: string
   serviceOdometer: number
   /** YYYY-MM-DD */
   serviceDate: string

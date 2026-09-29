@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
-import { ApiError } from '@/shared/api/client/client'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 
 export interface AsyncData<T> {
   /** 성공 전이면 null. 재조회 중에는 직전 값 유지 */
@@ -19,6 +20,7 @@ export interface AsyncData<T> {
  * load 는 useCallback 필수. 조건 변화 없는 재조회는 reload()
  */
 export function useAsyncData<T>(load: () => Promise<T>, fallbackMessage: string): AsyncData<T> {
+  const { t } = useI18n()
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,8 +40,8 @@ export function useAsyncData<T>(load: () => Promise<T>, fallbackMessage: string)
         setError(null)
       } catch (caught) {
         if (cancelled) return
-        // 백엔드 메시지 우선
-        setError(caught instanceof ApiError ? caught.message : fallbackMessage)
+        // 서버 코드의 문구 우선, 모르면 호출부의 문구
+        setError(errorMessage(caught, t, fallbackMessage))
       } finally {
         // 재조회 때 loading 미설정. 깜빡임 방지
         if (!cancelled) setLoading(false)
@@ -51,7 +53,7 @@ export function useAsyncData<T>(load: () => Promise<T>, fallbackMessage: string)
     return () => {
       cancelled = true
     }
-  }, [load, fallbackMessage, reloadCount])
+  }, [load, fallbackMessage, reloadCount, t])
 
   return { data, loading, error, reload, setData }
 }

@@ -1,5 +1,6 @@
 package com.odolog.app.user.service.mail;
 
+import com.odolog.app.user.domain.type.Language;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ class PasswordResetMailerTest {
     @Test
     @DisplayName("요청 스레드에서 보내지 않고 실행기에 넘긴다")
     void handsOffToExecutor() {
-        mailer.send("me@odolog.com", "token", 30);
+        mailer.send("me@odolog.com", "token", 30, Language.KO);
 
         verify(mailSender, never()).send(any(SimpleMailMessage.class));
         assertThat(queued).hasSize(1);
@@ -53,7 +54,7 @@ class PasswordResetMailerTest {
     void waitsForCommit() {
         TransactionSynchronizationManager.initSynchronization();
 
-        mailer.send("me@odolog.com", "token", 30);
+        mailer.send("me@odolog.com", "token", 30, Language.KO);
         assertThat(queued).isEmpty();
 
         TransactionSynchronizationManager.getSynchronizations()
@@ -66,8 +67,22 @@ class PasswordResetMailerTest {
     void swallowsDeliveryFailure() {
         doThrow(new MailSendException("SMTP 실패")).when(mailSender).send(any(SimpleMailMessage.class));
 
-        mailer.send("me@odolog.com", "token", 30);
+        mailer.send("me@odolog.com", "token", 30, Language.KO);
 
         assertThatCode(() -> queued.get(0).run()).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("받는 사람의 언어로 쓴다 — 링크는 언어와 무관하게 같다")
+    void composesInRecipientLanguage() {
+        SimpleMailMessage english = mailer.compose("me@odolog.com", "a+b", 30, Language.EN);
+        SimpleMailMessage korean = mailer.compose("me@odolog.com", "a+b", 30, Language.KO);
+
+        assertThat(english.getSubject()).isEqualTo("[OdoLog] Reset your password");
+        assertThat(english.getText()).contains("30 minutes");
+        assertThat(korean.getSubject()).isEqualTo("[오도로그] 비밀번호 재설정");
+        // 토큰의 + 는 인코딩. 안 하면 링크에서 공백으로 읽힘
+        assertThat(english.getText()).contains("http://localhost:5173/reset-password?token=a%2Bb");
+        assertThat(korean.getText()).contains("http://localhost:5173/reset-password?token=a%2Bb");
     }
 }

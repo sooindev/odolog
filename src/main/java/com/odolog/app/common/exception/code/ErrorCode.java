@@ -1,0 +1,54 @@
+package com.odolog.app.common.exception.code;
+
+/**
+ * 응답 오류의 종류. 화면이 이 코드로 문구를 골라 번역
+ * 이름은 API 계약. 바꾸면 frontend 의 ErrorCode 도 함께 수정
+ */
+public enum ErrorCode {
+
+    // 400
+    VALIDATION_FAILED,
+    MALFORMED_BODY,
+    INVALID_PARAMETER,
+    INVALID_SORT,
+    FUTURE_DATE,
+    UNSUPPORTED_TIME_ZONE,
+    UNSUPPORTED_CURRENCY,
+    SAME_PASSWORD,
+    BAD_REQUEST,
+
+    // 401
+    LOGIN_REQUIRED,
+    LOGIN_FAILED,
+    WRONG_PASSWORD,
+    RESET_LINK_INVALID,
+
+    // 403
+    FORBIDDEN,
+    CSRF_REJECTED,
+
+    // 404
+    VEHICLE_NOT_FOUND,
+    MAINTENANCE_RECORD_NOT_FOUND,
+    FUEL_RECORD_NOT_FOUND,
+    NOT_FOUND,
+
+    // 405·415
+    METHOD_NOT_ALLOWED,
+    UNSUPPORTED_MEDIA_TYPE,
+
+    // 409
+    EMAIL_DUPLICATE,
+    PLATE_DUPLICATE,
+    ODOMETER_DECREASE,
+    DUPLICATE_VALUE,
+
+    // 429
+    TOO_MANY_LOGIN_ATTEMPTS,
+    TOO_MANY_SIGNUP_ATTEMPTS,
+    TOO_MANY_RESET_REQUESTS,
+
+    // 500
+    SAVE_FAILED,
+    SERVER_ERROR
+}

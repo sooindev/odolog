@@ -9,29 +9,22 @@ import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/feedback/state'
-import { ApiError } from '@/shared/api/client/client'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { passwordHint } from '@/shared/lib/limits/limits'
 import { detectPreferences } from '@/shared/lib/locale/preferences'
 import { signUp } from '@/features/auth/api/endpoints/endpoints'
-import type { SignUpRequest } from '@/features/auth/api/types/types'
 
 export function SignUpPage() {
   const { login } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
 
-  const [form, setForm] = useState<SignUpRequest>({
-    email: '',
-    password: '',
-    nickname: '',
-    phone: '',
-  })
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [nickname, setNickname] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
-
-  // 폼 상태 객체 하나
-  function change(key: keyof SignUpRequest, value: string) {
-    setForm((previous) => ({ ...previous, [key]: value }))
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -39,51 +32,46 @@ export function SignUpPage() {
     setPending(true)
 
     try {
-      // 선택 입력이라 빈 값·공백은 미전송
-      const phone = form.phone?.trim()
       // 설정은 입력칸 없이 브라우저 값. 모르는 값은 undefined 라 JSON 에서 빠짐
-      await signUp({ ...form, ...detectPreferences(), phone: phone === '' ? undefined : phone })
+      await signUp({ email, password, nickname, ...detectPreferences() })
     } catch (caught) {
       // 409 = 이메일 중복, 400 = 검증 실패
-      setError(caught instanceof ApiError ? caught.message : '회원가입에 실패했습니다.')
+      setError(errorMessage(caught, t, t.signUp.failed))
       setPending(false)
       return
     }
 
     // 가입은 세션을 만들지 않아 로그인까지 이어서. 로그인 실패는 가입 실패와 별도 처리
     try {
-      await login({ email: form.email, password: form.password })
+      await login({ email, password })
       navigate('/vehicles', { replace: true })
     } catch {
-      navigate('/login', {
-        replace: true,
-        state: { notice: '가입했습니다. 로그인해 주세요.' },
-      })
+      navigate('/login', { replace: true, state: { notice: 'signedUp' } })
     }
   }
 
   return (
-    <Page title="회원가입" description="차량 한 대만 있으면 바로 시작할 수 있습니다.">
+    <Page title={t.signUp.title} description={t.signUp.description}>
       {/* 폼 + 안내 문구 한 덩어리. 폭은 AuthLayout 담당 */}
       <div className="flex flex-col gap-6">
         <Card>
           <CardContent>
             <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-              <Field label="이메일" htmlFor="email">
+              <Field label={t.common.email} htmlFor="email">
                 <Input
                   id="email"
                   type="email"
                   required
                   maxLength={100}
                   autoComplete="email"
-                  placeholder="you@example.com"
-                  value={form.email}
-                  onChange={(event) => change('email', event.target.value)}
+                  placeholder={t.common.emailPlaceholder}
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                 />
               </Field>
 
               {/* 규칙 안내를 미리 */}
-              <Field label="비밀번호" htmlFor="password" hint={passwordHint(form.password)}>
+              <Field label={t.common.password} htmlFor="password" hint={passwordHint(password, t)}>
                 <Input
                   id="password"
                   type="password"
@@ -92,28 +80,19 @@ export function SignUpPage() {
                   // 글자 수 상한은 대략적인 천장. 실제 판정은 hint 와 서버 @MaxBytes
                   maxLength={72}
                   autoComplete="new-password"
-                  value={form.password}
-                  onChange={(event) => change('password', event.target.value)}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                 />
               </Field>
 
-              <Field label="닉네임" htmlFor="nickname">
+              <Field label={t.common.nickname} htmlFor="nickname">
                 <Input
                   id="nickname"
                   required
                   maxLength={30}
-                  value={form.nickname}
-                  onChange={(event) => change('nickname', event.target.value)}
-                />
-              </Field>
-
-              <Field label="전화번호" htmlFor="phone" hint="선택 입력">
-                <Input
-                  id="phone"
-                  maxLength={20}
-                  placeholder="010-0000-0000"
-                  value={form.phone}
-                  onChange={(event) => change('phone', event.target.value)}
+                  autoComplete="nickname"
+                  value={nickname}
+                  onChange={(event) => setNickname(event.target.value)}
                 />
               </Field>
 
@@ -121,23 +100,50 @@ export function SignUpPage() {
 
               <FormActions>
                 <Button type="submit" disabled={pending}>
-                  {pending ? '가입 중…' : '회원가입'}
+                  {pending ? t.signUp.submitting : t.signUp.submit}
                 </Button>
               </FormActions>
+
+              {/* 가입 전에 읽을 수 있게 버튼 바로 아래 */}
+              <p className="text-caption leading-relaxed text-muted-foreground">
+                <AgreementLine />
+              </p>
             </form>
           </CardContent>
         </Card>
 
         <p className="text-center text-caption text-muted-foreground">
-          이미 계정이 있으신가요?{' '}
+          {t.signUp.haveAccount}{' '}
           <Link
             to="/login"
             className="text-strong transition-opacity duration-200 ease-apple hover:opacity-70"
           >
-            로그인
+            {t.signUp.login}
           </Link>
         </p>
       </div>
     </Page>
+  )
+}
+
+/** 문장 속 두 링크. 어순이 언어마다 달라 자리표시자로 쪼갬 */
+function AgreementLine() {
+  const { t } = useI18n()
+  const [before, middle, after] = t.signUp.agreement('{terms}', '{privacy}').split(/\{terms\}|\{privacy\}/)
+
+  const linkClass = 'text-strong underline-offset-4 hover:underline'
+
+  return (
+    <>
+      {before}
+      <Link to="/terms" className={linkClass}>
+        {t.footer.terms}
+      </Link>
+      {middle}
+      <Link to="/privacy" className={linkClass}>
+        {t.footer.privacy}
+      </Link>
+      {after}
+    </>
   )
 }

@@ -9,11 +9,13 @@ import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
 import { Section } from '@/shared/ui/layout/section'
 import { ErrorText } from '@/shared/ui/feedback/state'
-import { ApiError } from '@/shared/api/client/client'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { registerVehicle } from '@/features/vehicles/api/endpoints/endpoints'
 
 export function VehicleNewPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
 
   const [plateNumber, setPlateNumber] = useState('')
   const [manufacturer, setManufacturer] = useState('')
@@ -39,7 +41,7 @@ export function VehicleNewPage() {
       navigate(`/vehicles/${vehicle.id}`, { replace: true })
     } catch (caught) {
       // 409 = 이미 등록된 번호판
-      setError(caught instanceof ApiError ? caught.message : '차량 등록에 실패했습니다.')
+      setError(errorMessage(caught, t, t.vehicles.form.failed))
     } finally {
       setPending(false)
     }
@@ -47,20 +49,22 @@ export function VehicleNewPage() {
 
   return (
     // back: 목록으로 이동. 입력을 버리는 취소와 별개
-    <Page back={{ to: '/vehicles', label: '내 차량' }} eyebrow="Garage" title="차량 등록">
+    <Page
+      back={{ to: '/vehicles', label: t.vehicles.myVehicles }}
+      eyebrow="Garage"
+      title={t.vehicles.form.title}
+    >
       {/* 왼쪽 설명 / 오른쪽 폼 2단 */}
-      <Section
-        title="차량 정보"
-        description="번호판은 내 차량 안에서만 중복되지 않으면 됩니다. 다른 사람이 같은 번호판을 등록해 두었더라도 상관없습니다."
-      >
+      <Section title={t.vehicles.form.sectionTitle} description={t.vehicles.form.sectionDescription}>
         <Card>
           <CardContent>
             <form className="flex max-w-lg flex-col gap-5" onSubmit={handleSubmit}>
-              <Field label="차량 번호" htmlFor="plateNumber">
+              <Field label={t.vehicles.form.plateNumber} htmlFor="plateNumber">
                 <Input
                   id="plateNumber"
                   required
-                  placeholder="12가3456"
+                  maxLength={20}
+                  placeholder={t.vehicles.form.platePlaceholder}
                   value={plateNumber}
                   onChange={(event) => setPlateNumber(event.target.value)}
                 />
@@ -68,28 +72,30 @@ export function VehicleNewPage() {
 
               {/* 제조사·모델명 한 줄. 좁은 화면만 위아래 */}
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="제조사" htmlFor="manufacturer">
+                <Field label={t.vehicles.form.manufacturer} htmlFor="manufacturer">
                   <Input
                     id="manufacturer"
                     required
-                    placeholder="현대"
+                    maxLength={50}
+                    placeholder={t.vehicles.form.manufacturerPlaceholder}
                     value={manufacturer}
                     onChange={(event) => setManufacturer(event.target.value)}
                   />
                 </Field>
 
-                <Field label="모델명" htmlFor="modelName">
+                <Field label={t.vehicles.form.modelName} htmlFor="modelName">
                   <Input
                     id="modelName"
                     required
-                    placeholder="아반떼"
+                    maxLength={100}
+                    placeholder={t.vehicles.form.modelPlaceholder}
                     value={modelName}
                     onChange={(event) => setModelName(event.target.value)}
                   />
                 </Field>
               </div>
 
-              <Field label="연식" htmlFor="modelYear">
+              <Field label={t.vehicles.form.modelYear} htmlFor="modelYear">
                 <Input
                   id="modelYear"
                   type="number"
@@ -108,10 +114,10 @@ export function VehicleNewPage() {
 
               <FormActions>
                 <Button type="submit" disabled={pending}>
-                  {pending ? '등록 중…' : '등록'}
+                  {pending ? t.common.registering : t.common.register}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
-                  취소
+                  {t.common.cancel}
                 </Button>
               </FormActions>
             </form>

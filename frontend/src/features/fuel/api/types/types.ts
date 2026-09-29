@@ -34,13 +34,15 @@ export interface FuelRecordResponse {
   odometer: number
   /** 안 적었으면 null */
   liters: number | null
-  /** 안 적었으면 null. 합계에서만 0 */
+  /** 통화의 최소 단위. 안 적었으면 null, 합계에서만 0 */
   totalCost: number | null
+  /** ISO 4217. 기록할 때의 사용자 통화 */
+  currency: string
   memo: string | null
   /** 연비 기준점 여부. 이 기록의 구간 연비는 null */
   resetPoint: boolean
 
-  /** 리터당 단가(원). 주유량·금액 중 하나라도 없으면 null */
+  /** 리터당 단가(통화의 최소 단위). 주유량·금액 중 하나라도 없으면 null */
   pricePerLiter: number | null
   /**
    * 직전 주유 이후 거리(km). 이하 서버 계산값
@@ -57,7 +59,11 @@ export interface FuelRecordResponse {
 
 export interface FuelSummaryResponse {
   recordCount: number
+  /** 사용자 통화 기록만의 합(최소 단위) */
   totalCost: number
+  currency: string
+  /** 통화가 달라 totalCost 에서 뺀 기록 수 */
+  otherCurrencyRecordCount: number
   totalLiters: number
   /** 2건 미만이면 null */
   totalDistance: number | null

@@ -38,7 +38,7 @@ class VehicleRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        owner = new User("owner@odolog.com", "encoded-pw", "차주", "010-1111-2222");
+        owner = new User("owner@odolog.com", "encoded-pw", "차주");
         em.persist(owner);
     }
 
@@ -87,7 +87,7 @@ class VehicleRepositoryTest {
     @Test
     @DisplayName("번호판 중복은 소유자 안에서만 따진다 — 다른 사람이 같은 번호판을 써도 막지 않는다")
     void existsByOwnerIdAndPlateNumber() {
-        User another = new User("another@odolog.com", "encoded-pw", "다른차주", "010-3333-4444");
+        User another = new User("another@odolog.com", "encoded-pw", "다른차주");
         em.persist(another);
         em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
         em.flush();
@@ -102,7 +102,7 @@ class VehicleRepositoryTest {
     @Test
     @DisplayName("다른 사용자는 같은 번호판을 등록할 수 있다 (복합 유니크 제약 확인)")
     void samePlateNumberForDifferentOwners() {
-        User another = new User("another@odolog.com", "encoded-pw", "다른차주", "010-3333-4444");
+        User another = new User("another@odolog.com", "encoded-pw", "다른차주");
         em.persist(another);
 
         em.persist(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));

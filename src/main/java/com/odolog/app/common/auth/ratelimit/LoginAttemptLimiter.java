@@ -1,5 +1,6 @@
 package com.odolog.app.common.auth.ratelimit;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.TooManyRequestsException;
 import org.springframework.stereotype.Component;
 
@@ -40,9 +41,9 @@ public class LoginAttemptLimiter {
 
     /**
      * 잠겨 있으면 429. 검증보다 먼저 호출
-     * reason 은 완성된 문장. 조사 자동 결합 시 받침 오류 방지
+     * reason 은 완성된 문장. 조사 자동 결합 시 받침 오류 방지. 화면 문구는 code 로
      */
-    public void checkNotLocked(String key, String reason) {
+    public void checkNotLocked(String key, ErrorCode code, String reason) {
         Attempt attempt = attempts.get(key(key));
         if (attempt == null || attempt.lockedUntil == null) {
             return;
@@ -51,7 +52,7 @@ public class LoginAttemptLimiter {
         Instant now = clock.instant();
         if (now.isBefore(attempt.lockedUntil)) {
             long minutes = Math.max(1, Duration.between(now, attempt.lockedUntil).toMinutes() + 1);
-            throw new TooManyRequestsException(reason + " " + minutes + "분 후 다시 시도해 주세요.");
+            throw new TooManyRequestsException(code, reason + " " + minutes + "분 후 다시 시도해 주세요.", minutes);
         }
     }
 

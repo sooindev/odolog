@@ -2,8 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { cn } from 'cn'
 import { controlClassName } from '@/shared/ui/form/control'
-import { formatDate, todayString } from '@/shared/lib/format/format'
-import { join, lastSelectableDay, lastSelectableMonth, parse } from '@/shared/ui/form/date-parts'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { todayString } from '@/shared/lib/format/format'
+import {
+  join,
+  lastSelectableDay,
+  lastSelectableMonth,
+  parse,
+  partOrder,
+  todayParts,
+} from '@/shared/ui/form/date-parts'
+import type { DatePart } from '@/shared/ui/form/date-parts'
 
 /** 한 칸 높이(px). 스크롤 위치 ↔ 인덱스 변환 기준 */
 const ITEM_HEIGHT = 40
@@ -26,9 +35,11 @@ function DateWheel({
   value: string
   onChange: (value: string) => void
 }) {
+  const { t, f, locale, timeZone } = useI18n()
   const [open, setOpen] = useState(false)
   const wheelRef = useRef<HTMLDivElement>(null)
-  const { year, month, day } = parse(value)
+  // 오늘·절단 기준은 계정 시간대. 서버의 미래 판정과 같은 선
+  const { year, month, day } = parse(value, timeZone)
 
   // 펼친 휠을 화면 안으로. block: 'nearest' 로 필요할 때만 이동
   useEffect(() => {
@@ -37,12 +48,29 @@ function DateWheel({
   }, [open])
 
   // 칸 목록도 오늘까지만. 데스크톱의 max 와 같은 선
-  const thisYear = new Date().getFullYear()
+  const thisYear = todayParts(timeZone).year
   // 기본 20년치, 현재 값이 더 오래됐으면 그 해까지 확장
   const firstYear = Math.min(thisYear - YEARS_BACK, year)
-  const years = Array.from({ length: thisYear - firstYear + 1 }, (_, i) => firstYear + i)
-  const months = Array.from({ length: lastSelectableMonth(year) }, (_, i) => i + 1)
-  const days = Array.from({ length: lastSelectableDay(year, month) }, (_, i) => i + 1)
+  const columns: Record<DatePart, { label: string; values: number[]; value: number; pick: (next: number) => string }> = {
+    year: {
+      label: t.dateWheel.year,
+      values: Array.from({ length: thisYear - firstYear + 1 }, (_, i) => firstYear + i),
+      value: year,
+      pick: (next) => join(next, month, day, timeZone),
+    },
+    month: {
+      label: t.dateWheel.month,
+      values: Array.from({ length: lastSelectableMonth(year, timeZone) }, (_, i) => i + 1),
+      value: month,
+      pick: (next) => join(year, next, day, timeZone),
+    },
+    day: {
+      label: t.dateWheel.day,
+      values: Array.from({ length: lastSelectableDay(year, month, timeZone) }, (_, i) => i + 1),
+      value: day,
+      pick: (next) => join(year, month, next, timeZone),
+    },
+  }
 
   return (
     <div className="flex flex-col">
@@ -54,8 +82,10 @@ function DateWheel({
         className={cn(controlClassName, 'flex items-center justify-between text-left')}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="tabular-nums">{formatDate(value)}</span>
-        <span className="text-caption text-muted-foreground">{open ? '완료' : '변경'}</span>
+        <span className="tabular-nums">{f.date(value)}</span>
+        <span className="text-caption text-muted-foreground">
+          {open ? t.dateWheel.done : t.dateWheel.change}
+        </span>
       </button>
 
       {open && (
@@ -70,24 +100,18 @@ function DateWheel({
                 style={{ height: ITEM_HEIGHT }}
               />
 
-              <WheelColumn
-                label="년"
-                values={years}
-                value={year}
-                onChange={(next) => onChange(join(next, month, day))}
-              />
-              <WheelColumn
-                label="월"
-                values={months}
-                value={month}
-                onChange={(next) => onChange(join(year, next, day))}
-              />
-              <WheelColumn
-                label="일"
-                values={days}
-                value={day}
-                onChange={(next) => onChange(join(year, month, next))}
-              />
+              {/* 칸 순서는 로케일. 한국 년·월·일, 미국 월·일·년 */}
+              {partOrder(locale).map((part) => (
+                <WheelColumn
+                  key={part}
+                  // 접미사가 없는 언어(영어)는 칸 이름을 스크린리더용으로
+                  label={columns[part].label}
+                  ariaLabel={columns[part].label || part}
+                  values={columns[part].values}
+                  value={columns[part].value}
+                  onChange={(next) => onChange(columns[part].pick(next))}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -98,11 +122,13 @@ function DateWheel({
 
 function WheelColumn({
   label,
+  ariaLabel,
   values,
   value,
   onChange,
 }: {
   label: string
+  ariaLabel: string
   values: number[]
   value: number
   onChange: (value: number) => void
@@ -167,7 +193,7 @@ function WheelColumn({
     <div
       ref={ref}
       role="listbox"
-      aria-label={label}
+      aria-label={ariaLabel}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       // overscroll-contain 필수. 바깥 페이지로의 스크롤 연쇄 차단
@@ -186,7 +212,7 @@ function WheelColumn({
           style={{ height: ITEM_HEIGHT }}
         >
           {entry}
-          <span className="ml-0.5 text-unit text-muted-foreground">{label}</span>
+          {label !== '' && <span className="ml-0.5 text-unit text-muted-foreground">{label}</span>}
         </div>
       ))}
     </div>
@@ -209,6 +235,7 @@ export function DateInput({
   /** 네이티브 입력 전용. 휠은 빈 값 불가 */
   required?: boolean
 }) {
+  const { timeZone } = useI18n()
   // 초기값은 useState 초기화 함수에서. 첫 프레임 컴포넌트 교체 방지
   const [coarse, setCoarse] = useState(() => window.matchMedia('(pointer: coarse)').matches)
 
@@ -227,8 +254,8 @@ export function DateInput({
         id={id}
         type="date"
         required={required}
-        // 오늘까지만. 휠과 같은 선
-        max={todayString()}
+        // 오늘까지만(계정 시간대). 휠·서버와 같은 선
+        max={todayString(timeZone)}
         className={controlClassName}
         value={value}
         onChange={(event) => onChange(event.target.value)}

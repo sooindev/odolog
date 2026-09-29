@@ -1,5 +1,6 @@
 package com.odolog.app.maintenance.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
@@ -61,7 +62,7 @@ class MaintenanceRecordServiceTest {
 
     private Vehicle createVehicle(Long id) {
         // 등록 시 소유자의 통화를 읽으므로 소유자 필요
-        User owner = new User("me@odolog.com", "encoded", "나", null);
+        User owner = new User("me@odolog.com", "encoded", "나");
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2023);
         ReflectionTestUtils.setField(vehicle, "id", id);
         return vehicle;
@@ -72,7 +73,7 @@ class MaintenanceRecordServiceTest {
     void registerRejectsFutureDate() {
         LocalDate tomorrow = LocalDate.of(2026, 9, 30);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(createVehicle(10L));
-        doThrow(new InvalidRequestException("serviceDate: 오늘 이후 날짜는 입력할 수 없습니다."))
+        doThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "serviceDate: 오늘 이후 날짜는 입력할 수 없습니다."))
                 .when(userToday).rejectFuture(1L, tomorrow, "serviceDate");
 
         assertThatThrownBy(() -> maintenanceRecordService.register(1L, "V10",

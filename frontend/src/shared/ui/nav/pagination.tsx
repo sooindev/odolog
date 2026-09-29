@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '@/shared/ui/base/button'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
 
 /** 목록 페이지 이동. 숫자는 tabular-nums */
 export function Pagination({
@@ -14,6 +15,8 @@ export function Pagination({
   hasNext: boolean
   onChange: (updater: (current: number) => number) => void
 }) {
+  const { t } = useI18n()
+
   // 한 장뿐이면 숨김
   if (totalPages <= 1) {
     return null
@@ -24,7 +27,7 @@ export function Pagination({
       <Button
         variant="ghost"
         size="icon-sm"
-        aria-label="이전 페이지"
+        aria-label={t.common.previousPage}
         disabled={page === 0}
         onClick={() => onChange((current) => current - 1)}
       >
@@ -38,7 +41,7 @@ export function Pagination({
       <Button
         variant="ghost"
         size="icon-sm"
-        aria-label="다음 페이지"
+        aria-label={t.common.nextPage}
         disabled={!hasNext}
         onClick={() => onChange((current) => current + 1)}
       >

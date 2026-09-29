@@ -16,9 +16,11 @@
 */
 
 @theme inline {
+  /* 시스템 폰트만. 애플 → 윈도(Segoe UI·맑은 고딕) → 안드로이드·리눅스(Roboto·Noto) 순 */
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-    "Apple SD Gothic Neo", "Helvetica Neue", system-ui, sans-serif;
+    "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", Roboto, "Noto Sans",
+    "Noto Sans KR", "Helvetica Neue", system-ui, sans-serif;
   --font-heading: var(--font-sans);
 
   /*

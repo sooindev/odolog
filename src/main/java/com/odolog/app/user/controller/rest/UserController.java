@@ -1,5 +1,6 @@
 package com.odolog.app.user.controller.rest;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.login.LoginRequest;
 import com.odolog.app.user.dto.request.password.ChangePasswordRequest;
@@ -50,7 +51,7 @@ public class UserController {
     public ResponseEntity<UserResponse> signUp(@Valid @RequestBody SignUpRequest request,
                                                  HttpServletRequest httpRequest) {
         String limitKey = SIGNUP_KEY_PREFIX + clientIp(httpRequest);
-        attemptLimiter.checkNotLocked(limitKey, "회원가입 시도가 너무 많습니다.");
+        attemptLimiter.checkNotLocked(limitKey, ErrorCode.TOO_MANY_SIGNUP_ATTEMPTS, "회원가입 시도가 너무 많습니다.");
         attemptLimiter.recordFailure(limitKey);
 
         User user = userService.signUp(request);

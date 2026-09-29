@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 
 import { AuthLayout } from '@/app/layout/AuthLayout'
+import { Footer } from '@/app/layout/Footer'
+import { LegalPage } from '@/app/legal/LegalPage'
 import { HomePage } from '@/app/home/HomePage'
 import { ProtectedRoute } from '@/app/routing/ProtectedRoute'
 import { ForgotPasswordPage } from '@/features/auth/pages/forgot-password/ForgotPasswordPage'
@@ -26,7 +28,7 @@ function App() {
         본문 폭 76rem. 넓은 화면은 열 분할, 글 열은 700px 이하
         넉넉한 아래 여백
       */}
-      <main className="mx-auto w-full max-w-[76rem] px-5 pt-10 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-8 sm:pt-20 sm:pb-40 lg:px-10">
+      <main className="mx-auto w-full max-w-[76rem] px-5 pt-10 pb-28 sm:px-8 sm:pt-20 sm:pb-40 lg:px-10">
         {/*
           pathname key 로 전환 연출 재실행
           0.18s 페이드만
@@ -35,6 +37,9 @@ function App() {
           <Routes>
             {/* 세 얼굴의 갈림은 HomePage 안에 */}
             <Route path="/" element={<HomePage />} />
+            {/* 로그인과 무관한 문서 */}
+            <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+            <Route path="/terms" element={<LegalPage kind="terms" />} />
 
             {/* path 없는 라우트 = 자식을 감싸는 레이아웃 */}
             <Route element={<AuthLayout />}>
@@ -57,6 +62,9 @@ function App() {
           </Routes>
         </div>
       </main>
+
+      {/* 노치 아래 여백은 푸터가 담당 */}
+      <Footer />
     </div>
   )
 }

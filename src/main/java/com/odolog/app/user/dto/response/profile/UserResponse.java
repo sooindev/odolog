@@ -8,7 +8,6 @@ import com.odolog.app.user.domain.type.UnitSystem;
 public record UserResponse(
         String email,
         String nickname,
-        String phone,
         Language language,
         String timeZone,
         String currency,
@@ -19,7 +18,6 @@ public record UserResponse(
         return new UserResponse(
                 user.getEmail(),
                 user.getNickname(),
-                user.getPhone(),
                 user.getLanguage(),
                 user.getTimeZone(),
                 user.getCurrency(),

@@ -10,8 +10,12 @@ import java.util.List;
  */
 public record FuelSummaryResponse(
         int recordCount,
-        /** 총 유류비(원). 홈 요약과 같은 long */
+        /** 총 유류비(통화의 최소 단위). 홈 요약과 같은 long */
         long totalCost,
+        /** totalCost 의 통화(사용자 설정) */
+        String currency,
+        /** 통화가 달라 totalCost 에서 뺀 기록 수 */
+        int otherCurrencyRecordCount,
         BigDecimal totalLiters,
         /** 평균 계산에 쓴 구간 거리 합(km). 2건 미만이면 null */
         Integer totalDistance,

@@ -3,18 +3,19 @@ import type { FormEvent } from 'react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { ErrorText, Skeleton } from '@/shared/ui/feedback/state'
-import { formatDate, formatKm } from '@/shared/lib/format/format'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import type { I18nValue } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { fromKm, toKm } from '@/shared/lib/units/units'
 import { Button } from '@/shared/ui/base/button'
 import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions } from '@/shared/ui/layout/page'
-import { ApiError } from '@/shared/api/client/client'
 import {
   changeServiceInterval,
   fetchNextServices,
 } from '@/features/maintenance/api/endpoints/endpoints'
-import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import type { NextServiceResponse, ServiceType } from '@/features/maintenance/api/types/types'
 
 /**
@@ -22,13 +23,15 @@ import type { NextServiceResponse, ServiceType } from '@/features/maintenance/ap
  * 재조회는 부모의 key 변경
  */
 export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
+  const i18n = useI18n()
+  const { t } = i18n
   const load = useCallback(() => fetchNextServices(vehicleId), [vehicleId])
   const {
     data: results,
     loading,
     error,
     reload,
-  } = useAsyncData(load, '다음 정비 시점을 불러오지 못했습니다.')
+  } = useAsyncData(load, t.maintenance.next.loadFailed)
 
   // 주기 편집 중인 종류. 한 번에 하나
   const [editing, setEditing] = useState<ServiceType | null>(null)
@@ -37,10 +40,8 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>다음 정비 시점</CardTitle>
-        <CardDescription>
-          종류별 권장 주기와 마지막 정비 기록으로 계산합니다. 지난 것이 위에 옵니다.
-        </CardDescription>
+        <CardTitle>{t.maintenance.next.title}</CardTitle>
+        <CardDescription>{t.maintenance.next.description}</CardDescription>
       </CardHeader>
       <CardContent>
         {loading && (
@@ -55,8 +56,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
 
         {!loading && error === null && results !== null && results.length === 0 && (
           <p className="text-caption leading-relaxed text-muted-foreground">
-            아직 계산할 이력이 없습니다. 정비 이력을 등록하면 그 종류의 권장 주기로 다음 시점을
-            알려 드립니다.
+            {t.maintenance.next.empty}
           </p>
         )}
 
@@ -71,18 +71,18 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
               >
                 <span className="flex min-w-0 items-baseline gap-2">
                   <span className="truncate text-body font-medium tracking-[-0.015em] text-strong">
-                    {SERVICE_TYPE_LABELS[result.type]}
+                    {t.serviceTypes[result.type]}
                   </span>
                   {/* 지남 표시. 빨강(실패) 대신 테두리 + strong */}
                   {result.overdue && (
                     <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
-                      지남
+                      {t.maintenance.next.overdue}
                     </span>
                   )}
                 </span>
 
                 <span className="order-3 text-caption tabular-nums text-muted-foreground sm:order-none">
-                  {describeLast(result)}
+                  {describeLast(result, i18n)}
                 </span>
 
                 <span className="flex items-baseline justify-end gap-2 text-right">
@@ -91,7 +91,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                       result.overdue ? 'font-medium text-strong' : 'text-foreground'
                     }`}
                   >
-                    {describeNext(result)}
+                    {describeNext(result, i18n)}
                   </span>
                   {/* 주기 편집 버튼 */}
                   <button
@@ -99,7 +99,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                     className="shrink-0 text-unit text-muted-foreground underline-offset-4 transition-opacity duration-200 ease-apple hover:opacity-70 hover:underline"
                     onClick={() => setEditing(editing === result.type ? null : result.type)}
                   >
-                    {result.customized ? '주기 변경됨' : '주기'}
+                    {result.customized ? t.maintenance.next.intervalCustomized : t.maintenance.next.interval}
                   </button>
                 </span>
 
@@ -138,11 +138,16 @@ function IntervalForm({
   onSaved: () => void
   onCancel: () => void
 }) {
+  const { t, f, unitSystem } = useI18n()
+  // 거리 주기는 화면 단위(마일)로 보여 주고 km 로 저장
+  const shown = (km: number) => String(Math.round(fromKm(unitSystem, km)))
+
   // 덮어쓴 적이 없으면 빈 칸으로 시작. 기본값을 채우면 그대로 저장 시 customized 로 바뀜
-  // 적용 중인 값은 placeholder
-  const [km, setKm] = useState(
-    result.customized && result.intervalKm !== null ? String(result.intervalKm) : '',
+  // 적용 중인 값은 placeholder. 처음 값을 기억해 손대지 않으면 저장값(km) 그대로
+  const [initialKm] = useState(
+    result.customized && result.intervalKm !== null ? shown(result.intervalKm) : '',
   )
+  const [km, setKm] = useState(initialKm)
   const [months, setMonths] = useState(
     result.customized && result.intervalMonths !== null ? String(result.intervalMonths) : '',
   )
@@ -156,12 +161,12 @@ function IntervalForm({
 
     try {
       await changeServiceInterval(vehicleId, result.type, {
-        intervalKm: km === '' ? null : Number(km),
+        intervalKm: km === '' ? null : km === initialKm ? result.intervalKm : toKm(unitSystem, Number(km)),
         intervalMonths: months === '' ? null : Number(months),
       })
       onSaved()
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '주기를 저장하지 못했습니다.')
+      setError(errorMessage(caught, t, t.maintenance.next.intervalFailed))
       setPending(false)
     }
   }
@@ -172,17 +177,17 @@ function IntervalForm({
       <div className="flex flex-col gap-4 bg-sunken p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
-            label="주행거리 주기 (km)"
+            label={t.maintenance.next.intervalDistance(f.distanceUnit)}
             htmlFor={`interval-km-${result.type}`}
-            hint={km === '' ? '비어 있으면 기본값(회색 숫자)을 씁니다.' : undefined}
+            hint={km === '' ? t.maintenance.next.intervalEmptyHint : undefined}
           >
             <Input
               id={`interval-km-${result.type}`}
               type="number"
               autoFocus
               min={1}
-              max={500000}
-              placeholder={result.intervalKm === null ? '없음' : String(result.intervalKm)}
+              max={Math.floor(fromKm(unitSystem, 500_000))}
+              placeholder={result.intervalKm === null ? t.common.none : shown(result.intervalKm)}
               className="tabular-nums"
               value={km}
               onChange={(event) => setKm(event.target.value)}
@@ -190,16 +195,16 @@ function IntervalForm({
           </Field>
 
           <Field
-            label="기간 주기 (개월)"
+            label={t.maintenance.next.intervalMonths}
             htmlFor={`interval-months-${result.type}`}
-            hint={months === '' ? '비어 있으면 기본값(회색 숫자)을 씁니다.' : undefined}
+            hint={months === '' ? t.maintenance.next.intervalEmptyHint : undefined}
           >
             <Input
               id={`interval-months-${result.type}`}
               type="number"
               min={1}
               max={120}
-              placeholder={result.intervalMonths === null ? '없음' : String(result.intervalMonths)}
+              placeholder={result.intervalMonths === null ? t.common.none : String(result.intervalMonths)}
               className="tabular-nums"
               value={months}
               onChange={(event) => setMonths(event.target.value)}
@@ -208,17 +213,17 @@ function IntervalForm({
         </div>
 
         <p className="text-caption leading-relaxed text-muted-foreground">
-          이 차량에만 적용됩니다. 둘 다 비우면 기본 권장 주기로 돌아갑니다.
+          {t.maintenance.next.intervalNote}
         </p>
 
         {error !== null && <ErrorText message={error} />}
 
         <FormActions>
           <Button type="submit" size="sm" disabled={pending}>
-            {pending ? '저장 중…' : '저장'}
+            {pending ? t.common.saving : t.common.save}
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-            취소
+            {t.common.cancel}
           </Button>
         </FormActions>
       </div>
@@ -227,32 +232,32 @@ function IntervalForm({
 }
 
 /** 마지막 정비 시점 */
-function describeLast(result: NextServiceResponse) {
+function describeLast(result: NextServiceResponse, { t, f }: I18nValue) {
   if (result.lastServiceDate === null) {
     return ''
   }
 
-  const parts = [formatDate(result.lastServiceDate)]
+  const parts = [f.date(result.lastServiceDate)]
   if (result.lastServiceOdometer !== null) {
-    parts.push(formatKm(result.lastServiceOdometer))
+    parts.push(f.distance(result.lastServiceOdometer))
   }
 
-  return `마지막 ${parts.join(' · ')}`
+  return t.maintenance.next.last(parts.join(' · '))
 }
 
 /** 다음 정비 시점. 주기 없음(OTHER) 또는 계산값 */
-function describeNext(result: NextServiceResponse) {
+function describeNext(result: NextServiceResponse, { t, f }: I18nValue) {
   const parts: string[] = []
   if (result.nextServiceOdometer !== null) {
-    parts.push(formatKm(result.nextServiceOdometer))
+    parts.push(f.distance(result.nextServiceOdometer))
   }
   if (result.nextServiceDate !== null) {
-    parts.push(formatDate(result.nextServiceDate))
+    parts.push(f.date(result.nextServiceDate))
   }
 
   if (parts.length === 0) {
-    return '권장 주기 없음'
+    return t.maintenance.next.noInterval
   }
 
-  return parts.join(' 또는 ')
+  return parts.join(t.maintenance.next.or)
 }

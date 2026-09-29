@@ -1,7 +1,6 @@
 import { Link } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/definition/AuthContext'
-import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
 import { LandingPage } from '@/app/landing/LandingPage'
 import { MonthlyCostChart, TypeCostChart } from '@/app/home/charts/HomeCharts'
 import { loadHomeData } from '@/app/home/stats/homeStats'
@@ -11,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { GaugeMark } from '@/shared/ui/brand/mark'
 import { Page } from '@/shared/ui/layout/page'
 import { ErrorText, LoadingText, Skeleton } from '@/shared/ui/feedback/state'
-import { formatDate, formatKm, formatNumber, formatWon } from '@/shared/lib/format/format'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 
 /**
@@ -34,8 +33,9 @@ export function HomePage() {
 }
 
 function Dashboard({ nickname }: { nickname: string }) {
+  const { t } = useI18n()
   // 모듈 최상단 함수라 useCallback 불필요
-  const { data, loading, error } = useAsyncData(loadHomeData, '차고 정보를 불러오지 못했습니다.')
+  const { data, loading, error } = useAsyncData(loadHomeData, t.home.loadFailed)
 
   if (loading) {
     return <DashboardSkeleton />
@@ -52,8 +52,8 @@ function Dashboard({ nickname }: { nickname: string }) {
   return (
     <Page
       eyebrow="Overview"
-      title={`${nickname}님의 차고`}
-      description="차량과 정비·주유 기록, 들어간 유지비를 한눈에 봅니다."
+      title={t.home.title(nickname)}
+      description={t.home.description}
       action={
         // 한 대면 그 차로 바로 이동, 여러 대면 목록으로
         <Button
@@ -63,18 +63,25 @@ function Dashboard({ nickname }: { nickname: string }) {
             <Link to={data.vehicles.length === 1 ? `/vehicles/${data.vehicles[0].id}` : '/vehicles'} />
           }
         >
-          {data.vehicles.length === 1 ? '기록하러 가기' : '내 차량'}
+          {data.vehicles.length === 1 ? t.home.goRecord : t.home.myVehicles}
         </Button>
       }
     >
       <StatTiles data={data} />
 
+      {/* 통화가 다른 기록은 더할 수 없어 뺌. 말없이 빼지 않음 */}
+      {data.otherCurrencyRecordCount > 0 && (
+        <p className="-mt-4 text-caption text-muted-foreground sm:-mt-8">
+          {t.home.otherCurrency(data.otherCurrencyRecordCount, data.currency)}
+        </p>
+      )}
+
       {/* 히어로 숫자가 있는 차트라 전체 폭 */}
-      <MonthlyCostChart monthly={data.monthly} />
+      <MonthlyCostChart monthly={data.monthly} currency={data.currency} />
 
       {/* 두 카드 나란히 */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <TypeCostChart byType={data.byType} />
+        <TypeCostChart byType={data.byType} currency={data.currency} />
         <RecentActivities recent={data.recent} />
       </div>
 
@@ -84,17 +91,23 @@ function Dashboard({ nickname }: { nickname: string }) {
 }
 
 function StatTiles({ data }: { data: HomeData }) {
+  const { t, f } = useI18n()
+  const cost = f.moneyParts(data.totalCost, data.currency)
+
   // 전부 서버 집계값
   const tiles = [
-    { label: 'Vehicles', value: formatNumber(data.vehicleCount), unit: '대', note: null },
-    { label: 'Distance', value: formatNumber(data.totalOdometer), unit: 'km', note: null },
-    { label: 'Records', value: formatNumber(data.recordCount), unit: '건', note: null },
+    { label: 'Vehicles', value: f.number(data.vehicleCount), unit: t.home.tiles.vehicles, note: null },
+    { label: 'Distance', value: f.distanceNumber(data.totalOdometer), unit: f.distanceUnit, note: null },
+    { label: 'Records', value: f.number(data.recordCount), unit: t.home.tiles.records, note: null },
     {
       label: 'Cost',
-      value: formatNumber(data.totalCost),
-      unit: '원',
+      value: cost.value,
+      unit: cost.unit,
       // 정비·주유 구성 표시
-      note: `정비 ${formatNumber(data.maintenanceCost)} · 주유 ${formatNumber(data.fuelCost)}`,
+      note: t.home.tiles.breakdown(
+        f.moneyParts(data.maintenanceCost, data.currency).value,
+        f.moneyParts(data.fuelCost, data.currency).value,
+      ),
     },
   ]
 
@@ -121,10 +134,12 @@ function StatTiles({ data }: { data: HomeData }) {
 }
 
 function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
+  const { t, f } = useI18n()
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>차량별</CardTitle>
+        <CardTitle>{t.home.vehicles.title}</CardTitle>
       </CardHeader>
       <CardContent>
         <ul className="divide-y divide-border">
@@ -142,26 +157,23 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                     {/* 지난 정비 표시. 빨강 대신 테두리(NextServiceCard 참고) */}
                     {line.overdueServiceCount > 0 && (
                       <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
-                        정비 {line.overdueServiceCount}건 지남
+                        {t.vehicles.overdue(line.overdueServiceCount)}
                       </span>
                     )}
                   </p>
                   <p className="truncate text-caption text-muted-foreground">
-                    {line.plateNumber} · 정비 {line.maintenanceCount}건
+                    {line.plateNumber} · {t.home.vehicles.maintenanceCount(line.maintenanceCount)}
                     {/* 평균 연비. 없으면 자리 자체를 비움 */}
-                    {line.averageEfficiency !== null &&
-                      ` · ${line.averageEfficiency.toFixed(1)}km/L`}
+                    {line.averageEfficiency !== null && ` · ${f.efficiency(line.averageEfficiency, 1)}`}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-right">
                   <p className="text-body tabular-nums text-strong">
-                    {formatKm(line.odometer)}
+                    {f.distance(line.odometer)}
                   </p>
                   <p className="text-caption tabular-nums text-muted-foreground">
-                    {line.lastServiceDate === null
-                      ? '정비 이력 없음'
-                      : formatDate(line.lastServiceDate)}
+                    {line.lastServiceDate === null ? t.home.vehicles.noService : f.date(line.lastServiceDate)}
                   </p>
                 </div>
               </Link>
@@ -174,14 +186,16 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
 }
 
 function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
+  const { t, f } = useI18n()
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>최근 활동</CardTitle>
+        <CardTitle>{t.home.recent.title}</CardTitle>
       </CardHeader>
       <CardContent>
         {recent.length === 0 ? (
-          <p className="py-4 text-caption text-muted-foreground">아직 등록된 기록이 없습니다.</p>
+          <p className="py-4 text-caption text-muted-foreground">{t.home.recent.empty}</p>
         ) : (
           <ul className="divide-y divide-border">
             {recent.map((item) => (
@@ -192,22 +206,22 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="text-body text-strong">
-                    {item.type === null ? '주유' : SERVICE_TYPE_LABELS[item.type]}
+                    {item.type === null ? t.home.recent.fuel : t.serviceTypes[item.type]}
                   </p>
                   <p className="truncate text-caption text-muted-foreground">
                     {item.vehicleName}
                     {/* 주유는 넣은 양 표시 */}
-                    {item.liters !== null && ` · ${item.liters.toFixed(2)}L`}
+                    {item.liters !== null && ` · ${f.volume(item.liters)}`}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-right">
                   <p className="text-body tabular-nums text-strong">
-                    {/* 금액 없음은 — 원. 주유 목록과 같은 표기 */}
-                    {item.cost === null ? '— 원' : formatWon(item.cost)}
+                    {/* 금액 없음은 —. 주유 목록과 같은 표기. 기록마다 자기 통화 */}
+                    {item.cost === null ? '—' : f.money(item.cost, item.currency)}
                   </p>
                   <p className="text-caption tabular-nums text-muted-foreground">
-                    {formatDate(item.date)}
+                    {f.date(item.date)}
                   </p>
                 </div>
               </li>
@@ -221,21 +235,19 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
 
 /** 로그인 + 차량 0대. 앱을 시작하는 자리의 문구 */
 function EmptyGarage() {
+  const { t } = useI18n()
+
   return (
-    <Page eyebrow="Garage" title="내 차고" description="차량을 등록하면 여기에 통계가 모입니다.">
+    <Page eyebrow="Garage" title={t.home.empty.title} description={t.home.empty.description}>
       <div className="flex flex-col items-center gap-7 border-y border-border px-5 py-20 text-center sm:gap-8 sm:px-8 sm:py-32">
         <GaugeMark className="size-10 text-muted-foreground" />
 
         <div className="flex max-w-sm flex-col gap-2">
-          <p className="text-section text-strong">
-            아직 등록된 차량이 없습니다
-          </p>
-          <p className="text-caption leading-relaxed text-muted-foreground">
-            차량을 등록하면 주행거리와 정비 기록, 들어간 비용이 이 화면에 모입니다.
-          </p>
+          <p className="text-section text-strong">{t.home.empty.heading}</p>
+          <p className="text-caption leading-relaxed text-muted-foreground">{t.home.empty.body}</p>
         </div>
 
-        <Button render={<Link to="/vehicles/new" />}>첫 차량 등록하기</Button>
+        <Button render={<Link to="/vehicles/new" />}>{t.home.empty.registerFirst}</Button>
       </div>
     </Page>
   )

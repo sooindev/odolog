@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/definition/AuthContext'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
 import { ThemeToggle } from '@/shared/theme/toggle/ThemeToggle'
 import { Button } from '@/shared/ui/base/button'
 import { GaugeMark } from '@/shared/ui/brand/mark'
@@ -8,6 +9,7 @@ import { GaugeMark } from '@/shared/ui/brand/mark'
 /** 상단 고정 바. 불투명 바닥색 + 아래 1px 괘선 */
 export function Header() {
   const { user, logout } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -29,7 +31,7 @@ export function Header() {
           className="flex shrink-0 items-center gap-2.5 transition-opacity duration-200 ease-apple hover:opacity-70"
         >
           <GaugeMark />
-          <span className="text-body font-semibold tracking-[-0.03em] text-strong">오도로그</span>
+          <span className="text-body font-semibold tracking-[-0.03em] text-strong">{t.app.name}</span>
         </Link>
 
         <div className="flex min-w-0 items-center gap-1.5">
@@ -41,7 +43,7 @@ export function Header() {
 
           {user === null && !onAuthPage && (
             <Button variant="ghost" size="sm" className="shrink-0" render={<Link to="/login" />}>
-              로그인
+              {t.header.login}
             </Button>
           )}
 
@@ -52,7 +54,7 @@ export function Header() {
                 <span className="min-w-0 truncate">{user.nickname}</span>
               </Button>
               <Button variant="ghost" size="sm" className="shrink-0" onClick={handleLogout}>
-                로그아웃
+                {t.header.logout}
               </Button>
             </>
           )}

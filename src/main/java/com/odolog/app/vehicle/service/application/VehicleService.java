@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.dto.request.page.SortGuard;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.text.InputText;
@@ -57,7 +58,7 @@ public class VehicleService {
     public Vehicle register(Long ownerId, VehicleRegisterRequest request) {
         String plateNumber = InputText.strip(request.plateNumber());
         if (vehicleRepository.existsByOwnerIdAndPlateNumber(ownerId, plateNumber)) {
-            throw new ConflictException("이미 등록하신 차량 번호입니다: " + plateNumber);
+            throw new ConflictException(ErrorCode.PLATE_DUPLICATE, "이미 등록하신 차량 번호입니다: " + plateNumber);
         }
 
         User owner = userRepository.findById(ownerId)
@@ -120,7 +121,7 @@ public class VehicleService {
             // 다른 번호판으로 바꿀 때만 검사. DB 와 같은 기준(앞뒤 공백·대소문자 무시)
             if (!plateNumber.equalsIgnoreCase(vehicle.getPlateNumber().strip())
                     && vehicleRepository.existsByOwnerIdAndPlateNumber(requesterId, plateNumber)) {
-                throw new ConflictException("이미 등록하신 차량 번호입니다: " + plateNumber);
+                throw new ConflictException(ErrorCode.PLATE_DUPLICATE, "이미 등록하신 차량 번호입니다: " + plateNumber);
             }
             vehicle.changePlateNumber(plateNumber);
         }
@@ -193,6 +194,6 @@ public class VehicleService {
     }
 
     private ResourceNotFoundException notFound(String vehicleId) {
-        return new ResourceNotFoundException("존재하지 않는 차량입니다: " + vehicleId);
+        return new ResourceNotFoundException(ErrorCode.VEHICLE_NOT_FOUND, "존재하지 않는 차량입니다: " + vehicleId);
     }
 }

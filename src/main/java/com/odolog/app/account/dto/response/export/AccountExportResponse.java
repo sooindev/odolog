@@ -25,12 +25,11 @@ public record AccountExportResponse(
     public record UserData(
             String email,
             String nickname,
-            String phone,
             LocalDateTime createdAt
     ) {
         static UserData from(User user) {
             // 비밀번호 해시 제외
-            return new UserData(user.getEmail(), user.getNickname(), user.getPhone(), user.getCreatedAt());
+            return new UserData(user.getEmail(), user.getNickname(), user.getCreatedAt());
         }
     }
 

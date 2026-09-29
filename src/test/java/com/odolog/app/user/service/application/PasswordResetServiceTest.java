@@ -67,7 +67,7 @@ class PasswordResetServiceTest {
         service = new PasswordResetService(userRepository, tokenRepository, mailer, rateLimiter, sessionRegistry,
                 Clock.fixed(FIXED, ZoneOffset.UTC));
 
-        user = new User("me@odolog.com", "old-hash", "닉네임", null);
+        user = new User("me@odolog.com", "old-hash", "닉네임");
         ReflectionTestUtils.setField(user, "id", 1L);
     }
 
@@ -79,7 +79,7 @@ class PasswordResetServiceTest {
 
         service.request("nobody@odolog.com");
 
-        verify(mailer, never()).send(anyString(), anyString(), anyInt());
+        verify(mailer, never()).send(anyString(), anyString(), anyInt(), any());
         verify(tokenRepository, never()).save(any());
     }
 
@@ -98,7 +98,7 @@ class PasswordResetServiceTest {
         assertThat(saved.getValue().getExpiresAt())
                 .isEqualTo(NOW.plusMinutes(PasswordResetService.VALID_MINUTES));
 
-        verify(mailer).send(eq("me@odolog.com"), anyString(), anyInt());
+        verify(mailer).send(eq("me@odolog.com"), anyString(), anyInt(), any());
     }
 
     @Test
@@ -110,7 +110,7 @@ class PasswordResetServiceTest {
         service.request("me@odolog.com");
 
         ArgumentCaptor<String> mailed = ArgumentCaptor.forClass(String.class);
-        verify(mailer).send(anyString(), mailed.capture(), anyInt());
+        verify(mailer).send(anyString(), mailed.capture(), anyInt(), any());
 
         ArgumentCaptor<PasswordResetToken> saved = ArgumentCaptor.forClass(PasswordResetToken.class);
         verify(tokenRepository).save(saved.capture());
@@ -189,7 +189,7 @@ class PasswordResetServiceTest {
         // 메일 실패도 성공 응답. 가입된 주소에서만 500 이 나는 것 방지
         when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
         org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("SMTP 실패"))
-                .when(mailer).send(anyString(), anyString(), anyInt());
+                .when(mailer).send(anyString(), anyString(), anyInt(), any());
 
         service.request("me@odolog.com");
 

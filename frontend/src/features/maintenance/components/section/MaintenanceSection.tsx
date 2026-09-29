@@ -5,11 +5,11 @@ import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { Pagination } from '@/shared/ui/nav/pagination'
 import { ErrorText, Skeleton } from '@/shared/ui/feedback/state'
-import { ApiError } from '@/shared/api/client/client'
-import { formatDate, formatKm, formatWon } from '@/shared/lib/format/format'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { deleteRecord, fetchRecords } from '@/features/maintenance/api/endpoints/endpoints'
-import { SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
+import { SERVICE_TYPES } from '@/features/maintenance/api/types/types'
 import { controlClassName } from '@/shared/ui/form/control'
 import { cn } from 'cn'
 import type { MaintenanceRecordResponse, ServiceType } from '@/features/maintenance/api/types/types'
@@ -22,6 +22,7 @@ interface Props {
 }
 
 export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Props) {
+  const { t, f } = useI18n()
   const [page, setPage] = useState(0)
   // 종류 필터. null 이면 전체
   const [filter, setFilter] = useState<ServiceType | null>(null)
@@ -37,10 +38,10 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
     () => fetchRecords(vehicleId, page, filter),
     [vehicleId, page, filter],
   )
-  const { data, loading, error, reload } = useAsyncData(load, '정비 이력을 불러오지 못했습니다.')
+  const { data, loading, error, reload } = useAsyncData(load, t.maintenance.loadFailed)
 
   // 변수로 받아 타입 좁히기
-  const errorMessage = error ?? actionError
+  const shownError = error ?? actionError
 
   /**
    * 방금 저장한 종류
@@ -62,7 +63,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
   }
 
   async function handleDelete(recordId: string) {
-    if (!window.confirm('이 정비 이력을 삭제할까요?')) {
+    if (!window.confirm(t.maintenance.deleteConfirm)) {
       return
     }
 
@@ -81,7 +82,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
         refresh()
       }
     } catch (caught) {
-      setActionError(caught instanceof ApiError ? caught.message : '삭제에 실패했습니다.')
+      setActionError(errorMessage(caught, t, t.maintenance.deleteFailed))
     } finally {
       setDeletingId(null)
     }
@@ -91,12 +92,12 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
     <Card>
       {/* 좁은 화면은 줄바꿈으로 접기 */}
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-3">
-        <CardTitle className="min-w-0">정비 이력</CardTitle>
+        <CardTitle className="min-w-0">{t.maintenance.title}</CardTitle>
         {editing === 'closed' && (
           <div className="flex items-center gap-2">
             {/* 네이티브 select. 키보드·스크린리더 기본 지원 */}
             <select
-              aria-label="정비 종류로 거르기"
+              aria-label={t.maintenance.filterLabel}
               // cn 으로 충돌 클래스 정리(h-8·w-auto 우선)
               // 크기는 임의 값. 토큰은 cn 이 색으로 인식
               // md 부터 13px, 모바일은 16px(iOS 확대 방지)
@@ -108,16 +109,16 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                 setPage(0)
               }}
             >
-              <option value="">전체 종류</option>
-              {(Object.keys(SERVICE_TYPE_LABELS) as ServiceType[]).map((type) => (
+              <option value="">{t.maintenance.allTypes}</option>
+              {SERVICE_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {SERVICE_TYPE_LABELS[type]}
+                  {t.serviceTypes[type]}
                 </option>
               ))}
             </select>
 
             <Button size="sm" variant="secondary" onClick={() => setEditing('new')}>
-              이력 추가
+              {t.maintenance.add}
             </Button>
           </div>
         )}
@@ -139,7 +140,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
           </div>
         )}
 
-        {errorMessage !== null && <ErrorText message={errorMessage} />}
+        {shownError !== null && <ErrorText message={shownError} />}
 
         {loading ? (
           <div className="flex flex-col gap-5">
@@ -151,8 +152,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
           // 필터 결과가 비었을 때는 별도 문구
           <p className="py-4 text-caption text-muted-foreground">
             {filter === null
-              ? '아직 등록된 정비 이력이 없습니다.'
-              : `${SERVICE_TYPE_LABELS[filter]} 이력이 없습니다. 위에서 '전체 종류' 로 바꾸면 전부 보입니다.`}
+              ? t.maintenance.empty
+              : t.maintenance.emptyFiltered(t.serviceTypes[filter])}
           </p>
         ) : (
           <ul className="divide-y divide-border">
@@ -167,10 +168,10 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                 <div className="flex min-w-0 flex-1 basis-full flex-col gap-1 sm:basis-auto">
                   <div className="flex items-baseline gap-2.5">
                     <span className="text-body font-medium tracking-[-0.01em] text-strong">
-                      {SERVICE_TYPE_LABELS[record.type]}
+                      {t.serviceTypes[record.type]}
                     </span>
                     <span className="text-caption tabular-nums text-muted-foreground">
-                      {formatDate(record.serviceDate)}
+                      {f.date(record.serviceDate)}
                     </span>
                   </div>
 
@@ -184,10 +185,10 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                 {/* 수치는 오른쪽 정렬 열 */}
                 <div className="shrink-0 sm:text-right">
                   <p className="text-body tabular-nums text-strong">
-                    {formatKm(record.serviceOdometer)}
+                    {f.distance(record.serviceOdometer)}
                   </p>
                   <p className="text-caption tabular-nums text-muted-foreground">
-                    {formatWon(record.cost)}
+                    {f.money(record.cost, record.currency)}
                   </p>
                 </div>
 
@@ -199,7 +200,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                     disabled={deletingId === record.id}
                     onClick={() => setEditing(record)}
                   >
-                    수정
+                    {t.common.edit}
                   </Button>
                   <Button
                     size="xs"
@@ -207,7 +208,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
                     disabled={deletingId === record.id}
                     onClick={() => handleDelete(record.id)}
                   >
-                    {deletingId === record.id ? '삭제 중…' : '삭제'}
+                    {deletingId === record.id ? t.common.deleting : t.common.delete}
                   </Button>
                 </div>
               </li>

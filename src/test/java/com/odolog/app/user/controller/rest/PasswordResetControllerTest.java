@@ -1,5 +1,6 @@
 package com.odolog.app.user.controller.rest;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.common.exception.type.TooManyRequestsException;
 import com.odolog.app.user.dto.request.password.PasswordResetConfirmRequest;
@@ -67,7 +68,7 @@ class PasswordResetControllerTest {
     @DisplayName("같은 주소로 너무 자주 요청하면 429")
     void requestIsRateLimited() throws Exception {
         // 메일 폭주 방지. 로그인 리미터 공용
-        doThrow(new TooManyRequestsException("로그인 시도가 너무 많습니다. 10분 후 다시 시도해 주세요."))
+        doThrow(new TooManyRequestsException(ErrorCode.TOO_MANY_RESET_REQUESTS, "로그인 시도가 너무 많습니다. 10분 후 다시 시도해 주세요.", 10))
                 .when(passwordResetService).request(anyString());
 
         request(new PasswordResetRequest("me@odolog.com"), false)
@@ -84,7 +85,7 @@ class PasswordResetControllerTest {
     @Test
     @DisplayName("만료·사용된 토큰이면 401")
     void confirmRejectsDeadToken() throws Exception {
-        doThrow(new AuthenticationFailedException("링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요."))
+        doThrow(new AuthenticationFailedException(ErrorCode.RESET_LINK_INVALID, "링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요."))
                 .when(passwordResetService).confirm(any());
 
         request(new PasswordResetConfirmRequest("token", "new-password-1234"), true)

@@ -57,7 +57,7 @@ class AccountExportServiceTest {
 
     @BeforeEach
     void setUp() {
-        owner = new User("me@odolog.com", "encoded", "닉네임", "010-0000-0000");
+        owner = new User("me@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(owner, "id", 1L);
 
         first = new Vehicle(owner, "12가3456", "현대", "아반떼", 2020);

@@ -49,8 +49,10 @@ export interface RecentActivity {
   date: string
   vehicleId: string
   vehicleName: string
-  /** 주유 금액 없음이면 null */
+  /** 주유 금액 없음이면 null. 최소 단위 */
   cost: number | null
+  /** 이 기록의 통화. 사용자 통화와 다를 수 있음 */
+  currency: string
   type: ServiceType | null
   liters: number | null
 }
@@ -60,7 +62,11 @@ export interface HomeData {
   totalOdometer: number
   /** 정비 + 주유 건수 */
   recordCount: number
-  /** 정비비 + 유류비. 구성도 함께 */
+  /** 아래 금액·월별·종류별의 통화(사용자 설정) */
+  currency: string
+  /** 통화가 달라 금액 합계에서 뺀 기록 수 */
+  otherCurrencyRecordCount: number
+  /** 정비비 + 유류비. 구성도 함께. 최소 단위 */
   totalCost: number
   maintenanceCost: number
   fuelCost: number

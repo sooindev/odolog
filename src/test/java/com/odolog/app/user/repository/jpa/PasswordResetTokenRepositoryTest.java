@@ -34,7 +34,7 @@ class PasswordResetTokenRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        user = entityManager.persist(new User("me@odolog.com", "hash", "닉네임", null));
+        user = entityManager.persist(new User("me@odolog.com", "hash", "닉네임"));
     }
 
     private PasswordResetToken token(String hash) {

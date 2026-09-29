@@ -1,5 +1,6 @@
 package com.odolog.app.fuel.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.dto.request.register.FuelRecordRegisterRequest;
@@ -56,7 +57,7 @@ class FuelRecordServiceTest {
     private FuelRecordService fuelRecordService;
 
     private Vehicle vehicle(int odometer) {
-        User owner = new User("owner@odolog.com", "encoded", "차주", null);
+        User owner = new User("owner@odolog.com", "encoded", "차주");
         ReflectionTestUtils.setField(owner, "id", 1L);
         Vehicle vehicle = new Vehicle(owner, "12가3456", "현대", "아반떼", 2020);
         ReflectionTestUtils.setField(vehicle, "id", 10L);
@@ -87,7 +88,7 @@ class FuelRecordServiceTest {
     void registerRejectsFutureDate() {
         LocalDate tomorrow = LocalDate.of(2026, 9, 30);
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle(0));
-        doThrow(new InvalidRequestException("fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
+        doThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
                 .when(userToday).rejectFuture(1L, tomorrow, "fueledAt");
 
         assertThatThrownBy(() -> fuelRecordService.register(1L, "V10",
@@ -241,6 +242,25 @@ class FuelRecordServiceTest {
                 record(2L, vehicle, 10500, "10.00", 2_000_000_000)));
 
         assertThat(fuelRecordService.summary(1L, "V10").totalCost()).isEqualTo(4_000_000_000L);
+    }
+
+    @Test
+    @DisplayName("유류비 합계는 사용자 통화만. 다른 통화는 건수로 밝힌다")
+    void summaryCostIsInUserCurrencyOnly() {
+        Vehicle vehicle = vehicle(11000);
+        FuelRecord dollar = record(2L, vehicle, 10500, "25.00", 4567);
+        ReflectionTestUtils.setField(dollar, "currency", "USD");
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
+                record(1L, vehicle, 10000, "30.00", 60000), dollar));
+
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
+
+        assertThat(summary.totalCost()).isEqualTo(60000);
+        assertThat(summary.currency()).isEqualTo("KRW");
+        assertThat(summary.otherCurrencyRecordCount()).isEqualTo(1);
+        // 연비는 통화와 무관
+        assertThat(summary.averageEfficiency()).isNotNull();
     }
 
     @Test

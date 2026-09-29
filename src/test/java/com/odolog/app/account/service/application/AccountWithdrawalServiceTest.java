@@ -1,5 +1,6 @@
 package com.odolog.app.account.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.account.dto.request.withdraw.WithdrawRequest;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.user.service.application.UserService;
@@ -44,7 +45,7 @@ class AccountWithdrawalServiceTest {
     @Test
     @DisplayName("비밀번호가 틀리면 차량도 사용자도 지우지 않는다")
     void withdrawWithWrongPasswordDeletesNothing() {
-        doThrow(new AuthenticationFailedException("현재 비밀번호가 올바르지 않습니다."))
+        doThrow(new AuthenticationFailedException(ErrorCode.WRONG_PASSWORD, "현재 비밀번호가 올바르지 않습니다."))
                 .when(userService).verifyPassword(1L, "wrongpassword");
 
         assertThatThrownBy(() -> accountWithdrawalService.withdraw(1L, new WithdrawRequest("wrongpassword")))

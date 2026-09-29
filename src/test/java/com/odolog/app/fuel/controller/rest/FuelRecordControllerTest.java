@@ -1,5 +1,6 @@
 package com.odolog.app.fuel.controller.rest;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.auth.constant.SessionConst;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.fuel.dto.request.register.FuelRecordRegisterRequest;
@@ -170,7 +171,7 @@ class FuelRecordControllerTest {
         // 판정은 사용자 시간대를 아는 서비스. 여기서는 400 과 문구 전달만
         String tomorrow = LocalDate.of(2026, 9, 30).toString();
         when(fuelRecordService.register(anyLong(), anyString(), any(FuelRecordRegisterRequest.class)))
-                .thenThrow(new InvalidRequestException("fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."));
+                .thenThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."));
 
         mockMvc.perform(post("/api/vehicles/10/fuel-records")
                         .session(loginSessionOf(1L))
@@ -210,7 +211,7 @@ class FuelRecordControllerTest {
     @DisplayName("/summary 는 {recordId} 보다 먼저 매칭된다")
     void summaryRoutesBeforePathVariable() throws Exception {
         when(fuelRecordService.summary(1L, "10")).thenReturn(new FuelSummaryResponse(
-                3, 160000, new BigDecimal("80.00"), 1000, new BigDecimal("20.00"),
+                3, 160000, "KRW", 0, new BigDecimal("80.00"), 1000, new BigDecimal("20.00"),
                 "R3", null, 0, 0, List.of()));
 
         mockMvc.perform(get("/api/vehicles/10/fuel-records/summary").session(loginSessionOf(1L)))

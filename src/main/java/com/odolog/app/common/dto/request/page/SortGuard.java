@@ -1,5 +1,6 @@
 package com.odolog.app.common.dto.request.page;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -20,8 +21,8 @@ public final class SortGuard {
     public static void allowOnly(Pageable pageable, Set<String> allowed) {
         for (Sort.Order order : pageable.getSort()) {
             if (!allowed.contains(order.getProperty())) {
-                throw new InvalidRequestException(
-                        "sort: 정렬할 수 없는 속성입니다 (" + order.getProperty() + ")");
+                throw new InvalidRequestException(ErrorCode.INVALID_SORT,
+                        "sort: 정렬할 수 없는 속성입니다 (" + order.getProperty() + ")", "sort");
             }
         }
     }

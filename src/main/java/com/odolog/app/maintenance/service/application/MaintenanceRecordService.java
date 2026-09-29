@@ -1,5 +1,6 @@
 package com.odolog.app.maintenance.service.application;
 
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.maintenance.domain.calculation.NextService;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.entity.ServiceInterval;
@@ -160,6 +161,6 @@ public class MaintenanceRecordService {
 
     private MaintenanceRecord findRecordInVehicle(Long vehicleId, String recordId) {
         return maintenanceRecordRepository.findByPublicIdAndVehicleId(recordId, vehicleId)
-                .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 정비 이력입니다: " + recordId));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.MAINTENANCE_RECORD_NOT_FOUND, "존재하지 않는 정비 이력입니다: " + recordId));
     }
 }

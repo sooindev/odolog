@@ -3,7 +3,8 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 
 import { confirmPasswordReset } from '@/features/auth/api/endpoints/endpoints'
-import { ApiError } from '@/shared/api/client/client'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent } from '@/shared/ui/base/card'
 import { Input } from '@/shared/ui/base/input'
@@ -13,6 +14,7 @@ import { FormActions, Page } from '@/shared/ui/layout/page'
 import { passwordHint } from '@/shared/lib/limits/limits'
 
 export function ResetPasswordPage() {
+  const { t } = useI18n()
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const token = params.get('token')
@@ -28,7 +30,7 @@ export function ResetPasswordPage() {
 
     // 확인란은 전송하지 않음
     if (newPassword !== confirmPassword) {
-      setError('새 비밀번호가 서로 다릅니다.')
+      setError(t.password.mismatch)
       return
     }
 
@@ -37,12 +39,9 @@ export function ResetPasswordPage() {
     try {
       await confirmPasswordReset({ token: token ?? '', newPassword })
       // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
-      navigate('/login', {
-        replace: true,
-        state: { notice: '비밀번호를 바꿨습니다. 새 비밀번호로 로그인해 주세요.' },
-      })
+      navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '비밀번호 재설정에 실패했습니다.')
+      setError(errorMessage(caught, t, t.resetPassword.failed))
     } finally {
       setPending(false)
     }
@@ -51,15 +50,15 @@ export function ResetPasswordPage() {
   // 토큰 없이 직접 들어온 경우
   if (token === null || token === '') {
     return (
-      <Page title="새 비밀번호" description="메일로 받은 링크에서만 들어올 수 있습니다.">
+      <Page title={t.resetPassword.title} description={t.resetPassword.noTokenDescription}>
         <Card>
           <CardContent className="flex flex-col gap-4">
-            <ErrorText message="재설정 링크가 올바르지 않습니다." />
+            <ErrorText message={t.resetPassword.invalidLink} />
             <p className="text-caption leading-relaxed text-muted-foreground">
-              메일에 있는 링크를 그대로 눌러 주세요. 링크가 만료됐다면 다시 요청할 수 있습니다.
+              {t.resetPassword.invalidLinkDetail}
             </p>
             <FormActions>
-              <Button render={<Link to="/forgot-password" />}>재설정 링크 다시 받기</Button>
+              <Button render={<Link to="/forgot-password" />}>{t.resetPassword.requestAgain}</Button>
             </FormActions>
           </CardContent>
         </Card>
@@ -68,11 +67,11 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <Page title="새 비밀번호" description="8자 이상으로 정해 주세요. 바꾼 뒤 다시 로그인합니다.">
+    <Page title={t.resetPassword.title} description={t.resetPassword.description}>
       <Card>
         <CardContent>
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          <Field label="새 비밀번호" htmlFor="new-password" hint={passwordHint(newPassword)}>
+          <Field label={t.password.newPassword} htmlFor="new-password" hint={passwordHint(newPassword, t)}>
             <Input
               id="new-password"
               type="password"
@@ -87,7 +86,7 @@ export function ResetPasswordPage() {
             />
           </Field>
 
-          <Field label="새 비밀번호 확인" htmlFor="confirm-password">
+          <Field label={t.password.confirm} htmlFor="confirm-password">
             <Input
               id="confirm-password"
               type="password"
@@ -102,7 +101,7 @@ export function ResetPasswordPage() {
 
           <FormActions>
             <Button type="submit" disabled={pending}>
-              {pending ? '변경 중…' : '비밀번호 변경'}
+              {pending ? t.resetPassword.submitting : t.resetPassword.submit}
             </Button>
           </FormActions>
           </form>

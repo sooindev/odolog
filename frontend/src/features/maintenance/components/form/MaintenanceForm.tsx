@@ -11,12 +11,15 @@ import { Input } from '@/shared/ui/base/input'
 import { DateInput } from '@/shared/ui/form/date-input'
 import { Textarea } from '@/shared/ui/base/textarea'
 import { ErrorText } from '@/shared/ui/feedback/state'
-import { ApiError } from '@/shared/api/client/client'
-import { formatKm, todayString } from '@/shared/lib/format/format'
-import { MAX_AMOUNT, MAX_ODOMETER } from '@/shared/lib/limits/limits'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { errorMessage } from '@/shared/i18n/errors/errorMessage'
+import { todayString } from '@/shared/lib/format/format'
+import { MAX_ODOMETER } from '@/shared/lib/limits/limits'
+import { fromMinor, inputStep, maxMajor, toMinor } from '@/shared/lib/money/money'
 import { looksBigJump, looksPast } from '@/shared/lib/odometer/odometer'
+import { fromKm, toKm } from '@/shared/lib/units/units'
 import { registerRecord, updateRecord } from '@/features/maintenance/api/endpoints/endpoints'
-import { SERVICE_TYPE_GROUPS, SERVICE_TYPE_LABELS } from '@/features/maintenance/api/types/types'
+import { SERVICE_TYPE_GROUPS } from '@/features/maintenance/api/types/types'
 import type {
   MaintenanceRecordResponse,
   MaintenanceRecordUpdateRequest,
@@ -27,7 +30,7 @@ interface Props {
   vehicleId: string
   /** null 이면 등록, 값이 있으면 수정 */
   record: MaintenanceRecordResponse | null
-  /** 등록 시 주행거리 기본값(차량의 현재 값) */
+  /** 등록 시 주행거리 기본값(차량의 현재 값, km) */
   defaultOdometer: number
   /** 저장한 종류 전달. 목록 필터 해제 판단용 */
   onSaved: (savedType: ServiceType) => void
@@ -35,23 +38,34 @@ interface Props {
 }
 
 export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, onCancel }: Props) {
-  // 폼을 연 시점의 차량 주행거리 고정. 입력칸과 판정 기준의 어긋남 방지
+  const { t, f, unitSystem, timeZone, currency: userCurrency } = useI18n()
+
+  // 폼을 연 시점의 차량 주행거리 고정(km). 입력칸과 판정 기준의 어긋남 방지
   const [baseOdometer] = useState(defaultOdometer)
+  // 수정은 기록의 통화, 등록은 지금 사용자 통화. 서버도 같은 규칙
+  const currency = record?.currency ?? userCurrency
+
+  // 입력칸은 화면 단위(마일·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로 전송
+  const initialOdometerKm = record?.serviceOdometer ?? defaultOdometer
+  const [initialOdometer] = useState(String(Math.round(fromKm(unitSystem, initialOdometerKm))))
+  const [initialCost] = useState(String(fromMinor(record?.cost ?? 0, currency)))
 
   const [type, setType] = useState<ServiceType>(record?.type ?? 'ENGINE_OIL')
   const [description, setDescription] = useState(record?.description ?? '')
-  const [cost, setCost] = useState(String(record?.cost ?? 0))
-  const [serviceOdometer, setServiceOdometer] = useState(
-    String(record?.serviceOdometer ?? defaultOdometer),
-  )
-  const [serviceDate, setServiceDate] = useState(record?.serviceDate ?? todayString())
+  const [cost, setCost] = useState(initialCost)
+  const [serviceOdometer, setServiceOdometer] = useState(initialOdometer)
+  const [serviceDate, setServiceDate] = useState(record?.serviceDate ?? todayString(timeZone))
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
+  // 판정·전송은 km. 손대지 않았으면 원래 km 그대로(마일 왕복 오차 차단)
+  const odometerKm =
+    serviceOdometer === initialOdometer ? initialOdometerKm : toKm(unitSystem, Number(serviceOdometer))
+  const costMinor = cost === initialCost ? (record?.cost ?? 0) : toMinor(Number(cost), currency)
+
   // 주행거리 판정 규칙은 shared/lib/odometer. 안내만
-  const odometerValue = Number(serviceOdometer)
-  const past = serviceOdometer !== '' && looksPast(odometerValue, baseOdometer)
-  const bigJump = serviceOdometer !== '' && looksBigJump(odometerValue, baseOdometer)
+  const past = serviceOdometer !== '' && looksPast(odometerKm, baseOdometer)
+  const bigJump = serviceOdometer !== '' && looksBigJump(odometerKm, baseOdometer)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -60,8 +74,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
     // 급증은 되돌리기 어려움. force 정정으로만 복구
     if (bigJump) {
       const confirmed = window.confirm(
-        `주행거리가 ${formatKm(baseOdometer)} 에서 ${formatKm(odometerValue)} 로 크게 뜁니다.\n` +
-          '자리수가 틀리면 차량 주행거리가 그 값에 묶입니다.\n\n이대로 저장할까요?',
+        t.odometerHints.bigJumpConfirm(f.distance(baseOdometer), f.distance(odometerKm)),
       )
       if (!confirmed) {
         return
@@ -75,8 +88,8 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         await registerRecord(vehicleId, {
           type,
           description,
-          cost: Number(cost),
-          serviceOdometer: Number(serviceOdometer),
+          cost: costMinor,
+          serviceOdometer: odometerKm,
           serviceDate,
         })
       } else {
@@ -84,10 +97,8 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         const request: MaintenanceRecordUpdateRequest = {}
         if (type !== record.type) request.type = type
         if (description !== (record.description ?? '')) request.description = description
-        if (Number(cost) !== record.cost) request.cost = Number(cost)
-        if (Number(serviceOdometer) !== record.serviceOdometer) {
-          request.serviceOdometer = Number(serviceOdometer)
-        }
+        if (costMinor !== record.cost) request.cost = costMinor
+        if (odometerKm !== record.serviceOdometer) request.serviceOdometer = odometerKm
         if (serviceDate !== record.serviceDate) request.serviceDate = serviceDate
 
         await updateRecord(vehicleId, record.id, request)
@@ -95,7 +106,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
 
       onSaved(type)
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '저장에 실패했습니다.')
+      setError(errorMessage(caught, t, t.maintenance.form.failed))
     } finally {
       setPending(false)
     }
@@ -109,7 +120,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
     >
       {/* 짝이 되는 값끼리 2열. sm 미만은 1열 */}
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="정비 종류" htmlFor="type">
+        <Field label={t.maintenance.form.type} htmlFor="type">
           {/*
             네이티브 select. 모바일 OS 선택 UI 사용
             controlClassName 으로 입력창과 높이·포커스 통일, 펼침 목록은 color-scheme 이 테마 반영
@@ -126,10 +137,10 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
             >
               {/* optgroup 으로 부위별 묶음 */}
               {SERVICE_TYPE_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
+                <optgroup key={group.key} label={t.serviceTypeGroups[group.key]}>
                   {group.types.map((serviceType) => (
                     <option key={serviceType} value={serviceType}>
-                      {SERVICE_TYPE_LABELS[serviceType]}
+                      {t.serviceTypes[serviceType]}
                     </option>
                   ))}
                 </optgroup>
@@ -144,7 +155,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
           </div>
         </Field>
 
-        <Field label="정비 날짜" htmlFor="serviceDate">
+        <Field label={t.maintenance.form.date} htmlFor="serviceDate">
           {/* YYYY-MM-DD 문자열. 터치면 드럼 휠, 아니면 네이티브 date */}
           <DateInput id="serviceDate" required value={serviceDate} onChange={setServiceDate} />
         </Field>
@@ -152,14 +163,14 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field
-          label="정비 시 주행거리 (km)"
+          label={t.maintenance.form.odometer(f.distanceUnit)}
           htmlFor="serviceOdometer"
           // 비었을 때 안내 우선. 다음 정비 계산의 재료
           hint={
             serviceOdometer === ''
-              ? '주행거리를 적지 않으면 다음 정비 시점을 계산할 수 없습니다.'
+              ? t.maintenance.form.odometerEmpty
               : past
-                ? `차량에 기록된 ${baseOdometer.toLocaleString()}km 보다 작습니다. 과거 기록이면 그대로 두세요.`
+                ? t.odometerHints.past(f.distance(baseOdometer))
                 : undefined
           }
         >
@@ -168,20 +179,22 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
             type="number"
             required
             min={0}
-            max={MAX_ODOMETER}
+            max={Math.floor(fromKm(unitSystem, MAX_ODOMETER))}
             className="tabular-nums"
             value={serviceOdometer}
             onChange={(event) => setServiceOdometer(event.target.value)}
           />
         </Field>
 
-        <Field label="비용 (원)" htmlFor="cost">
+        {/* 비우면 Number('') 가 0 이 되어 0원으로 덮어씀. required 필수 */}
+        <Field label={t.maintenance.form.cost(currency)} htmlFor="cost">
           <Input
             id="cost"
             type="number"
             required
             min={0}
-            max={MAX_AMOUNT}
+            max={maxMajor(currency)}
+            step={inputStep(currency)}
             className="tabular-nums"
             value={cost}
             onChange={(event) => setCost(event.target.value)}
@@ -189,12 +202,12 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         </Field>
       </div>
 
-      <Field label="메모" htmlFor="description" hint="선택">
+      <Field label={t.maintenance.form.memo} htmlFor="description" hint={t.common.optional}>
         <Textarea
           id="description"
           rows={2}
           maxLength={255}
-          placeholder="교체한 부품, 정비소 이름 등"
+          placeholder={t.maintenance.form.memoPlaceholder}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
@@ -204,10 +217,10 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
 
       <FormActions>
         <Button type="submit" disabled={pending}>
-          {pending ? '저장 중…' : record === null ? '등록' : '수정'}
+          {pending ? t.common.saving : record === null ? t.common.register : t.common.save}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          취소
+          {t.common.cancel}
         </Button>
       </FormActions>
     </form>

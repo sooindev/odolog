@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 
 import { Button } from '@/shared/ui/base/button'
 import { GaugeMark } from '@/shared/ui/brand/mark'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
 
 // 소개 화면. 비로그인 전용(갈림은 HomePage)
 // API·상태 없는 조립 화면이라 app/ 소속
@@ -18,6 +19,8 @@ export function LandingPage() {
 }
 
 function Hero() {
+  const { t } = useI18n()
+
   return (
     // 가운데 정렬은 랜딩 전용. 앱 바깥이라는 신호
     <section className="flex flex-col items-center gap-8 pt-2 text-center sm:gap-10 sm:pt-20">
@@ -28,59 +31,50 @@ function Hero() {
         크기는 화면 제목보다 한 단 위
       */}
       <h1 className="max-w-4xl text-[clamp(2.5rem,1.5rem+4.4vw,4.5rem)] leading-[1.02] font-semibold tracking-[-0.045em] text-strong">
-        마지막 정비가 언제였는지,
-        <br className="hidden sm:block" /> 다음은 언제인지.
+        {t.landing.headline1}
+        <br className="hidden sm:block" /> {t.landing.headline2}
       </h1>
 
       <p className="max-w-xl text-lede text-muted-foreground">
-        정비 이력과 주유 기록을 남기면, 다음 정비 시점과 연비를 대신 계산합니다.
+        {t.landing.lede}
       </p>
 
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
         <Button size="lg" render={<Link to="/signup" />}>
-          시작하기
+          {t.landing.start}
         </Button>
         <Button size="lg" variant="ghost" render={<Link to="/login" />}>
-          로그인
+          {t.landing.login}
         </Button>
       </div>
     </section>
   )
 }
 
+// 문구는 t.landing.highlights 의 같은 키
 const HIGHLIGHTS = [
-  {
-    Icon: Wrench,
-    title: '정비 이력',
-    body: '엔진오일 · 미션오일 · 브레이크 · 타이어 등 15가지 종류. 비용과 메모까지 함께 남깁니다.',
-  },
-  {
-    Icon: CalendarClock,
-    title: '다음 정비 시점',
-    body: '종류별 권장 주기와 마지막 기록으로 계산합니다. 주행거리와 날짜, 두 기준을 모두 보여줍니다.',
-  },
-  {
-    Icon: Fuel,
-    title: '주유와 연비',
-    body: '주유할 때마다 주행거리와 넣은 양을 적으면 연비가 나옵니다. 유류비도 함께 쌓입니다.',
-  },
-  {
-    Icon: Gauge,
-    title: '주행거리',
-    body: '차량마다 따로 기록합니다. 이전보다 작은 값은 애초에 저장되지 않습니다.',
-  },
-]
+  { key: 'maintenance', Icon: Wrench },
+  { key: 'next', Icon: CalendarClock },
+  { key: 'fuel', Icon: Fuel },
+  { key: 'odometer', Icon: Gauge },
+] as const
 
 function Highlights() {
+  const { t } = useI18n()
+
   return (
     // gap-px 격자로 칸 사이 1px
     // 칸 4개라 sm 2×2, lg 한 줄
     <section className="reveal grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-      {HIGHLIGHTS.map(({ Icon, title, body }) => (
-        <div key={title} className="flex flex-col gap-4 bg-background p-8">
+      {HIGHLIGHTS.map(({ key, Icon }) => (
+        <div key={key} className="flex flex-col gap-4 bg-background p-8">
           <Icon className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
-          <h2 className="text-body font-semibold tracking-[-0.01em] text-strong">{title}</h2>
-          <p className="text-caption leading-relaxed text-muted-foreground">{body}</p>
+          <h2 className="text-body font-semibold tracking-[-0.01em] text-strong">
+            {t.landing.highlights[key].title}
+          </h2>
+          <p className="text-caption leading-relaxed text-muted-foreground">
+            {t.landing.highlights[key].body}
+          </p>
         </div>
       ))}
     </section>
@@ -88,14 +82,21 @@ function Highlights() {
 }
 
 function Preview() {
+  const { t, f } = useI18n()
+
+  // 예시 값도 보는 사람의 단위·날짜 표기로
+  const rows = [
+    [t.landing.previewAverage, f.efficiency(13.4, 1)],
+    [t.serviceTypes.ENGINE_OIL, `${f.distance(50_000)}${t.maintenance.next.or}${f.date('2027-01-15')}`],
+    [t.serviceTypes.TRANSMISSION_FLUID, `${f.distance(105_000)}${t.maintenance.next.or}${f.date('2030-06-02')}`],
+  ]
+
   return (
     <section className="reveal flex flex-col gap-10">
       <div className="flex flex-col items-center gap-3 text-center">
-        <h2 className="text-headline text-strong">
-          차 한 대의 기록이 한 화면에
-        </h2>
+        <h2 className="text-headline text-strong">{t.landing.previewTitle}</h2>
         <p className="max-w-md text-body leading-relaxed text-muted-foreground">
-          주행거리와 연비, 다음 정비 시점, 지난 이력을 따로 찾아다닐 필요가 없습니다.
+          {t.landing.previewBody}
         </p>
       </div>
 
@@ -103,28 +104,20 @@ function Preview() {
       <div className="mx-auto w-full max-w-2xl border border-border bg-card p-3 sm:p-4">
         <div className="flex flex-col gap-8 border border-border bg-sunken p-6 sm:p-8">
           <div className="flex flex-col gap-1.5">
-            <p className="text-eyebrow text-muted-foreground uppercase">
-              12가 3456
-            </p>
-            <p className="text-section text-strong">
-              현대 아반떼
-            </p>
+            <p className="text-eyebrow text-muted-foreground uppercase">{t.landing.previewPlate}</p>
+            <p className="text-section text-strong">{t.landing.previewModel}</p>
           </div>
 
           <div className="flex items-baseline gap-2">
             <span className="text-[2.75rem] leading-none font-semibold tracking-[-0.045em] tabular-nums text-strong">
-              45,000
+              {f.distanceNumber(45_000)}
             </span>
-            <span className="text-caption text-muted-foreground">km</span>
+            <span className="text-caption text-muted-foreground">{f.distanceUnit}</span>
           </div>
 
           {/* 실제 화면처럼 이력 있는 종류만 표시 */}
           <ul className="divide-y divide-border border-t border-border">
-            {[
-              ['평균 연비', '13.4 km/L'],
-              ['엔진오일', '50,000km 또는 2027. 1. 15.'],
-              ['미션오일', '105,000km 또는 2030. 6. 2.'],
-            ].map(([type, next]) => (
+            {rows.map(([type, next]) => (
               <li key={type} className="flex items-baseline justify-between gap-4 py-3.5">
                 <span className="text-body text-strong">{type}</span>
                 <span className="text-right text-caption tabular-nums text-muted-foreground">
@@ -140,23 +133,23 @@ function Preview() {
 }
 
 function Closing() {
+  const { t } = useI18n()
+
   return (
     <section className="reveal flex flex-col items-center gap-7 border-t border-border pt-20 text-center">
-      <h2 className="max-w-lg text-headline text-strong">
-        차 한 대만 있으면 시작할 수 있습니다.
-      </h2>
+      <h2 className="max-w-lg text-headline text-strong">{t.landing.closing}</h2>
 
       <Button size="lg" render={<Link to="/signup" />}>
-        시작하기
+        {t.landing.start}
       </Button>
 
       <p className="text-caption text-muted-foreground">
-        이미 계정이 있으신가요?{' '}
+        {t.landing.haveAccount}{' '}
         <Link
           to="/login"
           className="text-strong transition-opacity duration-200 ease-apple hover:opacity-70"
         >
-          로그인
+          {t.landing.login}
         </Link>
       </p>
     </section>

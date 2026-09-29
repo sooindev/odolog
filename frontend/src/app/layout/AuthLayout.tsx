@@ -1,11 +1,14 @@
 import { ArrowRight } from 'lucide-react'
 import { Link, Outlet } from 'react-router'
 
+import { useI18n } from '@/shared/i18n/context/I18nContext'
 import { GaugeMark } from '@/shared/ui/brand/mark'
 
 // 로그인·회원가입 공용 2단 레이아웃
 // 왼쪽 패널은 lg 미만에서 숨김
 export function AuthLayout() {
+  const { t } = useI18n()
+
   return (
     <div className="grid items-center gap-12 lg:min-h-[32rem] lg:grid-cols-2 lg:gap-16">
       {/* 두 단 사이 세로 괘선 */}
@@ -17,9 +20,9 @@ export function AuthLayout() {
           줄바꿈 직접 지정
         */}
         <p className="text-[clamp(2rem,1.4rem+1.8vw,2.75rem)] leading-[1.06] font-semibold tracking-[-0.04em] text-strong">
-          마지막 정비가 언제였는지,
+          {t.landing.headline1}
           <br />
-          다음은 언제인지.
+          {t.landing.headline2}
         </p>
 
         {/* 기능 설명은 랜딩 담당 */}
@@ -27,7 +30,7 @@ export function AuthLayout() {
           to="/"
           className="inline-flex w-fit items-center gap-1.5 text-caption text-muted-foreground transition-opacity duration-200 ease-apple hover:opacity-70"
         >
-          오도로그가 하는 일
+          {t.landing.whatItDoes}
           <ArrowRight className="size-3.5" aria-hidden="true" />
         </Link>
       </div>

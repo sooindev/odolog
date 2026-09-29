@@ -7,16 +7,17 @@ import { GaugeMark } from '@/shared/ui/brand/mark'
 import { Pagination } from '@/shared/ui/nav/pagination'
 import { Page } from '@/shared/ui/layout/page'
 import { ErrorText, Skeleton } from '@/shared/ui/feedback/state'
-import { formatNumber } from '@/shared/lib/format/format'
+import { useI18n } from '@/shared/i18n/context/I18nContext'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { fetchVehicles } from '@/features/vehicles/api/endpoints/endpoints'
 
 export function VehicleListPage() {
+  const { t, f } = useI18n()
   const [page, setPage] = useState(0)
 
   // page 변경 시 재조회
   const load = useCallback(() => fetchVehicles(page), [page])
-  const { data, loading, error } = useAsyncData(load, '차량 목록을 불러오지 못했습니다.')
+  const { data, loading, error } = useAsyncData(load, t.vehicles.list.loadFailed)
 
   if (loading) {
     return <VehicleListSkeleton />
@@ -33,13 +34,13 @@ export function VehicleListPage() {
   return (
     <Page
       eyebrow="Garage"
-      title="내 차량"
+      title={t.vehicles.list.title}
       // 대수는 설명에. 제목 길이 고정
-      description={`${data.totalElements}대를 관리 중입니다.`}
+      description={t.vehicles.list.count(data.totalElements)}
       action={
         // render: 버튼 스타일을 Link 에. button 안 a 금지
         <Button size="sm" render={<Link to="/vehicles/new" />}>
-          차량 등록
+          {t.vehicles.list.register}
         </Button>
       }
     >
@@ -66,12 +67,14 @@ export function VehicleListPage() {
                     {/* 지난 정비 표시. 빨강 대신 테두리(NextServiceCard 참고) */}
                     {vehicle.overdueServiceCount !== null && vehicle.overdueServiceCount > 0 && (
                       <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
-                        정비 {vehicle.overdueServiceCount}건 지남
+                        {t.vehicles.overdue(vehicle.overdueServiceCount)}
                       </span>
                     )}
                   </p>
                   <p className="text-caption text-muted-foreground">
-                    {vehicle.modelYear === null ? '연식 미상' : `${vehicle.modelYear}년식`}
+                    {vehicle.modelYear === null
+                      ? t.vehicles.unknownYear
+                      : t.vehicles.modelYear(vehicle.modelYear)}
                   </p>
                 </div>
 
@@ -80,9 +83,9 @@ export function VehicleListPage() {
                   {/* 좁은 화면에서는 숨김. 아래 km 과 중복, 넓은 자간이 폭 차지 */}
                   <p className="hidden text-eyebrow text-faint uppercase sm:block">Odometer</p>
                   <p className="text-figure tabular-nums text-strong">
-                    {formatNumber(vehicle.odometer)}
+                    {f.distanceNumber(vehicle.odometer)}
                     <span className="ml-1.5 text-caption tracking-normal text-muted-foreground">
-                      km
+                      {f.distanceUnit}
                     </span>
                   </p>
                 </div>
@@ -126,18 +129,20 @@ function VehicleListSkeleton() {
 
 /** 빈 상태 */
 function EmptyGarage() {
+  const { t } = useI18n()
+
   return (
     <div className="flex flex-col items-center gap-7 border-y border-border px-5 py-20 text-center sm:gap-8 sm:px-8 sm:py-32">
       <GaugeMark className="size-10 text-muted-foreground" />
 
       <div className="flex max-w-sm flex-col gap-2">
-        <p className="text-section text-strong">아직 등록된 차량이 없습니다</p>
+        <p className="text-section text-strong">{t.vehicles.list.emptyTitle}</p>
         <p className="text-caption leading-relaxed text-muted-foreground">
-          차량을 등록하면 정비 이력과 다음 정비 시점, 주유 기록과 연비를 함께 관리할 수 있습니다.
+          {t.vehicles.list.emptyBody}
         </p>
       </div>
 
-      <Button render={<Link to="/vehicles/new" />}>첫 차량 등록하기</Button>
+      <Button render={<Link to="/vehicles/new" />}>{t.vehicles.list.registerFirst}</Button>
     </div>
   )
 }
