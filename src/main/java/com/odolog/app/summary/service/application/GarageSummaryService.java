@@ -58,7 +58,7 @@ public class GarageSummaryService {
 
     /** currency: 합계에 넣을 통화(사용자 설정). 다른 통화 기록은 금액 합계에서만 제외 */
     public GarageSummaryResponse summarize(Long ownerId, LocalDate today, String currency) {
-        // 쿼리 3번
+        // 쿼리 4번(차량·정비·주유·주기)
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(ownerId);
         List<MaintenanceRecord> records =
                 maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(ownerId);

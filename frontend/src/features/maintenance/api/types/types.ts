@@ -76,6 +76,10 @@ export interface NextServiceResponse {
   intervalMonths: number | null
   /** 기본값 덮어씀 여부 */
   customized: boolean
+  /** 직접 정한 km 주기. 기본값을 쓰면 null */
+  customIntervalKm: number | null
+  /** 직접 정한 개월 주기. 기본값을 쓰면 null */
+  customIntervalMonths: number | null
 }
 
 /** 차량별 권장 주기. 전체 교체, 둘 다 null 이면 기본값 */

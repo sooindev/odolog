@@ -17,6 +17,8 @@ import java.util.Map;
  * @param overdue    주행거리·날짜 중 하나라도 지남
  * @param intervalKm 실제 적용 주기. 차량별 설정 우선, 없으면 ServiceType 기본값
  * @param customized 기본값 덮어씀 여부
+ * @param customIntervalKm     차량별로 직접 정한 km 주기. 기본값을 쓰면 null
+ * @param customIntervalMonths 차량별로 직접 정한 개월 주기. 기본값을 쓰면 null
  */
 public record NextService(
         ServiceType type,
@@ -27,7 +29,9 @@ public record NextService(
         boolean overdue,
         Integer intervalKm,
         Integer intervalMonths,
-        boolean customized
+        boolean customized,
+        Integer customIntervalKm,
+        Integer customIntervalMonths
 ) {
 
     /**
@@ -80,10 +84,10 @@ public record NextService(
                                     ServiceInterval override, int currentOdometer, LocalDate today) {
 
         // km·개월 개별 덮어쓰기
-        Integer intervalKm = (override != null && override.getIntervalKm() != null)
-                ? override.getIntervalKm() : type.getRecommendedIntervalKm();
-        Integer intervalMonths = (override != null && override.getIntervalMonths() != null)
-                ? override.getIntervalMonths() : type.getRecommendedIntervalMonths();
+        Integer customKm = override == null ? null : override.getIntervalKm();
+        Integer customMonths = override == null ? null : override.getIntervalMonths();
+        Integer intervalKm = customKm != null ? customKm : type.getRecommendedIntervalKm();
+        Integer intervalMonths = customMonths != null ? customMonths : type.getRecommendedIntervalMonths();
 
         Integer nextOdometer = (intervalKm == null) ? null : record.getServiceOdometer() + intervalKm;
         LocalDate nextDate = (intervalMonths == null) ? null
@@ -95,6 +99,6 @@ public record NextService(
 
         return new NextService(type, record.getServiceOdometer(), nextOdometer,
                 record.getServiceDate(), nextDate, overdue,
-                intervalKm, intervalMonths, override != null);
+                intervalKm, intervalMonths, override != null, customKm, customMonths);
     }
 }

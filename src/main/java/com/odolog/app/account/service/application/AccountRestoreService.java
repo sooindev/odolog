@@ -78,12 +78,13 @@ public class AccountRestoreService {
         int addedIntervals = 0;
 
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
-            String plateNumber = InputText.strip(data.plateNumber());
+            String plateNumber = InputText.required(data.plateNumber(), "plateNumber");
             Vehicle vehicle = byPlate.get(plateKey(plateNumber));
 
             if (vehicle == null) {
                 vehicle = vehicleRepository.save(new Vehicle(owner, plateNumber,
-                        InputText.strip(data.manufacturer()), InputText.strip(data.modelName()),
+                        InputText.required(data.manufacturer(), "manufacturer"),
+                        InputText.required(data.modelName(), "modelName"),
                         data.modelYear()));
                 byPlate.put(plateKey(plateNumber), vehicle);
                 addedVehicles++;

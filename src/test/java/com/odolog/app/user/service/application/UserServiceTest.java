@@ -4,6 +4,8 @@ import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
 import com.odolog.app.common.exception.type.InvalidRequestException;
+import com.odolog.app.common.exception.type.TooManyRequestsException;
+import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.domain.type.Language;
 import com.odolog.app.user.domain.type.UnitSystem;
@@ -26,6 +28,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -182,6 +186,8 @@ class UserServiceTest {
         assertThat(user.getPassword()).isNotEqualTo("newpassword1234");
         assertThat(encoder.matches("newpassword1234", user.getPassword())).isTrue();
         assertThat(encoder.matches("oldpassword", user.getPassword())).isFalse();
+        // 발급돼 있던 재설정 링크도 폐기
+        verify(passwordResetTokenRepository).deleteByUserId(1L);
     }
 
     @Test
@@ -197,6 +203,32 @@ class UserServiceTest {
                 .isInstanceOf(AuthenticationFailedException.class);
 
         assertThat(user.getPassword()).isEqualTo(original);
+        // 틀린 시도는 사용자 단위로 집계
+        verify(loginAttemptLimiter).recordFailure("password-check:1");
+    }
+
+    @Test
+    @DisplayName("비밀번호 확인이 잠겨 있으면 맞는 비밀번호도 429 — 훔친 세션의 무제한 대입 방지")
+    void verifyPasswordLocked() {
+        doThrow(new TooManyRequestsException(ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS, "잠김", 10))
+                .when(loginAttemptLimiter)
+                .checkNotLocked(eq("password-check:1"), eq(ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS), any());
+
+        assertThatThrownBy(() -> userService.verifyPassword(1L, "oldpassword"))
+                .isInstanceOf(TooManyRequestsException.class);
+
+        // 잠긴 동안은 비밀번호 비교까지 가지 않음
+        verify(userRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("전각 공백만 적은 닉네임은 400 — strip 뒤 빈 문자열이 저장되지 않게")
+    void signUpFullWidthSpaceNickname() {
+        assertThatThrownBy(() -> userService.signUp(new SignUpRequest(
+                "new@odolog.com", "password1234", "\u3000", null, null, null, null)))
+                .isInstanceOf(InvalidRequestException.class);
+
+        verify(userRepository, never()).save(any());
     }
 
     @Test

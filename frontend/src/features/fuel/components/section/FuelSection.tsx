@@ -82,7 +82,9 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
           // 펼침 연출(폼 0.12s 지연). 닫을 때는 없음
           <div className="form-open">
             <div>
+              {/* key 필수. 폼이 열린 채 다른 행을 고르면 이전 입력이 새 기록에 덮어써짐 */}
               <FuelForm
+                key={editing === 'new' ? 'new' : editing.id}
                 vehicleId={vehicleId}
                 record={editing === 'new' ? null : editing}
                 defaultOdometer={currentOdometer}

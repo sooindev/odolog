@@ -21,7 +21,11 @@ public record NextServiceResponse(
         Integer intervalKm,
         Integer intervalMonths,
         /** 기본값 덮어씀 여부 */
-        boolean customized
+        boolean customized,
+        /** 직접 정한 km 주기. 기본값이면 null. 편집 폼이 기본값을 설정으로 굳히지 않게 */
+        Integer customIntervalKm,
+        /** 직접 정한 개월 주기. 기본값이면 null */
+        Integer customIntervalMonths
 ) {
 
     public static NextServiceResponse from(NextService next) {
@@ -34,6 +38,8 @@ public record NextServiceResponse(
                 next.overdue(),
                 next.intervalKm(),
                 next.intervalMonths(),
-                next.customized());
+                next.customized(),
+                next.customIntervalKm(),
+                next.customIntervalMonths());
     }
 }

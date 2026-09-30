@@ -45,8 +45,9 @@ class GarageSummaryControllerTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
 
-        when(userToday.of(1L)).thenReturn(LocalDate.of(2026, 9, 29));
-        when(userService.findById(1L)).thenReturn(new User("a@b.com", "encoded", "nick"));
+        User user = new User("a@b.com", "encoded", "nick");
+        when(userService.findById(1L)).thenReturn(user);
+        when(userToday.of(user)).thenReturn(LocalDate.of(2026, 9, 29));
         when(garageSummaryService.summarize(eq(1L), eq(LocalDate.of(2026, 9, 29)), eq("KRW"))).thenReturn(
                 new GarageSummaryResponse(2, 90000, 5, "KRW", 0, 148000, 80000, 68000,
                         List.of(new GarageSummaryResponse.MonthlyCost("2026-09", 148000, 80000, 68000, 2)),

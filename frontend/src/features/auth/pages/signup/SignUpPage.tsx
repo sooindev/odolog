@@ -12,12 +12,12 @@ import { ErrorText } from '@/shared/ui/feedback/state'
 import { useI18n } from '@/shared/i18n/context/I18nContext'
 import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { passwordHint } from '@/shared/lib/limits/limits'
-import { detectPreferences } from '@/shared/lib/locale/preferences'
 import { signUp } from '@/features/auth/api/endpoints/endpoints'
 
 export function SignUpPage() {
   const { login } = useAuth()
-  const { t } = useI18n()
+  // 로그인 전 화면이 쓰던 설정 그대로. 추정 못 한 값의 대비책까지 같아야 가입 뒤 단위·통화가 안 바뀜
+  const { t, language, timeZone, currency, unitSystem } = useI18n()
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
@@ -32,8 +32,8 @@ export function SignUpPage() {
     setPending(true)
 
     try {
-      // 설정은 입력칸 없이 브라우저 값. 모르는 값은 undefined 라 JSON 에서 빠짐
-      await signUp({ email, password, nickname, ...detectPreferences() })
+      // 설정은 입력칸 없이 지금 화면의 값
+      await signUp({ email, password, nickname, language, timeZone, currency, unitSystem })
     } catch (caught) {
       // 409 = 이메일 중복, 400 = 검증 실패
       setError(errorMessage(caught, t, t.signUp.failed))

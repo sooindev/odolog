@@ -56,7 +56,7 @@ public class VehicleService {
 
     @Transactional
     public Vehicle register(Long ownerId, VehicleRegisterRequest request) {
-        String plateNumber = InputText.strip(request.plateNumber());
+        String plateNumber = InputText.required(request.plateNumber(), "plateNumber");
         if (vehicleRepository.existsByOwnerIdAndPlateNumber(ownerId, plateNumber)) {
             throw new ConflictException(ErrorCode.PLATE_DUPLICATE, "이미 등록하신 차량 번호입니다: " + plateNumber);
         }
@@ -64,8 +64,9 @@ public class VehicleService {
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + ownerId));
 
-        Vehicle vehicle = new Vehicle(owner, plateNumber, InputText.strip(request.manufacturer()),
-                InputText.strip(request.modelName()), request.modelYear());
+        Vehicle vehicle = new Vehicle(owner, plateNumber,
+                InputText.required(request.manufacturer(), "manufacturer"),
+                InputText.required(request.modelName(), "modelName"), request.modelYear());
 
         return vehicleRepository.save(vehicle);
     }
@@ -116,7 +117,7 @@ public class VehicleService {
         Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
 
         // 번호판 먼저 처리. 다른 필드 변경 후 exists 전 자동 flush 로 자기 중복 판정 방지
-        String plateNumber = InputText.strip(request.plateNumber());
+        String plateNumber = InputText.required(request.plateNumber(), "plateNumber");
         if (plateNumber != null && !plateNumber.equals(vehicle.getPlateNumber())) {
             // 다른 번호판으로 바꿀 때만 검사. DB 와 같은 기준(앞뒤 공백·대소문자 무시)
             if (!plateNumber.equalsIgnoreCase(vehicle.getPlateNumber().strip())
@@ -126,10 +127,10 @@ public class VehicleService {
             vehicle.changePlateNumber(plateNumber);
         }
         if (request.manufacturer() != null) {
-            vehicle.changeManufacturer(InputText.strip(request.manufacturer()));
+            vehicle.changeManufacturer(InputText.required(request.manufacturer(), "manufacturer"));
         }
         if (request.modelName() != null) {
-            vehicle.changeModelName(InputText.strip(request.modelName()));
+            vehicle.changeModelName(InputText.required(request.modelName(), "modelName"));
         }
         if (request.modelYear() != null) {
             vehicle.changeModelYear(request.modelYear());

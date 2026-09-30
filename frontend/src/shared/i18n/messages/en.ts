@@ -97,6 +97,8 @@ export const en: Messages = {
         `Too many sign-up attempts. Try again in ${minutes} ${plural(minutes, 'minute', 'minutes')}.`,
       TOO_MANY_RESET_REQUESTS: (minutes: number) =>
         `Too many reset requests. Try again in ${minutes} ${plural(minutes, 'minute', 'minutes')}.`,
+      TOO_MANY_PASSWORD_ATTEMPTS: (minutes: number) =>
+        `Too many wrong passwords. Try again in ${minutes} ${plural(minutes, 'minute', 'minutes')}.`,
       SAVE_FAILED: 'Couldn’t save. Please try again shortly.',
       SERVER_ERROR: 'Something went wrong on our end. Please try again shortly.',
     },

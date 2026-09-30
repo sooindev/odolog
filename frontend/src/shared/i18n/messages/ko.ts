@@ -96,6 +96,8 @@ export const ko = {
         `회원가입 시도가 너무 많습니다. ${minutes}분 후 다시 시도해 주세요.`,
       TOO_MANY_RESET_REQUESTS: (minutes: number) =>
         `비밀번호 재설정 요청이 너무 많습니다. ${minutes}분 후 다시 시도해 주세요.`,
+      TOO_MANY_PASSWORD_ATTEMPTS: (minutes: number) =>
+        `비밀번호를 너무 많이 틀렸습니다. ${minutes}분 후 다시 시도해 주세요.`,
       SAVE_FAILED: '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.',
       SERVER_ERROR: '서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
     },

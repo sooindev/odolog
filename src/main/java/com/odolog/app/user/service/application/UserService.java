@@ -29,6 +29,9 @@ public class UserService {
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    /** 로그인·가입·재설정과 공용 리미터, 키만 구분. 세션 사용자 id 기준 */
+    private static final String PASSWORD_CHECK_KEY_PREFIX = "password-check:";
+
     /** 없는 계정의 비교 상대. 같은 인코더로 생성해 비용 동일 */
     private final String dummyHash = passwordEncoder.encode("no-such-account");
 
@@ -47,7 +50,7 @@ public class UserService {
         }
 
         String encodedPassword = passwordEncoder.encode(request.password());
-        User user = new User(request.email(), encodedPassword, InputText.strip(request.nickname()));
+        User user = new User(request.email(), encodedPassword, InputText.required(request.nickname(), "nickname"));
         applySettings(user, request.language(), request.timeZone(), request.currency(), request.unitSystem());
 
         return userRepository.save(user);
@@ -99,13 +102,22 @@ public class UserService {
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + userId));
     }
 
-    /** 되돌릴 수 없는 동작 앞의 비밀번호 확인. 변경·탈퇴 공용 */
+    /**
+     * 되돌릴 수 없는 동작 앞의 비밀번호 확인. 변경·탈퇴 공용
+     * 로그인과 같은 횟수 제한. 없으면 훔친 세션으로 현재 비밀번호 무제한 대입
+     */
     public void verifyPassword(Long userId, String rawPassword) {
+        String limitKey = PASSWORD_CHECK_KEY_PREFIX + userId;
+        loginAttemptLimiter.checkNotLocked(limitKey, ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS, "비밀번호를 너무 많이 틀렸습니다.");
+
         User user = findById(userId);
 
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
+            loginAttemptLimiter.recordFailure(limitKey);
             throw new AuthenticationFailedException(ErrorCode.WRONG_PASSWORD, "현재 비밀번호가 올바르지 않습니다.");
         }
+
+        loginAttemptLimiter.recordSuccess(limitKey);
     }
 
     @Transactional
@@ -130,6 +142,9 @@ public class UserService {
         }
 
         user.changePassword(passwordEncoder.encode(request.newPassword()));
+
+        // 발급된 재설정 링크 폐기. 남겨 두면 바꾼 비밀번호를 30분 동안 링크로 덮어쓸 수 있음
+        passwordResetTokenRepository.deleteByUserId(userId);
     }
 
     @Transactional
@@ -137,7 +152,7 @@ public class UserService {
         User user = findById(userId);
 
         if (request.nickname() != null) {
-            user.changeNickname(InputText.strip(request.nickname()));
+            user.changeNickname(InputText.required(request.nickname(), "nickname"));
         }
         applySettings(user, request.language(), request.timeZone(), request.currency(), request.unitSystem());
 

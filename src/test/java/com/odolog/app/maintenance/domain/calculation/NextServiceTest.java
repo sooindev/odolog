@@ -159,6 +159,9 @@ class NextServiceTest {
                 .singleElement()
                 .satisfies(next -> {
                     assertThat(next.intervalMonths()).isEqualTo(6);
+                    // 직접 정한 값은 거리뿐. 편집 폼이 개월 칸을 비워 두는 근거
+                    assertThat(next.customIntervalKm()).isEqualTo(10000);
+                    assertThat(next.customIntervalMonths()).isNull();
                     // 거리는 남았지만 6개월 경과 → 지남
                     assertThat(next.overdue()).isTrue();
                 });

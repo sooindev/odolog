@@ -36,6 +36,11 @@ public class UserToday {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + userId));
 
+        return of(user);
+    }
+
+    /** 이미 읽은 사용자로. 같은 요청에서 조회 중복 방지 */
+    public LocalDate of(User user) {
         return LocalDate.now(clock.withZone(ZoneId.of(user.getTimeZone())));
     }
 

@@ -142,14 +142,12 @@ function IntervalForm({
   // 거리 주기는 화면 단위(마일)로 보여 주고 km 로 저장
   const shown = (km: number) => String(Math.round(fromKm(unitSystem, km)))
 
-  // 덮어쓴 적이 없으면 빈 칸으로 시작. 기본값을 채우면 그대로 저장 시 customized 로 바뀜
+  // 직접 정한 칸만 채우고 기본값 칸은 비움. 기본값을 채우면 그대로 저장 시 설정으로 굳음
   // 적용 중인 값은 placeholder. 처음 값을 기억해 손대지 않으면 저장값(km) 그대로
-  const [initialKm] = useState(
-    result.customized && result.intervalKm !== null ? shown(result.intervalKm) : '',
-  )
+  const [initialKm] = useState(result.customIntervalKm === null ? '' : shown(result.customIntervalKm))
   const [km, setKm] = useState(initialKm)
   const [months, setMonths] = useState(
-    result.customized && result.intervalMonths !== null ? String(result.intervalMonths) : '',
+    result.customIntervalMonths === null ? '' : String(result.customIntervalMonths),
   )
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -161,7 +159,7 @@ function IntervalForm({
 
     try {
       await changeServiceInterval(vehicleId, result.type, {
-        intervalKm: km === '' ? null : km === initialKm ? result.intervalKm : toKm(unitSystem, Number(km)),
+        intervalKm: km === '' ? null : km === initialKm ? result.customIntervalKm : toKm(unitSystem, Number(km)),
         intervalMonths: months === '' ? null : Number(months),
       })
       onSaved()

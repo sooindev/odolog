@@ -57,12 +57,14 @@ export function setUnauthorizedHandler(handler: () => void) {
 
 // 전역 401 처리 제외 목록. 세션 만료가 아닌 401
 // POST /login: 비밀번호 오류 · GET /me: 비로그인 확인 · DELETE /me: 탈퇴 비밀번호 오류 · PATCH /me/password: 현재 비밀번호 오류
+// PATCH /password-reset: 만료·사용된 링크(로그인 상태와 무관)
 // 메서드까지 비교. PATCH /me 의 세션 만료는 전역 처리 대상
 const SKIP_UNAUTHORIZED_HANDLER = [
   'POST /api/users/login',
   'GET /api/users/me',
   'DELETE /api/users/me',
   'PATCH /api/users/me/password',
+  'PATCH /api/users/password-reset',
 ]
 
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {

@@ -3,6 +3,7 @@ package com.odolog.app.summary.controller.rest;
 import com.odolog.app.common.auth.annotation.LoginUser;
 import com.odolog.app.summary.dto.response.garage.GarageSummaryResponse;
 import com.odolog.app.summary.service.application.GarageSummaryService;
+import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.service.application.UserService;
 import com.odolog.app.user.service.time.UserToday;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,8 @@ public class GarageSummaryController {
     @GetMapping("/api/summary")
     public ResponseEntity<GarageSummaryResponse> summary(@LoginUser Long userId) {
         // 오늘 날짜는 밖에서 주입. 월별 12칸 테스트 고정용, 사용자 시간대 기준
-        String currency = userService.findById(userId).getCurrency();
-        return ResponseEntity.ok(garageSummaryService.summarize(userId, userToday.of(userId), currency));
+        // 사용자 한 번 조회로 통화·오늘 둘 다
+        User user = userService.findById(userId);
+        return ResponseEntity.ok(garageSummaryService.summarize(userId, userToday.of(user), user.getCurrency()));
     }
 }

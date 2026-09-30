@@ -144,7 +144,9 @@ export function FuelSummaryCard({
             </dl>
 
             {/* 구간이 둘 미만이면 추이 숨김 */}
-            {data.trend.length >= 2 && <EfficiencyTrend trend={data.trend} />}
+            {data.trend.length >= 2 && (
+              <EfficiencyTrend trend={data.trend} averageEfficiency={data.averageEfficiency} />
+            )}
           </>
         )}
       </CardContent>
@@ -156,15 +158,26 @@ export function FuelSummaryCard({
  * 최근 구간 연비 추이. 계열 하나라 범례 없음, 눈금선은 평균 한 줄
  * 세로축은 최솟값의 90% 부터. 변화를 보는 그림이라 아래에 명시
  */
-function EfficiencyTrend({ trend }: { trend: FuelSummaryResponse['trend'] }) {
+function EfficiencyTrend({
+  trend,
+  averageEfficiency,
+}: {
+  trend: FuelSummaryResponse['trend']
+  /** 히어로 숫자와 같은 평균(km/L). 점들의 단순 평균은 거리 가중이 아니라 값이 달라짐 */
+  averageEfficiency: number | null
+}) {
   const { t, f, unitSystem } = useI18n()
   // 화면 단위로 바꾼 값으로 그림. L/100km 는 작을수록 좋아 막대 방향 의미가 뒤집힘(아래 안내)
   const values = trend.map((point) => fromKmPerLiter(unitSystem, point.efficiency))
-  const max = Math.max(...values)
-  const floor = Math.min(...values) * 0.9
+  const average =
+    averageEfficiency === null
+      ? values.reduce((sum, value) => sum + value, 0) / values.length
+      : fromKmPerLiter(unitSystem, averageEfficiency)
+  // 평균선이 그림 밖으로 나가지 않게 범위에 포함
+  const max = Math.max(...values, average)
+  const floor = Math.min(...values, average) * 0.9
   const span = Math.max(max - floor, 0.01)
 
-  const average = values.reduce((sum, value) => sum + value, 0) / values.length
   const averageTop = ((max - average) / span) * 100
 
   return (
