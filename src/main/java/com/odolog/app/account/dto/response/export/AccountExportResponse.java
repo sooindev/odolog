@@ -61,10 +61,11 @@ public record AccountExportResponse(
     public record MaintenanceData(
             String type,
             String description,
-            int cost,
+            /** 안 적었으면 null */
+            Integer cost,
             /** ISO 4217. 금액은 이 통화의 최소 단위 */
             String currency,
-            int serviceOdometer,
+            Integer serviceOdometer,
             LocalDate serviceDate,
             LocalDateTime createdAt
     ) {

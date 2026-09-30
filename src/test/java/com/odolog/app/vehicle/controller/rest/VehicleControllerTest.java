@@ -81,7 +81,7 @@ class VehicleControllerTest {
     @Test
     @DisplayName("로그인하지 않고 차량을 등록하면 401")
     void registerWithoutLogin() throws Exception {
-        VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023);
+        VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023, 45000);
 
         mockMvc.perform(post("/api/vehicles")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -141,7 +141,7 @@ class VehicleControllerTest {
 
         when(vehicleService.register(eq(1L), any(VehicleRegisterRequest.class))).thenReturn(vehicle);
 
-        VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023);
+        VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023, 45000);
 
         mockMvc.perform(post("/api/vehicles")
                         .session(loginSessionOf(1L))

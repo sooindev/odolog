@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { daysInMonth, join, lastSelectableDay, lastSelectableMonth, parse, partOrder } from './date-parts'
+import {
+  daysInMonth,
+  join,
+  lastSelectableDay,
+  lastSelectableMonth,
+  monthsAgo,
+  parse,
+  partOrder,
+} from './date-parts'
 
 describe('daysInMonth — 윤년을 직접 계산하지 않는다', () => {
   it('달마다 마지막 날이 다르다', () => {
@@ -101,5 +109,17 @@ describe('칸 순서', () => {
     expect(partOrder('ko-KR')).toEqual(['year', 'month', 'day'])
     expect(partOrder('en-US')).toEqual(['month', 'day', 'year'])
     expect(partOrder('en-GB')).toEqual(['day', 'month', 'year'])
+  })
+})
+
+describe('몇 달 전', () => {
+  it('해를 넘긴다', () => {
+    expect(monthsAgo('2026-02-15', 3)).toBe('2025-11-15')
+    expect(monthsAgo('2026-09-30', 12)).toBe('2025-09-30')
+  })
+
+  it('없는 날은 그 달 말일로 — 3/31 의 한 달 전이 3/3 이 되면 안 된다', () => {
+    expect(monthsAgo('2026-03-31', 1)).toBe('2026-02-28')
+    expect(monthsAgo('2024-03-31', 1)).toBe('2024-02-29')
   })
 })

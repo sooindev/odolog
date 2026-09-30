@@ -5,6 +5,8 @@ export interface VehicleRegisterRequest {
   manufacturer: string
   modelName: string
   modelYear: number
+  /** 지금 계기판 값(km). 타던 차는 0 이 아니라 여기서 시작 */
+  odometer: number
 }
 
 /** 부분 수정. 주행거리는 전용 엔드포인트 */

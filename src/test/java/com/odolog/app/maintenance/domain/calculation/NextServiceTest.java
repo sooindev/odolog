@@ -185,4 +185,22 @@ class NextServiceTest {
                     assertThat(next.customized()).isFalse();
                 });
     }
+
+    @Test
+    @DisplayName("주행거리를 모르는 기록은 날짜 기준만 계산한다")
+    void unknownOdometerUsesDateOnly() {
+        MaintenanceRecord record = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, null, null, "KRW",
+                null, LocalDate.of(2026, 1, 1));
+        ReflectionTestUtils.setField(record, "id", 1L);
+
+        assertThat(compute(List.of(record), 90000))
+                .singleElement()
+                .satisfies(next -> {
+                    assertThat(next.lastOdometer()).isNull();
+                    assertThat(next.nextOdometer()).isNull();
+                    assertThat(next.nextDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+                    // 주행거리로는 판정할 수 없어도 6개월이 지나 지남
+                    assertThat(next.overdue()).isTrue();
+                });
+    }
 }

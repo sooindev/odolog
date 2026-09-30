@@ -33,8 +33,10 @@ export const SERVICE_TYPE_GROUPS = [
 export interface MaintenanceRecordRegisterRequest {
   type: ServiceType
   description?: string
-  cost: number
-  serviceOdometer: number
+  /** 모르면 null. 0 은 "0원" 이라는 다른 뜻 */
+  cost: number | null
+  /** 모르면 null. 다음 정비는 날짜 기준만 */
+  serviceOdometer: number | null
   /** YYYY-MM-DD */
   serviceDate: string
 }
@@ -45,6 +47,10 @@ export interface MaintenanceRecordUpdateRequest {
   cost?: number
   serviceOdometer?: number
   serviceDate?: string
+  /** 비용 비움. JSON 의 키 없음과 null 이 같게 도착해 플래그 별도 */
+  clearCost?: boolean
+  /** 주행거리 비움 */
+  clearServiceOdometer?: boolean
 }
 
 export interface MaintenanceRecordResponse {
@@ -52,11 +58,12 @@ export interface MaintenanceRecordResponse {
   id: string
   type: ServiceType
   description: string | null
-  /** 통화의 최소 단위 */
-  cost: number
+  /** 통화의 최소 단위. 안 적었으면 null */
+  cost: number | null
   /** ISO 4217. 기록할 때의 사용자 통화 */
   currency: string
-  serviceOdometer: number
+  /** 안 적었으면 null */
+  serviceOdometer: number | null
   /** YYYY-MM-DD */
   serviceDate: string
 }

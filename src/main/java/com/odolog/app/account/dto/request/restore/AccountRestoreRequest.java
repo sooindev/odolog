@@ -60,10 +60,10 @@ public record AccountRestoreRequest(
     public record MaintenanceData(
             @NotNull ServiceType type,
             @Size(max = 255) String description,
-            @NotNull @PositiveOrZero @Max(InputLimits.MAX_AMOUNT) Integer cost,
+            @PositiveOrZero @Max(InputLimits.MAX_AMOUNT) Integer cost,
             // 없으면 옛 파일(원화). 목록 검사는 서비스
             @Size(max = 3) String currency,
-            @NotNull @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer serviceOdometer,
+            @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer serviceOdometer,
             @NotNull LocalDate serviceDate
     ) {
     }

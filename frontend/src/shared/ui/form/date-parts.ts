@@ -49,6 +49,20 @@ export function join(year: number, month: number, day: number, timeZone?: string
   return `${year}-${String(clampedMonth).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`
 }
 
+/**
+ * 'YYYY-MM-DD' 에서 몇 달 전. 없는 날(3/31 의 한 달 전)은 그 달 말일
+ * "석 달 전쯤 갈았다" 를 날짜로 바꾸는 자리. Date 의 월 넘김(2/31 → 3/3) 방지
+ */
+export function monthsAgo(value: string, months: number) {
+  const [year, month, day] = value.split('-').map(Number)
+  const total = year * 12 + (month - 1) - months
+  const targetYear = Math.floor(total / 12)
+  const targetMonth = (total % 12) + 1
+  const targetDay = Math.min(day, daysInMonth(targetYear, targetMonth))
+
+  return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`
+}
+
 export type DatePart = 'year' | 'month' | 'day'
 
 /** 로케일의 칸 순서. 한국 년·월·일, 미국 월·일·년, 영국 일·월·년 */

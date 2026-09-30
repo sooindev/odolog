@@ -80,7 +80,9 @@ public class MaintenanceRecordService {
                 request.serviceOdometer(), request.serviceDate());
 
         // 정비 시점 주행거리가 더 크면 차량도 갱신. 주유와 같은 규칙
-        vehicle.liftOdometerTo(request.serviceOdometer());
+        if (request.serviceOdometer() != null) {
+            vehicle.liftOdometerTo(request.serviceOdometer());
+        }
 
         return maintenanceRecordRepository.save(record);
     }
@@ -131,10 +133,15 @@ public class MaintenanceRecordService {
         if (request.description() != null) {
             record.changeDescription(blankToNull(request.description()));
         }
-        if (request.cost() != null) {
+        // 비움이 값보다 우선
+        if (Boolean.TRUE.equals(request.clearCost())) {
+            record.changeCost(null);
+        } else if (request.cost() != null) {
             record.changeCost(request.cost());
         }
-        if (request.serviceOdometer() != null) {
+        if (Boolean.TRUE.equals(request.clearServiceOdometer())) {
+            record.changeServiceOdometer(null);
+        } else if (request.serviceOdometer() != null) {
             record.changeServiceOdometer(request.serviceOdometer());
             // 수정에도 같은 규칙
             record.getVehicle().liftOdometerTo(request.serviceOdometer());

@@ -99,6 +99,25 @@ class GarageSummaryServiceTest {
     }
 
     @Test
+    @DisplayName("비용을 모르는 정비는 합계에서 0, 최근 활동에서는 null — 0원으로 보이지 않게")
+    void unknownMaintenanceCost() {
+        Vehicle car = vehicle(10L, "12가3456", 50000);
+        MaintenanceRecord unknown = record(1L, car, ServiceType.ENGINE_OIL, 0, TODAY);
+        ReflectionTestUtils.setField(unknown, "cost", null);
+        MaintenanceRecord known = record(2L, car, ServiceType.TIRE, 80000, TODAY);
+        given(List.of(car), List.of(unknown, known), List.of());
+
+        GarageSummaryResponse summary = garageSummaryService.summarize(1L, TODAY, "KRW");
+
+        assertThat(summary.maintenanceCost()).isEqualTo(80000);
+        assertThat(summary.recordCount()).isEqualTo(2);
+        assertThat(summary.recent())
+                .filteredOn(activity -> activity.recordId().equals("R1"))
+                .singleElement()
+                .satisfies(activity -> assertThat(activity.cost()).isNull());
+    }
+
+    @Test
     @DisplayName("총 비용은 정비비와 유류비를 합친 값이고, 구성도 함께 준다")
     void totalsIncludeFuel() {
         Vehicle car = vehicle(10L, "12가3456", 50000);

@@ -279,7 +279,7 @@ export const en: Messages = {
       register: 'Add vehicle',
       loadFailed: 'Couldn’t load your vehicles.',
       emptyTitle: 'No vehicles yet',
-      emptyBody: 'Add a vehicle to track its service history, next service, fill-ups, and fuel economy.',
+      emptyBody: 'Add the car you drive now, as it is. Enter the current odometer and a few services you remember, and the next service shows up right away.',
       registerFirst: 'Add your first vehicle',
     },
     form: {
@@ -297,6 +297,37 @@ export const en: Messages = {
       modelPlaceholder: 'Corolla',
       title: 'Add vehicle',
       failed: 'Couldn’t add the vehicle.',
+      odometer: (unit: string) => `Current odometer (${unit})`,
+      odometerHint: 'Exactly what the dashboard shows. A car you already drive doesn’t need to start at zero.',
+    },
+    gettingStarted: {
+      title: 'Getting started',
+      description:
+        'You can start tracking a car you already drive today. Follow these steps and the next service and fuel economy fill in on their own.',
+      progress: (done: number, total: number) => `${done} of ${total} steps done`,
+      hide: 'Hide guide',
+      done: 'Done',
+      steps: {
+        odometer: {
+          title: 'Enter the current odometer',
+          body: 'Exactly what the dashboard shows. Next service and fuel economy are measured from it.',
+          action: 'Go to odometer',
+        },
+        services: {
+          title: 'Add the services you remember',
+          body: 'Knowing roughly when is enough. You can skip the cost and the mileage at the time.',
+          action: 'Add',
+        },
+        fuel: {
+          title: 'Log your next fill-up',
+          body: 'When you fill up, note the odometer and the amount. The first fill-up becomes the baseline for fuel economy.',
+          action: 'Go to fill-ups',
+        },
+        efficiency: {
+          title: 'First fuel economy on the second fill-up',
+          body: 'Log a second fill-up and the economy for the stretch in between appears. After that it builds with every fill-up.',
+        },
+      },
     },
     detail: {
       loadFailed: 'Couldn’t load this vehicle.',
@@ -374,10 +405,22 @@ export const en: Messages = {
       type: 'Service type',
       date: 'Service date',
       odometer: (unit: string) => `Odometer at service (${unit})`,
-      odometerEmpty: 'Without an odometer reading, the next service can’t be calculated.',
+      odometerEmpty: 'Leave it blank and the next service is worked out from the date only.',
       cost: (currency: string) => `Cost (${currency})`,
+      costEmpty: 'Leave it blank if you don’t know. It’s only left out of cost totals.',
       memo: 'Note',
       memoPlaceholder: 'Parts replaced, shop name, etc.',
+      failed: 'Couldn’t save.',
+    },
+    quick: {
+      intro: 'Pick when each was last done. Leave anything you don’t remember as it is.',
+      unknown: 'Don’t know',
+      monthsAgo: (months: number) =>
+        months === 12 ? '1 year ago' : `${months} ${plural(months, 'month', 'months')} ago`,
+      pickDate: 'Pick a date',
+      odometer: (unit: string) => `Odometer then (${unit}, optional)`,
+      submit: 'Save',
+      nothingPicked: 'Nothing picked yet. Even one item you remember helps.',
       failed: 'Couldn’t save.',
     },
     next: {
@@ -492,7 +535,7 @@ export const en: Messages = {
       title: 'My garage',
       description: 'Add a vehicle and your stats will show up here.',
       heading: 'No vehicles yet',
-      body: 'Add a vehicle and its mileage, service records, and costs will come together on this screen.',
+      body: 'It doesn’t have to be a new car. Add the one you drive with its current odometer, and every fill-up and service you log builds up here.',
       registerFirst: 'Add your first vehicle',
     },
     monthly: {

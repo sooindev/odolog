@@ -67,6 +67,8 @@ public class VehicleService {
         Vehicle vehicle = new Vehicle(owner, plateNumber,
                 InputText.required(request.manufacturer(), "manufacturer"),
                 InputText.required(request.modelName(), "modelName"), request.modelYear());
+        // 0 에서 시작하므로 감소 검사에 걸리지 않음
+        vehicle.updateOdometer(request.odometer());
 
         return vehicleRepository.save(vehicle);
     }

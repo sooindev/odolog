@@ -131,7 +131,7 @@ class MaintenanceRecordServiceTest {
         when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L)).thenReturn(Optional.of(record));
 
         MaintenanceRecordUpdateRequest request = new MaintenanceRecordUpdateRequest(
-                null, "수정된 메모", null, null, null);
+                null, "수정된 메모", null, null, null, null, null);
 
         MaintenanceRecord updated = maintenanceRecordService.update(1L, "V10", "R100", request);
 
@@ -148,7 +148,7 @@ class MaintenanceRecordServiceTest {
         when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R999", 10L)).thenReturn(Optional.empty());
 
         MaintenanceRecordUpdateRequest request = new MaintenanceRecordUpdateRequest(
-                null, "수정된 메모", null, null, null);
+                null, "수정된 메모", null, null, null, null, null);
 
         assertThatThrownBy(() -> maintenanceRecordService.update(1L, "V10", "R999", request))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -314,9 +314,46 @@ class MaintenanceRecordServiceTest {
 
         // 자리수 오타 정정
         maintenanceRecordService.update(1L, "V10", "R100", new MaintenanceRecordUpdateRequest(
-                null, null, null, 60000, null));
+                null, null, null, 60000, null, null, null));
 
         assertThat(existing.getServiceOdometer()).isEqualTo(60000);
         assertThat(vehicle.getOdometer()).isEqualTo(60000);
+    }
+
+    @Test
+    @DisplayName("비용·주행거리를 모르면 비운 채 저장하고, 차량 주행거리는 건드리지 않는다")
+    void registerWithUnknownCostAndOdometer() {
+        // 타던 차를 등록하며 "석 달 전에 오일 갈았다" 만 기억하는 경우
+        Vehicle vehicle = createVehicle(10L);
+        vehicle.updateOdometer(85000);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        MaintenanceRecord saved = maintenanceRecordService.register(1L, "V10", new MaintenanceRecordRegisterRequest(
+                ServiceType.ENGINE_OIL, null, null, null, LocalDate.of(2026, 6, 1)));
+
+        // 0 으로 채우지 않음. 0원·0km 는 다른 사실
+        assertThat(saved.getCost()).isNull();
+        assertThat(saved.getServiceOdometer()).isNull();
+        assertThat(saved.costOrZero()).isZero();
+        assertThat(vehicle.getOdometer()).isEqualTo(85000);
+    }
+
+    @Test
+    @DisplayName("수정에서 clear 플래그로 비용·주행거리를 비운다 — null 하나로는 '유지' 와 구분 못 함")
+    void updateClearsCostAndOdometer() {
+        Vehicle vehicle = createVehicle(10L);
+        MaintenanceRecord existing = record(100L, vehicle, ServiceType.ENGINE_OIL, 30000,
+                LocalDate.of(2026, 9, 1));
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L))
+                .thenReturn(Optional.of(existing));
+
+        maintenanceRecordService.update(1L, "V10", "R100", new MaintenanceRecordUpdateRequest(
+                null, null, null, null, null, true, true));
+
+        assertThat(existing.getCost()).isNull();
+        assertThat(existing.getServiceOdometer()).isNull();
     }
 }

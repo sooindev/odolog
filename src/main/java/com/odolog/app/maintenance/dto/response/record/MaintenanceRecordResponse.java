@@ -10,9 +10,11 @@ public record MaintenanceRecordResponse(
         String id,
         ServiceType type,
         String description,
-        int cost,
+        /** 안 적었으면 null */
+        Integer cost,
         String currency,
-        int serviceOdometer,
+        /** 안 적었으면 null */
+        Integer serviceOdometer,
         LocalDate serviceDate
 ) {
 

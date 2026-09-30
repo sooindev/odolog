@@ -80,7 +80,7 @@ class VehicleServiceTest {
     @Test
     @DisplayName("같은 사용자가 이미 등록한 번호판이면 예외가 발생하고 저장하지 않는다")
     void registerDuplicatePlateNumber() {
-        VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023);
+        VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023, 45000);
         when(vehicleRepository.existsByOwnerIdAndPlateNumber(1L, "12가3456")).thenReturn(true);
 
         assertThatThrownBy(() -> vehicleService.register(1L, request))
@@ -93,7 +93,7 @@ class VehicleServiceTest {
     @DisplayName("차량 등록 성공")
     void registerSuccess() {
         User owner = createOwner(1L);
-        VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023);
+        VehicleRegisterRequest request = new VehicleRegisterRequest("12가3456", "현대", "아반떼", 2023, 45000);
         when(vehicleRepository.existsByOwnerIdAndPlateNumber(1L, "12가3456")).thenReturn(false);
         when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
         when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -102,6 +102,8 @@ class VehicleServiceTest {
 
         assertThat(saved.getOwner()).isEqualTo(owner);
         assertThat(saved.getPlateNumber()).isEqualTo("12가3456");
+        // 타던 차는 지금 계기판 값에서 시작
+        assertThat(saved.getOdometer()).isEqualTo(45000);
     }
 
     @Test
@@ -240,7 +242,7 @@ class VehicleServiceTest {
         when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Vehicle saved = vehicleService.register(1L,
-                new VehicleRegisterRequest(" 12가3456 ", "현대\u3000", " 아반떼", 2023));
+                new VehicleRegisterRequest(" 12가3456 ", "현대\u3000", " 아반떼", 2023, 45000));
 
         // 중복 검사도 자른 값 기준
         assertThat(saved.getPlateNumber()).isEqualTo("12가3456");

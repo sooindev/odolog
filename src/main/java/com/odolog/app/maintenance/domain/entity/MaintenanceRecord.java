@@ -56,17 +56,21 @@ public class MaintenanceRecord extends BaseTimeEntity {
     @Column(length = 255)
     private String description;
 
-    /** 통화의 최소 단위(원·센트) */
-    @Column(nullable = false)
-    private int cost;
+    /**
+     * 통화의 최소 단위(원·센트)
+     * 비울 수 있음. 타던 차를 등록하며 "언제 갈았는지만 기억" 하는 경우. 0 은 "0원" 이라는 다른 뜻
+     */
+    @Column
+    private Integer cost;
 
     /** ISO 4217. 기록마다 저장, 사용자 설정을 바꿔도 옛 기록의 뜻 유지 */
     @ColumnDefault("'KRW'")
     @Column(nullable = false, length = 3)
     private String currency;
 
-    @Column(name = "service_odometer", nullable = false)
-    private int serviceOdometer;
+    /** 비울 수 있음. 비면 다음 정비는 날짜 기준만 */
+    @Column(name = "service_odometer")
+    private Integer serviceOdometer;
 
     @Column(name = "service_date", nullable = false)
     private LocalDate serviceDate;
@@ -76,7 +80,7 @@ public class MaintenanceRecord extends BaseTimeEntity {
     }
 
     public MaintenanceRecord(Vehicle vehicle, ServiceType type, String description,
-                              int cost, String currency, int serviceOdometer, LocalDate serviceDate) {
+                              Integer cost, String currency, Integer serviceOdometer, LocalDate serviceDate) {
         this.publicId = PublicId.generate();
         this.vehicle = vehicle;
         this.type = type;
@@ -112,11 +116,16 @@ public class MaintenanceRecord extends BaseTimeEntity {
         return description;
     }
 
-    public int getCost() {
+    public Integer getCost() {
         return cost;
     }
 
-    public int getServiceOdometer() {
+    /** 합계용 금액. 안 적은 기록은 0. 한 건 표시에는 getCost() 의 null 그대로 */
+    public int costOrZero() {
+        return cost == null ? 0 : cost;
+    }
+
+    public Integer getServiceOdometer() {
         return serviceOdometer;
     }
 
@@ -133,11 +142,11 @@ public class MaintenanceRecord extends BaseTimeEntity {
         this.description = description;
     }
 
-    public void changeCost(int cost) {
+    public void changeCost(Integer cost) {
         this.cost = cost;
     }
 
-    public void changeServiceOdometer(int serviceOdometer) {
+    public void changeServiceOdometer(Integer serviceOdometer) {
         this.serviceOdometer = serviceOdometer;
     }
 

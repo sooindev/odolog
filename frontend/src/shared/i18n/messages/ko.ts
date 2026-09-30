@@ -279,7 +279,7 @@ export const ko = {
       register: '차량 등록',
       loadFailed: '차량 목록을 불러오지 못했습니다.',
       emptyTitle: '아직 등록된 차량이 없습니다',
-      emptyBody: '차량을 등록하면 정비 이력과 다음 정비 시점, 주유 기록과 연비를 함께 관리할 수 있습니다.',
+      emptyBody: '지금 타는 차를 그대로 등록하세요. 현재 주행거리와 기억나는 정비 몇 가지만 적으면 다음 정비 시점부터 바로 보입니다.',
       registerFirst: '첫 차량 등록하기',
     },
     form: {
@@ -297,6 +297,36 @@ export const ko = {
       modelPlaceholder: '아반떼',
       title: '차량 등록',
       failed: '차량 등록에 실패했습니다.',
+      odometer: (unit: string) => `현재 주행거리 (${unit})`,
+      odometerHint: '지금 계기판 숫자 그대로. 타던 차라면 새 차처럼 0 부터 시작하지 않아도 됩니다.',
+    },
+    gettingStarted: {
+      title: '시작하기',
+      description: '타던 차도 오늘부터 기록하면 됩니다. 아래 순서대로 하면 다음 정비와 연비가 저절로 채워집니다.',
+      progress: (done: number, total: number) => `${total}단계 중 ${done}단계 완료`,
+      hide: '안내 닫기',
+      done: '완료',
+      steps: {
+        odometer: {
+          title: '지금 주행거리 적기',
+          body: '계기판 숫자 그대로. 다음 정비와 연비 판정의 기준이 됩니다.',
+          action: '적으러 가기',
+        },
+        services: {
+          title: '기억나는 최근 정비 적기',
+          body: '언제 했는지만 기억나도 충분합니다. 비용과 그때 주행거리는 몰라도 됩니다.',
+          action: '적기',
+        },
+        fuel: {
+          title: '다음 주유 때 기록하기',
+          body: '주유할 때 계기판 숫자와 주유량을 적으세요. 첫 기록은 연비의 기준점이 됩니다.',
+          action: '주유 기록으로',
+        },
+        efficiency: {
+          title: '두 번째 주유에서 첫 연비',
+          body: '두 번째 주유를 적는 순간 그 사이 구간의 연비가 나옵니다. 그다음부터는 주유할 때마다 쌓입니다.',
+        },
+      },
     },
     detail: {
       loadFailed: '차량을 불러오지 못했습니다.',
@@ -374,11 +404,22 @@ export const ko = {
       type: '정비 종류',
       date: '정비 날짜',
       odometer: (unit: string) => `정비 시 주행거리 (${unit})`,
-      odometerEmpty: '주행거리를 적지 않으면 다음 정비 시점을 계산할 수 없습니다.',
+      odometerEmpty: '비우면 다음 정비 시점을 날짜로만 계산합니다.',
       cost: (currency: string) => `비용 (${currency})`,
+      costEmpty: '모르면 비워 두세요. 비용 합계에서만 빠집니다.',
       memo: '메모',
       memoPlaceholder: '교체한 부품, 정비소 이름 등',
       failed: '저장에 실패했습니다.',
+    },
+    quick: {
+      intro: '마지막으로 언제 했는지 고르세요. 기억나지 않는 항목은 그대로 두면 됩니다.',
+      unknown: '모름',
+      monthsAgo: (months: number) => (months === 12 ? '1년 전' : `${months}개월 전`),
+      pickDate: '날짜 지정',
+      odometer: (unit: string) => `그때 주행거리 (${unit}, 모르면 비움)`,
+      submit: '저장',
+      nothingPicked: '고른 항목이 없습니다. 기억나는 것 하나만 골라도 됩니다.',
+      failed: '저장하지 못했습니다.',
     },
     next: {
       title: '다음 정비 시점',
@@ -493,7 +534,7 @@ export const ko = {
       title: '내 차고',
       description: '차량을 등록하면 여기에 통계가 모입니다.',
       heading: '아직 등록된 차량이 없습니다',
-      body: '차량을 등록하면 주행거리와 정비 기록, 들어간 비용이 이 화면에 모입니다.',
+      body: '새 차가 아니어도 됩니다. 지금 타는 차와 현재 주행거리만 적으면 시작할 수 있고, 주유·정비를 적을 때마다 이 화면에 쌓입니다.',
       registerFirst: '첫 차량 등록하기',
     },
     monthly: {

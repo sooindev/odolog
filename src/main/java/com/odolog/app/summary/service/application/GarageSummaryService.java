@@ -73,7 +73,7 @@ public class GarageSummaryService {
                 .toList();
         int otherCurrency = (records.size() - pricedRecords.size()) + (fuels.size() - pricedFuels.size());
 
-        long maintenanceCost = pricedRecords.stream().mapToLong(MaintenanceRecord::getCost).sum();
+        long maintenanceCost = pricedRecords.stream().mapToLong(MaintenanceRecord::costOrZero).sum();
         // 금액을 안 적은 기록은 합계에서 0
         long fuelCost = pricedFuels.stream().mapToLong(FuelRecord::totalCostOrZero).sum();
 
@@ -103,7 +103,7 @@ public class GarageSummaryService {
         for (MaintenanceRecord record : records) {
             YearMonth key = YearMonth.from(record.getServiceDate());
             Bucket bucket = buckets.getOrDefault(key, new Bucket(0, 0, 0));
-            buckets.put(key, new Bucket(bucket.maintenance() + record.getCost(), bucket.fuel(),
+            buckets.put(key, new Bucket(bucket.maintenance() + record.costOrZero(), bucket.fuel(),
                     bucket.count() + 1));
         }
         for (FuelRecord record : fuels) {
@@ -130,7 +130,7 @@ public class GarageSummaryService {
         Map<ServiceType, long[]> sums = new EnumMap<>(ServiceType.class);
         for (MaintenanceRecord record : records) {
             long[] entry = sums.computeIfAbsent(record.getType(), key -> new long[2]);
-            entry[0] += record.getCost();
+            entry[0] += record.costOrZero();
             entry[1]++;
         }
 
@@ -200,7 +200,8 @@ public class GarageSummaryService {
             Long vehicleId = record.getVehicle().getId();
             all.add(new Candidate(new RecentActivity("MAINTENANCE", record.getPublicId(),
                     record.getServiceDate(), publicIds.get(vehicleId), names.get(vehicleId),
-                    (long) record.getCost(), record.getCurrency(), record.getType(), null),
+                    record.getCost() == null ? null : record.getCost().longValue(),
+                    record.getCurrency(), record.getType(), null),
                     record.getId()));
         }
         for (FuelRecord record : fuels) {

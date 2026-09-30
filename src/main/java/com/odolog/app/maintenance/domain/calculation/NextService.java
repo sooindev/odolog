@@ -22,7 +22,7 @@ import java.util.Map;
  */
 public record NextService(
         ServiceType type,
-        int lastOdometer,
+        Integer lastOdometer,
         Integer nextOdometer,
         LocalDate lastDate,
         LocalDate nextDate,
@@ -89,7 +89,9 @@ public record NextService(
         Integer intervalKm = customKm != null ? customKm : type.getRecommendedIntervalKm();
         Integer intervalMonths = customMonths != null ? customMonths : type.getRecommendedIntervalMonths();
 
-        Integer nextOdometer = (intervalKm == null) ? null : record.getServiceOdometer() + intervalKm;
+        // 주행거리를 모르는 기록은 날짜 기준만
+        Integer nextOdometer = (intervalKm == null || record.getServiceOdometer() == null)
+                ? null : record.getServiceOdometer() + intervalKm;
         LocalDate nextDate = (intervalMonths == null) ? null
                 : record.getServiceDate().plusMonths(intervalMonths);
 

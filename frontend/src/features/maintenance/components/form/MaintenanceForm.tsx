@@ -46,9 +46,14 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   const currency = record?.currency ?? userCurrency
 
   // 입력칸은 화면 단위(마일·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로 전송
-  const initialOdometerKm = record?.serviceOdometer ?? defaultOdometer
-  const [initialOdometer] = useState(String(Math.round(fromKm(unitSystem, initialOdometerKm))))
-  const [initialCost] = useState(String(fromMinor(record?.cost ?? 0, currency)))
+  // 비용·주행거리는 모르면 빈칸(null). 등록은 주행거리만 차량 값으로 미리 채움
+  const initialOdometerKm = record === null ? defaultOdometer : record.serviceOdometer
+  const [initialOdometer] = useState(
+    initialOdometerKm === null ? '' : String(Math.round(fromKm(unitSystem, initialOdometerKm))),
+  )
+  const [initialCost] = useState(
+    record === null || record.cost === null ? '' : String(fromMinor(record.cost, currency)),
+  )
 
   const [type, setType] = useState<ServiceType>(record?.type ?? 'ENGINE_OIL')
   const [description, setDescription] = useState(record?.description ?? '')
@@ -58,14 +63,19 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  // 판정·전송은 km. 손대지 않았으면 원래 km 그대로(마일 왕복 오차 차단)
+  // 판정·전송은 km. 손대지 않았으면 원래 km 그대로(마일 왕복 오차 차단). 빈칸은 null(Number('') 는 0)
   const odometerKm =
-    serviceOdometer === initialOdometer ? initialOdometerKm : toKm(unitSystem, Number(serviceOdometer))
-  const costMinor = cost === initialCost ? (record?.cost ?? 0) : toMinor(Number(cost), currency)
+    serviceOdometer === ''
+      ? null
+      : serviceOdometer === initialOdometer
+        ? initialOdometerKm
+        : toKm(unitSystem, Number(serviceOdometer))
+  const costMinor =
+    cost === '' ? null : cost === initialCost ? (record?.cost ?? null) : toMinor(Number(cost), currency)
 
   // 주행거리 판정 규칙은 shared/lib/odometer. 안내만
-  const past = serviceOdometer !== '' && looksPast(odometerKm, baseOdometer)
-  const bigJump = serviceOdometer !== '' && looksBigJump(odometerKm, baseOdometer)
+  const past = odometerKm !== null && looksPast(odometerKm, baseOdometer)
+  const bigJump = odometerKm !== null && looksBigJump(odometerKm, baseOdometer)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -74,7 +84,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
     // 급증은 되돌리기 어려움. force 정정으로만 복구
     if (bigJump) {
       const confirmed = window.confirm(
-        t.odometerHints.bigJumpConfirm(f.distance(baseOdometer), f.distance(odometerKm)),
+        t.odometerHints.bigJumpConfirm(f.distance(baseOdometer), f.distance(odometerKm ?? 0)),
       )
       if (!confirmed) {
         return
@@ -97,8 +107,15 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         const request: MaintenanceRecordUpdateRequest = {}
         if (type !== record.type) request.type = type
         if (description !== (record.description ?? '')) request.description = description
-        if (costMinor !== record.cost) request.cost = costMinor
-        if (odometerKm !== record.serviceOdometer) request.serviceOdometer = odometerKm
+        // 비움은 clear 플래그. null 을 보내면 '안 보냄' 과 구분되지 않음
+        if (costMinor !== record.cost) {
+          if (costMinor === null) request.clearCost = true
+          else request.cost = costMinor
+        }
+        if (odometerKm !== record.serviceOdometer) {
+          if (odometerKm === null) request.clearServiceOdometer = true
+          else request.serviceOdometer = odometerKm
+        }
         if (serviceDate !== record.serviceDate) request.serviceDate = serviceDate
 
         await updateRecord(vehicleId, record.id, request)
@@ -177,7 +194,6 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
           <Input
             id="serviceOdometer"
             type="number"
-            required
             min={0}
             max={Math.floor(fromKm(unitSystem, MAX_ODOMETER))}
             className="tabular-nums"
@@ -186,12 +202,15 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
           />
         </Field>
 
-        {/* 비우면 Number('') 가 0 이 되어 0원으로 덮어씀. required 필수 */}
-        <Field label={t.maintenance.form.cost(currency)} htmlFor="cost">
+        {/* 선택 입력. 빈칸은 0 이 아니라 null 로 보냄(0원은 다른 사실) */}
+        <Field
+          label={t.maintenance.form.cost(currency)}
+          htmlFor="cost"
+          hint={cost === '' ? t.maintenance.form.costEmpty : undefined}
+        >
           <Input
             id="cost"
             type="number"
-            required
             min={0}
             max={maxMajor(currency)}
             step={inputStep(currency)}

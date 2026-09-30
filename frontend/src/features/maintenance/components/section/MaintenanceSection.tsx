@@ -186,11 +186,12 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
 
                 {/* 수치는 오른쪽 정렬 열 */}
                 <div className="shrink-0 sm:text-right">
+                  {/* 모르고 비운 값은 — (0 으로 보이면 적은 값처럼 읽힘) */}
                   <p className="text-body tabular-nums text-strong">
-                    {f.distance(record.serviceOdometer)}
+                    {record.serviceOdometer === null ? `— ${f.distanceUnit}` : f.distance(record.serviceOdometer)}
                   </p>
                   <p className="text-caption tabular-nums text-muted-foreground">
-                    {f.money(record.cost, record.currency)}
+                    {record.cost === null ? '—' : f.money(record.cost, record.currency)}
                   </p>
                 </div>
 

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router'
 import { MaintenanceSection } from '@/features/maintenance/components/section/MaintenanceSection'
 import { NextServiceCard } from '@/features/maintenance/components/next-service/NextServiceCard'
 import { VehicleInfoForm } from '@/features/vehicles/components/info-form/VehicleInfoForm'
+import { GettingStartedCard } from '@/features/vehicles/components/getting-started/GettingStartedCard'
 import { FuelSection } from '@/features/fuel/components/section/FuelSection'
 import { FuelSummaryCard } from '@/features/fuel/components/summary/FuelSummaryCard'
 import { Button } from '@/shared/ui/base/button'
@@ -49,6 +50,8 @@ export function VehicleDetailPage() {
   const [fuelVersion, setFuelVersion] = useState(0)
   // 주유 목록 재생성용. 연비 기준점 변경 때만 사용
   const [fuelListVersion, setFuelListVersion] = useState(0)
+  // 정비 목록 재생성용. 목록 밖(시작하기 카드)에서 이력이 생겼을 때만 사용
+  const [maintenanceListVersion, setMaintenanceListVersion] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -135,9 +138,22 @@ export function VehicleDetailPage() {
             key 변경으로 재생성
             접두사 필수: 세 카운터가 모두 0 에서 시작해 숫자만이면 형제 key 충돌
           */}
+          {/* 타던 차의 첫 단계 안내. 다 끝나면 스스로 사라짐. 재생성 대신 version 으로 재조회(깜빡임 방지) */}
+          <GettingStartedCard
+            vehicle={vehicle}
+            version={maintenanceVersion + fuelVersion}
+            onServicesSaved={() => {
+              setMaintenanceVersion((current) => current + 1)
+              setMaintenanceListVersion((current) => current + 1)
+              // 그때 주행거리를 적었다면 차량 값이 올랐을 수 있음
+              reloadVehicle()
+            }}
+          />
+
           <NextServiceCard key={`next-service-${maintenanceVersion}`} vehicleId={vehicle.id} />
 
           <MaintenanceSection
+            key={`maintenance-list-${maintenanceListVersion}`}
             vehicleId={vehicle.id}
             currentOdometer={vehicle.odometer}
             onChanged={() => {
@@ -156,6 +172,8 @@ export function VehicleDetailPage() {
             }}
           />
 
+          {/* 시작하기 카드가 스크롤해 오는 자리 */}
+          <div id="fuel-section" className="scroll-mt-28">
           <FuelSection
             key={`fuel-list-${fuelListVersion}`}
             vehicleId={vehicle.id}
@@ -166,6 +184,7 @@ export function VehicleDetailPage() {
               reloadVehicle()
             }}
           />
+          </div>
         </div>
       </div>
     </Page>

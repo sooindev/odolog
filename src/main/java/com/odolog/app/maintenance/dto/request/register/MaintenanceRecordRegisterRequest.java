@@ -17,12 +17,11 @@ public record MaintenanceRecordRegisterRequest(
         @Size(max = 255)
         String description,
 
-        @NotNull
+        // 비용·주행거리는 선택. 모르면 비움(0 으로 채우지 않음)
         @PositiveOrZero
         @Max(InputLimits.MAX_AMOUNT)
         Integer cost,
 
-        @NotNull
         @PositiveOrZero
         @Max(InputLimits.MAX_ODOMETER)
         Integer serviceOdometer,

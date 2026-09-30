@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -157,12 +158,28 @@ class MaintenanceRecordControllerTest {
     }
 
     @Test
-    @DisplayName("정비 이력 등록에서 cost/serviceOdometer 를 빠뜨리면 400")
-    void registerMissingRequiredNumbers() throws Exception {
+    @DisplayName("비용·주행거리를 빼고 보내면 0 이 아니라 비운 채 저장된다 — 기억 안 나는 값")
+    void registerWithoutCostAndOdometer() throws Exception {
+        when(maintenanceRecordService.register(eq(1L), eq("10"), any(MaintenanceRecordRegisterRequest.class)))
+                .thenReturn(new MaintenanceRecord(null, ServiceType.ENGINE_OIL, null,
+                        null, "KRW", null, LocalDate.of(2026, 9, 1)));
+
         mockMvc.perform(post("/api/vehicles/10/maintenance-records")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"ENGINE_OIL\",\"serviceDate\":\"2026-09-01\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.cost").value(nullValue()))
+                .andExpect(jsonPath("$.serviceOdometer").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("종류·날짜는 여전히 필수 — 빠뜨리면 400")
+    void registerMissingTypeAndDate() throws Exception {
+        mockMvc.perform(post("/api/vehicles/10/maintenance-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cost\":50000}"))
                 .andExpect(status().isBadRequest());
     }
 
