@@ -624,7 +624,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │   └── UserToday.java            사용자 시간대 기준 "오늘"(Phase 7). 서버 시간대와 무관.
     │   │   │                                 지남 판정·다음 정비·홈 월별 12칸이 공유 — 한 곳이라도
     │   │   │                                 LocalDate.now() 로 남으면 화면마다 오늘이 갈린다.
-    │   │   │                                 사용자 조회 1번이 붙는다
+    │   │   │                                 사용자 조회 1번이 붙는다. 이미 읽은 User 가 있으면
+    │   │   │                                 of(User) 로 — 같은 요청에서 두 번 읽지 않게
     │   │   ├── mail/
     │   │   │   └── PasswordResetMailer.java  링크는 백엔드가 아니라 **프런트 주소**를 가리킨다 —
     │   │   │                                 토큰을 받아 입력받는 것은 화면의 일이다.
@@ -873,7 +874,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                     안에 record 넷이 중첩돼 있고,
     │   │                                     RecentActivity 는 정비·주유 공용이라 kind 로 가른다
     │   ├── service/application/GarageSummaryService.java
-    │   │                                     summarize(ownerId, today) — **쿼리 3번, HTTP 1번**.
+    │   │                                     summarize(ownerId, today, currency) — **쿼리 4번, HTTP 1번**.
+    │   │                                     금액은 사용자 통화 기록만 더하고 나머지는 건수로 밝힌다.
     │   │                                     "오늘"을 밖에서 받는다(안에서 now() 를 부르면
     │   │                                     월별 12칸을 테스트에서 고정할 수 없다).
     │   │                                     차량 이름은 이미 읽어 둔 목록에서 찾는다 — LAZY
@@ -1067,8 +1069,12 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │   │   ├── ratelimit/LoginAttemptLimiterTest.java
     │   │   │                                   시계를 밖에서 넣는다 — 안에서 now() 를 부르면
     │   │   │                                   잠금 만료를 테스트할 수 없다. 대소문자 우회도 본다
-    │   │   └── csrf/CsrfTokenFilterTest.java   필터를 직접 호출한다. @WebMvcTest 로 하면
-    │   │                                       Filter 빈이 같이 올라와 기존 테스트가 전부 403
+    │   │   ├── csrf/CsrfTokenFilterTest.java   필터를 직접 호출한다. @WebMvcTest 로 하면
+    │   │   │                                   Filter 빈이 같이 올라와 기존 테스트가 전부 403
+    │   │   └── session/LoginSessionRegistryTest.java
+    │   │                                       지금 세션만 남기기, 남의 세션 불가침, 계정 전환·끝난 세션 정리
+    │   ├── config/web/WebConfigCorsTest.java   CORS 필터가 가장 먼저 돌고, CSRF 403 에도 CORS 헤더가 붙는지
+    │   ├── domain/identifier/PublicIdTest.java 12자 영문·숫자, 만 번 만들어도 안 겹침
     │   ├── web/header/SecurityHeadersFilterTest.java
     │   │                                       헤더 셋이 붙는지 + HSTS 는 https 에만 붙는지
     │   └── schema/drift/SchemaDriftCheckerTest.java
@@ -1077,6 +1083,9 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │                                           **이 장치가 조용히 고장 나면 그때부터
     │                                           아무것도 못 잡는다**
     ├── user/
+    │   ├── domain/entity/UserTest.java                 기본 설정, 시간대(IANA 이름만)·통화(ISO 4217) 검증
+    │   ├── service/time/UserTodayTest.java             사용자 시간대의 오늘(서울이 전날인 시각의 오클랜드), 미래 날짜 400
+    │   ├── service/mail/PasswordResetMailerTest.java   커밋 뒤·다른 스레드에서 발송, 실패를 삼키는지, 받는 사람 언어
     │   ├── repository/jpa/PasswordResetTokenRepositoryTest.java
     │   │                                              @DataJpaTest — 해시 조회, 해시 유니크,
     │   │                                              일괄 삭제. IDENTITY 라 save() 시점에 터진다
@@ -1089,7 +1098,8 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │   ├── repository/jpa/UserRepositoryTest.java      @DataJpaTest — save/findByEmail/
     │   │                                              existsByEmail + 이메일 유니크 위반 시
     │   │                                              올라오는 예외의 "모양" 고정
-    │   ├── service/application/UserServiceTest.java    Mockito — 중복·암호화·로그인·부분수정
+    │   ├── service/application/UserServiceTest.java    Mockito — 중복·암호화·로그인·부분수정,
+    │   │                                              비밀번호 확인 잠금, 변경 시 재설정 링크 폐기, 전각 공백 거부
     │   └── controller/rest/UserControllerTest.java     @WebMvcTest — 201/409, 세션 저장, /me
     ├── vehicle/
     │   ├── repository/jpa/VehicleRepositoryTest.java   @DataJpaTest — 페이징·LAZY·주행거리·
@@ -1118,6 +1128,10 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │                                               @WebMvcTest — 201/401/400(0L·누락·소수 3자리·
     │                                               미래 날짜), /summary 라우팅, 목록 페이지
     ├── account/
+    │   ├── service/application/AccountRestoreServiceTest.java
+    │   │                                           같은 번호판은 기록만 붙이기, 같은 기록 건너뛰기,
+    │   │                                           통화 칸 없는 옛 파일은 원화, 미래 날짜 하나면 전부 취소,
+    │   │                                           차량 주행거리는 오르기만
     │   ├── service/application/AccountExportServiceTest.java
     │   │                                           Mockito — 이력을 각 차량 밑으로 나누는지,
     │   │                                           비밀번호 해시가 안 담기는지, 빈 계정
@@ -1133,6 +1147,8 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     │   └── controller/rest/GarageSummaryControllerTest.java
     │                                               @WebMvcTest — 200/401
     └── maintenance/
+        ├── domain/calculation/NextServiceTest.java     지남 판정(딱 그 값·그 날도 지남), 차량별 주기,
+        │                                               한쪽만 덮어쓴 주기(customIntervalKm/Months)
         ├── domain/type/ServiceTypeTest.java            값을 다시 적지 않고 **약속만** 고정 —
         │                                               "OTHER 를 뺀 모든 종류는 주기가 최소
         │                                               하나", 양수, 이름 30자 이하(컬럼 폭)
@@ -1218,7 +1234,9 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         ├── features/  ─────────────── 기능별. 백엔드의 user/vehicle/maintenance와 짝을 이룬다
         │   ├── auth/
         │   │   ├── api/
-        │   │   │   ├── endpoints/endpoints.ts  fetchMe·signUp·login·logout·updateProfile
+        │   │   │   ├── endpoints/endpoints.ts  fetchMe·signUp·login·logout·updateProfile·
+        │   │   │   │                           changePassword·withdraw·export/restoreAccount·
+        │   │   │   │                           requestPasswordReset·confirmPasswordReset
         │   │   │   └── types/types.ts          백엔드 user.dto 대응
         │   │   ├── context/
         │   │   │   ├── definition/AuthContext.ts
@@ -1233,9 +1251,11 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         │   │       │                         ?token= 을 읽어 새 비밀번호를 받는다. 토큰이 없으면
         │   │       │                         폼 대신 안내. **성공해도 자동 로그인시키지 않는다**
         │   │       ├── login/LoginPage.tsx    401 → 폼 에러. 원래 가려던 곳으로 복귀
-        │   │       ├── signup/SignUpPage.tsx  가입 후 이어서 로그인까지. 409 → 폼 에러
+        │   │       ├── signup/SignUpPage.tsx  가입 후 이어서 로그인까지. 409 → 폼 에러.
+        │   │       │                          설정 넷은 **지금 화면이 쓰는 값**(useI18n)을 보낸다 —
+        │   │       │                          브라우저 추정값만 보내면 모르는 지역은 서버 기본값(원화)이 된다
         │   │       └── profile/ProfilePage.tsx
-        │   │                                  Section 5개(계정 / 비밀번호 / 화면 / 내 기록 / 탈퇴).
+        │   │                                  Section 6개(계정 / 비밀번호 / 언어·단위 / 화면 / 내 기록 / 탈퇴).
         │   │                                  바뀐 필드만 PATCH. null 걸러내는 겉 + 폼 2단 구조.
         │   │                                  내보내기는 받아 온 JSON 을 Blob 으로 만들어 내려준다 —
         │   │                                  <a href> 로 바로 받으면 세션·CSRF 헤더가 빠진다
@@ -1262,18 +1282,20 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
         │   │   ├── api/{endpoints,types}/  sort 를 보내지 않는다(서버가 고정)
         │   │   └── components/
         │   │       ├── summary/FuelSummaryCard.tsx   평균 연비 히어로 + 통계 4칸
-        │   │       ├── section/FuelSection.tsx       목록 + 페이지네이션 + 삭제 + 폼 토글
+        │   │       ├── section/FuelSection.tsx       목록 + 페이지네이션 + 삭제 + 폼 토글. 폼 key 필수(정비와 같다)
         │   │       └── form/FuelForm.tsx             등록·수정 겸용. 입력 중 리터당 단가 표시
         │   └── maintenance/
         │       ├── api/
-        │       │   ├── endpoints/endpoints.ts  정비 이력 엔드포인트 5개
-        │       │   └── types/types.ts          ServiceType 유니온 + SERVICE_TYPE_LABELS + DTO
+        │       │   ├── endpoints/endpoints.ts  정비 이력 엔드포인트 6개(차량별 주기 설정 포함)
+        │       │   └── types/types.ts          ServiceType 유니온 + SERVICE_TYPE_GROUPS(부위별 묶음) + DTO.
+        │       │                               종류 이름은 사전(t.serviceTypes)
         │       └── components/           pages/ 가 없다 — 자기 라우트 없이 차량 상세에 얹힌다
         │           ├── next-service/NextServiceCard.tsx
         │           │                     이력 있는 종류의 다음 정비 시점(요청 1번) + 차량별 주기 폼.
         │           │                     재조회는 부모가 key 를 바꿔 재생성
         │           ├── section/MaintenanceSection.tsx
-        │           │                     목록 + 페이지네이션 + 삭제 + 폼 토글
+        │           │                     목록 + 페이지네이션 + 삭제 + 폼 토글.
+        │           │                     폼에 key(기록 id) 필수 — 없으면 열린 폼의 입력이 다른 행에 덮어써진다
         │           └── form/MaintenanceForm.tsx
         │                                 등록·수정 겸용 (record가 null이면 등록)
         │
@@ -1282,7 +1304,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
             │   ├── client/client.test.ts BASE_URL 대비책과 네트워크 실패 변환을 고정한다
             │   ├── client/client.ts      fetch 래퍼. credentials:'include' / ApiError /
             │   │                         204 처리 / 401 전역 핸들러 등록 창구
-            │   └── types/types.ts        PageResponse<T> / ErrorResponse 둘뿐.
+            │   └── types/types.ts        PageResponse<T> / ErrorResponse / ERROR_CODES(백엔드 ErrorCode 와 짝).
             │                             기능별 DTO는 features/*/api/types/ 로 옮겼다
             ├── i18n/                     화면 문구(Phase 7). 라이브러리 없이 직접 — 사전은 객체라
             │   │                         t.vehicles.list.title 처럼 쓰고, 키가 틀리면 tsc 가 잡는다
@@ -1310,8 +1332,8 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
             │   │                         브라우저가 먼저 막아 주면 저장을 누르기 전에 알고,
             │   │                         서버는 화면을 안 거치는 요청까지 막는다.
             │   │                         한쪽만 고치면 "화면은 되는데 저장이 안 되는" 상태가 된다
-            │   ├── format/format.ts      formatNumber / formatKm / formatWon / formatDate /
-            │   │                         formatCompact / formatMonth / todayString(UTC 함정 회피)
+            │   ├── format/format.ts      createFormatter(설정 넷) → 화면이 useI18n().f 로 받는 한 벌
+            │   │                         (거리·부피·연비·금액·날짜·월). todayString(시간대) 는 따로
             │   ├── format/format.test.ts  todayString 을 자정 직후·직전 두 시각으로 본다 —
             │   │                         어느 표준시대에서 돌려도 결과가 같아야 한다
             │   └── hooks/
@@ -1363,7 +1385,7 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 ### 프론트엔드 — 테스트
 
 **테스트는 대상 파일 옆에 둔다**(`format.ts` 옆에 `format.test.ts`). 백엔드가 테스트 경로를
-대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 70개**다.
+대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 70개, 파일 10개**다.
 
     cn-usage.test.ts        cn() 과 cva() 인자에 타입 스케일 토큰이 없는지 소스를 훑는다.
                             **이 가드가 없던 8일 동안 CardTitle 이 17px·600 을 잃고
@@ -1380,6 +1402,14 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                             되돌아가는지 — 네이티브 date 입력은 지우면 빈 문자열을 준다
     useCountUp.test.ts      **첫 렌더에서 안 움직이는 것**과 변화 폭에 비례하는 지속 시간.
                             jsdom 에 matchMedia 가 없어 직접 심는다
+    client.test.ts          BASE_URL 대비책, 네트워크 실패를 status 0 으로 바꾸는 것, 401 전역 처리 제외 목록
+    errorMessage.test.ts    사전 두 벌의 errors.codes 에 ERROR_CODES 가 **빠짐없이** 있는지(규칙 16)
+    units.test.ts           마일·갤런 왕복 반올림이 원래 값으로 돌아오는지, L/100km 의 0 처리
+    money.test.ts           통화별 소수 자리(KRW 0 · USD 2)와 최소 단위 변환
+    preferences.test.ts     태그에 **적힌** 지역으로만 통화·단위를 추정하는지(en → 추정 안 함)
+
+    **컴포넌트를 실제로 그려 보는 테스트는 없다.** 그래서 폼 key 누락 같은 버그는 여기서 못 잡고
+    6-B 체크리스트(B-44-1·B-68-1)가 대신한다.
 
 **빌드에 섞이지 않게 두 가지를 해 뒀다.** `index.css` 의 `@source not` 으로 Tailwind 스캔에서
 빼고(안 빼면 테스트가 적은 클래스가 운영 CSS 에 생긴다 — 실제로 `text-red-500` 이 들어갔다),
@@ -1552,14 +1582,14 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 **Phase 2~5 에 흩어져 있던 "브라우저에서 확인" 네 줄을 여기로 합쳤다.** 같은 말이 네 군데
 있으면 어디까지 봤는지 알 수가 없다.
 
-### 볼 화면은 10개가 아니라 13개다
+### 볼 화면은 12개가 아니라 15개다
 
-라우트는 10개지만(`/` `/login` `/signup` `/forgot-password` `/reset-password` `/vehicles`
-`/vehicles/new` `/vehicles/:vehicleId` `/me` `*`), **`/` 가 세 얼굴을 갖는다** —
+라우트는 12개지만(`/` `/privacy` `/terms` `/login` `/signup` `/forgot-password` `/reset-password`
+`/vehicles` `/vehicles/new` `/vehicles/:vehicleId` `/me` `*`), **`/` 가 세 얼굴을 갖는다** —
 비로그인 랜딩 / 로그인+0대 등록 권유 / 로그인+차량 있음 통계.
 `/forgot-password` 도 **보내기 전과 보낸 뒤 둘**이고, `/reset-password` 는 **토큰이 있을 때와
 없을 때 둘**이다. `*` 는 화면이 아니라 `/` 로 보내는 리다이렉트다.
-그래서 눈으로 볼 상태는 **13개**이고, 여기에 각 화면의 로딩·빈 상태·에러가 더 붙는다.
+그래서 눈으로 볼 상태는 **15개**이고, 여기에 각 화면의 로딩·빈 상태·에러가 더 붙는다.
 
 ※ 프로필 경로는 `/profile` 이 아니라 **`/me`** 다.
 
@@ -1927,8 +1957,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 #### 6-B-7. 프로필 · 비밀번호 · 탈퇴 · 계정 격리
 
-- [ ] **B-97** 헤더 닉네임 클릭 → `/me`. eyebrow `ACCOUNT`, **`Section` 4개**
-      (계정 / 비밀번호 / 화면 / 회원 탈퇴)
+- [ ] **B-97** 헤더 닉네임 클릭 → `/me`. eyebrow `ACCOUNT`, **`Section` 6개**
+      (계정 / 비밀번호 / 언어·단위 / 화면 / 내 기록 / 회원 탈퇴)
 - [ ] **B-98** 닉네임만 변경 → PATCH 바디에 `nickname` 하나만. 헤더 표시도 같이 바뀌는지
       → 앞뒤에 공백을 넣어 저장하면 **입력칸도 공백이 잘린 값으로** 바뀌는지. 그대로 다시 저장하면
         `변경된 내용이 없습니다.` 인지(2026-09-27)
@@ -2201,32 +2231,33 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 
 아래 시나리오를 브라우저에서 처음부터 끝까지 막힘없이 수행할 수 있으면 "완성"이다.
 
-**Phase 6 의 1회차(6-B) 116개를 순서대로 따라가면 아래가 전부 덮인다.** 오른쪽이 그 항목
+**Phase 6 의 1회차(6-B) 143개를 순서대로 따라가면 아래가 전부 덮인다.** 오른쪽이 그 항목
 번호다 — 따로 한 번 더 돌 필요가 없다.
 
-- [ ] 회원가입 → 로그아웃 → 로그인 — B-10, B-105
+- [ ] 회원가입 → 로그아웃 → 로그인 — B-10, B-104, B-106
 - [ ] 새로고침해도 로그인 상태 유지 — B-12
 - [ ] 차량 등록 → 목록에 보임 → 상세 진입 — B-18, B-22, B-23
 - [ ] 차량 정보 수정, 번호판을 안 바꿨을 때 409 가 나지 않음 — B-30
 - [ ] 주행거리 갱신 — B-25
 - [ ] 더 작은 값으로 갱신할 때 확인을 거쳐 정정할 수 있음(자리수 오타 복구) — B-26, B-27
 - [ ] 미래 날짜를 정비·주유 어디에도 넣을 수 없음 — B-39
-- [ ] 정비 이력 등록/수정/삭제 — B-40, B-44, B-46
+- [ ] 정비 이력 등록/수정/삭제 — B-40, B-44, B-44-1, B-46
 - [ ] 다음 정비 시점이 주행거리·날짜 두 기준으로 표시됨 — B-41
-- [ ] 주유 기록 등록/수정/삭제 — B-51, B-68, B-78
+- [ ] 주유 기록 등록/수정/삭제 — B-51, B-68-1, B-69, B-79
 - [ ] 연비가 계산되고, 첫 기록은 `기준 기록 · 다음 주유부터 계산` 으로 이유까지 말함 — B-57, B-62
-- [ ] 페이지가 넘어가도 연비가 끊기지 않음 — B-67
+- [ ] 페이지가 넘어가도 연비가 끊기지 않음 — B-68
 - [ ] 주유 기록이 차량 주행거리를 따라 올림 — B-58
-- [ ] 연비 초기화 — 기록·지출은 그대로 두고 연비만 다시 셈 — B-73, B-76, B-77
-- [ ] 불가능한 연비가 평균을 오염시키지 않고, 뺐다는 사실을 밝힘 — B-71
-- [ ] 빠진 주유 기록을 평소 구간과 견줘 알려 줌 — B-72
-- [ ] 비밀번호 변경, 현재 비밀번호를 틀려도 로그아웃되지 않음 — B-101, B-102
+- [ ] 연비 초기화 — 기록·지출은 그대로 두고 연비만 다시 셈 — B-74 ~ B-78
+- [ ] 불가능한 연비가 평균을 오염시키지 않고, 뺐다는 사실을 밝힘 — B-71, B-72
+- [ ] 빠진 주유 기록을 평소 구간과 견줘 알려 줌 — B-73
+- [ ] 비밀번호 변경, 현재 비밀번호를 틀려도 로그아웃되지 않음 — B-102, B-103
+- [ ] 현재 비밀번호를 거듭 틀리면 막힘(훔친 세션의 대입 방지) — B-103-2
 - [ ] 비밀번호를 잊어도 메일로 재설정할 수 있음 — B-08-2, B-08-5, B-08-6
 - [ ] 탈퇴 전에 기록을 JSON 으로 챙겨 갈 수 있음 — B-110-1
 - [ ] 회원 탈퇴 후 그 계정의 데이터가 남지 않음 — B-113, B-114
-- [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-109
-- [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-106
-- [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-107, B-108
+- [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-110
+- [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-107
+- [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-108, B-109
 - [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (286개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (70개)
 
