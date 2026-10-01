@@ -113,7 +113,7 @@ class FuelRecordServiceTest {
         assertThat(response.distance()).isNull();
         assertThat(response.efficiency()).isNull();
         // 단가는 직전과 무관. 60000 ÷ 30 = 2000
-        assertThat(response.pricePerLiter()).isEqualTo(2000);
+        assertThat(response.pricePerLiter()).isEqualTo(2000L);
     }
 
     @Test

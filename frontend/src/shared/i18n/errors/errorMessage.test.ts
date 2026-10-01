@@ -31,6 +31,22 @@ describe('오류 문구', () => {
   })
 })
 
+describe('모르는 경우', () => {
+  it('사전에 없는 코드는 예외 대신 기본 문구', () => {
+    // 새 백엔드 + 캐시된 옛 화면. 던지면 저장 버튼이 "저장 중…" 에 멈춤
+    const unknown = new ApiError(400, '…', { code: 'SOMETHING_NEW' as never })
+
+    expect(errorMessage(unknown, ko, '저장에 실패했습니다.')).toBe('저장에 실패했습니다.')
+  })
+
+  it('칸 이름이 없으면 주어 없는 문장 대신 기본 문구', () => {
+    // JSON 자체가 깨지면 서버가 field 없이 MALFORMED_BODY
+    const malformed = new ApiError(400, '…', { code: 'MALFORMED_BODY' })
+
+    expect(errorMessage(malformed, en, 'Couldn’t save.')).toBe('Couldn’t save.')
+  })
+})
+
 describe('번역 누락', () => {
   it('서버의 모든 오류 코드에 두 언어 문구가 있다', () => {
     // 빠지면 그 오류만 대비 문구로 떨어져 무엇이 잘못됐는지 말하지 못함

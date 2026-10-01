@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
@@ -95,6 +94,6 @@ public class CsrfTokenFilter extends OncePerRequestFilter {
         response.addCookie(cookie);
 
         // 발급한 요청 자신도 이 토큰을 아는 것으로 간주
-        return new String(token.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
+        return token;
     }
 }

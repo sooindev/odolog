@@ -172,58 +172,61 @@ function IntervalForm({
   return (
     // 펼침 연출. 닫을 때는 없음
     <form className="form-open" onSubmit={handleSubmit}>
-      <div className="flex flex-col gap-4 bg-sunken p-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label={t.maintenance.next.intervalDistance(f.distanceUnit)}
-            htmlFor={`interval-km-${result.type}`}
-            hint={km === '' ? t.maintenance.next.intervalEmptyHint : undefined}
-          >
-            <Input
-              id={`interval-km-${result.type}`}
-              type="number"
-              autoFocus
-              min={1}
-              max={Math.floor(fromKm(unitSystem, 500_000))}
-              placeholder={result.intervalKm === null ? t.common.none : shown(result.intervalKm)}
-              className="tabular-nums"
-              value={km}
-              onChange={(event) => setKm(event.target.value)}
-            />
-          </Field>
+      {/* 감싸는 div: 잘리는 선을 바깥으로 미는 여백이 면 안쪽에 들어가지 않게 */}
+      <div>
+        <div className="flex flex-col gap-4 bg-sunken p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label={t.maintenance.next.intervalDistance(f.distanceUnit)}
+              htmlFor={`interval-km-${result.type}`}
+              hint={km === '' ? t.maintenance.next.intervalEmptyHint : undefined}
+            >
+              <Input
+                id={`interval-km-${result.type}`}
+                type="number"
+                autoFocus
+                min={1}
+                max={Math.floor(fromKm(unitSystem, 500_000))}
+                placeholder={result.intervalKm === null ? t.common.none : shown(result.intervalKm)}
+                className="tabular-nums"
+                value={km}
+                onChange={(event) => setKm(event.target.value)}
+              />
+            </Field>
 
-          <Field
-            label={t.maintenance.next.intervalMonths}
-            htmlFor={`interval-months-${result.type}`}
-            hint={months === '' ? t.maintenance.next.intervalEmptyHint : undefined}
-          >
-            <Input
-              id={`interval-months-${result.type}`}
-              type="number"
-              min={1}
-              max={120}
-              placeholder={result.intervalMonths === null ? t.common.none : String(result.intervalMonths)}
-              className="tabular-nums"
-              value={months}
-              onChange={(event) => setMonths(event.target.value)}
-            />
-          </Field>
+            <Field
+              label={t.maintenance.next.intervalMonths}
+              htmlFor={`interval-months-${result.type}`}
+              hint={months === '' ? t.maintenance.next.intervalEmptyHint : undefined}
+            >
+              <Input
+                id={`interval-months-${result.type}`}
+                type="number"
+                min={1}
+                max={120}
+                placeholder={result.intervalMonths === null ? t.common.none : String(result.intervalMonths)}
+                className="tabular-nums"
+                value={months}
+                onChange={(event) => setMonths(event.target.value)}
+              />
+            </Field>
+          </div>
+
+          <p className="text-caption leading-relaxed text-muted-foreground">
+            {t.maintenance.next.intervalNote}
+          </p>
+
+          {error !== null && <ErrorText message={error} />}
+
+          <FormActions>
+            <Button type="submit" size="sm" disabled={pending}>
+              {pending ? t.common.saving : t.common.save}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+              {t.common.cancel}
+            </Button>
+          </FormActions>
         </div>
-
-        <p className="text-caption leading-relaxed text-muted-foreground">
-          {t.maintenance.next.intervalNote}
-        </p>
-
-        {error !== null && <ErrorText message={error} />}
-
-        <FormActions>
-          <Button type="submit" size="sm" disabled={pending}>
-            {pending ? t.common.saving : t.common.save}
-          </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-            {t.common.cancel}
-          </Button>
-        </FormActions>
       </div>
     </form>
   )

@@ -79,8 +79,7 @@ public class PasswordResetService {
     @Transactional
     public void request(String email) {
         String limitKey = RATE_LIMIT_PREFIX + email;
-        rateLimiter.checkNotLocked(limitKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
-        rateLimiter.recordFailure(limitKey);
+        rateLimiter.acquire(limitKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
 
         // 만료 토큰 정리. 토큰이 쌓이는 유일한 경로라 스케줄러 불필요
         // 가입 여부 확인 전 실행. 주소 유무와 관계없이 같은 작업

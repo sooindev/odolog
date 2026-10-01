@@ -203,8 +203,9 @@ class UserServiceTest {
                 .isInstanceOf(AuthenticationFailedException.class);
 
         assertThat(user.getPassword()).isEqualTo(original);
-        // 틀린 시도는 사용자 단위로 집계
-        verify(loginAttemptLimiter).recordFailure("password-check:1");
+        // 시도는 사용자 단위로 집계, 틀렸으니 지우지 않음
+        verify(loginAttemptLimiter).acquire(eq("password-check:1"), eq(ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS), any());
+        verify(loginAttemptLimiter, never()).recordSuccess("password-check:1");
     }
 
     @Test
@@ -212,7 +213,7 @@ class UserServiceTest {
     void verifyPasswordLocked() {
         doThrow(new TooManyRequestsException(ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS, "잠김", 10))
                 .when(loginAttemptLimiter)
-                .checkNotLocked(eq("password-check:1"), eq(ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS), any());
+                .acquire(eq("password-check:1"), eq(ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS), any());
 
         assertThatThrownBy(() -> userService.verifyPassword(1L, "oldpassword"))
                 .isInstanceOf(TooManyRequestsException.class);

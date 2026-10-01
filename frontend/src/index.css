@@ -396,9 +396,15 @@
     display: grid;
     animation: form-open 0.36s var(--ease-out-apple) both;
   }
+  /*
+    overflow 는 펼침 동안 내용을 가리는 용도. 연출 뒤에도 남아 포커스 링·터치 판정 영역까지 자름
+    안쪽 여백 6px + 같은 크기의 음수 여백: 자리는 그대로, 잘리는 선만 6px 바깥으로
+  */
   .form-open > * {
     min-height: 0;
     overflow: hidden;
+    padding: 6px;
+    margin: -6px;
     animation: fade 0.3s var(--ease-out-apple) 0.12s both;
   }
 

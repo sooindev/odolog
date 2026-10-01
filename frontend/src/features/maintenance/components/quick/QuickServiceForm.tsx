@@ -11,6 +11,7 @@ import { useI18n } from '@/shared/i18n/context/I18nContext'
 import { errorMessage } from '@/shared/i18n/errors/errorMessage'
 import { todayString } from '@/shared/lib/format/format'
 import { MAX_ODOMETER } from '@/shared/lib/limits/limits'
+import { looksBigJump } from '@/shared/lib/odometer/odometer'
 import { fromKm, toKm } from '@/shared/lib/units/units'
 import { registerRecord } from '@/features/maintenance/api/endpoints/endpoints'
 import type { ServiceType } from '@/features/maintenance/api/types/types'
@@ -37,10 +38,13 @@ interface Row {
  */
 export function QuickServiceForm({
   vehicleId,
+  currentOdometer,
   onSaved,
   onCancel,
 }: {
   vehicleId: string
+  /** 차량의 현재 주행거리(km). 급증 확인 기준 */
+  currentOdometer: number
   onSaved: () => void
   onCancel: () => void
 }) {
@@ -72,6 +76,22 @@ export function QuickServiceForm({
     if (picked.length === 0) {
       setError(t.maintenance.quick.nothingPicked)
       return
+    }
+
+    // 급증은 되돌리기 어려움. 가장 큰 값 하나로 한 번만 확인
+    const largest = Math.max(
+      ...picked
+        .filter((type) => rows[type].odometer !== '')
+        .map((type) => toKm(unitSystem, Number(rows[type].odometer))),
+      0,
+    )
+    if (looksBigJump(largest, currentOdometer)) {
+      const confirmed = window.confirm(
+        t.odometerHints.bigJumpConfirm(f.distance(currentOdometer), f.distance(largest)),
+      )
+      if (!confirmed) {
+        return
+      }
     }
 
     setPending(true)

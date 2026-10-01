@@ -1,12 +1,12 @@
 package com.odolog.app.account.service.application;
 
-import com.odolog.app.common.exception.code.ErrorCode;
 import com.odolog.app.account.dto.request.restore.AccountRestoreRequest;
 import com.odolog.app.account.dto.response.restore.AccountRestoreResponse;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.fuel.domain.entity.FuelRecord;
 import com.odolog.app.fuel.repository.jpa.FuelRecordRepository;
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.entity.ServiceInterval;
 import com.odolog.app.maintenance.domain.type.ServiceType;
 import com.odolog.app.maintenance.repository.jpa.MaintenanceRecordRepository;
 import com.odolog.app.maintenance.repository.jpa.ServiceIntervalRepository;
@@ -15,6 +15,7 @@ import com.odolog.app.user.service.application.UserService;
 import com.odolog.app.user.service.time.UserToday;
 import com.odolog.app.vehicle.domain.entity.Vehicle;
 import com.odolog.app.vehicle.repository.jpa.VehicleRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -62,6 +64,14 @@ class AccountRestoreServiceTest {
     private AccountRestoreService accountRestoreService;
 
     private final User owner = new User("me@odolog.com", "encoded", "나");
+
+    /** 사용자의 오늘. 서비스가 한 번만 계산 */
+    private static final LocalDate TODAY = LocalDate.of(2026, 9, 29);
+
+    @BeforeEach
+    void setUpToday() {
+        lenient().when(userToday.of(owner)).thenReturn(TODAY);
+    }
 
     private AccountRestoreRequest.VehicleData vehicleData(String plate,
                                                           List<AccountRestoreRequest.MaintenanceData> maintenance,
@@ -136,11 +146,8 @@ class AccountRestoreServiceTest {
     @Test
     @DisplayName("기록 하나라도 미래 날짜면 차량까지 아무것도 들어가지 않는다")
     void rejectsWholeFileWithFutureDate() {
-        LocalDate tomorrow = LocalDate.of(2026, 9, 30);
+        LocalDate tomorrow = TODAY.plusDays(1);
         when(userService.findById(1L)).thenReturn(owner);
-        // 정상 날짜의 호출도 있어 lenient. 엄격 모드는 인자가 다른 호출을 실수로 봄
-        lenient().doThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "fuelRecords.fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
-                .when(userToday).rejectFuture(1L, tomorrow, "fuelRecords.fueledAt");
 
         assertThatThrownBy(() -> accountRestoreService.restore(1L,
                 new AccountRestoreRequest(List.of(vehicleData("12가1212",
@@ -258,5 +265,99 @@ class AccountRestoreServiceTest {
                 new AccountRestoreRequest(List.of(vehicleData("12가1212", List.of(), List.of()))));
 
         assertThat(vehicle.getOdometer()).isEqualTo(50000);
+    }
+
+    private AccountRestoreRequest.FuelData resetPointData(LocalDate date, int odometer) {
+        return new AccountRestoreRequest.FuelData(date, odometer, new BigDecimal("50.00"),
+                90000, null, null, true);
+    }
+
+    @Test
+    @DisplayName("새로 만든 차량은 파일의 연비 기준점을 그대로 쓴다")
+    void keepsResetPointOnNewVehicle() {
+        emptyAccount();
+
+        accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                List.of(), List.of(resetPointData(LocalDate.of(2026, 5, 2), 30100))))));
+
+        ArgumentCaptor<FuelRecord> saved = ArgumentCaptor.forClass(FuelRecord.class);
+        verify(fuelRecordRepository).save(saved.capture());
+        assertThat(saved.getValue().isResetPoint()).isTrue();
+    }
+
+    @Test
+    @DisplayName("있던 차량에 붙일 때는 파일의 기준점을 무시한다 — 지금의 연비 기준 유지")
+    void ignoresResetPointWhenMerging() {
+        // 옛 백업의 기준점이 들어오면 사용자가 하지 않은 초기화가 생김
+        Vehicle vehicle = existing("12가1212", 10L);
+        when(userService.findById(1L)).thenReturn(owner);
+        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
+                .thenReturn(List.of());
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
+                .thenReturn(List.of());
+
+        accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                List.of(), List.of(resetPointData(LocalDate.of(2026, 5, 2), 30100))))));
+
+        ArgumentCaptor<FuelRecord> saved = ArgumentCaptor.forClass(FuelRecord.class);
+        verify(fuelRecordRepository).save(saved.capture());
+        assertThat(saved.getValue().isResetPoint()).isFalse();
+    }
+
+    @Test
+    @DisplayName("파일 전체의 기록이 상한을 넘으면 아무것도 넣지 않고 400")
+    void rejectsOversizedFile() {
+        // 차량별 상한(5,000)은 지키되 차량 수로 곱해 커지는 경우
+        when(userService.findById(1L)).thenReturn(owner);
+        List<AccountRestoreRequest.FuelData> fuels = IntStream.range(0, 5000)
+                .mapToObj(i -> fuelData(LocalDate.of(2026, 5, 1), 30000 + i))
+                .toList();
+        List<AccountRestoreRequest.VehicleData> vehicles = IntStream.range(0, 5)
+                .mapToObj(i -> vehicleData("12가000" + i, List.of(), fuels))
+                .toList();
+
+        assertThatThrownBy(() -> accountRestoreService.restore(1L, new AccountRestoreRequest(vehicles)))
+                .isInstanceOf(InvalidRequestException.class);
+        verify(vehicleRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("한 파일 안에 같은 기록이 두 번 있으면 한 번만 넣는다")
+    void skipsDuplicatesWithinFile() {
+        emptyAccount();
+
+        AccountRestoreResponse result = accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(
+                vehicleData("12가1212",
+                        List.of(oilData(LocalDate.of(2026, 5, 1), 30000), oilData(LocalDate.of(2026, 5, 1), 30000)),
+                        List.of(fuelData(LocalDate.of(2026, 5, 2), 30100), fuelData(LocalDate.of(2026, 5, 2), 30100))))));
+
+        assertThat(result.addedMaintenanceRecords()).isEqualTo(1);
+        assertThat(result.addedFuelRecords()).isEqualTo(1);
+        assertThat(result.skippedRecords()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("차량별 주기는 이미 정한 종류와 둘 다 빈 값을 건너뛴다")
+    void restoresIntervals() {
+        Vehicle vehicle = existing("12가1212", 10L);
+        when(userService.findById(1L)).thenReturn(owner);
+        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
+                .thenReturn(List.of());
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
+                .thenReturn(List.of());
+        when(serviceIntervalRepository.findByVehicleId(10L)).thenReturn(List.of(
+                new ServiceInterval(vehicle, ServiceType.ENGINE_OIL, 10000, 12)));
+
+        AccountRestoreResponse result = accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(
+                new AccountRestoreRequest.VehicleData("12가1212", "기아", "카니발", 2020, 30000,
+                        List.of(), List.of(), List.of(
+                        new AccountRestoreRequest.IntervalData(ServiceType.ENGINE_OIL, 15000, 12),
+                        new AccountRestoreRequest.IntervalData(ServiceType.TIRE_ROTATION, null, null),
+                        new AccountRestoreRequest.IntervalData(ServiceType.AIR_FILTER, 20000, null))))));
+
+        assertThat(result.addedServiceIntervals()).isEqualTo(1);
+        verify(serviceIntervalRepository).save(any(ServiceInterval.class));
     }
 }

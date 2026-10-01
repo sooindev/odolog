@@ -12,6 +12,15 @@ public final class InputLimits {
     /** 금액 상한(통화의 최소 단위). 원화 1억, 달러 100만 */
     public static final long MAX_AMOUNT = 100_000_000L;
 
+    /** 이메일 길이 상한. 가입·로그인·재설정 공용 */
+    public static final int MAX_EMAIL_LENGTH = 100;
+
+    /**
+     * 이메일은 출력 가능한 ASCII 만. DB(unicode_ci)가 악센트·전각·제어 문자를 같은 글자로 봐서
+     * 철자만 바꾼 주소가 같은 계정으로 로그인되면서 시도 횟수는 따로 세어짐
+     */
+    public static final String EMAIL_CHARS = "^[!-~]+$";
+
     private InputLimits() {
     }
 }

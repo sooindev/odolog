@@ -13,15 +13,23 @@ export function errorMessage(caught: unknown, t: Messages, fallback: string): st
   }
 
   if (caught.code !== null) {
-    const entry = t.errors.codes[caught.code]
+    // 사전에 없는 코드(새 백엔드 + 옛 화면). 함수로 부르면 TypeError
+    const entry = t.errors.codes[caught.code] as (typeof t.errors.codes)[keyof typeof t.errors.codes] | undefined
+    if (entry === undefined) {
+      return fallback
+    }
     if (typeof entry === 'string') {
       return entry
     }
     if (caught.code.startsWith('TOO_MANY_')) {
       return (entry as (minutes: number) => string)(caught.retryAfterMinutes ?? 10)
     }
+    // 칸을 모르면 주어 없는 문장 대신 호출부 문구
+    if (caught.field === null) {
+      return fallback
+    }
     // 칸 이름은 화면 이름으로. 모르는 칸은 서버가 준 이름 그대로
-    const field = caught.field === null ? '' : (t.errors.fields[caught.field] ?? caught.field)
+    const field = t.errors.fields[caught.field] ?? caught.field
     return (entry as (field: string) => string)(field)
   }
 

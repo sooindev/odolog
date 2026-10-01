@@ -167,6 +167,7 @@ export function GettingStartedCard({
                           <div>
                             <QuickServiceForm
                               vehicleId={vehicle.id}
+                              currentOdometer={vehicle.odometer}
                               onSaved={() => {
                                 setQuickOpen(false)
                                 onServicesSaved()

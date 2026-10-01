@@ -24,7 +24,7 @@ public record FuelRecordResponse(
         boolean resetPoint,
 
         /** 리터당 단가(통화의 최소 단위). 총액 ÷ 리터 반올림. 둘 중 하나라도 없으면 null */
-        Integer pricePerLiter,
+        Long pricePerLiter,
         /** 직전 주유 이후 거리(km). 직전 없으면 null */
         Integer distance,
         /** 연비(km/L), 소수 2자리. 구간 미성립이면 null */
@@ -74,8 +74,8 @@ public record FuelRecordResponse(
         );
     }
 
-    /** 총액과 주유량이 모두 있을 때만 */
-    private static Integer pricePerLiter(FuelRecord record) {
+    /** 총액과 주유량이 모두 있을 때만. long 인 이유: 금액 상한 ÷ 0.01L 이 int 를 넘음 */
+    private static Long pricePerLiter(FuelRecord record) {
         if (record.getTotalCost() == null || record.getLiters() == null
                 || record.getLiters().compareTo(BigDecimal.ZERO) <= 0) {
             return null;
@@ -83,6 +83,6 @@ public record FuelRecordResponse(
 
         return BigDecimal.valueOf(record.getTotalCost())
                 .divide(record.getLiters(), 0, RoundingMode.HALF_UP)
-                .intValue();
+                .longValue();
     }
 }

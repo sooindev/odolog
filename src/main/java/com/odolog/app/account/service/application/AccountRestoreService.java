@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.odolog.app.common.text.InputText;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,6 +39,9 @@ import java.util.Set;
 @Service
 @Transactional(readOnly = true)
 public class AccountRestoreService {
+
+    /** 파일 하나의 기록 총량 상한. 차량별 상한만으로는 50대 × 1만 건이 한 트랜잭션 */
+    private static final int MAX_TOTAL_RECORDS = 20_000;
 
     private final UserService userService;
     private final VehicleRepository vehicleRepository;
@@ -63,7 +67,8 @@ public class AccountRestoreService {
     @Transactional
     public AccountRestoreResponse restore(Long userId, AccountRestoreRequest request) {
         User owner = userService.findById(userId);
-        rejectFutureDates(userId, request);
+        rejectOversized(request);
+        rejectFutureDates(userToday.of(owner), request);
 
         Map<String, Vehicle> byPlate = new LinkedHashMap<>();
         for (Vehicle vehicle : vehicleRepository.findAllByOwnerId(userId)) {
@@ -80,8 +85,9 @@ public class AccountRestoreService {
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
             String plateNumber = InputText.required(data.plateNumber(), "plateNumber");
             Vehicle vehicle = byPlate.get(plateKey(plateNumber));
+            boolean created = vehicle == null;
 
-            if (vehicle == null) {
+            if (created) {
                 vehicle = vehicleRepository.save(new Vehicle(owner, plateNumber,
                         InputText.required(data.manufacturer(), "manufacturer"),
                         InputText.required(data.modelName(), "modelName"),
@@ -125,11 +131,11 @@ public class AccountRestoreService {
                     continue;
                 }
 
-                // 기준점은 생성자에 없어 별도 지정
+                // 기준점은 생성자에 없어 별도 지정. 새 차량만, 있던 차량은 지금의 연비 기준 유지
                 FuelRecord fuel = new FuelRecord(vehicle, record.fueledAt(), record.odometer(),
                         record.liters(), record.totalCost(), currencyOf(record.currency()),
                         blankToNull(record.memo()));
-                fuel.changeResetPoint(record.resetPoint());
+                fuel.changeResetPoint(created && record.resetPoint());
 
                 fuelRecordRepository.save(fuel);
                 addedFuel++;
@@ -160,15 +166,33 @@ public class AccountRestoreService {
                 mergedVehicles, skipped, addedIntervals);
     }
 
-    /** 저장 전에 전부 검사. 하나라도 미래면 아무것도 안 들어감 */
-    private void rejectFutureDates(Long userId, AccountRestoreRequest request) {
+    private void rejectOversized(AccountRestoreRequest request) {
+        int total = 0;
+        for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
+            total += data.maintenanceRecords().size() + data.fuelRecords().size();
+        }
+        if (total > MAX_TOTAL_RECORDS) {
+            throw new InvalidRequestException(ErrorCode.BAD_REQUEST,
+                    "한 파일에 기록 " + MAX_TOTAL_RECORDS + "건까지 가져올 수 있습니다: " + total);
+        }
+    }
+
+    /** 저장 전에 전부 검사. 하나라도 미래면 아무것도 안 들어감. 오늘은 한 번만 계산 */
+    private void rejectFutureDates(LocalDate today, AccountRestoreRequest request) {
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
             for (AccountRestoreRequest.MaintenanceData record : data.maintenanceRecords()) {
-                userToday.rejectFuture(userId, record.serviceDate(), "maintenanceRecords.serviceDate");
+                rejectFuture(today, record.serviceDate(), "maintenanceRecords.serviceDate");
             }
             for (AccountRestoreRequest.FuelData record : data.fuelRecords()) {
-                userToday.rejectFuture(userId, record.fueledAt(), "fuelRecords.fueledAt");
+                rejectFuture(today, record.fueledAt(), "fuelRecords.fueledAt");
             }
+        }
+    }
+
+    private void rejectFuture(LocalDate today, LocalDate date, String field) {
+        if (date != null && date.isAfter(today)) {
+            throw new InvalidRequestException(ErrorCode.FUTURE_DATE,
+                    field + ": 오늘 이후 날짜는 입력할 수 없습니다.", field);
         }
     }
 

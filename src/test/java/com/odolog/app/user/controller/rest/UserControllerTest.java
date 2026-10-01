@@ -66,7 +66,7 @@ class UserControllerTest {
     void signUpTooManyAttempts() throws Exception {
         // 가입 409 로 인한 주소 대량 조회를 IP 로 차단
         doThrow(new TooManyRequestsException(ErrorCode.TOO_MANY_SIGNUP_ATTEMPTS, "회원가입 시도가 너무 많습니다. 10분 후 다시 시도해 주세요.", 10))
-                .when(attemptLimiter).checkNotLocked(any(), any(), any());
+                .when(attemptLimiter).acquire(any(), any(), any());
 
         SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", null, null, null, null);
 
@@ -148,6 +148,20 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("악센트·전각 문자가 섞인 이메일은 서비스에 닿기 전에 400 — 시도 횟수 우회 차단")
+    void loginRejectsNonAsciiEmail() throws Exception {
+        // DB(unicode_ci)는 kím@x.com 을 kim@x.com 과 같게 봐서, 받으면 철자마다 따로 10번씩 대입 가능
+        for (String email : new String[]{"kím@odolog.com", "ｋim@odolog.com"}) {
+            mockMvc.perform(post("/api/users/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new LoginRequest(email, "password1234"))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        verify(userService, never()).login(any());
     }
 
     @Test

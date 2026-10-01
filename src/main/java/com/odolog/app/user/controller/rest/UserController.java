@@ -51,8 +51,7 @@ public class UserController {
     public ResponseEntity<UserResponse> signUp(@Valid @RequestBody SignUpRequest request,
                                                  HttpServletRequest httpRequest) {
         String limitKey = SIGNUP_KEY_PREFIX + clientIp(httpRequest);
-        attemptLimiter.checkNotLocked(limitKey, ErrorCode.TOO_MANY_SIGNUP_ATTEMPTS, "회원가입 시도가 너무 많습니다.");
-        attemptLimiter.recordFailure(limitKey);
+        attemptLimiter.acquire(limitKey, ErrorCode.TOO_MANY_SIGNUP_ATTEMPTS, "회원가입 시도가 너무 많습니다.");
 
         User user = userService.signUp(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(user));

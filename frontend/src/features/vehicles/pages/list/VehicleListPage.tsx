@@ -23,12 +23,13 @@ export function VehicleListPage() {
     return <VehicleListSkeleton />
   }
 
-  if (error !== null) {
-    return <ErrorText message={error} />
-  }
-
-  if (data === null || data.totalElements === 0) {
-    return <EmptyGarage />
+  // 오류·빈 상태도 머리말(h1) 유지. 버튼은 빈 상태 안의 하나만
+  if (error !== null || data === null || data.totalElements === 0) {
+    return (
+      <Page eyebrow="Garage" title={t.vehicles.list.title}>
+        {error !== null ? <ErrorText message={error} /> : <EmptyGarage />}
+      </Page>
+    )
   }
 
   return (

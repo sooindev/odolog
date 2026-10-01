@@ -19,17 +19,20 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class LoginAttemptLimiter {
 
-    /** 잠금까지의 연속 실패 횟수 */
-    private static final int MAX_FAILURES = 10;
-    /** 실패 카운터 유지 시간 */
+    /** 창 안에서 허용하는 시도 횟수 */
+    private static final int MAX_ATTEMPTS = 10;
+    /** 시도 카운터 유지 시간 */
     private static final Duration WINDOW = Duration.ofMinutes(10);
     /** 잠금 유지 시간 */
     private static final Duration LOCK = Duration.ofMinutes(10);
     /** 만료 항목 정리 기준 크기 */
     private static final int PURGE_THRESHOLD = 10_000;
+    /** 정리 최소 간격. 기준을 넘긴 뒤 매 요청 전체 순회 방지 */
+    private static final Duration PURGE_INTERVAL = Duration.ofMinutes(1);
 
     private final Map<String, Attempt> attempts = new ConcurrentHashMap<>();
     private final Clock clock;
+    private volatile Instant lastPurge = Instant.EPOCH;
 
     public LoginAttemptLimiter() {
         this(Clock.systemUTC());
@@ -40,46 +43,46 @@ public class LoginAttemptLimiter {
     }
 
     /**
-     * 잠겨 있으면 429. 검증보다 먼저 호출
+     * 시도 한 번 집계 후 한도를 넘었으면 429. 검증보다 먼저 호출, 성공하면 recordSuccess
+     * 확인과 집계가 한 번의 compute. 동시 요청이 함께 확인을 통과하는 것 방지
      * reason 은 완성된 문장. 조사 자동 결합 시 받침 오류 방지. 화면 문구는 code 로
      */
-    public void checkNotLocked(String key, ErrorCode code, String reason) {
-        Attempt attempt = attempts.get(key(key));
-        if (attempt == null || attempt.lockedUntil == null) {
-            return;
-        }
-
+    public void acquire(String key, ErrorCode code, String reason) {
         Instant now = clock.instant();
-        if (now.isBefore(attempt.lockedUntil)) {
-            long minutes = Math.max(1, Duration.between(now, attempt.lockedUntil).toMinutes() + 1);
-            throw new TooManyRequestsException(code, reason + " " + minutes + "분 후 다시 시도해 주세요.", minutes);
-        }
-    }
-
-    public void recordFailure(String key) {
-        Instant now = clock.instant();
+        Instant[] lockedUntil = new Instant[1];
 
         attempts.compute(key(key), (ignored, current) -> {
             Attempt attempt = current == null ? new Attempt() : current;
 
-            // 마지막 실패가 오래됐으면 처음부터 집계
-            if (attempt.lastFailure != null && Duration.between(attempt.lastFailure, now).compareTo(WINDOW) > 0) {
-                attempt.failures = 0;
+            if (attempt.lockedUntil != null && now.isBefore(attempt.lockedUntil)) {
+                lockedUntil[0] = attempt.lockedUntil;
+                return attempt;
+            }
+
+            // 마지막 시도가 오래됐거나 잠금이 끝났으면 처음부터 집계
+            if (attempt.lockedUntil != null
+                    || (attempt.lastAttempt != null && Duration.between(attempt.lastAttempt, now).compareTo(WINDOW) > 0)) {
+                attempt.attempts = 0;
                 attempt.lockedUntil = null;
             }
 
-            attempt.failures += 1;
-            attempt.lastFailure = now;
+            attempt.attempts += 1;
+            attempt.lastAttempt = now;
 
-            if (attempt.failures >= MAX_FAILURES) {
+            if (attempt.attempts > MAX_ATTEMPTS) {
                 attempt.lockedUntil = now.plus(LOCK);
-                attempt.failures = 0;
+                lockedUntil[0] = attempt.lockedUntil;
             }
 
             return attempt;
         });
 
         purgeIfCrowded(now);
+
+        if (lockedUntil[0] != null) {
+            long minutes = Math.max(1, Duration.between(now, lockedUntil[0]).toMinutes() + 1);
+            throw new TooManyRequestsException(code, reason + " " + minutes + "분 후 다시 시도해 주세요.", minutes);
+        }
     }
 
     /** 성공 시 기록 삭제. 옛 실패로 인한 잠금 방지 */
@@ -89,7 +92,7 @@ public class LoginAttemptLimiter {
 
     /**
      * 키 정규화(공백·대소문자)
-     * DB 이메일 조회가 대소문자 무시라 A@x.com / a@x.com 교차 우회 차단
+     * 이메일은 출력 가능한 ASCII 만 받으므로 DB(unicode_ci) 비교와 같은 기준
      */
     private String key(String rawKey) {
         return rawKey == null ? "" : rawKey.trim().toLowerCase(Locale.ROOT);
@@ -97,19 +100,20 @@ public class LoginAttemptLimiter {
 
     /** 임의 이메일 대량 입력 시 맵 무한 증가 방지 */
     private void purgeIfCrowded(Instant now) {
-        if (attempts.size() < PURGE_THRESHOLD) {
+        if (attempts.size() < PURGE_THRESHOLD || now.isBefore(lastPurge.plus(PURGE_INTERVAL))) {
             return;
         }
+        lastPurge = now;
 
         attempts.values().removeIf(attempt ->
                 (attempt.lockedUntil == null || now.isAfter(attempt.lockedUntil))
-                        && attempt.lastFailure != null
-                        && Duration.between(attempt.lastFailure, now).compareTo(WINDOW) > 0);
+                        && attempt.lastAttempt != null
+                        && Duration.between(attempt.lastAttempt, now).compareTo(WINDOW) > 0);
     }
 
     private static final class Attempt {
-        private int failures;
-        private Instant lastFailure;
+        private int attempts;
+        private Instant lastAttempt;
         private Instant lockedUntil;
     }
 }

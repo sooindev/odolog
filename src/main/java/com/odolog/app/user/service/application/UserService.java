@@ -74,27 +74,21 @@ public class UserService {
     }
 
     public User login(LoginRequest request) {
-        // 검증보다 먼저. 잠긴 동안은 맞는 비밀번호도 거절
-        loginAttemptLimiter.checkNotLocked(request.email(), ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
+        // 검증보다 먼저 집계. 잠긴 동안은 맞는 비밀번호도 거절
+        loginAttemptLimiter.acquire(request.email(), ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
 
-        try {
-            User user = userRepository.findByEmail(request.email()).orElse(null);
+        User user = userRepository.findByEmail(request.email()).orElse(null);
 
-            // 없는 계정도 BCrypt 한 번. 응답 시간으로 가입 여부가 드러나는 것 방지
-            String hash = (user == null) ? dummyHash : user.getPassword();
-            boolean matches = passwordEncoder.matches(request.password(), hash);
+        // 없는 계정도 BCrypt 한 번. 응답 시간으로 가입 여부가 드러나는 것 방지
+        String hash = (user == null) ? dummyHash : user.getPassword();
+        boolean matches = passwordEncoder.matches(request.password(), hash);
 
-            if (user == null || !matches) {
-                throw new AuthenticationFailedException(ErrorCode.LOGIN_FAILED, "이메일 또는 비밀번호가 올바르지 않습니다.");
-            }
-
-            loginAttemptLimiter.recordSuccess(request.email());
-            return user;
-        } catch (AuthenticationFailedException e) {
-            // 없는 계정도 실패 집계
-            loginAttemptLimiter.recordFailure(request.email());
-            throw e;
+        if (user == null || !matches) {
+            throw new AuthenticationFailedException(ErrorCode.LOGIN_FAILED, "이메일 또는 비밀번호가 올바르지 않습니다.");
         }
+
+        loginAttemptLimiter.recordSuccess(request.email());
+        return user;
     }
 
     public User findById(Long userId) {
@@ -108,12 +102,11 @@ public class UserService {
      */
     public void verifyPassword(Long userId, String rawPassword) {
         String limitKey = PASSWORD_CHECK_KEY_PREFIX + userId;
-        loginAttemptLimiter.checkNotLocked(limitKey, ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS, "비밀번호를 너무 많이 틀렸습니다.");
+        loginAttemptLimiter.acquire(limitKey, ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS, "비밀번호를 너무 많이 틀렸습니다.");
 
         User user = findById(userId);
 
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
-            loginAttemptLimiter.recordFailure(limitKey);
             throw new AuthenticationFailedException(ErrorCode.WRONG_PASSWORD, "현재 비밀번호가 올바르지 않습니다.");
         }
 

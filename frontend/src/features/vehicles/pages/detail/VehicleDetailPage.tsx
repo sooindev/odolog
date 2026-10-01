@@ -59,8 +59,17 @@ export function VehicleDetailPage() {
     return <VehicleDetailSkeleton />
   }
 
-  if (error !== null || vehicle === null) {
-    return <ErrorText message={error ?? t.vehicles.detail.notFound} />
+  // 처음부터 못 불러온 경우만 화면 전체를 오류로. 재조회 실패는 직전 값을 두고 위에 한 줄
+  if (vehicle === null) {
+    return (
+      <Page
+        back={{ to: '/vehicles', label: t.vehicles.myVehicles }}
+        eyebrow="Garage"
+        title={t.vehicles.detail.loadFailed}
+      >
+        <ErrorText message={error ?? t.vehicles.detail.notFound} />
+      </Page>
+    )
   }
 
   async function handleDelete() {
@@ -96,6 +105,8 @@ export function VehicleDetailPage() {
         왼쪽 현재 상태, 오른쪽 이력·다음 정비
         minmax(0,1fr): 긴 메모의 격자 넘침 방지
       */}
+      {error !== null && <ErrorText message={error} />}
+
       <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
         {/* self-start: sticky 동작 조건 */}
         <div className="flex flex-col gap-8 lg:sticky lg:top-28 lg:self-start lg:gap-10">
@@ -150,7 +161,11 @@ export function VehicleDetailPage() {
             }}
           />
 
-          <NextServiceCard key={`next-service-${maintenanceVersion}`} vehicleId={vehicle.id} />
+          {/* 지남 판정이 차량의 현재 주행거리 기준이라 주행거리도 key 에 */}
+          <NextServiceCard
+            key={`next-service-${maintenanceVersion}-${vehicle.odometer}`}
+            vehicleId={vehicle.id}
+          />
 
           <MaintenanceSection
             key={`maintenance-list-${maintenanceListVersion}`}
@@ -173,7 +188,8 @@ export function VehicleDetailPage() {
           />
 
           {/* 시작하기 카드가 스크롤해 오는 자리 */}
-          <div id="fuel-section" className="scroll-mt-28">
+          {/* tabIndex -1: 스크롤과 함께 포커스도 옮기려면 필요 */}
+          <div id="fuel-section" tabIndex={-1} className="scroll-mt-28 outline-none">
           <FuelSection
             key={`fuel-list-${fuelListVersion}`}
             vehicleId={vehicle.id}

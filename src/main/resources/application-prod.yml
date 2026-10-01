@@ -2,6 +2,11 @@
 # 여기 적은 키만 덮어씀
 
 spring:
+  # 기본값 없음. 환경변수가 빠지면 root·빈 비밀번호로 조용히 뜨지 않고 기동 실패
+  datasource:
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
   jpa:
     # 콘솔 SQL 출력 끄기
     show-sql: false
@@ -25,3 +30,8 @@ server:
       cookie:
         # https 전제라 secure 켜기. CsrfTokenFilter 도 같은 값 사용
         secure: true
+
+# 재설정 메일 링크. 기본값(localhost)으로 운영 메일이 나가지 않게 필수
+odolog:
+  app:
+    base-url: ${APP_BASE_URL}

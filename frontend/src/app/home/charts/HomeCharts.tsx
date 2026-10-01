@@ -113,7 +113,7 @@ export function MonthlyCostChart({ monthly, currency }: { monthly: MonthlyCost[]
                   <tr key={entry.month}>
                     <td className="py-2 tabular-nums text-foreground">{f.month(entry.month)}</td>
                     <td className="py-2 text-right tabular-nums text-muted-foreground">
-                      {entry.count}
+                      {f.number(entry.count)}
                     </td>
                     <td className="py-2 text-right tabular-nums text-muted-foreground">
                       {f.money(entry.maintenanceCost, currency)}

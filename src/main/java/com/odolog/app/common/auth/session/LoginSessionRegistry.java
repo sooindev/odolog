@@ -27,7 +27,12 @@ public class LoginSessionRegistry implements HttpSessionListener {
                 owned.remove(session);
             }
         });
-        sessions.computeIfAbsent(userId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
+        // 추가까지 compute 안에서. 밖에서 더하면 sessionDestroyed 가 지운 빈 목록에 들어가 추적이 끊김
+        sessions.compute(userId, (ignored, owned) -> {
+            Set<HttpSession> target = owned == null ? ConcurrentHashMap.newKeySet() : owned;
+            target.add(session);
+            return target;
+        });
     }
 
     /** 탈퇴·재설정용. 그 사용자의 세션 전부 */

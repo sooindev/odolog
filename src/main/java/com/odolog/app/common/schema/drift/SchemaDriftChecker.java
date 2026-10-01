@@ -82,8 +82,8 @@ public class SchemaDriftChecker {
                 collectUniqueDrifts(entity.getJavaType(), table, readUniqueConstraints(connection, table), drifts);
             }
         } catch (Exception e) {
-            // 점검 실패로 기동이 막히지 않게
-            log.debug("스키마 대조를 건너뛴다", e);
+            // 점검 실패로 기동이 막히지 않게. 단 조용히 고장 나지 않게 warn
+            log.warn("스키마 대조를 건너뛴다: {}", e.toString());
             return List.of();
         }
 

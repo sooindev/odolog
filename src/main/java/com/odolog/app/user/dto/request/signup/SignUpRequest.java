@@ -1,17 +1,20 @@
 package com.odolog.app.user.dto.request.signup;
 
 import com.odolog.app.common.validation.annotation.MaxBytes;
+import com.odolog.app.common.validation.limit.InputLimits;
 import com.odolog.app.user.domain.type.Language;
 import com.odolog.app.user.domain.type.UnitSystem;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record SignUpRequest(
 
         @NotBlank
         @Email
-        @Size(max = 100)
+        @Size(max = InputLimits.MAX_EMAIL_LENGTH)
+        @Pattern(regexp = InputLimits.EMAIL_CHARS)
         String email,
 
         // 바이트 기준 상한. BCrypt 72바이트, 글자 수 기준이면 한글에서 초과
