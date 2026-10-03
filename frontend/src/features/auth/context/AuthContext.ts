@@ -17,7 +17,7 @@ export interface AuthContextValue {
    * 탈퇴. 성공 시 로그인 상태 제거
    * 실패는 그대로 전달
    */
-  withdraw: (request: WithdrawRequest) => Promise<void>
+  withdraw: (request: WithdrawRequest, leave: () => void) => Promise<void>
   /** 서버가 돌려준 사용자 정보로 교체 */
   replaceUser: (user: UserResponse) => void
 }

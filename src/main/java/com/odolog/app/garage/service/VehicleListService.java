@@ -51,7 +51,7 @@ public class VehicleListService {
 
         Page<Vehicle> page = vehicleRepository.findByOwnerId(ownerId, pageable);
         if (page.isEmpty()) {
-            return page.map(vehicle -> VehicleResponse.of(vehicle, 0));
+            return page.map(vehicle -> VehicleResponse.of(vehicle, 0, 0));
         }
 
         List<MaintenanceRecord> records =
@@ -59,12 +59,14 @@ public class VehicleListService {
         List<ServiceInterval> intervals = serviceIntervalRepository.findByVehicle_Owner_Id(ownerId);
         LocalDate today = userToday.of(ownerId);
 
-        return page.map(vehicle -> VehicleResponse.of(vehicle,
-                overdueCountOf(vehicle, records, intervals, today)));
+        return page.map(vehicle -> {
+            NextService.Counts counts = countsOf(vehicle, records, intervals, today);
+            return VehicleResponse.of(vehicle, counts.overdue(), counts.dueSoon());
+        });
     }
 
     /** 홈 요약과 같은 NextService 계산 */
-    private int overdueCountOf(Vehicle vehicle, List<MaintenanceRecord> records,
+    private NextService.Counts countsOf(Vehicle vehicle, List<MaintenanceRecord> records,
                                List<ServiceInterval> intervals, LocalDate today) {
         // getId() 는 LAZY 프록시 초기화 없이 조회
         List<MaintenanceRecord> mine = records.stream()
@@ -74,6 +76,6 @@ public class VehicleListService {
                 .filter(interval -> interval.getVehicle().getId().equals(vehicle.getId()))
                 .toList();
 
-        return NextService.overdueCount(mine, mineIntervals, vehicle.getOdometer(), today);
+        return NextService.count(mine, mineIntervals, vehicle.getOdometer(), today);
     }
 }

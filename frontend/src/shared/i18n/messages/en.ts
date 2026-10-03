@@ -275,6 +275,7 @@ export const en: Messages = {
     modelYear: (year: number) => `${year}`,
     unknownYear: 'Year unknown',
     overdue: (n: number) => `${n} ${plural(n, 'service', 'services')} overdue`,
+    dueSoon: (n: number) => `${n} due soon`,
     list: {
       title: 'My vehicles',
       count: (n: number) => `Tracking ${n} ${plural(n, 'vehicle', 'vehicles')}.`,
@@ -429,10 +430,11 @@ export const en: Messages = {
     },
     next: {
       title: 'Next service',
-      description: 'Calculated from each type’s recommended interval and your last record. Overdue items come first.',
+      description: 'Calculated from each type’s recommended interval and your last record. Overdue items come first, then those due soon (within 1,000 km or a month).',
       loadFailed: 'Couldn’t load upcoming services.',
       empty: 'Nothing to calculate yet. Add a service record and we’ll show when that type is due next.',
       overdue: 'Overdue',
+      dueSoon: 'Due soon',
       interval: 'Interval',
       intervalCustomized: 'Custom interval',
       last: (parts: string) => `Last ${parts}`,

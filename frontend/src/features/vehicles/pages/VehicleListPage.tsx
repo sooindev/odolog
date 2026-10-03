@@ -73,6 +73,11 @@ export function VehicleListPage() {
                         {t.vehicles.overdue(vehicle.overdueServiceCount)}
                       </span>
                     )}
+                    {vehicle.dueSoonServiceCount !== null && vehicle.dueSoonServiceCount > 0 && (
+                      <span className="shrink-0 border border-border px-1.5 py-0.5 text-unit text-muted-foreground">
+                        {t.vehicles.dueSoon(vehicle.dueSoonServiceCount)}
+                      </span>
+                    )}
                   </p>
                   <p className="text-caption text-muted-foreground">
                     {vehicle.modelYear === null

@@ -1,6 +1,7 @@
 package com.odolog.app.common.config;
 
 import com.odolog.app.common.auth.LoginUserArgumentResolver;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +17,13 @@ import java.util.List;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    /** 화면 주소. 로컬은 Vite(5173), 배포는 CORS_ALLOWED_ORIGINS(쉼표로 여럿) */
+    private final List<String> allowedOrigins;
+
+    public WebConfig(@Value("${odolog.cors.allowed-origins}") List<String> allowedOrigins) {
+        this.allowedOrigins = allowedOrigins;
+    }
+
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
         resolvers.add(new LoginUserArgumentResolver());
@@ -28,7 +36,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Bean
     public FilterRegistrationBean<CorsFilter> corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

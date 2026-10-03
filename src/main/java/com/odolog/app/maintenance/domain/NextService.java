@@ -14,6 +14,7 @@ import java.util.Map;
  * 다음 정비 시점과 지남 판정. 차량 상세·홈 요약 공용
  *
  * @param overdue    주행거리·날짜 중 하나라도 지남
+ * @param dueSoon    아직 안 지났지만 곧(1,000km 또는 1개월 안). 지난 것에는 붙지 않음
  * @param intervalKm 실제 적용 주기. 차량별 설정 우선, 없으면 ServiceType 기본값
  * @param customized 기본값 덮어씀 여부
  * @param customIntervalKm     차량별로 직접 정한 km 주기. 기본값을 쓰면 null
@@ -26,6 +27,7 @@ public record NextService(
         LocalDate lastDate,
         LocalDate nextDate,
         boolean overdue,
+        boolean dueSoon,
         Integer intervalKm,
         Integer intervalMonths,
         boolean customized,
@@ -63,17 +65,26 @@ public record NextService(
             }
         }
 
-        results.sort(Comparator.comparing(NextService::overdue).reversed());
+        // 지난 것 → 곧 → 나머지. 이 목록은 "뭘 해야 하나" 를 보는 자리
+        results.sort(Comparator.comparing(NextService::overdue).thenComparing(NextService::dueSoon).reversed());
 
         return results;
     }
 
-    /** 지난 정비 수. 차량 목록·홈 요약 공용 */
-    public static int overdueCount(List<MaintenanceRecord> records, List<ServiceInterval> overrides,
-                                   int currentOdometer, LocalDate today) {
-        return (int) of(records, overrides, currentOdometer, today).stream()
-                .filter(NextService::overdue)
-                .count();
+    /** "곧" 의 기준. 엔진오일(5,000km·6개월)이면 4,000km·5개월째부터 */
+    public static final int SOON_KM = 1_000;
+    public static final int SOON_MONTHS = 1;
+
+    /** 지난·곧 정비 수. 차량 목록·홈 요약 공용 */
+    public record Counts(int overdue, int dueSoon) {
+    }
+
+    public static Counts count(List<MaintenanceRecord> records, List<ServiceInterval> overrides,
+                               int currentOdometer, LocalDate today) {
+        List<NextService> all = of(records, overrides, currentOdometer, today);
+        return new Counts(
+                (int) all.stream().filter(NextService::overdue).count(),
+                (int) all.stream().filter(NextService::dueSoon).count());
     }
 
     /** 같은 종류 중 최신 하나. 날짜가 같으면 id 가 큰 쪽 */
@@ -106,8 +117,13 @@ public record NextService(
         boolean overdue = (nextOdometer != null && currentOdometer >= nextOdometer)
                 || (nextDate != null && !today.isBefore(nextDate));
 
+        // 지난 것은 곧이 아님. 경계는 지남과 같이 딱 그 값·그 날 포함
+        boolean dueSoon = !overdue
+                && ((nextOdometer != null && currentOdometer >= nextOdometer - SOON_KM)
+                || (nextDate != null && !today.plusMonths(SOON_MONTHS).isBefore(nextDate)));
+
         return new NextService(type, record.getServiceOdometer(), nextOdometer,
-                record.getServiceDate(), nextDate, overdue,
+                record.getServiceDate(), nextDate, overdue, dueSoon,
                 intervalKm, intervalMonths, override != null, customKm, customMonths);
     }
 }

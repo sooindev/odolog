@@ -25,6 +25,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.security:spring-security-crypto'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    // 세션을 DB 에 보관. 재시작해도 로그인 유지, 다른 기기 세션 끊기도 DB 기준
+    implementation 'org.springframework.session:spring-session-jdbc'
+    // 스키마 변경 이력. ddl-auto 가 지우지도 바꾸지도 않던 제약·컬럼을 코드로 남김
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-mysql'
 
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 

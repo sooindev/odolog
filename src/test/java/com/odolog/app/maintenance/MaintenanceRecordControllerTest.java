@@ -233,9 +233,9 @@ class MaintenanceRecordControllerTest {
     void calculateAllNextServices() throws Exception {
         when(maintenanceRecordService.calculateAllNextServices(1L, "10")).thenReturn(List.of(
                 new NextServiceResponse(ServiceType.ENGINE_OIL, 20000, 25000,
-                        LocalDate.of(2026, 9, 1), LocalDate.of(2027, 3, 1), true, 5000, 6, false, null, null, 5000, 6),
+                        LocalDate.of(2026, 9, 1), LocalDate.of(2027, 3, 1), true, false, 5000, 6, false, null, null, 5000, 6),
                 new NextServiceResponse(ServiceType.TRANSMISSION_FLUID, 15000, 75000,
-                        LocalDate.of(2026, 6, 1), LocalDate.of(2030, 6, 1), false, 60000, 48, false, null, null, 60000, 48)));
+                        LocalDate.of(2026, 6, 1), LocalDate.of(2030, 6, 1), false, false, 60000, 48, false, null, null, 60000, 48)));
 
         mockMvc.perform(get("/api/vehicles/10/maintenance-records/next-services")
                         .session(loginSessionOf(1L)))

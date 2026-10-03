@@ -34,4 +34,6 @@ export interface VehicleResponse {
   odometer: number
   /** 권장 주기가 지난 정비 종류 수. 목록 조회에서만 채움, 그 밖에는 null */
   overdueServiceCount: number | null
+  /** 곧 해야 할 정비 종류 수(지난 것 제외). 목록에서만 */
+  dueSoonServiceCount: number | null
 }

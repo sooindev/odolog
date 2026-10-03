@@ -29,9 +29,8 @@ export function WithdrawCard() {
     setPending(true)
 
     try {
-      await withdraw({ password })
-      // replace: 뒤로가기로 복귀 방지
-      navigate('/', { replace: true })
+      // replace: 뒤로가기로 복귀 방지. 이동은 상태 지우기와 함께(AuthProvider)
+      await withdraw({ password }, () => navigate('/', { replace: true }))
     } catch (caught) {
       // 401 = 비밀번호 오류. 전역 401 처리 제외 경로
       setError(errorMessage(caught, t, t.profile.withdraw.failed))

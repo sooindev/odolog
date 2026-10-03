@@ -160,6 +160,11 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                         {t.vehicles.overdue(line.overdueServiceCount)}
                       </span>
                     )}
+                    {line.dueSoonServiceCount > 0 && (
+                      <span className="shrink-0 border border-border px-1.5 py-0.5 text-unit text-muted-foreground">
+                        {t.vehicles.dueSoon(line.dueSoonServiceCount)}
+                      </span>
+                    )}
                   </p>
                   <p className="truncate text-caption text-muted-foreground">
                     {line.plateNumber} · {t.home.vehicles.maintenanceCount(line.maintenanceCount)}

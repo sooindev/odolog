@@ -217,4 +217,45 @@ class NextServiceTest {
         assertThat(response.defaultIntervalKm()).isEqualTo(ServiceType.ENGINE_OIL.getRecommendedIntervalKm());
         assertThat(response.defaultIntervalMonths()).isEqualTo(ServiceType.ENGINE_OIL.getRecommendedIntervalMonths());
     }
+
+    @Test
+    @DisplayName("곧: 다음 정비까지 1,000km 안이면 곧, 1,001km 남으면 아니다(경계는 지남처럼 포함)")
+    void dueSoonByDistance() {
+        // 엔진오일 5,000km 주기 → 다음은 25,000km. 날짜는 멀게
+        List<MaintenanceRecord> records = List.of(oil(20000, TODAY.minusDays(1)));
+
+        assertThat(compute(records, 24000).get(0).dueSoon()).isTrue();
+        assertThat(compute(records, 23999).get(0).dueSoon()).isFalse();
+    }
+
+    @Test
+    @DisplayName("곧: 다음 정비 날짜가 한 달 안이면 곧")
+    void dueSoonByDate() {
+        // 6개월 주기. 5개월 전에 갈았으면 다음은 한 달 뒤 = 딱 경계
+        List<MaintenanceRecord> records = List.of(oil(20000, TODAY.minusMonths(5)));
+
+        assertThat(compute(records, 20000).get(0).dueSoon()).isTrue();
+    }
+
+    @Test
+    @DisplayName("지난 것은 곧이 아니다 — 둘이 겹치면 할 일이 흐려진다. 정렬은 지남 → 곧 → 나머지")
+    void overdueIsNotDueSoonAndSortsFirst() {
+        List<MaintenanceRecord> records = List.of(
+                oil(20000, TODAY.minusYears(1)),
+                record(ServiceType.TIRE_ROTATION, 20000, TODAY.minusDays(1), 2L),
+                record(ServiceType.AIR_FILTER, 20000, TODAY.minusDays(1), 3L));
+
+        // 엔진오일은 지남, 타이어 위치 교환(10,000km)은 곧, 에어필터(20,000km)는 아직
+        List<NextService> result = compute(records, 29500);
+
+        assertThat(result.get(0).type()).isEqualTo(ServiceType.ENGINE_OIL);
+        assertThat(result.get(0).overdue()).isTrue();
+        assertThat(result.get(0).dueSoon()).isFalse();
+        assertThat(result.get(1).dueSoon()).isTrue();
+        assertThat(result.get(2).dueSoon()).isFalse();
+
+        NextService.Counts counts = NextService.count(records, List.of(), 29500, TODAY);
+        assertThat(counts.overdue()).isEqualTo(1);
+        assertThat(counts.dueSoon()).isEqualTo(1);
+    }
 }

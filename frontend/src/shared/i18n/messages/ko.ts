@@ -275,6 +275,7 @@ export const ko = {
     modelYear: (year: number) => `${year}년식`,
     unknownYear: '연식 미상',
     overdue: (n: number) => `정비 ${n}건 지남`,
+    dueSoon: (n: number) => `정비 ${n}건 곧`,
     list: {
       title: '내 차량',
       count: (n: number) => `${n}대를 관리 중입니다.`,
@@ -428,11 +429,12 @@ export const ko = {
     },
     next: {
       title: '다음 정비 시점',
-      description: '종류별 권장 주기와 마지막 정비 기록으로 계산합니다. 지난 것이 위에 옵니다.',
+      description: '종류별 권장 주기와 마지막 정비 기록으로 계산합니다. 지난 것, 곧(1,000km 또는 한 달 안) 할 것 순으로 위에 옵니다.',
       loadFailed: '다음 정비 시점을 불러오지 못했습니다.',
       empty:
         '아직 계산할 이력이 없습니다. 정비 이력을 등록하면 그 종류의 권장 주기로 다음 시점을 알려 드립니다.',
       overdue: '지남',
+      dueSoon: '곧',
       interval: '주기',
       intervalCustomized: '주기 변경됨',
       last: (parts: string) => `마지막 ${parts}`,

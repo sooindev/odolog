@@ -161,7 +161,7 @@ public class GarageSummaryService {
                     .toList();
 
             // 이미 읽은 이력으로 계산. 추가 쿼리 없음
-            int overdue = NextService.overdueCount(mine, intervalsOf(overrides, vehicle.getId()),
+            NextService.Counts counts = NextService.count(mine, intervalsOf(overrides, vehicle.getId()),
                     vehicle.getOdometer(), today);
 
             lines.add(new VehicleLine(
@@ -171,7 +171,7 @@ public class GarageSummaryService {
                     // serviceDate 내림차순이라 첫 줄이 최근
                     mine.isEmpty() ? null : mine.get(0).getServiceDate(),
                     FuelEfficiency.of(myFuels).average(),
-                    overdue));
+                    counts.overdue(), counts.dueSoon()));
         }
 
         return lines;

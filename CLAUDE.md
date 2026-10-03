@@ -57,7 +57,11 @@
 (아래 "DB 접속 시 주의" 참고 — 한 번 크게 막혔던 지점이다).
 
 - DB: MariaDB, `localhost:3306`, 스키마 `odolog` (utf8mb4 / utf8mb4_unicode_ci)
-- **`ddl-auto: update` 는 제약을 추가는 해도 절대 지우지 않는다.** 2026-09-07에 실제로 겪었다:
+- **스키마는 Flyway 가 만든다**(2026-10-03, `src/main/resources/db/migration`). Hibernate 는 `ddl-auto: validate` 로
+  엔티티와 맞는지 확인만 하고, 다르면 기동을 막는다. **엔티티를 바꾸면 V4… 마이그레이션을 같이 더한다** —
+  안 더하면 `FlywayMigrationTest` 가 실패한다. 운영 DB 는 첫 기동 때 V1 을 기준점으로 표시하고 V2·V3 만 돌았다.
+  아래 `ddl-auto` 함정 셋이 Flyway 로 바꾼 이유다(그대로 남겨 둔다 — 같은 실수를 다른 도구로 되풀이하지 않게).
+- (당시) **`ddl-auto: update` 는 제약을 추가는 해도 절대 지우지 않는다.** 2026-09-07에 실제로 겪었다:
   번호판 유니크를 전역 → 소유자별로 바꿨을 때, 앱을 띄우면 새 복합 유니크
   `uk_vehicles_user_plate_number` 는 Hibernate 가 만들어 줬지만 옛
   `uk_vehicles_plate_number` 는 그대로 남았다. 둘 다 있으면 더 엄격한 옛것이 이겨서
@@ -91,11 +95,9 @@
   그걸 쓰고 **목록을 갱신하지 않는다.** enum 에 값을 더하면 테스트(create-drop)는 통과하고 운영만
   저장이 실패한다. `columnDefinition` 으로도 안 사라진다(실험으로 확인).
   **그래서 새 enum 컬럼은 `@Convert`(enum 안의 `Converter`)로 매핑한다** — `User.language`·`unitSystem` 이 첫 사례다.
-  ⚠️ **운영 `service_intervals.type` 에는 이미 이 CHECK 가 붙어 있다**(`maintenance_records.type` 은 9/16 에
-  손으로 바꿔서 없다). `ServiceType` 에 값을 더하기 전에 둘 다 `@Convert` 로 옮기고 아래를 한 번 실행한다:
-
-      /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults \
-        -e "USE odolog; ALTER TABLE service_intervals DROP CONSTRAINT \`type\`;"
+  **이 CHECK 는 이제 Flyway V2 가 지운다**(2026-10-03) — 운영 `service_intervals.type` 에 남아 있던 것을
+  다음 기동 때 `V2__drop_service_intervals_type_check.sql` 이 없앤다. Flyway 아래에서는 Hibernate 가 표를 만들지
+  않으므로 enum 에 값을 더해도 새 CHECK 가 생기지 않는다. 그래도 새 enum 컬럼은 `@Convert` 로 두는 원칙은 유지한다.
 
   (`SHOW INDEX` 보다 `SHOW CREATE TABLE` 이 낫다. 복합 유니크가 `user_id` 로 시작하면 외래키용
   인덱스 `fk_vehicles_user` 가 그 역할을 대신해 `SHOW INDEX` 목록에서 사라지는데, FK 제약 자체는
@@ -317,7 +319,8 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
    상태가 생겼을 때(2026-09-25) 색을 늘리는 대신 **대비를 올렸다** — `지남` 라벨은
    테두리 + `text-strong` 이다. 빨강을 쓰지 않은 이유: 그건 실패가 아니라 **할 일**이고,
    빨강이 두 가지를 뜻하기 시작하면 `확인 필요`(입력 오류)의 무게가 같이 가벼워진다.
-   같은 판단으로 `기록 빠짐?` 도 회색이다.
+   같은 판단으로 `기록 빠짐?` 도 회색이다. `곧`(2026-10-03)은 `지남` 보다 한 단계 낮은 대비 —
+   기본 괘선(`border-border`) + 보조 글자. 둘이 같은 무게면 무엇부터 할지가 흐려진다.
 4. **경계선은 두 단계뿐 — `--border`(α 0.08)와 `--border-strong`(α 0.14, 호버에서만).**
    다크는 흰색, 라이트는 검정에 그 α 를 얹는다. 그보다 진하면 선 자체가 요소로 보이기 시작한다.
    **그림자는 쓰지 않는다** — 검정 위의 그림자는 보이지도 않으면서 가장자리만 탁하게 만든다.
@@ -740,7 +743,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                             "먼저 오는 것"이라서). 딱 그 값·그 날도 지남.
     │   │   │                             **지난 것이 먼저** 오도록 정렬 — 이 목록은
     │   │   │                             "뭘 해야 하나"를 보는 자리다.
-    │   │   │                             overdueCount — 차량 목록(garage)과 홈(summary) 공용
+    │   │   │                             dueSoon(2026-10-03) — 안 지났지만 다음까지 SOON_KM(1,000km) 또는
+    │   │   │                             SOON_MONTHS(1개월) 안. 지난 것에는 안 붙는다. 정렬은 지남 → 곧 → 나머지.
+    │   │   │                             count() — 지남·곧 수. 차량 목록(garage)과 홈(summary) 공용
     │   │   ├── entity/
     │   │   │   ├── ServiceInterval.java  차량별 권장 주기(2026-09-25 신설).
     │   │   │   │                         주기가 enum 상수로 고정돼 있어 엔진오일이 언제나
@@ -787,7 +792,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │       ├── MaintenanceRecordResponse.java
     │   │       │                         from() 팩토리
     │   │       └── NextServiceResponse.java
-    │   │                                 주행거리·날짜 두 기준 + overdue.
+    │   │                                 주행거리·날짜 두 기준 + overdue·dueSoon.
     │   │                                 적용 주기(intervalKm/Months)와 함께 종류의 기본 주기
     │   │                                 (defaultIntervalKm/Months)도 싣는다 — 편집 폼의 회색 숫자는
     │   │                                 "비우면 쓰일 값" 이라 적용 주기를 보여 주면 거짓말이 됐다(10-03)
@@ -886,7 +891,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   ├── VehicleRemovalService.java
     │   │   │                             delete · deleteAllOwnedBy(탈퇴용). 정비·주유 → 차량 순서만 정하고
     │   │   │                             실제 삭제는 각 기능의 deleteAllOf·remove 가 한다
-    │   │   └── VehicleListService.java   findMyVehicles(Pageable) — **DTO 를 돌려준다.** 지남 수가 계산값이라서.
+    │   │   └── VehicleListService.java   findMyVehicles(Pageable) — **DTO 를 돌려준다.** 지남·곧 수가 계산값이라서.
     │   │                                 쿼리 5번(페이지·개수·이력·주기·사용자 시간대) — 이력·주기를 소유자
     │   │                                 단위로 한 번에 읽고 나눈다. 정렬 화이트리스트(SortGuard)도 여기
     │   └── GarageVehicleController.java  GET /api/vehicles, DELETE /api/vehicles/{id}.
@@ -955,7 +960,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                 **리포지토리를 주입받는다**: 집계에는 각 기능의
     │   │                                 비즈니스 규칙(소유권 검사·삭제 순서)이 필요 없고,
     │   │                                 소유자 id 로 조회하므로 남의 데이터가 안 섞인다
-    │   ├── GarageSummaryResponse.java    홈 한 장에 필요한 값 전부. 타일·월별·종류별·
+    │   ├── GarageSummaryResponse.java    홈 한 장에 필요한 값 전부(차량별에 지남·곧 수). 타일·월별·종류별·
     │   │                                 차량별(평균 연비 + **지난 정비 수**)·최근 활동.
     │   │                                 안에 record 넷이 중첩돼 있고,
     │   │                                 RecentActivity 는 정비·주유 공용이라 kind 로 가른다
@@ -972,6 +977,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   ├── ClientIp.java             IP 로 셀 때의 키(가입·재설정 요청). IPv6 는 앞 64비트.
         │   │                             X-Forwarded-For 는 읽지 않는다(규칙 15)
         │   ├── LoginAttemptLimiter.java  비밀번호 대입 방어. 직전 시도로부터 10분 안에 10번 넘게 시도하면 10분 잠금.
+        │   │                             한도는 odolog.rate-limit.max-attempts(기본 10). E2E 만 늘린다(계정을 많이 만듦)
         │   │                             acquire 가 확인과 집계를 한 번에 — 성공하면 recordSuccess 로 지운다.
         │   │                             **계정이 없어도 센다** — 없는 이메일만 빨리 답하면
         │   │                             그 자체가 존재 여부를 알려준다. 인메모리라 재시작하면 잊는다.
@@ -994,13 +1000,12 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │                             **테스트에서는 꺼 둔다** — @WebMvcTest 가 Filter 빈을
         │   │                             같이 올려서 기존 쓰기 테스트가 전부 403 이 된다
         │   ├── LoginSessionRegistry.java
-        │   │                             사용자별 로그인 세션 목록(2026-09-25). 비밀번호 변경은
+        │   │                             사용자별 로그인 세션 끊기(2026-09-25). 비밀번호 변경은
         │   │                             **지금 세션만 남기고**, 재설정·탈퇴는 **전부** 끊는다.
         │   │                             세션이 14일이라 안 끊으면 훔친 세션이 재설정 뒤에도 산다.
-        │   │                             세션과 같이 메모리에 둔다 — DB 버전 비교는 요청마다
-        │   │                             조회가 늘고 WebConfig 가 리포지토리를 알게 된다.
-        │   │                             등록할 때 다른 사용자 목록에서 먼저 뺀다 — 로그인은 세션을
-        │   │                             id 만 바꿔 다시 쓰므로 로그아웃 없이 계정을 바꾸면 둘에 남는다
+        │   │                             **세션은 DB(Spring Session JDBC, 2026-10-03)** — 로그인할 때 세션에
+        │   │                             사용자 id 를 색인 이름(PRINCIPAL_NAME)으로 달고, 끊을 때 그 색인으로 찾아 지운다.
+        │   │                             재시작해도 로그인이 유지되고 끊기도 빠짐없다. 계정을 바꿔 로그인하면 색인이 덮어써진다
         │   ├── LoginUser.java            @Target(PARAMETER) 커스텀 애노테이션
         │   ├── LoginUserArgumentResolver.java
         │   │                             세션 LOGIN_USER_ID → Long 주입. 없으면 401
@@ -1050,7 +1055,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │                                 @Size 가 돌아서, 그 전에는 19MB 로그인 본문도 끝까지 파싱했다.
         │                                 길이를 밝히면 413, 안 밝히면 상한에서 읽기 실패
         ├── config/
-        │   ├── WebConfig.java            ArgumentResolver 등록 + CORS(5173, credentials).
+        │   ├── WebConfig.java            ArgumentResolver 등록 + CORS(credentials). 허용 주소는 odolog.cors.allowed-origins
+        │   │                             (로컬 5173, 운영은 CORS_ALLOWED_ORIGINS 필수 — 2026-10-03 에 코드에서 뺐다).
         │   │                             **CORS 는 필터로, 맨 앞에**(2026-09-25). addCorsMappings 는
         │   │                             필터 뒤에서 붙어서 CsrfTokenFilter 의 403 에 헤더가 없었다 —
         │   │                             브라우저가 그걸 "서버에 연결하지 못했습니다" 로 읽는다
@@ -1125,7 +1131,11 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 ### 백엔드 — 리소스와 테스트
 
     src/main/resources/application.yml   MariaDB 접속(${DB_USERNAME}/${DB_PASSWORD}),
-                                         ddl-auto=update, open-in-view=false.
+                                         ddl-auto=validate(스키마는 Flyway), open-in-view=false.
+                                         flyway.baseline-on-migrate(기존 운영 DB 를 V1 로 간주),
+                                         session.jdbc.initialize-schema=never(세션 표는 V3),
+                                         쿠키 이름 JSESSIONID(Spring Session 기본 SESSION 대신 그대로),
+                                         data.web.pageable.max-page-size=100(2026-10-03 — 기본 2000).
                                          세션 쿠키 http-only + same-site=lax (브라우저 기본값에
                                          기대지 않는다). **세션 14일**(2026-09-25) —
                                          톰캣 기본 30분이면 영수증 정리하다 로그아웃된다.
@@ -1148,21 +1158,41 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                          springdoc 문서를 닫고, SQL·bind 로깅을 끄고,
                                          세션 쿠키 secure 를 켠다(CsrfTokenFilter 가 같은 키를
                                          읽으므로 CSRF 쿠키도 같이 따라온다). DB_USERNAME·DB_PASSWORD·
-                                         APP_BASE_URL 은 기본값이 없어 빠뜨리면 기동이 실패한다.
+                                         APP_BASE_URL·
+                                         CORS_ALLOWED_ORIGINS 는 기본값이 없어 빠뜨리면 기동이 실패한다.
                                          **주석으로 "배포할 때 끄세요" 라고 적어 두는 것과의
                                          차이가 이 파일의 전부다** — 주석은 사람이 기억해야 하고
                                          프로파일은 환경변수가 대신 기억한다
+
+    src/main/resources/db/migration/     스키마 변경 이력(Flyway, 2026-10-03). ddl-auto 는 validate — 고치지 않고 확인만
+    ├── V1__baseline.sql                 2026-10-03 운영 스키마 그대로. 운영 DB 는 이 버전을 이미 적용된
+    │                                    기준점으로 표시(baseline-on-migrate)하고 V2 부터 실행한다
+    ├── V2__drop_service_intervals_type_check.sql
+    │                                    ddl-auto 가 붙였던 정비 종류 값 목록 CHECK 삭제(있을 때만)
+    └── V3__spring_session.sql           세션 표(SPRING_SESSION·_ATTRIBUTES). 테스트가 sql.init 으로 다시
+                                         쓰므로 IF NOT EXISTS. 표 이름 대문자는 그대로(리눅스는 가린다)
+    **스키마를 바꿀 때는 엔티티와 함께 V4… 를 더한다.** 안 더하면 FlywayMigrationTest 가 기동에서 실패한다
 
     src/test/resources/application.yml   odolog_test 스키마, ddl-auto=create-drop.
                                          계정이 이 스키마 전용이라 파일에 그대로 적혀 있음.
                                          odolog.csrf.enabled=false — 켜 두면 @WebMvcTest 가 Filter 빈을
                                          함께 올려 기존 쓰기 테스트 30여 개가 토큰 없이 403 이 된다.
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
-                                         안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
+                                         안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다.
+                                         **운영 application.yml 을 통째로 가린다**(테스트가 운영 DB 를 지울 수
+                                         없게 일부러). 세션·쿠키·페이지 상한은 양쪽에 따로 적고 ConfigParityTest 가 같은지 본다.
+                                         Flyway 는 끄고 엔티티 표는 create-drop, 세션 표는 V3 를 sql.init 으로
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 334개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 342개.
 
     src/test/java/com/odolog/app/
+    ├── TestOdoLogApplication.java                  E2E 용 백엔드(`./gradlew bootTestRun`). 테스트 설정 그대로 18080 에,
+    │                                               CSRF 켜고 시도 한도는 넉넉히. 운영 DB·평소 개발 서버와 안 섞인다
+    ├── FlywayMigrationTest.java                    마이그레이션을 빈 스키마에 돌려 Hibernate validate 통과 확인 +
+    │                                               운영 경로(ddl-auto 스키마를 V1 기준점으로 → V2 부터) 재현
+    ├── ConfigParityTest.java                       운영·테스트 설정의 세션·쿠키·페이지 상한이 같은지
+    ├── DocumentationTreeTest.java                  이 문서의 구조 트리와 실제 파일 대조. 파일을 더하거나
+    │                                               옮기면 트리도 고쳐야 통과(이름 칸만 본다)
     ├── DependencyDirectionTest.java                패키지 사이 import 방향을 허용 목록으로 고정(2026-10-03).
     │                                               대상이 프로젝트 전체라 루트에 있다. 새 패키지는 여기 먼저 등록
     ├── garage/
@@ -1172,7 +1202,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                                       실제 DB 로 차량 삭제와 주유 추가를 겹치기. 차량 행 잠금을
     │   │   │                                       빼면 FK 위반(500)으로 실패하는 것을 확인하고 넣었다
     │   │   └── VehicleListServiceTest.java         정렬 화이트리스트
-    │   └── GarageVehicleControllerTest.java        @WebMvcTest — 목록 페이지 응답, 잘못된 sort 400, 삭제 204·401
+    │   └── GarageVehicleControllerTest.java        @WebMvcTest — 목록 페이지 응답(지남·곧 수), 잘못된 sort 400, 삭제 204·401,
+    │                                               ?size=2000 은 100 으로
     ├── common/
     │   ├── auth/
     │   │   ├── ClientIpTest.java                   IPv6 앞 64비트 묶기, IPv4 그대로
@@ -1181,7 +1212,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                                       키 10만 개 쏟아내기(두 번씩 보내도 상한 유지)도 본다
     │   │   ├── CsrfTokenFilterTest.java            필터를 직접 호출한다. @WebMvcTest 로 하면
     │   │   │                                       Filter 빈이 같이 올라와 기존 테스트가 전부 403
-    │   │   └── LoginSessionRegistryTest.java       지금 세션만 남기기, 남의 세션 불가침, 계정 전환·끝난 세션 정리
+    │   │   └── LoginSessionRegistryTest.java       @SpringBootTest — 실제 세션 표(SPRING_SESSION)에 세션을 만들고
+    │   │                                           지금 세션만 남기기, 남의 세션 불가침, 계정 전환, 색인으로 다시 찾기
     │   ├── config/
     │   │   └── WebConfigCorsTest.java              CORS 필터가 가장 먼저 돌고, CSRF 403 에도 CORS 헤더가 붙는지
     │   ├── domain/
@@ -1269,7 +1301,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         ├── domain/
         │   ├── NextServiceTest.java                지남 판정(딱 그 값·그 날도 지남), 차량별 주기,
         │   │                                       한쪽만 덮어쓴 주기(customIntervalKm/Months),
-        │   │                                       응답의 기본 주기는 종류의 값(편집 폼 회색 숫자)
+        │   │                                       응답의 기본 주기는 종류의 값(편집 폼 회색 숫자),
+        │   │                                       곧 — 1,000km·한 달 경계, 지난 것은 곧이 아님, 정렬
         │   └── ServiceTypeTest.java                값을 다시 적지 않고 **약속만** 고정 —
         │                                           "OTHER 를 뺀 모든 종류는 주기가 최소
         │                                           하나", 양수, 이름 30자 이하(컬럼 폭)
@@ -1299,12 +1332,21 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │                                 Node 는 고정하는 곳이 CI 뿐이었다
     ├── package.json                  스크립트: dev / build / test / lint / preview
     ├── package-lock.json             설치된 정확한 버전 고정 — 반드시 커밋
+    ├── playwright.config.ts          E2E(`npm run e2e`). 백엔드는 bootTestRun(18080), 화면은 vite(5174)를
+    │                                 띄운다. 이미 떠 있는 서버를 재사용하지 않는다 — 평소 서버가 운영 DB 라서
+    ├── e2e/                          실제 브라우저(Chromium)로 핵심 흐름. 콘솔 오류가 하나라도 나면 실패
+    │   ├── helpers.ts                테스트마다 새 계정(signUp)·차량 등록
+    │   ├── core-flow.spec.ts         가입→차량→빠른 정비→주유 두 번으로 연비, 남의 차량 404, 로그아웃 복귀,
+    │   │                             새로고침 유지(JSESSIONID), 틀린 비밀번호, 차량 삭제
+    │   ├── records.spec.ts           정비 등록·수정·삭제와 열린 폼 전환, 주행거리 정정, 곧, 홈 최근 활동,
+    │   │                             내보내기→새 계정 가져오기, 탈퇴
+    │   └── english.spec.ts           영어 브라우저 가입 → 영어 화면·마일
     ├── vite.config.ts                react + tailwindcss 플러그인, '@' → ./src 별칭.
     │                                   vitest 설정(jsdom)도 여기 — 별도 파일로 빼면 '@' 별칭이
     │                                   두 곳으로 갈린다
     ├── tsconfig.json                 references + paths ← shadcn CLI가 읽는 파일 (지우면 안 됨)
     ├── tsconfig.app.json             src/ 코드용 (브라우저). paths 여기에도
-    ├── tsconfig.node.json            vite.config.ts용 (Node 환경)
+    ├── tsconfig.node.json            vite.config.ts·playwright.config.ts·e2e 용 (Node 환경)
     ├── components.json               shadcn 설정. aliases.ui 가 **`@/shared/ui/base`** 를
     │                                 가리킨다 — 안 바꾸면 다음 `shadcn add` 가 base/ 밖에
     │                                 파일을 만들어 우리 파일과 다시 섞인다
@@ -1355,7 +1397,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │   │   └── types.ts            백엔드 user.dto 대응
         │   │   ├── context/
         │   │   │   ├── AuthContext.ts      Context 정의 + useAuth 훅 (컴포넌트 아닌 것만)
-        │   │   │   └── AuthProvider.tsx    세션 복구(/me 1회)·login·logout·401 핸들러 등록
+        │   │   │   └── AuthProvider.tsx    세션 복구(/me 1회)·login·logout·401 핸들러 등록.
+        │   │   │                           withdraw 는 화면 이동과 로그인 상태 지우기를 **한 transition 으로** —
+        │   │   │                           따로면 아직 /me 인 보호 라우트가 /login 으로 보냈다(E2E 로 처음 드러남)
         │   │   ├── pages/
         │   │   │   ├── ForgotPasswordPage.tsx
         │   │   │   │                       재설정 링크 요청. **보냈는지 여부를 말하지 않는다** —
@@ -1498,7 +1542,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   └── ui/                         **base/ 만 shadcn 이 건드리는 자리이고 나머지는 우리 것.**
         │       │                           전에는 한 폴더(12개)에 섞여 있어서 문서로만 구분했다
         │       ├── base/                   shadcn CLI 가 복사해 넣는 자리 (components.json 이 여길 가리킨다)
-        │       │   ├── button.tsx          asChild 없음. Base UI의 render prop 사용
+        │       │   ├── button.tsx          asChild 없음. Base UI의 render prop 사용. render 로 링크를 그리면
+        │       │   │                       nativeButton=false 를 스스로 붙인다 — 안 그러면 콘솔 오류(E2E 로 처음 드러남)
         │       │   ├── card.tsx
         │       │   ├── input.tsx
         │       │   ├── label.tsx
@@ -1538,6 +1583,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 
 **테스트는 대상 파일 옆에 둔다**(`format.ts` 옆에 `format.test.ts`). 백엔드가 테스트 경로를
 대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 79개, 파일 11개**다.
+**실제 브라우저 E2E 는 `frontend/e2e`**(`npm run e2e`, 13개, Playwright) — 위 구조 트리의 `e2e/` 참고.
+화면을 그려 보는 테스트가 없어 폼 key·화면 이동 같은 버그가 코드 점검에서만 잡히던 구멍을 거기서 막는다.
 
     cn-usage.test.ts        cn() 과 cva() 인자에 타입 스케일 토큰이 없는지 소스를 훑는다.
                             **이 가드가 없던 8일 동안 CardTitle 이 17px·600 을 잃고
@@ -1960,6 +2007,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] **B-41-2** 홈 `차량별` 카드에 **`정비 N건 지남`** 이 붙는지. 그 수가 차량 상세의
       `지남` 라벨 수와 **같은지** — 같은 계산(NextService)을 쓰므로 달라지면 안 된다
       (`NextServiceCard` 가 `key` 로 재생성되므로 "불러오는 중…"이 잠깐 보이는 건 정상)
+- [ ] **B-41-3** 다음 정비까지 1,000km 또는 한 달 안인 종류에 **`곧`** 이 붙는지(2026-10-03). `지남` 보다
+      옅은 테두리·글자인지, 정렬이 지남 → 곧 → 나머지인지. 차량 목록·홈 `차량별` 에 **`정비 N건 곧`** 이 붙는지
 - [ ] **B-42** `기타(OTHER)` 로 등록 → 다음 정비가 **계산되지 않는지**(주기가 둘 다 null)
 - [ ] **B-43** **같은 날짜**로 두 건 등록 → 목록 순서가 뒤집히지 않는지
       (동점 기준 `id DESC`. 이게 없으면 새로고침마다 순서가 바뀐다)
@@ -2200,7 +2249,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       → 10MB 를 넘는 파일을 고르면 보내기 전에 `보낸 내용이 너무 큽니다…` 인지. 오도로그 파일이 아니면 `…파일이 맞는지 확인해 주세요.`
 - [ ] **B-111** '회원 탈퇴' 구역이 **접힌 채로** 시작하는지. 버튼이 빨갛게 **채워져 있지 않은지**
 - [ ] **B-112** 탈퇴에서 비밀번호를 **틀리게** → 401 이 폼 안에 뜨고 **로그인이 유지되는지**
-- [ ] **B-113** 탈퇴 성공 → `/` 로 이동하고 헤더가 로그아웃 상태인지.
+- [ ] **B-113** 탈퇴 성공 → `/` 로 이동하고 헤더가 로그아웃 상태인지. (2026-10-03 E2E 가 처음 돌자 `/login` 으로
+      가는 것이 드러나 고쳤다 — 화면 이동과 로그인 상태 지우기 순서)
       **뒤로가기로 방금 화면에 돌아가지지 않는지**(`replace: true`)
 - [ ] **B-113-1** 두 번째 브라우저에 같은 계정을 로그인해 두고 탈퇴 → 그쪽이 **500 이 아니라
       로그아웃 상태**가 되는지(전에는 없는 사용자 id 를 든 세션이 14일 동안 남았다)
@@ -2390,8 +2440,11 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 
 #### 운영 DB (IntelliJ 로 한 번 띄운 뒤)
 
-- [ ] `SHOW CREATE TABLE vehicles` — `version bigint(20) NOT NULL DEFAULT 0` 이 붙었는지(2026-10-03, `@Version`).
-      `ddl-auto` 가 더하는 컬럼이라 손댈 것은 없고, 기존 행이 0 으로 채워졌는지만 본다
+- [ ] **Flyway 첫 기동 확인**(2026-10-03) — 새 코드로 한 번 띄운 뒤 아래가 맞는지 본다.
+      `flyway_schema_history` 에 `1 << Flyway Baseline >>` · `2` · `3` 이 성공(1)으로, `service_intervals` 에 CHECK 가 없고,
+      `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 표가 생겼는지. 한 번 로그인하면 `SPRING_SESSION` 에 행이 생기는지
+
+          /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SELECT version, description, success FROM flyway_schema_history; SHOW CREATE TABLE service_intervals\G; SELECT COUNT(*) FROM SPRING_SESSION;"
 
 #### 눈 확인 (7-H) — 6-B 와 같은 규칙: 적어만 두고 한 바퀴 뒤 모아서 고친다
 
@@ -2449,7 +2502,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 
 아래 시나리오를 브라우저에서 처음부터 끝까지 막힘없이 수행할 수 있으면 "완성"이다.
 
-**Phase 6 의 1회차(6-B) 162개를 순서대로 따라가면 아래가 전부 덮인다.** 오른쪽이 그 항목
+**Phase 6 의 1회차(6-B) 163개를 순서대로 따라가면 아래가 전부 덮인다.** 오른쪽이 그 항목
 번호다 — 따로 한 번 더 돌 필요가 없다.
 
 - [ ] 회원가입 → 로그아웃 → 로그인 — B-10, B-104, B-106
@@ -2477,8 +2530,9 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-110
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-107
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-108, B-109
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (334개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (342개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (79개)
+- [ ] 실제 브라우저 E2E 통과 — `npm run e2e` (13개)
 
 ---
 
@@ -2506,7 +2560,8 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
       정비 이력 머리의 종류 필터가 쓴다. 백로그에 체크를 안 해 두어 이틀 동안 남은 일로 보였다
 - [x] ~~차량 목록에 각 차량의 "임박한 정비" 요약 포함~~ — **2026-09-25 완료.**
       "임박" 이 아니라 **이미 지난 것**을 센다(`overdueServiceCount` → `정비 N건 지남`).
-      곧 다가오는 것까지 세려면 "얼마나 남았으면 임박인가" 기준부터 정해야 해서 뒤로 뒀다
+      곧 다가오는 것까지 세려면 "얼마나 남았으면 임박인가" 기준부터 정해야 해서 뒤로 뒀다 →
+      **2026-10-03 에 1,000km 또는 한 달로 정해 `곧` 을 더했다**(`NextService.SOON_KM`·`SOON_MONTHS`)
 - [ ] 만탱크 연비 — 지금은 매 주유마다 직전 기록과의 차이로 계산한다(단순법).
       **가득 채우지 않은 주유가 섞이면 그 구간만 실제보다 높게 나온다**(거리는 그대로인데
       리터가 적어서). 기록에 "가득 채웠는가" 플래그를 두면 가득→가득 구간으로 정확히 낼 수 있다.

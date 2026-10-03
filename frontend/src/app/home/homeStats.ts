@@ -35,6 +35,8 @@ export interface VehicleLine {
   averageEfficiency: number | null
   /** 권장 주기가 지난 정비 종류 수. 차량 상세와 같은 계산 */
   overdueServiceCount: number
+  /** 곧 해야 할 정비 종류 수(지난 것 제외) */
+  dueSoonServiceCount: number
 }
 
 /**

@@ -78,6 +78,8 @@ export interface NextServiceResponse {
   nextServiceDate: string | null
   /** 주행거리·날짜 중 하나라도 지남. 서버 판정 */
   overdue: boolean
+  /** 아직 안 지났지만 곧(1,000km 또는 1개월 안). 서버 판정 */
+  dueSoon: boolean
   /** 실제 적용 주기. 차량별 설정 우선 */
   intervalKm: number | null
   intervalMonths: number | null

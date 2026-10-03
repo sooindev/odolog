@@ -1,0 +1,79 @@
+package com.odolog.app;
+
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.output.MigrateResult;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import javax.sql.DataSource;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 마이그레이션(db/migration)을 깨끗한 스키마에 돌리고 Hibernate 가 엔티티와 맞는지 확인(ddl-auto: validate)
+ * 다른 테스트는 create-drop 이라 마이그레이션 파일이 틀려도 통과한다. 여기가 그 구멍을 막는다
+ * 엔티티를 바꾸고 마이그레이션을 안 더하면 이 테스트가 기동 단계에서 실패
+ */
+@SpringBootTest(properties = {
+        "spring.flyway.enabled=true",
+        "spring.flyway.clean-disabled=false",
+        "spring.jpa.hibernate.ddl-auto=validate",
+        "spring.sql.init.mode=never"
+})
+class FlywayMigrationTest {
+
+    @TestConfiguration
+    static class CleanFirst {
+
+        /** 매번 빈 스키마에서. 앞선 테스트가 남긴 create-drop 표와 섞이지 않게 */
+        @Bean
+        FlywayMigrationStrategy cleanThenMigrate() {
+            return flyway -> {
+                flyway.clean();
+                flyway.migrate();
+            };
+        }
+    }
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Test
+    @DisplayName("새 DB: V1 부터 전부 적용되고 엔티티와 맞는다(기동 = validate 통과)")
+    void freshDatabaseMatchesEntities() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+
+        Integer applied = jdbc.queryForObject(
+                "select count(*) from flyway_schema_history where success = 1", Integer.class);
+        assertThat(applied).isGreaterThanOrEqualTo(3);
+        // 세션 표도 마이그레이션이 만듦
+        assertThat(jdbc.queryForObject("select count(*) from SPRING_SESSION", Integer.class)).isZero();
+    }
+
+    @Test
+    @DisplayName("운영 DB 경로: ddl-auto 로 만든 스키마(값 목록 CHECK 포함)를 V1 기준점으로 표시하면 V2 부터 돌아 CHECK 가 사라진다")
+    void existingDatabaseIsBaselinedAndUpgraded() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        Flyway clean = Flyway.configure().dataSource(dataSource).cleanDisabled(false).load();
+        clean.clean();
+
+        // 운영과 같은 상태 만들기: V1 의 표 + ddl-auto 가 붙였던 CHECK, 기록 표는 없음
+        Flyway.configure().dataSource(dataSource).target("1").load().migrate();
+        jdbc.execute("drop table flyway_schema_history");
+        jdbc.execute("alter table service_intervals add constraint `type` check (`type` in ('ENGINE_OIL','OTHER'))");
+
+        MigrateResult result = Flyway.configure().dataSource(dataSource)
+                .baselineOnMigrate(true).baselineVersion("1").load().migrate();
+
+        assertThat(result.migrationsExecuted).isEqualTo(2);
+        String ddl = jdbc.queryForObject("show create table service_intervals",
+                (rs, row) -> rs.getString(2));
+        assertThat(ddl).doesNotContainIgnoringCase("check");
+    }
+}

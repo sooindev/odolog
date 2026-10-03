@@ -9,6 +9,8 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** CORS 필터가 CSRF 필터보다 앞인지. 뒤면 CSRF 403 에 CORS 헤더 누락 */
@@ -16,7 +18,7 @@ class WebConfigCorsTest {
 
     private static final String ORIGIN = "http://localhost:5173";
 
-    private final WebConfig webConfig = new WebConfig();
+    private final WebConfig webConfig = new WebConfig(List.of(ORIGIN));
 
     @Test
     @DisplayName("CORS 필터는 가장 먼저 돈다")

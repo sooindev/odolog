@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { AuthContext } from '@/features/auth/context/AuthContext'
@@ -63,9 +63,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // 탈퇴 실패는 그대로 전달. 지워진 것처럼 보이는 문제 방지
-  const withdraw = useCallback(async (request: WithdrawRequest) => {
+  // 이동과 로그인 상태 지우기를 같은 transition 으로. 라우터 이동은 transition 이라
+  // 상태 지우기만 먼저 그려지면 아직 /me 인 보호 라우트가 /login 으로 보냄(E2E 로 재현)
+  const withdraw = useCallback(async (request: WithdrawRequest, leave: () => void) => {
     await requestWithdraw(request)
-    setUser(null)
+    startTransition(() => {
+      leave()
+      setUser(null)
+    })
   }, [])
 
   const value = useMemo(

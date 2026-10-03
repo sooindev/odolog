@@ -7,6 +7,7 @@ import com.odolog.app.vehicle.Vehicle;
 import com.odolog.app.vehicle.dto.VehicleResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
@@ -22,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -56,7 +58,7 @@ class GarageVehicleControllerTest {
         ReflectionTestUtils.setField(vehicle, "id", 10L);
 
         when(vehicleListService.findMyVehicles(eq(1L), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(VehicleResponse.of(vehicle, 2)),
+                .thenReturn(new PageImpl<>(List.of(VehicleResponse.of(vehicle, 2, 1)),
                         PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/vehicles").session(loginSessionOf(1L)))
@@ -64,6 +66,7 @@ class GarageVehicleControllerTest {
                 .andExpect(jsonPath("$.items[0].plateNumber").value("12가3456"))
                 // 목록에서만 채움
                 .andExpect(jsonPath("$.items[0].overdueServiceCount").value(2))
+                .andExpect(jsonPath("$.items[0].dueSoonServiceCount").value(1))
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
                 .andExpect(jsonPath("$.totalElements").value(1))
@@ -97,5 +100,18 @@ class GarageVehicleControllerTest {
     void deleteWithoutLogin() throws Exception {
         mockMvc.perform(delete("/api/vehicles/V10"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("페이지 크기는 100 이 상한이다 — ?size=2000 으로 통째로 받지 못하게")
+    void pageSizeIsCapped() throws Exception {
+        when(vehicleListService.findMyVehicles(eq(1L), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/vehicles").param("size", "2000").session(loginSessionOf(1L)))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(vehicleListService).findMyVehicles(eq(1L), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(100);
     }
 }

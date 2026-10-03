@@ -58,7 +58,9 @@ public record GarageSummaryResponse(
             /** 주유 2건 미만이면 null */
             BigDecimal averageEfficiency,
             /** 권장 주기가 지난 정비 종류 수. 차량 상세와 같은 NextService 계산 */
-            int overdueServiceCount
+            int overdueServiceCount,
+            /** 곧 해야 할 정비 종류 수(지난 것 제외) */
+            int dueSoonServiceCount
     ) {
     }
 

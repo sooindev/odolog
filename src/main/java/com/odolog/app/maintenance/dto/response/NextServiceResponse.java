@@ -17,6 +17,8 @@ public record NextServiceResponse(
         LocalDate lastServiceDate,
         LocalDate nextServiceDate,
         boolean overdue,
+        /** 아직 안 지났지만 곧(1,000km 또는 1개월 안). 판정은 서버 */
+        boolean dueSoon,
         /** 실제 적용 주기. 차량별 설정 우선 */
         Integer intervalKm,
         Integer intervalMonths,
@@ -39,6 +41,7 @@ public record NextServiceResponse(
                 next.lastDate(),
                 next.nextDate(),
                 next.overdue(),
+                next.dueSoon(),
                 next.intervalKm(),
                 next.intervalMonths(),
                 next.customized(),

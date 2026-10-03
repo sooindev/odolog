@@ -2,6 +2,8 @@ package com.odolog.app.common.auth;
 
 import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.TooManyRequestsException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -21,8 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class LoginAttemptLimiter {
 
-    /** 창 안에서 허용하는 시도 횟수 */
-    private static final int MAX_ATTEMPTS = 10;
+    /** 창 안에서 허용하는 시도 횟수 기본값. E2E 처럼 한 곳에서 계정을 많이 만드는 환경만 설정으로 늘림 */
+    static final int DEFAULT_MAX_ATTEMPTS = 10;
     /** 시도 카운터 유지 시간 */
     private static final Duration WINDOW = Duration.ofMinutes(10);
     /** 잠금 유지 시간 */
@@ -40,14 +42,21 @@ public class LoginAttemptLimiter {
 
     private final Map<String, Attempt> attempts = new ConcurrentHashMap<>();
     private final Clock clock;
+    private final int maxAttempts;
     private volatile Instant lastPurge = Instant.EPOCH;
 
-    public LoginAttemptLimiter() {
-        this(Clock.systemUTC());
+    @Autowired
+    public LoginAttemptLimiter(@Value("${odolog.rate-limit.max-attempts:10}") int maxAttempts) {
+        this(Clock.systemUTC(), maxAttempts);
     }
 
     LoginAttemptLimiter(Clock clock) {
+        this(clock, DEFAULT_MAX_ATTEMPTS);
+    }
+
+    LoginAttemptLimiter(Clock clock, int maxAttempts) {
         this.clock = clock;
+        this.maxAttempts = maxAttempts;
     }
 
     /**
@@ -77,7 +86,7 @@ public class LoginAttemptLimiter {
             attempt.attempts += 1;
             attempt.lastAttempt = now;
 
-            if (attempt.attempts > MAX_ATTEMPTS) {
+            if (attempt.attempts > maxAttempts) {
                 attempt.lockedUntil = now.plus(LOCK);
                 lockedUntil[0] = attempt.lockedUntil;
             }

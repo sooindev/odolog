@@ -79,6 +79,12 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                       {t.maintenance.next.overdue}
                     </span>
                   )}
+                  {/* 곧. 지남보다 한 단계 낮은 대비(기본 괘선 + 보조 글자) */}
+                  {result.dueSoon && (
+                    <span className="shrink-0 border border-border px-1.5 py-0.5 text-unit text-muted-foreground">
+                      {t.maintenance.next.dueSoon}
+                    </span>
+                  )}
                 </span>
 
                 <span className="order-3 text-caption tabular-nums text-muted-foreground sm:order-none">
