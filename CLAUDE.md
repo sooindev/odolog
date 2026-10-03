@@ -2286,19 +2286,8 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 
 #### 운영 DB (IntelliJ 로 한 번 띄운 뒤)
 
-- [ ] `SHOW CREATE TABLE users` — `language` · `time_zone` · `currency` · `unit_system` 넷이 있고 **CHECK 가 없는지**
-- [ ] `SHOW CREATE TABLE maintenance_records` · `fuel_records` — `currency varchar(3) NOT NULL DEFAULT 'KRW'`
 - [ ] `SHOW CREATE TABLE vehicles` — `version bigint(20) NOT NULL DEFAULT 0` 이 붙었는지(2026-10-03, `@Version`).
       `ddl-auto` 가 더하는 컬럼이라 손댈 것은 없고, 기존 행이 0 으로 채워졌는지만 본다
-- [ ] **전화번호 컬럼 지우기** — 엔티티에서 뺐지만 `ddl-auto` 는 컬럼을 지우지 않는다. 이미 받은 번호가
-      그대로 남아 있으면 "받지 않는다" 가 거짓말이 된다(README 의 "이미 쓰던 DB" 에 SQL):
-
-          /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; ALTER TABLE users DROP COLUMN phone;"
-
-- [ ] ⚠️ **정비 비용·주행거리 nullable 로**(2026-09-30, 타던 차 온보딩) — `ddl-auto` 는 NOT NULL 을 풀지 않는다.
-      안 하면 비용을 비운 정비 저장이 500 이다. 앱을 띄우면 `SchemaDriftChecker` 도 같은 SQL 을 찍는다:
-
-          /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; ALTER TABLE maintenance_records MODIFY COLUMN cost INT NULL, MODIFY COLUMN service_odometer INT NULL;"
 
 #### 눈 확인 (7-H) — 6-B 와 같은 규칙: 적어만 두고 한 바퀴 뒤 모아서 고친다
 

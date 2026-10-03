@@ -18,6 +18,12 @@
 
 ---
 
+- [x] 운영 DB 반영 확인 (2026-10-03)
+      → 사용자가 직접 실행: `maintenance_records` 의 `cost`·`service_odometer` NULL 허용, `users.phone` 삭제.
+        `SHOW CREATE TABLE` 로 확인 — `users` 설정 넷(CHECK 없음), 정비·주유 `currency` 까지 맞다.
+      → `vehicles.version` 은 아직 없다. 새 코드로 앱을 띄운 적이 없어서이고, 띄우면 `ddl-auto` 가 붙인다(체크리스트에 남김).
+      → `service_intervals.type` 의 CHECK 는 그대로다. 정비 종류를 더하기 전에 지우면 된다(개발 환경 절)
+
 - [x] 보안·기능·구조 점검 후 수정 (2026-10-03)
       → 네 갈래(보안·백엔드·프론트·구조)로 나눠 읽고, 보안은 테스트 DB 로 앱을 띄워 curl 로 재현했다.
         권한(남의 자원 404)·세션·오픈 리다이렉트·XSS 는 깨끗했다. 찾은 것은 그 바깥이다.
