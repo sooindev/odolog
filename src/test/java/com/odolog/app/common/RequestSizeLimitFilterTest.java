@@ -2,6 +2,9 @@ package com.odolog.app.common;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.web.servlet.filter.OrderedFormContentFilter;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -15,6 +18,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class RequestSizeLimitFilterTest {
 
     private final RequestSizeLimitFilter filter = new RequestSizeLimitFilter(10);
+
+    @Test
+    @DisplayName("본문을 먼저 읽는 FormContentFilter 보다 앞, CORS 보다 뒤")
+    void runsBeforeFormContentFilter() {
+        int order = RequestSizeLimitFilter.class.getAnnotation(Order.class).value();
+
+        assertThat(order).isLessThan(OrderedFormContentFilter.DEFAULT_ORDER);
+        assertThat(order).isGreaterThan(Ordered.HIGHEST_PRECEDENCE);
+    }
 
     @Test
     @DisplayName("길이를 밝힌 본문이 상한을 넘으면 읽기 전에 413")

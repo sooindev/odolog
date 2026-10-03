@@ -1183,7 +1183,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                          없게 일부러). 세션·쿠키·페이지 상한은 양쪽에 따로 적고 ConfigParityTest 가 같은지 본다.
                                          Flyway 는 끄고 엔티티 표는 create-drop, 세션 표는 V3 를 sql.init 으로
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 342개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 345개.
 
     src/test/java/com/odolog/app/
     ├── TestOdoLogApplication.java                  E2E 용 백엔드(`./gradlew bootTestRun`). 테스트 설정 그대로 18080 에,
@@ -1229,6 +1229,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     ├── user/
     │   ├── domain/
     │   │   └── entity/
+    │   │       ├── UserConcurrentUpdateTest.java   실제 DB 로 프로필 저장과 비밀번호 변경 겹치기. 늦게 커밋한 쪽이
+    │   │       │                                   옛 해시를 다시 쓰지 않고 거절되는지(MariaDB snapshot isolation)
     │   │       └── UserTest.java                   기본 설정, 시간대(IANA 이름만)·통화(ISO 4217) 검증
     │   ├── service/
     │   │   ├── UserTodayTest.java                  사용자 시간대의 오늘(서울이 전날인 시각의 오클랜드), 미래 날짜 400
@@ -1317,8 +1319,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 
     ※ Mockito 테스트는 스프링 프록시를 안 거치므로 `@Transactional` 이 아예 적용되지 않고,
       `@WebMvcTest` 는 서비스가 `@MockitoBean` 이라 진짜 코드가 돌지 않는다. 즉 트랜잭션 설정
-      실수는 이 둘로는 절대 못 잡는다 — 그래서 `@SpringBootTest` 를 여섯 둔다(차량 트랜잭션 · 탈퇴 ·
-      동시 가져오기 · 차량 삭제와 기록 추가 · 동시 재설정 발급 · 스키마 대조). 잠금·FK·데드락처럼 실제 DB 에서만
+      실수는 이 둘로는 절대 못 잡는다 — 그래서 `@SpringBootTest` 를 일곱 둔다(차량 트랜잭션 · 탈퇴 ·
+      동시 가져오기 · 차량 삭제와 기록 추가 · 동시 재설정 발급 · 프로필과 비밀번호 동시 저장 · 스키마 대조). 잠금·FK·데드락처럼 실제 DB 에서만
       드러나는 것을 본다. 잠금 테스트 셋은 **잠금을 빼고 돌려 실패하는 것까지 확인**하고 넣었다.
 
 ### 프론트엔드 — `frontend/`
@@ -2530,7 +2532,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-110
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-107
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-108, B-109
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (342개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (345개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (79개)
 - [ ] 실제 브라우저 E2E 통과 — `npm run e2e` (13개)
 

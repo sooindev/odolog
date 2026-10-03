@@ -18,6 +18,21 @@
 
 ---
 
+- [x] 6차 점검 — 본문 상한 우회 · 재설정 확정의 커밋 전 세션 삭제 (2026-10-03)
+      → **본문 10MB 상한이 PATCH·PUT·DELETE 의 폼 본문에는 걸리지 않았다.** `RequestSizeLimitFilter` 에 순서가 없어
+        맨 뒤였고, 스프링 부트의 `FormContentFilter`(-9900)가 `application/x-www-form-urlencoded` 본문을 **상한 없이**
+        문자열로 다 읽은 뒤였다. 로그인·CSRF 토큰 없이 큰 본문 하나로 메모리를 채울 수 있었다.
+        `@Order(HIGHEST_PRECEDENCE + 1)` — CORS 바로 뒤(413 에도 CORS 헤더가 붙게), FormContentFilter 앞.
+        `spring.mvc.formcontent.filter.enabled: false` 로 끄는 방법도 있었지만, 그건 이 필터 하나만 막고
+        앞으로 본문을 먼저 읽는 다른 필터가 생기면 같은 일이 난다. 순서를 고정하는 쪽이 원인을 고친다
+      → **재설정 확정(`confirm`)이 커밋 전에 세션을 지웠다.** Spring Session JDBC 는 세션 표를 별도 트랜잭션
+        (REQUIRES_NEW)으로 다뤄서, 트랜잭션 안에서 `invalidateAll` 을 부르면 비밀번호 커밋을 기다리지 않고 바로 지워진다.
+        뒤에서 롤백되면 비밀번호는 그대로인데 세션과 로그인 잠금만 사라졌다. 잠금 해제·세션 종료를 `afterCommit` 으로 옮겼다
+      → **점검이 보고한 "프로필 저장이 바꾼 비밀번호를 되돌린다" 는 이 DB 에서 일어나지 않았다.** `User` 에 `@Version` 이 없고
+        Hibernate 가 행 전체를 다시 쓰므로 그럴 듯했는데, 재현 테스트를 짜 보니 MariaDB 12 의 `innodb_snapshot_isolation=1`
+        이 늦은 쪽을 `Record has changed since last read` 로 거절했다(→ 409 `CONCURRENT_UPDATE`). `@DynamicUpdate` 를 붙였다가
+        효과가 없어 되돌렸고, 실제 동작을 `UserConcurrentUpdateTest` 로 고정했다 — 이 설정을 끄면 그 테스트가 먼저 깨진다
+
 - [x] 부족한 점 정리 — Flyway · DB 세션 · `곧` · 실제 브라우저 E2E (2026-10-03)
       → **Flyway**: 스키마를 `db/migration` 의 SQL 로 남기고 `ddl-auto` 는 `validate` 로 내렸다.
         `update` 가 지우지도 바꾸지도 않아 세 번(9/7 유니크·9/16 enum·9/29 CHECK) 손으로 고친 것이 이제 V 파일이다.

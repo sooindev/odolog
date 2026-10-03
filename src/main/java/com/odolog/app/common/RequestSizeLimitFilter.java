@@ -8,6 +8,8 @@ import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -16,8 +18,10 @@ import java.io.IOException;
 /**
  * 요청 본문 크기 상한. Jackson 이 본문 전체를 객체로 만든 뒤에야 @Size 가 돌아서 그 전에 차단
  * 길이를 밝힌 요청은 413, 길이 없이 흘려보내는 요청은 상한에서 읽기 실패(400)
+ * CORS 바로 뒤. 본문을 먼저 읽는 FormContentFilter(-9900)보다 앞서야 상한이 걸림
  */
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class RequestSizeLimitFilter extends OncePerRequestFilter {
 
     private final long maxBytes;

@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
@@ -188,11 +190,27 @@ public class PasswordResetService {
         token.getUser().changePassword(passwordEncoder.encode(request.newPassword()));
         token.markUsed(now);
 
-        // 로그인 잠금 해제
-        rateLimiter.recordSuccess(UserService.LOGIN_KEY_PREFIX + token.getUser().getEmail());
+        // 잠금 해제·세션 종료는 커밋 뒤. 세션 표는 별도 트랜잭션이라 안에서 지우면 롤백돼도 사라짐
+        String loginKey = UserService.LOGIN_KEY_PREFIX + token.getUser().getEmail();
+        Long userId = token.getUser().getId();
+        afterCommit(() -> {
+            rateLimiter.recordSuccess(loginKey);
+            sessionRegistry.invalidateAll(userId);
+        });
+    }
 
-        // 열려 있던 세션 전부 종료
-        sessionRegistry.invalidateAll(token.getUser().getId());
+    /** 트랜잭션 밖(단위 테스트)이면 바로 실행 */
+    private static void afterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
     }
 
     /** 256비트 난수 */

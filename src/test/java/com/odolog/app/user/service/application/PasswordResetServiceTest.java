@@ -19,6 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -37,6 +39,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -146,6 +149,31 @@ class PasswordResetServiceTest {
         // 재설정 성공 시 로그인 잠금 해제
         verify(rateLimiter).recordSuccess("login:me@odolog.com");
         // 열려 있던 세션 전부 종료
+        verify(sessionRegistry).invalidateAll(1L);
+    }
+
+    @Test
+    @DisplayName("트랜잭션 안이면 잠금 해제·세션 종료를 커밋 뒤로 미룬다")
+    void confirmDefersSideEffectsUntilCommit() {
+        String raw = "raw-token-value";
+        PasswordResetToken token = new PasswordResetToken(user, hashOf(raw), NOW.plusMinutes(10));
+        when(tokenRepository.findByTokenHash(hashOf(raw))).thenReturn(Optional.of(token));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.confirm(new PasswordResetConfirmRequest(raw, "new-password-1234"));
+
+            // 커밋 전. 여기서 롤백되면 세션·잠금이 그대로 남아야 함
+            verifyNoInteractions(sessionRegistry);
+            verify(rateLimiter, never()).recordSuccess(anyString());
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verify(rateLimiter).recordSuccess("login:me@odolog.com");
         verify(sessionRegistry).invalidateAll(1L);
     }
 
