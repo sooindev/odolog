@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,9 +30,10 @@ public class LoginAttemptLimiter {
     private static final int PURGE_THRESHOLD = 10_000;
     /**
      * 맵 크기 상한. 10분 안에 서로 다른 키가 쏟아지면 만료 정리로는 못 줄임
-     * 넘으면 한 번만 시도한 키부터 버림. 대입 대상은 시도가 여러 번이라 남음
+     * 넘으면 잠기지 않은 키 중 가장 오래 쉰 것부터 상한의 90% 까지 버림
+     * 지금 대입당하는 키는 마지막 시도가 최근이라 남음. 시도 횟수로 고르면 키마다 두 번 보내 피해 감
      */
-    private static final int HARD_LIMIT = 100_000;
+    static final int HARD_LIMIT = 100_000;
     /** 정리 최소 간격. 기준을 넘긴 뒤 매 요청 전체 순회 방지 */
     private static final Duration PURGE_INTERVAL = Duration.ofMinutes(1);
 
@@ -106,7 +108,7 @@ public class LoginAttemptLimiter {
     /** 임의 이메일 대량 입력 시 맵 무한 증가 방지 */
     private void purgeIfCrowded(Instant now) {
         if (attempts.size() > HARD_LIMIT) {
-            attempts.values().removeIf(attempt -> attempt.attempts <= 1 && attempt.lockedUntil == null);
+            evictIdlest(now);
         }
         if (attempts.size() < PURGE_THRESHOLD || now.isBefore(lastPurge.plus(PURGE_INTERVAL))) {
             return;
@@ -117,6 +119,24 @@ public class LoginAttemptLimiter {
                 (attempt.lockedUntil == null || now.isAfter(attempt.lockedUntil))
                         && attempt.lastAttempt != null
                         && Duration.between(attempt.lastAttempt, now).compareTo(WINDOW) > 0);
+    }
+
+    /** 한 번에 한 스레드만. 여럿이 동시에 정렬하면 그 자체가 부하 */
+    private synchronized void evictIdlest(Instant now) {
+        int excess = attempts.size() - HARD_LIMIT * 9 / 10;
+        if (excess <= 0) {
+            return;
+        }
+        attempts.entrySet().stream()
+                .filter(entry -> {
+                    Attempt attempt = entry.getValue();
+                    return attempt.lastAttempt != null
+                            && (attempt.lockedUntil == null || now.isAfter(attempt.lockedUntil));
+                })
+                .sorted(Comparator.comparing(entry -> entry.getValue().lastAttempt))
+                .limit(excess)
+                .toList()
+                .forEach(entry -> attempts.remove(entry.getKey(), entry.getValue()));
     }
 
     private static final class Attempt {

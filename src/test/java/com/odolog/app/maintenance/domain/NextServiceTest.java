@@ -2,6 +2,7 @@ package com.odolog.app.maintenance.domain;
 
 import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.entity.ServiceInterval;
+import com.odolog.app.maintenance.dto.response.NextServiceResponse;
 import com.odolog.app.vehicle.Vehicle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -201,5 +202,19 @@ class NextServiceTest {
                     // 주행거리로는 판정할 수 없어도 6개월이 지나 지남
                     assertThat(next.overdue()).isTrue();
                 });
+    }
+
+    @Test
+    @DisplayName("응답의 기본 주기는 직접 정한 값이 아니라 종류의 기본값이다 — 편집 폼의 회색 숫자(비우면 쓰일 값)")
+    void responseCarriesTypeDefaultsBesideCustomInterval() {
+        NextService next = NextService.of(List.of(oil(20000, TODAY.minusMonths(1))),
+                List.of(new ServiceInterval(vehicle, ServiceType.ENGINE_OIL, 10000, null)), 21000, TODAY).get(0);
+
+        NextServiceResponse response = NextServiceResponse.from(next);
+
+        // 적용 주기는 직접 정한 10,000km, 기본값은 종류의 값
+        assertThat(response.intervalKm()).isEqualTo(10000);
+        assertThat(response.defaultIntervalKm()).isEqualTo(ServiceType.ENGINE_OIL.getRecommendedIntervalKm());
+        assertThat(response.defaultIntervalMonths()).isEqualTo(ServiceType.ENGINE_OIL.getRecommendedIntervalMonths());
     }
 }

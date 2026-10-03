@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { MaintenanceForm } from '@/features/maintenance/components/MaintenanceForm'
 import { Button } from '@/shared/ui/base/button'
@@ -18,11 +18,13 @@ import type { MaintenanceRecordResponse, ServiceType } from '@/features/maintena
 interface Props {
   vehicleId: string
   currentOdometer: number
+  /** 목록 밖에서 이력이 생기면 증가. 재생성 대신 재조회해 열린 폼·필터·페이지 유지 */
+  refreshVersion: number
   /** 이력 변경 시 부모에 알림. 다음 정비 재계산 */
   onChanged: () => void
 }
 
-export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Props) {
+export function MaintenanceSection({ vehicleId, currentOdometer, refreshVersion, onChanged }: Props) {
   const { t, f } = useI18n()
   const [page, setPage] = useState(0)
   // 종류 필터. null 이면 전체
@@ -41,6 +43,11 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
   )
   const { data, loading, error, reload } = useAsyncData(load, t.maintenance.loadFailed)
   usePageInRange(data, setPage)
+
+  // 0 은 첫 조회가 이미 함
+  useEffect(() => {
+    if (refreshVersion > 0) reload()
+  }, [refreshVersion, reload])
 
   // 변수로 받아 타입 좁히기
   const shownError = error ?? actionError

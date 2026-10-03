@@ -17,6 +17,7 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -30,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 
 /** 비밀번호 재설정. 링크 발송(request) → 토큰으로 변경(confirm) */
 @Service
@@ -44,6 +46,12 @@ public class PasswordResetService {
     /** 같은 주소로의 메일 폭주 방지. 로그인 리미터 공용 */
     private static final String RATE_LIMIT_PREFIX = "password-reset:";
 
+    /**
+     * 처리 대기 중인 발급 작업 상한. 넘으면 조용히 버림(응답은 어차피 204)
+     * 주소마다 다른 대량 요청이 실행기 대기열을 끝없이 채워 진짜 요청이 수십 초 밀리는 것 방지
+     */
+    static final int MAX_PENDING = 200;
+
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordResetMailer mailer;
@@ -51,6 +59,7 @@ public class PasswordResetService {
     private final LoginSessionRegistry sessionRegistry;
     private final TaskExecutor taskExecutor;
     private final TransactionTemplate transactionTemplate;
+    private final Semaphore pending = new Semaphore(MAX_PENDING);
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom random = new SecureRandom();
     private final Clock clock;
@@ -94,21 +103,56 @@ public class PasswordResetService {
         String limitKey = RATE_LIMIT_PREFIX + email;
         rateLimiter.acquire(limitKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
 
-        taskExecutor.execute(() -> {
-            try {
-                transactionTemplate.executeWithoutResult(status -> issue(email));
-            } catch (RuntimeException e) {
-                // 응답은 이미 나감. 로그로만
-                log.error("비밀번호 재설정 토큰 발급 실패.", e);
-            }
-        });
+        if (!pending.tryAcquire()) {
+            log.warn("비밀번호 재설정 대기 작업이 상한({})에 닿아 요청을 버립니다.", MAX_PENDING);
+            return;
+        }
+        try {
+            taskExecutor.execute(() -> {
+                try {
+                    issueWithRetry(email);
+                } finally {
+                    pending.release();
+                }
+            });
+        } catch (RuntimeException e) {
+            // 실행기가 거절하면 작업이 돌지 않으므로 여기서 반납
+            pending.release();
+            log.error("비밀번호 재설정 작업을 맡기지 못했습니다.", e);
+        }
     }
 
-    /** 토큰 발급 + 커밋 후 메일 예약. request 의 다른 스레드에서 트랜잭션 안에 실행 */
-    void issue(String email) {
-        // 만료 토큰 정리. 토큰이 쌓이는 유일한 경로라 스케줄러 불필요
-        tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now(clock));
+    /**
+     * 만료 정리 → 발급. 각각 따로 트랜잭션
+     * 동시 요청과 같은 행을 건드려 충돌하면 한 번 다시. 응답은 이미 나가서 실패는 로그로만
+     */
+    private void issueWithRetry(String email) {
+        try {
+            // 정리 실패가 발급을 막지 않게 분리
+            transactionTemplate.executeWithoutResult(
+                    status -> tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now(clock)));
+        } catch (RuntimeException e) {
+            log.warn("만료된 재설정 토큰 정리 실패. 다음 요청 때 다시 정리됩니다.", e);
+        }
 
+        for (int attempt = 1; ; attempt++) {
+            try {
+                transactionTemplate.executeWithoutResult(status -> issue(email));
+                return;
+            } catch (ConcurrencyFailureException e) {
+                if (attempt >= 2) {
+                    log.error("비밀번호 재설정 토큰 발급 실패(동시 요청과 충돌).", e);
+                    return;
+                }
+            } catch (RuntimeException e) {
+                log.error("비밀번호 재설정 토큰 발급 실패.", e);
+                return;
+            }
+        }
+    }
+
+    /** 토큰 발급 + 커밋 후 메일 예약. 다른 스레드에서 트랜잭션 안에 실행 */
+    void issue(String email) {
         Optional<User> found = userRepository.findByEmail(email);
         if (found.isEmpty()) {
             return;

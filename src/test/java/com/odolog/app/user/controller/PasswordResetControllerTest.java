@@ -1,5 +1,6 @@
 package com.odolog.app.user.controller;
 
+import com.odolog.app.common.auth.LoginAttemptLimiter;
 import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.common.exception.type.TooManyRequestsException;
@@ -17,6 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,6 +37,9 @@ class PasswordResetControllerTest {
 
     @MockitoBean
     private PasswordResetService passwordResetService;
+
+    @MockitoBean
+    private LoginAttemptLimiter attemptLimiter;
 
     private org.springframework.test.web.servlet.ResultActions request(Object body, boolean isPatch) throws Exception {
         var builder = isPatch ? patch("/api/users/password-reset") : post("/api/users/password-reset");
@@ -105,5 +112,16 @@ class PasswordResetControllerTest {
         // 새 비밀번호 제한은 가입·변경과 동일
         request(new PasswordResetConfirmRequest("token", "가".repeat(25)), true)
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("한 IP 에서 주소를 바꿔 가며 쏟아내면 429 — 서비스까지 가지 않는다")
+    void requestIsRateLimitedPerIp() throws Exception {
+        doThrow(new TooManyRequestsException(ErrorCode.TOO_MANY_RESET_REQUESTS, "많음.", 10))
+                .when(attemptLimiter).acquire(startsWith("password-reset-ip:"), any(), anyString());
+
+        request(new PasswordResetRequest("someone@odolog.com"), false)
+                .andExpect(status().isTooManyRequests());
+        verify(passwordResetService, never()).request(anyString());
     }
 }

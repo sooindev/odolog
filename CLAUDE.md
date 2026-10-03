@@ -185,15 +185,16 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
 10. **로그인한 사용자 식별은 세션에서만 한다.** 요청 바디나 URL의 사용자 ID는 클라이언트가
     조작할 수 있으므로 신뢰하지 않는다 (`SessionConst.LOGIN_USER_ID`).
 11. **예외는 의미에 맞는 상태 코드로 세분화한다**: 400(입력 검증 실패) / 401(미인증) /
-    403(권한 없음) / 404(리소스 없음) / 409(리소스 중복) / 429(시도 과다). 서버 쪽 불변식이 깨진 경우
+    403(권한 없음) / 404(리소스 없음) / 409(리소스 중복·동시 수정 `CONCURRENT_UPDATE`) / 413(본문이 너무 큼) /
+    429(시도 과다). 405·415 는 스프링이 정한 그대로 둔다. 서버 쪽 불변식이 깨진 경우
     (예: 세션엔 있는데 DB엔 없는 사용자)는 일부러 핸들러를 만들지 않고 500으로 흘려보내
     로그에 남긴다 — 모든 예외를 친절한 응답으로 감쌀 필요는 없다.
     **다만 "상태 코드를 낮추지 않는다" 와 "본문을 주지 않는다" 는 다른 얘기다**(2026-09-23).
     500 은 500 으로 두되 `ErrorResponse` 는 돌려준다 — 안 그러면 스프링 기본 응답이 나가는데
     거기엔 `message` 가 없어 화면이 "요청에 실패했습니다 (HTTP 500)" 밖에 말하지 못한다.
     **단, 남의 자원에는 403 이 아니라 404 를 준다** (2026-09-22). 403 은 "권한이 없다"와
-    동시에 **"있긴 하다"** 를 말하고, 차량 id 는 1,2,3… 으로 이어지므로 둘이 갈리면
-    훑어서 어느 번호가 쓰이는지 셀 수 있다. **문구까지 같아야 한다** — 상태 코드만 맞추고
+    동시에 **"있긴 하다"** 를 말한다. 정한 당시에는 차량 id 가 1,2,3… 이라 훑어서 쓰이는 번호를 셀 수
+    있었다. 지금은 무작위 공개 id(9-1)라 훑기는 어렵지만, 링크를 얻은 사람이 그 차가 있는지조차 몰라야 한다. **문구까지 같아야 한다** — 상태 코드만 맞추고
     메시지가 다르면 그 메시지가 대신 알려준다. 정비·주유는 `findByPublicIdAndVehicleId` 라
     처음부터 404 하나였고, 차량만 혼자 달랐다.
     그래서 지금 `ForbiddenAccessException` 을 던지는 곳은 **한 군데도 없다.**
@@ -201,8 +202,11 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     생기면 그때가 진짜 403 이다.
 12. **예외는 전용 타입으로 던진다.** `IllegalArgumentException` 같은 JDK 범용 예외를 핸들러에
     매핑하지 않는다. 우리가 안 던진 예외까지 잡혀서 500이어야 할 것이 조용히 4xx로 나간다.
-    상태 코드 하나당 예외 클래스 하나(`ConflictException`/`AuthenticationFailedException`/
-    `ForbiddenAccessException`/`ResourceNotFoundException`).
+    상태 코드 하나당 예외 클래스 하나(`InvalidRequestException`(400)/`AuthenticationFailedException`(401)/
+    `ForbiddenAccessException`(403)/`ResourceNotFoundException`(404)/`ConflictException`(409)/
+    `TooManyRequestsException`(429)). 공통 부모는 `ApiException`(규칙 16).
+    스프링·JPA 가 던지는 것 중 뜻이 분명한 것은 핸들러가 직접 번역한다 — 유니크 위반(409, 제약 이름으로 코드),
+    동시 수정·데드락(`ConcurrencyFailureException` → 409 `CONCURRENT_UPDATE`).
 13. **서비스는 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드에만 `@Transactional`.**
     메서드 쪽이 클래스 쪽을 덮어쓴다. 새 메서드를 깜빡했을 때 기본이 안전한 쪽(읽기 전용)이라
     쓰기가 실패해서 바로 드러난다. 반대로 하면 아무 일도 안 일어나 영영 모른다.
@@ -336,7 +340,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
        text-eyebrow  11px  자간 +0.2em   분류 한 줄 (대문자)
        text-title    32→52px clamp       화면 제목(h1)
        text-headline 28→40px clamp       랜딩의 구역 제목 (2026-09-24 신설)
-       text-display  52→80px clamp 굵기300 히어로 숫자 하나
+       text-display  40→80px clamp 굵기300 히어로 숫자 하나
        text-figure   22px                목록 행의 수치
        text-section  17px                카드·구역 제목
        text-lede     16px                제목 아래 설명
@@ -353,7 +357,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
    **12·13·14·15px 네 단으로 3px 안에 몰려** 위계가 사라진 상태였다. 지금은 둘로 접었다:
    보조 문장·단위는 `text-caption`(13px), 배지와 차트 안의 작은 값은 `text-unit`(11px).
    **`cn()`·`cva()` 를 거치는 파일은 예외다** — 거기는 토큰이 지워지므로 기본 스케일이 맞다
-   (`state.tsx`·`card.tsx`·`input.tsx`·`button.tsx`). `date-input` 의 `text-base` 도 예외 —
+   (`state.tsx`·`card.tsx`·`input.tsx`·`button.tsx`). `date-input`·`form/control.ts` 의 `text-base` 도 예외 —
    모바일에서 16px 보다 작으면 iOS 사파리가 화면을 확대한다.
 
    ⚠️ **토큰은 두 곳 이상에서 반복될 때만 만든다** (2026-09-24 에 기준을 적었다).
@@ -384,8 +388,9 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
      `size="lg"` 버튼이 14px 로 작아졌다(랜딩의 `시작하기` 가 "잘 안 보인다"로 드러난 것).
 
    **그래서 저 네 파일은 임의 값을 쓴다.** `card.tsx` 처럼 토큰이 행간·굵기·자간까지 묶고 있던
-   자리는 그 값들을 그대로 풀어 적었다. 화면 파일(`features/`·`app/`)은 `cn()` 을 거치지 않아
-   토큰을 그대로 쓴다 — 45곳이 그쪽이다.
+   자리는 그 값들을 그대로 풀어 적었다. 화면 파일(`features/`·`app/`)은 대개 `cn()` 을 거치지 않아
+   토큰을 그대로 쓴다. **화면 파일이 `cn()` 을 쓰는 곳은 임의 값으로 적는다** — 지금은 정비 이력의
+   종류 필터 하나(`cn(controlClassName, '… md:text-[0.8125rem]')`)다. `cn-usage.test.ts` 가 지킨다.
    **이 둘이 없던 동안 화면 45곳이 `text-[0.8125rem]` 처럼 크기를 직접 적고 있었다** —
    "크기는 전부 토큰으로"라는 이 규칙이 정작 가장 많이 쓰는 두 크기에서 지켜지지 않았다.
 
@@ -468,10 +473,11 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
    화면마다 머리말을 직접 그리면 반드시 어긋난다 — 실제로 차량 상세가 그렇게 드리프트해서
    `sm:text-[2rem]` 을 빠뜨렸고, 페이지 루트 간격이 `gap-8/10/12` 세 값으로 갈렸다.
    - **eyebrow** = "지금 보는 것이 어디에 속하는가": `Overview`(홈 통계), `Garage`(차량 목록·등록,
-     그리고 차량이 0대일 때의 홈), `Account`(계정),
+     그리고 차량이 0대일 때의 홈), `Account`(계정), `Legal`(약관·개인정보처리방침),
      차량 상세는 번호판. **로그인·회원가입은 아직 아무 데도 속하지 않으므로 비운다.**
    - **back** = 목록에서 파고 들어간 화면에만: 차량 등록·차량 상세.
-   - **action** = 이 화면에서 새로 만드는 동작 하나. 목록의 "차량 등록"이 유일하다.
+   - **action** = 이 화면의 다음 동작 하나. 목록의 "차량 등록", 홈 통계의 "기록하러 가기 / 내 차량"
+     (한 대면 그 차로, 여러 대면 목록으로) 둘이다.
    - 폼 맨 아래 버튼 줄은 `FormActions`. 주 동작 먼저, 취소는 `ghost` 로 오른쪽.
    **랜딩(`/`)만 `Page` 를 쓰지 않는다** — 앱 화면이 아니라 문서다. 가운데 정렬과 큰 세로
    리듬(`gap-28`)이 그 신호이고, 그래서 머리말 규칙도 적용받지 않는다.
@@ -529,7 +535,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
    새로 받는 컴포넌트가 `rounded-md` 같은 유틸을 달고 오기 때문이다 — 토큰이 0 이면
    그것들도 자동으로 각지게 나와서 매번 손으로 지울 필요가 없다.
    **컴포넌트에는 `rounded-*` 를 적지 않는다.** 적어 두면 클래스 이름이 거짓말을 한다
-   (`rounded-2xl` 인데 안 둥근 것). 지금 `frontend/src` 전체에 `rounded` 문자열은 0건이고,
+   (`rounded-2xl` 인데 안 둥근 것). 지금 `frontend/src` 에서 `rounded` 는 이 규칙을 설명하는 주석 두 곳뿐이고,
    빌드된 CSS 에 남은 `border-radius` 는 Tailwind 가 폼 요소에 거는 초기화 두 줄뿐이다.
    - 예외를 두지 않는다. 버튼·입력창·카드·차트 막대·세그먼트 컨트롤·로딩 점까지 전부.
      **한 군데만 둥글면 그것이 장식으로 보인다** — 앞의 알약 버튼이 정확히 그랬다.
@@ -555,7 +561,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 ### 저장소 루트
 
     odolog/
-    ├── build.gradle                    의존성 (web/jpa/validation/crypto/springdoc/mariadb)
+    ├── build.gradle                    의존성 (web/jpa/validation/mail/crypto/springdoc/mariadb)
     │                                   springdoc은 서드파티라 버전을 직접 명시해야 함
     ├── settings.gradle                 rootProject.name = 'odolog'
     ├── gradlew / gradlew.bat           Gradle 래퍼 실행 스크립트
@@ -609,12 +615,16 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                 DB 가 새어도 그것만으로 남의 비밀번호를 못 바꾼다.
     │   │                                 한 번 쓰면 used_at 이 찍혀 죽는다
     │   ├── repository/
-    │   │   ├── UserRepository.java       findByEmail, existsByEmail
+    │   │   ├── UserRepository.java       findByEmail, existsByEmail,
+    │   │   │                             findLockedById(@Lock 행 잠금 — 가져오기를 한 줄로 세움)
     │   │   └── PasswordResetTokenRepository.java
-    │   │                                 findByTokenHash, deleteByUserId(재발급·탈퇴 공용),
+    │   │                                 findByTokenHash(@Lock 행 잠금 — 같은 토큰 동시 사용 차단),
+    │   │                                 deleteByUserId(재발급·탈퇴·변경 공용),
     │   │                                 deleteByExpiresAtBefore(만료분 정리 — 스케줄러를
-    │   │                                 두지 않고 request() 가 부른다. 토큰이 쌓이는
-    │   │                                 유일한 경로가 거기라 쌓이는 만큼 치워진다)
+    │   │                                 두지 않고 재설정 발급 작업이 먼저 부른다. 토큰이 쌓이는
+    │   │                                 유일한 경로가 거기라 쌓이는 만큼 치워진다).
+    │   │                                 **두 삭제는 @Modifying DELETE 한 문장**(2026-10-03) — 메서드 이름만
+    │   │                                 쓰면 읽은 뒤 한 줄씩 지워, 동시 요청이 같은 행을 지울 때 충돌했다
     │   ├── dto/
     │   │   ├── request/
     │   │   │   ├── SignUpRequest.java    @NotBlank/@Email/@Size(min=8,max=100).
@@ -645,17 +655,22 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │       ├── PasswordResetService.java
     │   │       │                         request(메일 발송) / confirm(비밀번호 교체).
     │   │       │                         request 는 횟수만 세고 토큰 작업은 다른 스레드(규칙 15).
+    │   │       │                         대기 작업 200개 상한(넘으면 조용히 버림), 만료 정리는 따로
+    │   │       │                         트랜잭션, 동시 요청과 충돌하면 발급을 한 번 다시
     │   │       │                         confirm 은 토큰 행을 잠근다 — 동시에 두 번 쓰이지 않게
     │   │       │                         **없는 주소도 조용히 성공**시킨다 — 응답이 갈리면
     │   │       │                         그게 가입 여부 조회 API 가 된다.
     │   │       │                         메일 발송 실패도 삼키고 로그로만 남긴다(같은 이유)
     │   │       └── UserService.java      signUp(중복 체크·BCrypt), login(사유 통일),
-    │   │                                 findById, updateProfile(널 아닌 필드만),
+    │   │                                 findById, findByIdForUpdate(행 잠금 — 가져오기 전용),
+    │   │                                 updateProfile(널 아닌 필드만),
     │   │                                 verifyPassword(되돌릴 수 없는 동작 앞의 관문 —
     │   │                                 changePassword 와 탈퇴가 공유), changePassword, delete
     │   └── controller/
     │       ├── PasswordResetController.java
     │       │                             POST·PATCH /api/users/password-reset (둘 다 204).
+    │       │                             요청은 IP(password-reset-ip:)로도 센다 — 주소별 키만으로는
+    │       │                             주소를 바꿔 가며 쏟아내는 것을 못 막는다
     │       │                             **로그인하지 않은 사람이 쓰는 유일한 쓰기 경로**
     │       └── UserController.java       POST /api/users, /login(+changeSessionId),
     │                                     /logout(204), GET·PATCH /api/users/me,
@@ -674,7 +689,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   ├── VehicleRepository.java        findByPublicId(URL 의 공개 id — findOwnedVehicle 이 쓴다),
     │   │                                 findByOwnerId(Pageable), findAllByOwnerId(탈퇴용 —
     │   │                                 "한 사람의 전부"가 대상이라 페이지를 나눌 수 없다),
-    │   │                                 existsByOwnerIdAndPlateNumber(소유자별 중복 검사)
+    │   │                                 existsByOwnerIdAndPlateNumber(소유자별 중복 검사),
+    │   │                                 existsByOwnerIdAndPlateNumberAndIdNot(수정 — 자기 자신 제외),
+    │   │                                 findByOwnerIdAndPlateNumber(가져오기의 같은 차 찾기).
+    │   │                                 같은 번호판인지는 DB 정렬 규칙이 판단한다(규칙 14-1)
     │   ├── dto/
     │   │   ├── request/
     │   │   │   ├── VehicleRegisterRequest.java
@@ -733,9 +751,12 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                 한 폴더에 섞이면 @Entity 인지 파일을 열어 봐야 안다
     │   ├── repository/
     │   │   ├── ServiceIntervalRepository.java
-    │   │   │                             차량별 주기. findByVehicle_Owner_Id(목록·홈이 한 번에 읽음)
+    │   │   │                             차량별 주기. findByVehicleId, findByVehicleIdAndType(설정 화면),
+    │   │   │                             findByVehicle_Owner_Id(목록·홈·내보내기가 한 번에 읽음),
+    │   │   │                             deleteByVehicleId
     │   │   └── MaintenanceRecordRepository.java
-    │   │                                 findByVehicleId(Pageable),
+    │   │                                 findByVehicleId(Pageable), findByVehicleIdAndType(Pageable — 종류 필터),
+    │   │                                 findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(목록·홈·내보내기),
     │   │                                 findByVehicleIdOrderByServiceDateDescIdDesc(종류별
     │   │                                 최신 1건을 한 번에 — 종류마다 findTopBy 면 15쿼리),
     │   │                                 findByPublicIdAndVehicleId(타 차량 소속 차단),
@@ -748,12 +769,15 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │   ├── MaintenanceRecordUpdateRequest.java
     │   │   │   │                         전부 nullable. cost/serviceOdometer는
     │   │   │   │                         Integer로 "안 보냄"과 "0"을 구분
-    │   │   │   └── ServiceIntervalRequest.java
+    │   │   │   └── ServiceIntervalRequest.java km·개월 둘 다 비우면 기본값으로(행 삭제)
     │   │   └── response/
     │   │       ├── MaintenanceRecordResponse.java
     │   │       │                         from() 팩토리
     │   │       └── NextServiceResponse.java
     │   │                                 주행거리·날짜 두 기준 + overdue.
+    │   │                                 적용 주기(intervalKm/Months)와 함께 종류의 기본 주기
+    │   │                                 (defaultIntervalKm/Months)도 싣는다 — 편집 폼의 회색 숫자는
+    │   │                                 "비우면 쓰일 값" 이라 적용 주기를 보여 주면 거짓말이 됐다(10-03)
     │   │                                 판정을 서버가 하는 이유 — 화면이
     │   │                                 직접 오늘과 비교하면 차량 상세와
     │   │                                 홈이 다른 말을 하게 된다
@@ -761,12 +785,14 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                 register(+차량 주행거리 자동 갱신),
     │   │                                 findByVehicle(Pageable),
     │   │                                 calculateAllNextServices(km·개월, 이력 있는 종류만),
+    │   │                                 changeInterval(차량별 주기 — 둘 다 비면 행 삭제),
     │   │                                 update(부분), delete,
     │   │                                 deleteAllOf(차량 하나의 이력·주기 — 차량 삭제 조율 전용).
     │   │                                 VehicleService.findOwnedVehicle()를 주입받아 재사용
     │   └── MaintenanceRecordController.java
-    │                                     POST·GET  .../maintenance-records,
+    │                                     POST·GET  .../maintenance-records(?type= 필터),
     │                                     PATCH·DELETE  .../{recordId},
+    │                                     PATCH  .../intervals/{type}(차량별 주기),
     │                                     GET  .../next-services (이력 있는 종류 전체).
     │                                     단건 조회와 next-service(단수)는 화면이 안 써서
     │                                     2026-09-16 에 걷어냈다
@@ -791,10 +817,11 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                 평소 구간과 견준다. 기준은 평균이 아니라 **중앙값** —
     │   │                                 평균은 잡으려는 이상값 자체에 끌려 올라간다
     │   ├── FuelRecordRepository.java     findByVehicleId(Pageable), findByPublicIdAndVehicleId,
-    │   │                                 findPrevious(직전 1건 — **(주행거리, id) 순서**.
-    │   │                                 주행거리만 보면 같은 값 2건이 페이지 경계에 걸릴 때
-    │   │                                 같은 구간이 두 번 보인다. 이 저장소의 유일한 @Query),
+    │   │                                 findPreceding(@Query) + findPrevious(그 첫 건을 꺼내는 default —
+    │   │                                 직전 1건, **(주행거리, id) 순서**. 주행거리만 보면 같은 값 2건이
+    │   │                                 페이지 경계에 걸릴 때 같은 구간이 두 번 보인다),
     │   │                                 findAllByVehicleIdOrderByOdometerAscIdAsc(요약용),
+    │   │                                 findByVehicle_Owner_IdOrderByOdometerAscIdAsc(홈·내보내기),
     │   │                                 deleteByVehicleId
     │   ├── dto/
     │   │   ├── request/                  liters 는 @Positive — 0 이면 연비가 0으로 나누기다.
@@ -819,6 +846,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │       │                         구간이 성립 안 하면 null(0 이 아니다)
     │   │       └── FuelSummaryResponse.java
     │   │                                 평균 + latestRecordId·resetPointId(연비 초기화용),
+    │   │                                 currency·otherCurrencyRecordCount(통화가 달라 합계에서 뺀 건수),
+    │   │                                 trend(최근 구간 연비 — 추이 막대용),
     │   │                                 totalDistance 는 첫 기록~마지막 기록(전체 기준, 2026-10-03).
     │   │                                 평균에 쓴 구간 거리였을 때는 초기화하면 "주행" 칸만 줄었다(B-77)
     │   │                                 longSegmentCount(빠진 기록으로 보여 평균에서 뺀
@@ -851,10 +880,14 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │                                     **URL 은 vehicles 인데 패키지는 garage** — AccountController 와 같은 이유
     ├── account/                          조율 층 ①. **여러 기능을 동시에 알아도 되는 자리**
     │   │                                 (프론트의 app/ 과 같은 성격 — 아래 "의존 방향" 참고).
-    │   │                                 계정 전체에 걸친 동작 둘이 여기 있다. **거울상이다** —
-    │   │                                 한쪽은 전부 지우고(탈퇴) 한쪽은 전부 가져간다(내보내기).
-    │   │                                 그래서 주입받는 것도 다르다: 지우는 쪽은 순서를 조율해야
-    │   │                                 해서 서비스를, 내보내는 쪽은 원본만 필요해 리포지토리를
+    │   │                                 계정 전체에 걸친 동작 셋이 여기 있다 — 탈퇴·내보내기·가져오기.
+    │   │                                 주입받는 것이 다르다: 탈퇴는 순서를 조율해야 해서 서비스를,
+    │   │                                 내보내기는 원본만 필요해 리포지토리를.
+    │   │                                 **가져오기는 예외로 리포지토리에 직접 쓴다** — 기록 2만 건을
+    │   │                                 한 트랜잭션에 넣는 일괄 작업이라, 건마다 서비스(소유 확인·
+    │   │                                 주행거리 올리기·오늘 판정)를 거치면 같은 조회가 2만 번 돈다.
+    │   │                                 대신 등록과 같은 규칙(미래 날짜 금지·주행거리 올리기·통화 판정)을
+    │   │                                 서비스 안에서 한 번에 다시 적용한다. 규칙이 바뀌면 여기도 같이
     │   ├── dto/
     │   │   ├── response/
     │   │   │   ├── AccountExportResponse.java
@@ -878,21 +911,26 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                             복원할 수 없으면 백업이 아니라 기념품이다.
     │   │   │                             규칙 셋: 같은 번호판이면 기록만 붙이고 차량 정보는
     │   │   │                             안 건드린다(파일이 옛날 것일 수 있다) ·
-    │   │   │                             **같은 기록은 건너뛴다**(두 번 넣어도 두 배가 되지
-    │   │   │                             않아야 한다 — id 가 JSON 에 없어 종류·날짜·주행거리로
-    │   │   │                             판정) · 하나라도 걸리면 전부 안 들어간다.
+    │   │   │                             **이미 있던 기록과 같으면 건너뛴다**(두 번 넣어도 두 배가 되지
+    │   │   │                             않아야 한다 — id 가 JSON 에 없어 내용으로 판정. 정비는
+    │   │   │                             종류·날짜·주행거리·비용·설명, 주유는 날짜·주행거리·주유량·금액) ·
+    │   │   │                             하나라도 걸리면 전부 안 들어간다.
+    │   │   │                             **파일 안의 기록끼리는 비교하지 않는다**(10-03) — 날짜·주행거리만
+    │   │   │                             보고 파일 안에서도 지우던 때는 내보내기 → 빈 계정 가져오기에서
+    │   │   │                             같은 날의 서로 다른 기록이 사라졌다. 정비는 날짜 오름차순으로 넣는다
+    │   │   │                             (최신순 파일을 그대로 넣으면 같은 날 두 건의 선후가 뒤집혔다).
     │   │   │                             같은 차인지는 DB 에 묻는다(규칙 14-1). 차량 주행거리는
     │   │   │                             파일 값과 기록의 주행거리 중 큰 쪽까지 올린다(등록과 같은 규칙).
     │   │   │                             **첫 조회가 사용자 행 잠금**(findByIdForUpdate) — 같은 파일을 동시에
     │   │   │                             두 번 넣으면 두 배로 들어가거나 데드락이 났다. 잠금이 첫 조회여야
     │   │   │                             대기 뒤에 앞선 가져오기의 기록이 보인다(REPEATABLE READ 스냅숏)
     │   │   ├── AccountExportService.java
-    │   │   │                             export(ownerId, exportedAt) — 쿼리 3번.
+    │   │   │                             export(ownerId, exportedAt) — 쿼리 5번(사용자·차량·정비·주유·주기).
     │   │   │                             "언제" 를 밖에서 받는다(테스트에서 고정하려고)
     │   │   └── AccountWithdrawalService.java
     │   │                                 withdraw(비밀번호 확인 → 차량·이력 → 사용자).
     │   │                                 차량·이력은 garage 의 VehicleRemovalService 에 맡긴다
-    │   └── AccountController.java        GET /api/users/me/export,
+    │   └── AccountController.java        GET /api/users/me/export, POST /api/users/me/restore,
     │                                     DELETE /api/users/me(204) + 세션 invalidate.
     │                                     **URL 은 users 인데 패키지는 account** — UserController
     │                                     에 두면 user 가 account 를 알게 되어 순환이다.
@@ -917,19 +955,23 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │                                     이유** — 정비·주유까지 담아 차량의 하위 자원이 아니다
     └── common/                           기능 어디에도 속하지 않는 공통 인프라
         ├── auth/
-        │   ├── LoginAttemptLimiter.java  비밀번호 대입 방어. 10분 안에 10번 넘게 시도하면 10분 잠금.
+        │   ├── ClientIp.java             IP 로 셀 때의 키(가입·재설정 요청). IPv6 는 앞 64비트.
+        │   │                             X-Forwarded-For 는 읽지 않는다(규칙 15)
+        │   ├── LoginAttemptLimiter.java  비밀번호 대입 방어. 직전 시도로부터 10분 안에 10번 넘게 시도하면 10분 잠금.
         │   │                             acquire 가 확인과 집계를 한 번에 — 성공하면 recordSuccess 로 지운다.
         │   │                             **계정이 없어도 센다** — 없는 이메일만 빨리 답하면
         │   │                             그 자체가 존재 여부를 알려준다. 인메모리라 재시작하면 잊는다.
-        │   │                             **네 곳이 키만 갈라 쓴다**: 로그인(`login:`+이메일) ·
-        │   │                             재설정 요청(`password-reset:`+이메일) ·
+        │   │                             **다섯 키가 접두사만 갈라 쓴다**: 로그인(`login:`+이메일) ·
+        │   │                             재설정 요청(`password-reset:`+이메일, `password-reset-ip:`+IP) ·
         │   │                             회원가입(`signup:`+IP) ·
         │   │                             비밀번호 확인(`password-check:`+사용자 id — 변경·탈퇴,
         │   │                             2026-09-30. 훔친 세션의 무제한 대입 방지). 그래서 잠겼을 때의 문구는
         │   │                             부르는 쪽이 넘긴다 — 안 그러면 가입 화면에
         │   │                             "로그인 시도가 너무 많습니다" 가 뜬다.
-        │   │                             **이름이 이미 좁다** — 넷을 다 뜻하는 이름으로
-        │   │                             바꿀 값이 생기면 그때 바꾼다
+        │   │                             **이름이 이미 좁다** — 다 뜻하는 이름으로
+        │   │                             바꿀 값이 생기면 그때 바꾼다.
+        │   │                             맵이 10만 개를 넘으면 잠기지 않은 키 중 가장 오래 쉰 것부터 9만 개까지 버린다
+        │   │                             (시도 횟수로 고르면 키마다 두 번 보내 피해 갔다)
         │   ├── CsrfTokenFilter.java      쿠키의 토큰과 헤더의 토큰을 비교(double submit).
         │   │                             **경로와 무관하게 쓰기 요청 전부**(2026-10-03). `/api/` 로 시작하는지
         │   │                             날 URI 로 보던 때는 `/%61pi/users`·`/api;x=1/users` 가 검사 없이 통과했다
@@ -953,7 +995,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   ├── PublicId.java             URL·API 용 12자 무작위 id(SecureRandom, 약 71비트).
         │   │                             차량·정비 이력·주유 기록이 쓴다 — 규칙 9-1
         │   └── BaseTimeEntity.java       @MappedSuperclass + @EntityListeners.
-        │                                 createdAt/updatedAt 을 네 엔티티가 상속받는다.
+        │                                 createdAt/updatedAt 을 여섯 엔티티가 상속받는다.
         │                                 테이블을 만들지 않고 필드만 자식에 합쳐지므로
         │                                 컬럼 이름이 그대로다(ddl-auto 가 안 건드린다)
         ├── InputText.java                입력 앞뒤 공백 정리. strip / required(비면 400). 규칙 14-1
@@ -1033,8 +1075,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
             │   │                         표현할 수 없는 규칙(정렬 화이트리스트)이
             │   │                         생겨 추가했다
             │   ├── TooManyRequestsException.java
-            │   │                         429 전용. 로그인·재설정 요청·회원가입
-            │   │                         셋이 같은 리미터를 키만 갈라 쓴다
+            │   │                         429 전용. 로그인·재설정 요청·회원가입·비밀번호 확인
+            │   │                         넷이 같은 리미터를 키만 갈라 쓴다
             │   ├── AuthenticationFailedException.java
             │   │                         401 전용
             │   ├── ForbiddenAccessException.java
@@ -1088,7 +1130,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                          운영 전용 덮어쓰기. SPRING_PROFILES_ACTIVE=prod 하나로
                                          springdoc 문서를 닫고, SQL·bind 로깅을 끄고,
                                          세션 쿠키 secure 를 켠다(CsrfTokenFilter 가 같은 키를
-                                         읽으므로 CSRF 쿠키도 같이 따라온다).
+                                         읽으므로 CSRF 쿠키도 같이 따라온다). DB_USERNAME·DB_PASSWORD·
+                                         APP_BASE_URL 은 기본값이 없어 빠뜨리면 기동이 실패한다.
                                          **주석으로 "배포할 때 끄세요" 라고 적어 두는 것과의
                                          차이가 이 파일의 전부다** — 주석은 사람이 기억해야 하고
                                          프로파일은 환경변수가 대신 기억한다
@@ -1100,7 +1143,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 321개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 330개.
 
     src/test/java/com/odolog/app/
     ├── DependencyDirectionTest.java                패키지 사이 import 방향을 허용 목록으로 고정(2026-10-03).
@@ -1112,8 +1155,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   └── GarageVehicleControllerTest.java        @WebMvcTest — 목록 페이지 응답, 잘못된 sort 400, 삭제 204·401
     ├── common/
     │   ├── auth/
+    │   │   ├── ClientIpTest.java                   IPv6 앞 64비트 묶기, IPv4 그대로
     │   │   ├── LoginAttemptLimiterTest.java        시계를 밖에서 넣는다 — 안에서 now() 를 부르면
-    │   │   │                                       잠금 만료를 테스트할 수 없다. 대소문자 우회·동시 시도 200개도 본다
+    │   │   │                                       잠금 만료를 테스트할 수 없다. 대소문자 우회·동시 시도 200개,
+    │   │   │                                       키 10만 개 쏟아내기(두 번씩 보내도 상한 유지)도 본다
     │   │   ├── CsrfTokenFilterTest.java            필터를 직접 호출한다. @WebMvcTest 로 하면
     │   │   │                                       Filter 빈이 같이 올라와 기존 테스트가 전부 403
     │   │   └── LoginSessionRegistryTest.java       지금 세션만 남기기, 남의 세션 불가침, 계정 전환·끝난 세션 정리
@@ -1138,7 +1183,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   ├── PasswordResetMailerTest.java        커밋 뒤·다른 스레드에서 발송, 실패를 삼키는지, 받는 사람 언어
     │   │   └── application/
     │   │       ├── PasswordResetServiceTest.java   Mockito — 없는 주소는 조용히, 저장은 해시로,
-    │   │       │                                   만료·재사용 거절, **메일 실패해도 성공**
+    │   │       │                                   만료·재사용 거절, **메일 실패해도 성공**,
+    │   │       │                                   요청 스레드는 횟수만, 충돌 시 한 번 다시, 대기 200개 상한
     │   │       └── UserServiceTest.java            Mockito — 중복·암호화·로그인·부분수정,
     │   │                                           비밀번호 확인 잠금, 변경 시 재설정 링크 폐기, 전각 공백 거부
     │   ├── repository/
@@ -1150,14 +1196,14 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                           올라오는 예외의 "모양" 고정
     │   └── controller/
     │       ├── PasswordResetControllerTest.java    @WebMvcTest — 204/400/401/429.
-    │       │                                       가입 여부와 무관하게 같은 응답인지
+    │       │                                       가입 여부와 무관하게 같은 응답인지, IP 한도면 서비스까지 안 감
     │       └── UserControllerTest.java             @WebMvcTest — 201/409, 세션 저장, /me
     ├── vehicle/
     │   ├── VehicleRepositoryTest.java              @DataJpaTest — 페이징·LAZY·주행거리·
     │   │                                           소유자별 번호판 중복
     │   ├── VehicleServiceTest.java                 Mockito — 404·감소방지·번호판 중복·공백
-    │   ├── VehicleServiceTransactionTest.java      @SpringBootTest — 유일하게 진짜 컨테이너를
-    │   │                                           띄운다. dirty checking이 DB까지 가는지 검증
+    │   ├── VehicleServiceTransactionTest.java      @SpringBootTest — 진짜 컨테이너를 띄운다.
+    │   │                                           dirty checking이 DB까지 가는지 검증
     │   └── VehicleControllerTest.java              @WebMvcTest — 401/400/201/404, 500 본문, 405
     ├── fuel/
     │   ├── domain/
@@ -1175,7 +1221,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │                                               미래 날짜), /summary 라우팅, 목록 페이지
     ├── account/
     │   ├── service/
-    │   │   ├── AccountRestoreServiceTest.java      같은 번호판은 기록만 붙이기, 같은 기록 건너뛰기,
+    │   │   ├── AccountRestoreServiceTest.java      같은 번호판은 기록만 붙이기, 있던 기록과 같으면 건너뛰기,
+    │   │   │                                       파일 안의 같은 날 다른 기록은 모두 넣기, 정비는 오래된 것부터,
     │   │   │                                       통화 칸 없는 옛 파일은 원화, 미래 날짜 하나면 전부 취소,
     │   │   │                                       차량 주행거리는 오르기만
     │   │   ├── AccountExportServiceTest.java       Mockito — 이력을 각 차량 밑으로 나누는지,
@@ -1196,7 +1243,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     └── maintenance/
         ├── domain/
         │   ├── NextServiceTest.java                지남 판정(딱 그 값·그 날도 지남), 차량별 주기,
-        │   │                                       한쪽만 덮어쓴 주기(customIntervalKm/Months)
+        │   │                                       한쪽만 덮어쓴 주기(customIntervalKm/Months),
+        │   │                                       응답의 기본 주기는 종류의 값(편집 폼 회색 숫자)
         │   └── ServiceTypeTest.java                값을 다시 적지 않고 **약속만** 고정 —
         │                                           "OTHER 를 뺀 모든 종류는 주기가 최소
         │                                           하나", 양수, 이름 30자 이하(컬럼 폭)
@@ -1211,7 +1259,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 
     ※ Mockito 테스트는 스프링 프록시를 안 거치므로 `@Transactional` 이 아예 적용되지 않고,
       `@WebMvcTest` 는 서비스가 `@MockitoBean` 이라 진짜 코드가 돌지 않는다. 즉 트랜잭션 설정
-      실수는 이 둘로는 절대 못 잡는다 — 그래서 `VehicleServiceTransactionTest` 하나를 둔다.
+      실수는 이 둘로는 절대 못 잡는다 — 그래서 `@SpringBootTest` 를 넷 둔다(차량 트랜잭션 · 탈퇴 ·
+      동시 가져오기 · 스키마 대조). 잠금·FK·데드락처럼 실제 DB 에서만 드러나는 것을 본다.
 
 ### 프론트엔드 — `frontend/`
 
@@ -1244,7 +1293,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         ├── main.tsx                        Vite 진입점. **index.html이 이 경로를 직접 가리키므로
         │                                   폴더로 내려보낼 수 없다** (백엔드의 OdoLogApplication 과
         │                                   같은 이유로 남은 예외).
-        │                                   ThemeProvider > BrowserRouter > AuthProvider > App
+        │                                   ThemeProvider > BrowserRouter > AuthProvider > I18nProvider > App
+        ├── index.css                       디자인 토큰 전부(:root 라이트 / :root.dark 다크). 위 "디자인 시스템"
         ├── env.d.ts                        import.meta.env 타입 선언
         ├── app/                            조립층. **여러 기능을 동시에 알아도 되는 유일한 자리**
         │   ├── App.tsx                     라우트 12개 정의 + Header·Footer 배치. 본문 폭 76rem
@@ -1302,7 +1352,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │   ├── components/
         │   │   │   ├── ExportCard.tsx      받아 온 JSON 을 Blob 으로 만들어 내려준다 —
         │   │   │   │                       <a href> 로 바로 받으면 세션·CSRF 헤더가 빠진다
-        │   │   │   ├── RestoreForm.tsx     파일을 브라우저에서 읽어 JSON 으로 보낸다
+        │   │   │   ├── RestoreForm.tsx     파일을 브라우저에서 읽어 JSON 으로 보낸다. 10MB 를 넘으면
+        │   │   │   │                       보내기 전에 막는다 — 서버가 연결을 끊으면 "연결 실패" 로 보인다
         │   │   │   ├── WithdrawCard.tsx    접힌 채 시작. 비밀번호 확인
         │   │   │   └── AppearanceCard.tsx
         │   │   └── ProfilePage.tsx         /me. Section 6개(계정 / 비밀번호 / 언어·단위 / 화면 / 내 기록 / 탈퇴).
@@ -1336,7 +1387,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │   │   └── types.ts
         │   │   └── components/
         │   │       ├── FuelSummaryCard.tsx
-        │   │       │                       평균 연비 히어로 + 통계 4칸
+        │   │       │                       평균 연비 히어로 + 통계 4칸 + 구간 연비 추이 막대
+        │   │       │                       (EfficiencyTrend — <details> 표 함께. L/100km 면 "작을수록 좋음")
         │   │       ├── FuelSection.tsx     목록 + 페이지네이션 + 삭제 + 폼 토글. 폼 key 필수(정비와 같다)
         │   │       └── FuelForm.tsx        등록·수정 겸용. 입력 중 리터당 단가 표시
         │   └── maintenance/
@@ -1347,10 +1399,13 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │       └── components/             pages/ 가 없다 — 자기 라우트 없이 차량 상세에 얹힌다
         │           ├── NextServiceCard.tsx
         │           │                       이력 있는 종류의 다음 정비 시점(요청 1번) + 차량별 주기 폼.
-        │           │                       재조회는 부모가 key 를 바꿔 재생성
+        │           │                       재조회는 부모가 key 를 바꿔 재생성. 주기 폼의 회색 숫자는
+        │           │                       종류의 기본 주기(defaultIntervalKm/Months) — 비우면 쓰일 값
         │           ├── MaintenanceSection.tsx
         │           │                       목록 + 페이지네이션 + 삭제 + 폼 토글.
-        │           │                       폼에 key(기록 id) 필수 — 없으면 열린 폼의 입력이 다른 행에 덮어써진다
+        │           │                       폼에 key(기록 id) 필수 — 없으면 열린 폼의 입력이 다른 행에 덮어써진다.
+        │           │                       목록 밖(빠른 정비)에서 기록이 생기면 key 가 아니라 refreshVersion 으로
+        │           │                       재조회 — 재생성하면 열어 둔 수정 폼·필터·페이지가 말없이 사라졌다
         │           ├── MaintenanceForm.tsx
         │           │                       등록·수정 겸용 (record가 null이면 등록). 비용·주행거리 빈칸 = null
         │           └── QuickServiceForm.tsx
@@ -1385,7 +1440,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │   │                           변환은 화면에서만. 주행거리 판정(looksBigJump)도 km 로 바꾼 뒤
         │   │   ├── money.ts                통화의 최소 단위 ↔ 입력칸 값. 소수 자리는 Intl 에서
         │   │   ├── odometer.ts             주행거리 입력 판정(looksPast·looksBigJump). 주유·정비·갱신 폼 공용
-        │   │   ├── limits.ts               주행거리·금액 상한 + 비밀번호 바이트 계산.
+        │   │   ├── limits.ts               주행거리·금액·요청 본문(10MB) 상한 + 비밀번호 바이트 계산.
         │   │   │                           maxLength 는 글자 수만 세서 한글 24자(=72바이트)를
         │   │   │                           못 막는다 — 저장 전에 알려 주려면 직접 세야 한다.
         │   │   │                           백엔드 InputLimits 와 같은 숫자다 —
@@ -1397,7 +1452,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │   ├── format.test.ts          todayString 을 자정 직후·직전 두 시각으로 본다 —
         │   │   │                           어느 표준시대에서 돌려도 결과가 같아야 한다
         │   │   ├── hooks/
-        │   │   │   ├── useAsyncData.ts     조회 4곳의 공통 훅. data/loading/error +
+        │   │   │   ├── useAsyncData.ts     조회 8곳의 공통 훅. data/loading/error +
         │   │   │   │                       reload()/setData. cancelled 플래그가 여기 한 곳에만
         │   │   │   ├── usePageInRange.ts   받은 페이지가 비었는데 0쪽이 아니면 마지막 장으로(2026-10-03).
         │   │   │   │                       다음 연타·연속 삭제 뒤 빈 목록 안내만 남아 빠져나올 길이 없었다
@@ -1445,8 +1500,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │       │   └── section.tsx         설정 화면용 2단(왼쪽 설명 / 오른쪽 내용).
         │       │                           넓은 화면의 남는 폭을 여백이 아니라 정보로 채운다
         │       ├── state.tsx               LoadingText / ErrorText / NoticeText / Skeleton
-        │       ├── pagination.tsx          목록 2곳이 복사해 쓰던 페이지 이동 UI
-        │       ├── mark.tsx                계기판 로고 SVG. 헤더·로그인·빈 상태 3곳이 공유
+        │       ├── pagination.tsx          목록 3곳(차량·정비·주유)이 쓰는 페이지 이동 UI
+        │       ├── mark.tsx                계기판 로고 SVG. 헤더·인증 화면·랜딩·홈·차량 목록 5곳이 공유
         │       └── cn-usage.test.ts        한 기능에 속하지 않는 가드라 여기 있다. 아래 참고
         └── dependency-direction.test.ts
 
@@ -1518,13 +1573,15 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 **`account`·`summary`·`garage` 가 백엔드의 조율 층이다** (2026-09-16 / 09-17 / 10-03 신설).
 `garage` 는 차량 단위의 같은 일을 한다 — 차량 삭제의 순서(서비스 주입), 차량 목록의 지난 정비 수(리포지토리 주입).
 `summary` 는 홈 화면 요약을 위해 세 기능을 **읽어서 합치고**, `account` 는 회원 탈퇴에서
-**순서를 조율한다**. 그래서 `summary` 는 리포지토리를, `account` 는 서비스를 주입받는다 —
+**순서를 조율한다**. 그래서 `summary` 는 리포지토리를, `account` 의 탈퇴는 서비스를 주입받는다 —
 집계에는 각 기능의 비즈니스 규칙이 필요 없고, 삭제에는 필요하기 때문이다. 프론트의 `app/` 과 정확히 같은 성격 —
-**여러 기능을 동시에 알아도 되는 유일한 자리**다. 회원 탈퇴가 user·vehicle·maintenance 를 모두
+**여러 기능을 동시에 알아도 되는 유일한 자리**다. 회원 탈퇴가 user·vehicle·maintenance·fuel 을 모두
 건드리는데, 이걸 `UserService` 에 넣으면 `user → vehicle` 역방향 의존이 생긴다. `common` 도 안 된다
 — 세 기능이 전부 `common` 을 의존하므로 `common` 이 `vehicle` 을 알면 진짜 순환이 된다.
 `account` 는 **순서만 정하고 실제 삭제는 각 기능에 맡긴다.** 여기서 리포지토리를 직접 부르면
-조율 층이 남의 테이블 구조를 알게 된다.
+조율 층이 남의 테이블 구조를 알게 된다. **알려진 예외는 가져오기 하나다** — 기록 2만 건을 한 트랜잭션에
+넣는 일괄 작업이라 리포지토리에 직접 쓰고, 등록과 같은 규칙을 그 안에서 다시 적용한다(트리의 `account/` 설명).
+등록 규칙을 바꾸면 `AccountRestoreService` 도 같이 본다.
 
 `shared/theme` 는 `shared/ui` 와 같은 층이다. `ThemeToggle` 이 `Button` 대신 평범한 `<button>` 을
 쓰는 이유가 이것 — 같은 층끼리 얽히는 것보다 20줄짜리 버튼을 직접 쓰는 편이 싸다.
@@ -1565,6 +1622,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 새 작업을 마치면 `HISTORY.md` 맨 위에 항목을 더하고, 아래 체크리스트에서 그 줄을 지운다.
 
 **지금 열려 있는 것은 눈 확인이다: Phase 6(6-B~6-E) 과 Phase 7(7-H). Phase 7 의 코드는 끝났다.**
+운영 DB 는 `vehicles.version` 하나만 다음 기동 뒤 확인이 남았다(Phase 7 의 "운영 DB").
 ## 완성까지의 로드맵
 
 **"완성"의 정의**: 회원/차량/정비 이력을 관리하는 백엔드 API + 그걸 실제로 쓸 수 있는
@@ -1625,7 +1683,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ## Phase 4 — 차량 관리 화면 (완료)
 
-→ 눈 확인은 **Phase 6 의 6-B(1회차)** 로 합쳤다. 해당 항목은 B-13 ~ B-33, B-109.
+→ 눈 확인은 **Phase 6 의 6-B(1회차)** 로 합쳤다. 해당 항목은 B-13 ~ B-33, B-110.
 
 ---
 
@@ -1686,8 +1744,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] **A-5** 1회차 기준 상태를 맞춘다: **OS 라이트 모드 / 브라우저 폭 1440px 근처 / 확대 100%**
 - [ ] **A-6** 시작 데이터를 정한다. **2026-09-17 기준 운영 스키마는 비어 있지 않다** —
       `users 1 · vehicles 2 · maintenance_records 3 · fuel_records 4`.
-      1회차는 **회원가입부터 데이터가 쌓이는 순서**로 짜여 있고, 특히 B-107(남의 차량이 안 보임) ·
-      B-109(차량 삭제 시 동반 삭제를 `COUNT(*)` 로 확인) · B-114(탈퇴 후 0건)은 **빈 상태여야
+      1회차는 **회원가입부터 데이터가 쌓이는 순서**로 짜여 있고, 특히 B-108(남의 차량이 안 보임) ·
+      B-110(차량 삭제 시 동반 삭제를 `COUNT(*)` 로 확인) · B-115(탈퇴 후 0건)은 **빈 상태여야
       판정이 선명하다.** 남은 행 위에서 하면 "원래 있던 행인지 방금 만든 행인지"를 매번 따져야 한다.
       → 비우고 시작한다면 **자식 테이블 먼저**다(FK 제약):
 
@@ -1701,7 +1759,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 ### 6-B. 1회차 — 기능 한 바퀴 (라이트 / 1440px)
 
-데이터가 쌓이는 순서로 배열했다. 위에서부터 그대로 따라가면 완료 판정 기준 10개가 전부 덮인다.
+데이터가 쌓이는 순서로 배열했다. 위에서부터 그대로 따라가면 완료 판정 기준(테스트 두 줄을 뺀 25개)이 전부 덮인다.
 
 #### 6-B-1. 비로그인 화면
 
@@ -1750,6 +1808,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       같아서" 일 수 있는데, 세션이 14일이라 안 끊으면 그 사람이 그대로 남는다
 - [ ] **B-08-6-2** **로그인한 채 같은 브라우저에서** 재설정 링크로 비밀번호를 바꾼다 → `/vehicles` 를 거치지 않고
       로그인 화면에 `비밀번호를 바꿨습니다…` 가 뜨는지(2026-10-03). 전에는 화면이 로그인 상태로 남아 안내가 사라졌다
+- [ ] **B-08-6-3** **다른 계정(B)으로 로그인한 채** A 의 재설정 링크로 바꾼다 → 로그인 화면으로 가고,
+      **새로고침해도 B 로 돌아오지 않는지**(2026-10-03). 화면만 비우던 때는 B 의 세션이 14일 그대로였다
 - [ ] **B-08-7** `token=` 없이 `/reset-password` 를 직접 열면 폼 대신 안내 + `다시 받기` 버튼인지
 - [ ] **B-08-8** `kím@…` 처럼 악센트가 섞인 이메일로 로그인 → 401 이 아니라 **`이메일 값을 확인해 주세요.`**(400)인지(2026-10-01)
 - [ ] **B-09** `/signup` → 비밀번호 7자로 제출 → 400. 가입 폼도 인라인 에러인지
@@ -1808,6 +1868,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       잘못 넣은 차량은 영영 그 값으로 남는다
 - [ ] **B-27-1** 탭 두 개로 같은 차량을 연다. B 탭에서 주유로 주행거리를 올린 뒤 A 탭에서 그 사이 값으로 갱신 →
       409 문구에 **올라간 현재 값**이 나오고, 히어로·입력칸도 그 값으로 바뀌는지(2026-10-03)
+      → 그 문구가 뜬 상태에서 주유를 저장해 주행거리가 다시 오르면 **문구가 사라지는지**
 - [ ] **B-28** '차량 정보' 카드가 닫혀 있을 때 **값 4개**(번호판·제조사·모델·연식)가 보이는지.
       긴 모델명이 라벨을 밀어내지 않는지(`min-w-0 truncate`)
 - [ ] **B-29** `수정` → 0.36s 펼쳐지는지. 칸이 열린 뒤 글자가 0.12s 늦게 들어오는지
@@ -1822,6 +1883,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 
 - [ ] **B-33-1** ⚠️ **시작하기 카드**(2026-09-30) — 등록 직후 오른쪽 맨 위에 뜨고 `4단계 중 1단계 완료`,
       1단계(주행거리)는 이미 체크인지. **지금 할 단계만** 설명과 버튼이 펼쳐지는지
+- [ ] **B-33-1-1** 새 차를 **0 km** 로 등록해도 1단계가 체크되고 2단계 `적기` 가 보이는지(2026-10-03)
 - [ ] **B-33-2** `적기` → 빠른 정비 폼. 5줄이 전부 `모름` 으로 시작하는지. `3개월 전` 을 누르면 그 아래
       **실제 날짜**(오늘에서 석 달 전)가 보이는지. 아무것도 안 고르고 저장하면 안내만 뜨고 요청이 안 나가는지
 - [ ] **B-33-3** 엔진오일 `6개월 전` + 타이어 `날짜 지정` 으로 저장 → 카드가 2단계를 체크하고, **다음 정비 시점
@@ -1831,6 +1893,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       취소하면 요청이 하나도 안 나가는지
 - [ ] **B-33-3-2** 빠른 정비에서 두 줄을 고르고, 첫 줄이 저장된 직후 백엔드를 끈다 → `1건은 저장했고 나머지는…` 인지.
       `취소` 를 누르면 정비 이력·다음 정비 카드에 **저장된 한 건이 보이는지**(2026-10-03)
+- [ ] **B-33-3-3** 정비 이력 행의 `수정` 을 열어 둔 채 시작하기 카드에서 빠른 정비를 저장 → 열어 둔 수정 폼·필터·페이지가
+      **그대로인지**, 목록에는 새 기록이 들어오는지(2026-10-03. 전에는 목록이 통째로 다시 그려져 사라졌다)
 - [ ] **B-33-4** 3단계 `주유 기록으로` → 주유 기록 카드로 스크롤되는지. 주유 1건 → 3단계 체크,
       2건 → 카드가 **사라지는지**. `안내 닫기` 는 새로고침해도 닫혀 있는지(그 차량만)
 - [ ] **B-34** 다음 정비 카드 — 이력이 없으므로 **"아직 계산할 이력이 없습니다…" 한 문장**만
@@ -1860,6 +1924,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       → `기타(OTHER)` 는 아무리 오래돼도 `지남` 이 안 붙는지(주기가 둘 다 없다)
 - [ ] **B-41-1-1** 정비 시점 직전의 차량에 **주유로** 시점을 넘기면 다음 정비 카드에 바로 `지남` 이 붙는지(2026-10-01).
       전에는 카드가 정비 기록이 바뀔 때만 다시 불러와서 새로고침해야 보였다
+- [ ] **B-41-1-2** 엔진오일 `주기` 에 10000 을 저장한 뒤 다시 열어 칸을 비운다 → 회색 숫자가 **5000(종류 기본값)** 인지,
+      그대로 저장하면 정말 5,000km 로 돌아가는지(2026-10-03. 전에는 회색 숫자가 10000 이라 말과 결과가 달랐다)
 - [ ] **B-41-2** 홈 `차량별` 카드에 **`정비 N건 지남`** 이 붙는지. 그 수가 차량 상세의
       `지남` 라벨 수와 **같은지** — 같은 계산(NextService)을 쓰므로 달라지면 안 된다
       (`NextServiceCard` 가 `key` 로 재생성되므로 "불러오는 중…"이 잠깐 보이는 건 정상)
@@ -1903,12 +1969,12 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       비운 채 저장을 누르면 브라우저가 막는지(`required`).
       **등록과 수정 둘 다** — 같은 폼이라 한쪽만 되는 일은 없어야 한다
 - [ ] **B-53** ⚠️ 주행거리를 **미리 채워진 값 그대로 두고** 저장 → **확인 창**이 뜨는지
-      ("주행거리가 차량의 현재 값과 같습니다 / 이대로 저장하면 이번 구간의 연비가 계산되지
-      않고, 차량 주행거리도 올라가지 않습니다"). **취소하면 저장이 안 되는지**(Network 탭에
+      (`· 주행거리가 차량의 현재 값(N km)과 같습니다.` / `이번 구간의 연비가 계산되지 않고,
+      차량 주행거리도 올라가지 않습니다.`). **취소하면 저장이 안 되는지**(Network 탭에
       요청이 없어야 한다), **확인하면 저장되는지**(막는 게 아니라 묻는 것이다).
       → 계기판 값으로 **고쳐서** 저장하면 창이 **안 떠야** 한다 — 아무 때나 뜨면 아무도 안 본다
       → 수정 폼에서는 뜨지 않는다(등록 전용). 이미 저장된 값을 다시 확인할 이유가 없다
-- [ ] **B-54** 주유량·금액을 입력하는 동안 **"리터당 약 N원"이 실시간으로** 바뀌는지.
+- [ ] **B-54** 주유량·금액을 입력하는 동안 **`L당 약 N원`(마일 계정은 `gal당`)이 실시간으로** 바뀌는지.
       영수증과 대조해 오타를 그 자리에서 잡으라고 둔 것이다
 - [ ] **B-54-1** ⚠️ **주유량·결제 금액을 비워 두고 저장** (2026-09-23 신설) → 막히지 않고
       **확인 창**이 뜨는지. 창에 비운 칸마다 한 줄씩(`주유량이 비어 있어…` / `결제 금액이 비어…`)
@@ -1949,6 +2015,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] **B-62** 두 번째 기록 등록(주행거리를 500km 올리고 25L) → 연비가 **20.00 km/L** 인지.
       손으로 나눠서 맞춰 볼 것
 - [ ] **B-63** 연비 카드의 **평균 연비 히어로 숫자**가 뜨는지. 통계 4칸(기록·주행·주유량·총 유류비)
+- [ ] **B-63-1** 구간이 쌓이면 **`최근 N회 구간 연비`** 막대가 뜨는지. `<details>` 표를 펼쳐 같은 값이 나오는지.
+      초기화 이후 구간만 그리는지, 불가능한 구간(`확인 필요`)이 막대로 튀지 않는지
 - [ ] **B-64** ⚠️ **카드 제목이 본문보다 크고 굵은지**(17px·굵기 600). 2026-09-19 까지
       `cn` 이 `text-section` 을 지워서 **16px·굵기 400 으로 렌더되고 있었다** — 카드 제목이
       본문과 거의 같아 구역 구분이 흐렸다. `연비`·`주유 기록`·`다음 정비 시점`·`차량 정보` 넷을
@@ -2094,6 +2162,10 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] **B-110-1** '내 기록' 구역에서 `JSON 내려받기` → `odolog-2026-09-21.json` 이 받아지는지.
       열어서 **차량 밑에 정비·주유가 중첩**돼 있는지, **비밀번호 해시가 없는지**,
       연비·단가 같은 계산값이 없는지(백업이라 원본만 담는다)
+- [ ] **B-110-2** 같은 구역의 `JSON 가져오기` 로 **방금 받은 파일**을 넣는다 → `이미 같은 기록이 있어 N건은 건너뛰었습니다` 로
+      아무것도 늘지 않는지. **새 계정**에 넣으면 차량·기록·주기가 그대로 생기고, 같은 날 같은 주행거리의
+      서로 다른 기록(예: 같은 날 주유 두 번)도 **둘 다** 들어오는지(2026-10-03)
+      → 10MB 를 넘는 파일을 고르면 보내기 전에 `보낸 내용이 너무 큽니다…` 인지. 오도로그 파일이 아니면 `…파일이 맞는지 확인해 주세요.`
 - [ ] **B-111** '회원 탈퇴' 구역이 **접힌 채로** 시작하는지. 버튼이 빨갛게 **채워져 있지 않은지**
 - [ ] **B-112** 탈퇴에서 비밀번호를 **틀리게** → 401 이 폼 안에 뜨고 **로그인이 유지되는지**
 - [ ] **B-113** 탈퇴 성공 → `/` 로 이동하고 헤더가 로그아웃 상태인지.
@@ -2160,7 +2232,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       `index.html` 인라인 스크립트가 일하는 순간이라 여기가 가장 중요하다
 - [ ] **D-4** 모바일 주소창 색이 테마를 따라오는지(`theme-color` — 3중 중복인 자리)
 - [ ] **D-5** `system` 으로 두고 **OS 설정을 바꿔** 따라오는지
-- [ ] **D-6** 10개 화면을 다크로 다시 훑어 **안 보이는 글자가 있는지**.
+- [ ] **D-6** 15개 상태(위 "볼 화면은 15개")를 다크로 다시 훑어 **안 보이는 글자가 있는지**.
       `faint`(대비 3.2)가 날짜·번호판 같은 읽어야 하는 값에 쓰이면 **그 값만** 안 보인다
       → 2026-09-19 에 두 곳을 고쳤다. 특히 확인할 자리: 주유 목록의
         **"· 다음 주유부터 계산"** 과 월별 차트 말풍선의 **"정비 N · 주유 N"**.
@@ -2180,7 +2252,7 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
 - [ ] **E-4** 차트 막대에 Tab → 마우스 없이도 **같은 값**이 뜨는지
 - [ ] **E-5** 페이지 이동 버튼에 `aria-label` 이 읽히는지
 - [ ] **E-6** 스크린리더의 **heading 목록**(VoiceOver `⌃⌥U` → 제목)으로 차량 상세를 훑었을 때
-      카드 여섯의 제목이 전부 잡히는지. `CardTitle` 이 `div` 였던 동안에는 h1 하나만 잡혀
+      카드 제목이 전부(시작하기 카드가 보이면 일곱, 아니면 여섯) 잡히는지. `CardTitle` 이 `div` 였던 동안에는 h1 하나만 잡혀
       **화면 전체가 제목 없는 한 덩어리로 보였다**
 - [ ] **E-7** DevTools > Rendering > `Emulate prefers-reduced-motion` → **연출이 전부 멈추는지**.
       특히 차트 막대가 **잠깐 안 보이는 시간으로 남지 않는지**(지연도 0 이어야 한다)
@@ -2214,8 +2286,8 @@ Phase 1은 **완료**. 아래는 조건이 갖춰지면 재검토할 보류 항�
       → 지금 방침: 폼 검증 실패(400/409)는 해당 필드 아래 인라인, 그 외(500 등)는 토스트.
       → **토스트 컴포넌트가 아직 없다.** B-08·B-19 에서 인라인만으로 충분했는지 보고 정한다.
 - [ ] 백엔드 400 검증 응답과 폼 필드 연결
-      → 현재 `ErrorResponse`는 `message` 하나뿐이라 **어느 필드가 틀렸는지 모른다.**
-        필드별 표시가 꼭 필요하면 백엔드에 `fieldErrors` 추가가 선행돼야 한다(백로그).
+      → 지금 `ErrorResponse` 는 `code`·`message` 와 **첫 오류의 `field` 하나**를 싣는다(규칙 16).
+        여러 칸을 한 번에 표시하려면 백엔드에 `fieldErrors` 추가가 선행돼야 한다(백로그).
       → B-09(비밀번호 7자)에서 메시지만으로 어느 칸이 문제인지 알 수 있었는지가 판단 근거다.
 - [ ] PWA 로 만들지 (manifest + 아이콘 2종 + 서비스 워커)
       → 웹으로 확정했으므로 "홈 화면 아이콘"을 얻는 유일한 길이다. 비용이 거의 0 이고
@@ -2296,7 +2368,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] **H-3** 차량 등록 후 주행거리 `10000` 입력 → 저장된 값(DB)이 `16093` km 인지. 다시 열었을 때 `10,000 mi` 인지
 - [ ] **H-4** 정비 비용 `45.67` → DB `4567` + `USD`, 목록 `$45.67`. 원화 사용자의 비용 칸은 **소수점이 막히는지**(step 1)
 - [ ] **H-5** 주유 `10` gal · `$40` → 목록 `10.00 gal`, 입력 중 안내 `About $4.00 per gal`
-- [ ] **H-6** 연비 카드가 `mpg` 로, `L/100km` 로 바꾸면 추이 그래프 아래에 **"작을수록 좋음"** 안내가 붙는지
+- [ ] **H-6** 연비 카드가 `mpg` 로, `L/100km` 로 바꾸면 추이 그래프 아래에 **`이 단위는 숫자가 작을수록 연비가 좋습니다.`** 가 붙는지
 - [ ] **H-7** 프로필 → "Language & units" 에서 한국어로 바꾸면 **저장 즉시** 화면 전체가 바뀌는지(새로고침 없이)
 - [ ] **H-8** 통화를 KRW 로 바꾼 뒤 홈 → 달러 기록이 합계에서 빠지고 **"통화가 KRW 가 아닌 기록 N건…"** 안내가 뜨는지.
       최근 활동의 달러 기록은 **그대로 `$45.67`** 인지(한 건 표시는 자기 통화)
@@ -2345,7 +2417,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 
 아래 시나리오를 브라우저에서 처음부터 끝까지 막힘없이 수행할 수 있으면 "완성"이다.
 
-**Phase 6 의 1회차(6-B) 155개를 순서대로 따라가면 아래가 전부 덮인다.** 오른쪽이 그 항목
+**Phase 6 의 1회차(6-B) 161개를 순서대로 따라가면 아래가 전부 덮인다.** 오른쪽이 그 항목
 번호다 — 따로 한 번 더 돌 필요가 없다.
 
 - [ ] 회원가입 → 로그아웃 → 로그인 — B-10, B-104, B-106
@@ -2368,12 +2440,12 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 비밀번호 변경, 현재 비밀번호를 틀려도 로그아웃되지 않음 — B-102, B-103
 - [ ] 현재 비밀번호를 거듭 틀리면 막힘(훔친 세션의 대입 방지) — B-103-2
 - [ ] 비밀번호를 잊어도 메일로 재설정할 수 있음 — B-08-2, B-08-5, B-08-6
-- [ ] 탈퇴 전에 기록을 JSON 으로 챙겨 갈 수 있음 — B-110-1
-- [ ] 회원 탈퇴 후 그 계정의 데이터가 남지 않음 — B-113, B-114
+- [ ] 기록을 JSON 으로 챙겨 가고 되돌려 넣을 수 있음 — B-110-1, B-110-2
+- [ ] 회원 탈퇴 후 그 계정의 데이터가 남지 않음 — B-113, B-114, B-115
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-110
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-107
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-108, B-109
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (321개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (330개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (79개)
 
 ---

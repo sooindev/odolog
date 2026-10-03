@@ -5,6 +5,7 @@ import { ErrorText, NoticeText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { restoreAccount } from '@/features/account/api/endpoints'
+import { MAX_BODY_BYTES } from '@/shared/lib/limits'
 import type { AccountExport, AccountRestoreResult } from '@/features/account/api/types'
 
 /**
@@ -27,6 +28,12 @@ export function RestoreForm() {
 
     setResult(null)
     setError(null)
+    // 서버는 상한을 넘으면 연결을 끊을 수 있어 "연결 실패" 로 보임. 보내기 전에 막음
+    if (file.size > MAX_BODY_BYTES) {
+      setError(t.errors.codes.PAYLOAD_TOO_LARGE)
+      return
+    }
+
     setPending(true)
 
     try {

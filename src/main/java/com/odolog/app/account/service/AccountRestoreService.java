@@ -22,7 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.odolog.app.common.InputText;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -91,7 +95,8 @@ public class AccountRestoreService {
                 mergedVehicles++;
             }
 
-            // 기존 기록 열쇠 일괄 수집. 건별 조회 시 기록 수만큼 쿼리
+            // 가져오기 전에 있던 기록의 열쇠. 건별 조회 시 기록 수만큼 쿼리
+            // 파일 안의 기록끼리는 비교하지 않음. 같은 날·같은 주행거리의 서로 다른 기록이 사라짐
             Set<String> existingMaintenance = new HashSet<>();
             for (MaintenanceRecord record : maintenanceRecordRepository
                     .findByVehicleIdOrderByServiceDateDescIdDesc(vehicle.getId())) {
@@ -104,9 +109,9 @@ public class AccountRestoreService {
                 existingFuel.add(fuelKey(record));
             }
 
-            for (AccountRestoreRequest.MaintenanceData record : data.maintenanceRecords()) {
+            for (AccountRestoreRequest.MaintenanceData record : inInsertOrder(data.maintenanceRecords())) {
                 String key = maintenanceKey(record);
-                if (!existingMaintenance.add(key)) {
+                if (existingMaintenance.contains(key)) {
                     skipped++;
                     continue;
                 }
@@ -119,7 +124,7 @@ public class AccountRestoreService {
 
             for (AccountRestoreRequest.FuelData record : data.fuelRecords()) {
                 String key = fuelKey(record);
-                if (!existingFuel.add(key)) {
+                if (existingFuel.contains(key)) {
                     skipped++;
                     continue;
                 }
@@ -201,22 +206,45 @@ public class AccountRestoreService {
         return code;
     }
 
+    /**
+     * 정비는 날짜 오름차순으로 넣음. 내보낸 파일은 최신순이라 그대로 넣으면 id 가 뒤집혀
+     * 같은 날 두 건 중 "나중 것" 이 바뀌고 다음 정비 계산이 달라짐
+     * 같은 날짜끼리는 파일 순서를 거꾸로(내보내기의 id 내림차순 → 오름차순)
+     */
+    private List<AccountRestoreRequest.MaintenanceData> inInsertOrder(
+            List<AccountRestoreRequest.MaintenanceData> records) {
+        List<AccountRestoreRequest.MaintenanceData> ordered = new ArrayList<>(records);
+        Collections.reverse(ordered);
+        ordered.sort(Comparator.comparing(AccountRestoreRequest.MaintenanceData::serviceDate));
+        return ordered;
+    }
+
     // 중복 판정 열쇠. JSON 에 id 가 없어 내용으로 판정
-    // 정비: 종류·날짜·주행거리 / 주유: 날짜·주행거리
+    // 정비: 종류·날짜·주행거리·비용·설명 / 주유: 날짜·주행거리·주유량·금액
+    // 날짜·주행거리만 보면 같은 날의 서로 다른 기록(와이퍼·경적 수리, 두 번 나눠 넣은 주유)을 하나로 봄
     private String maintenanceKey(MaintenanceRecord record) {
-        return record.getType() + "|" + record.getServiceDate() + "|" + record.getServiceOdometer();
+        return record.getType() + "|" + record.getServiceDate() + "|" + record.getServiceOdometer()
+                + "|" + record.getCost() + "|" + record.getDescription();
     }
 
     private String maintenanceKey(AccountRestoreRequest.MaintenanceData record) {
-        return record.type() + "|" + record.serviceDate() + "|" + record.serviceOdometer();
+        return record.type() + "|" + record.serviceDate() + "|" + record.serviceOdometer()
+                + "|" + record.cost() + "|" + blankToNull(record.description());
     }
 
     private String fuelKey(FuelRecord record) {
-        return record.getFueledAt() + "|" + record.getOdometer();
+        return record.getFueledAt() + "|" + record.getOdometer() + "|" + litersKey(record.getLiters())
+                + "|" + record.getTotalCost();
     }
 
     private String fuelKey(AccountRestoreRequest.FuelData record) {
-        return record.fueledAt() + "|" + record.odometer();
+        return record.fueledAt() + "|" + record.odometer() + "|" + litersKey(record.liters())
+                + "|" + record.totalCost();
+    }
+
+    /** DB 는 32.40, 파일은 32.4 일 수 있어 자리수 맞춤 */
+    private String litersKey(BigDecimal liters) {
+        return liters == null ? "null" : liters.stripTrailingZeros().toPlainString();
     }
 
     /** 파일 기록 중 가장 큰 주행거리. 없으면 0 */

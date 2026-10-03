@@ -37,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -325,8 +326,8 @@ class AccountRestoreServiceTest {
     }
 
     @Test
-    @DisplayName("한 파일 안에 같은 기록이 두 번 있으면 한 번만 넣는다")
-    void skipsDuplicatesWithinFile() {
+    @DisplayName("한 파일 안의 똑같은 기록 둘은 둘 다 넣는다 — 원래 계정에도 둘이었다(내보내기 → 가져오기가 그대로 돌아오게)")
+    void keepsIdenticalRecordsWithinFile() {
         emptyAccount();
 
         AccountRestoreResponse result = accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(
@@ -334,9 +335,9 @@ class AccountRestoreServiceTest {
                         List.of(oilData(LocalDate.of(2026, 5, 1), 30000), oilData(LocalDate.of(2026, 5, 1), 30000)),
                         List.of(fuelData(LocalDate.of(2026, 5, 2), 30100), fuelData(LocalDate.of(2026, 5, 2), 30100))))));
 
-        assertThat(result.addedMaintenanceRecords()).isEqualTo(1);
-        assertThat(result.addedFuelRecords()).isEqualTo(1);
-        assertThat(result.skippedRecords()).isEqualTo(2);
+        assertThat(result.addedMaintenanceRecords()).isEqualTo(2);
+        assertThat(result.addedFuelRecords()).isEqualTo(2);
+        assertThat(result.skippedRecords()).isZero();
     }
 
     @Test
@@ -383,5 +384,41 @@ class AccountRestoreServiceTest {
         ArgumentCaptor<Vehicle> saved = ArgumentCaptor.forClass(Vehicle.class);
         verify(vehicleRepository).save(saved.capture());
         assertThat(saved.getValue().getOdometer()).isEqualTo(30100);
+    }
+
+    @Test
+    @DisplayName("같은 날·같은 주행거리라도 내용이 다른 기록은 둘 다 들어간다 — 파일 안의 기록끼리는 버리지 않는다")
+    void keepsDistinctRecordsOnSameDayAndOdometer() {
+        emptyAccount();
+        LocalDate day = LocalDate.of(2026, 9, 1);
+
+        AccountRestoreResponse result = accountRestoreService.restore(1L,
+                new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                        List.of(new AccountRestoreRequest.MaintenanceData(ServiceType.OTHER, "와이퍼 전구", null, null, null, day),
+                                new AccountRestoreRequest.MaintenanceData(ServiceType.OTHER, "경적 수리", 30000, null, null, day)),
+                        List.of(new AccountRestoreRequest.FuelData(day, 31500, new BigDecimal("10.00"), 17000, null, null, false),
+                                new AccountRestoreRequest.FuelData(day, 31500, new BigDecimal("20.00"), 34000, null, null, false))))));
+
+        assertThat(result.addedMaintenanceRecords()).isEqualTo(2);
+        assertThat(result.addedFuelRecords()).isEqualTo(2);
+        assertThat(result.skippedRecords()).isZero();
+    }
+
+    @Test
+    @DisplayName("정비는 날짜 오름차순으로 넣는다 — 최신순 파일을 그대로 넣으면 같은 날 기록의 선후가 뒤집힌다")
+    void insertsMaintenanceOldestFirst() {
+        emptyAccount();
+        LocalDate day = LocalDate.of(2026, 9, 1);
+
+        // 내보내기 순서(날짜·id 내림차순): 2,000km 가 나중 기록
+        accountRestoreService.restore(1L,
+                new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                        List.of(oilData(day, 2000), oilData(day, 1000), oilData(LocalDate.of(2026, 8, 1), 500)),
+                        List.of()))));
+
+        ArgumentCaptor<MaintenanceRecord> saved = ArgumentCaptor.forClass(MaintenanceRecord.class);
+        verify(maintenanceRecordRepository, times(3)).save(saved.capture());
+        assertThat(saved.getAllValues()).extracting(MaintenanceRecord::getServiceOdometer)
+                .containsExactly(500, 1000, 2000);
     }
 }

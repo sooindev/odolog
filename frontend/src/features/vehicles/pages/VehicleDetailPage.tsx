@@ -53,10 +53,16 @@ export function VehicleDetailPage() {
   const [fuelVersion, setFuelVersion] = useState(0)
   // 주유 목록 재생성용. 연비 기준점 변경 때만 사용
   const [fuelListVersion, setFuelListVersion] = useState(0)
-  // 정비 목록 재생성용. 목록 밖(시작하기 카드)에서 이력이 생겼을 때만 사용
+  // 정비 목록 재조회용. 목록 밖(시작하기 카드)에서 이력이 생겼을 때만 사용
   const [maintenanceListVersion, setMaintenanceListVersion] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // 정비·주유로 차량 값이 바뀌는 재조회. 주행거리 409 문구는 그 순간 낡으므로 함께 지움
+  function refreshVehicle() {
+    setOdometerConflict(null)
+    reloadVehicle()
+  }
 
   if (loading) {
     return <VehicleDetailSkeleton />
@@ -124,6 +130,8 @@ export function VehicleDetailPage() {
             vehicle={vehicle}
             onUpdated={setVehicle}
             conflict={odometerConflict}
+            // 409 뒤 재조회가 실패하면 "현재" 값을 말할 수 없음
+            reloadFailed={error !== null}
             onConflict={(message) => {
               setOdometerConflict(message)
               // 다른 곳에서 값이 오름. 최신 값을 받아 입력 기준도 맞춤
@@ -166,7 +174,7 @@ export function VehicleDetailPage() {
               setMaintenanceVersion((current) => current + 1)
               setMaintenanceListVersion((current) => current + 1)
               // 그때 주행거리를 적었다면 차량 값이 올랐을 수 있음
-              reloadVehicle()
+              refreshVehicle()
             }}
           />
 
@@ -176,14 +184,15 @@ export function VehicleDetailPage() {
             vehicleId={vehicle.id}
           />
 
+          {/* 재생성 대신 version 으로 재조회. 열어 둔 수정 폼·필터·페이지 유지 */}
           <MaintenanceSection
-            key={`maintenance-list-${maintenanceListVersion}`}
             vehicleId={vehicle.id}
             currentOdometer={vehicle.odometer}
+            refreshVersion={maintenanceListVersion}
             onChanged={() => {
               setMaintenanceVersion((current) => current + 1)
               // 서버가 올렸을 수 있는 차량 주행거리 재조회
-              reloadVehicle()
+              refreshVehicle()
             }}
           />
 
@@ -206,7 +215,7 @@ export function VehicleDetailPage() {
             onChanged={() => {
               setFuelVersion((current) => current + 1)
               // 서버가 올렸을 수 있는 차량 주행거리 재조회
-              reloadVehicle()
+              refreshVehicle()
             }}
           />
           </div>
@@ -275,12 +284,14 @@ function OdometerForm({
   vehicle,
   onUpdated,
   conflict,
+  reloadFailed,
   onConflict,
 }: {
   vehicle: VehicleResponse
   onUpdated: (vehicle: VehicleResponse) => void
   /** 직전 409 문구. 현재 값은 다시 불러온 vehicle 로 그림 */
   conflict: string | null
+  reloadFailed: boolean
   onConflict: (message: string | null) => void
 }) {
   const { t, f, unitSystem } = useI18n()
@@ -362,7 +373,9 @@ function OdometerForm({
 
           {error !== null && <ErrorText message={error} />}
           {conflict !== null && (
-            <ErrorText message={t.vehicles.odometer.conflict(conflict, f.distance(vehicle.odometer))} />
+            <ErrorText
+              message={reloadFailed ? conflict : t.vehicles.odometer.conflict(conflict, f.distance(vehicle.odometer))}
+            />
           )}
         </form>
       </CardContent>

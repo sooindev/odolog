@@ -66,7 +66,7 @@ public class FuelRecordService {
     }
 
     /**
-     * 페이지당 쿼리 3번. 마지막 행의 짝만 추가 조회
+     * 페이지당 쿼리 5번(차량·페이지·개수·직전 1건·평소 구간). 마지막 행의 짝만 추가 조회
      * 평소 구간은 이력 전체 기준. 페이지마다 판정이 달라지는 문제 방지
      */
     public Page<FuelRecordResponse> findByVehicle(Long requesterId, String vehicleId, Pageable pageable) {

@@ -25,7 +25,10 @@ public record NextServiceResponse(
         /** 직접 정한 km 주기. 기본값이면 null. 편집 폼이 기본값을 설정으로 굳히지 않게 */
         Integer customIntervalKm,
         /** 직접 정한 개월 주기. 기본값이면 null */
-        Integer customIntervalMonths
+        Integer customIntervalMonths,
+        /** 종류의 기본 주기. 편집 폼에서 칸을 비우면 쓰일 값이라 그대로 보여 줌 */
+        Integer defaultIntervalKm,
+        Integer defaultIntervalMonths
 ) {
 
     public static NextServiceResponse from(NextService next) {
@@ -40,6 +43,8 @@ public record NextServiceResponse(
                 next.intervalMonths(),
                 next.customized(),
                 next.customIntervalKm(),
-                next.customIntervalMonths());
+                next.customIntervalMonths(),
+                next.type().getRecommendedIntervalKm(),
+                next.type().getRecommendedIntervalMonths());
     }
 }

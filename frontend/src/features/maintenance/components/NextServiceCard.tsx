@@ -143,7 +143,7 @@ function IntervalForm({
   const shown = (km: number) => String(Math.round(fromKm(unitSystem, km)))
 
   // 직접 정한 칸만 채우고 기본값 칸은 비움. 기본값을 채우면 그대로 저장 시 설정으로 굳음
-  // 적용 중인 값은 placeholder. 처음 값을 기억해 손대지 않으면 저장값(km) 그대로
+  // 기본값은 placeholder(비우면 쓰일 값). 처음 값을 기억해 손대지 않으면 저장값(km) 그대로
   const [initialKm] = useState(result.customIntervalKm === null ? '' : shown(result.customIntervalKm))
   const [km, setKm] = useState(initialKm)
   const [months, setMonths] = useState(
@@ -187,7 +187,7 @@ function IntervalForm({
                 autoFocus
                 min={1}
                 max={Math.floor(fromKm(unitSystem, 500_000))}
-                placeholder={result.intervalKm === null ? t.common.none : shown(result.intervalKm)}
+                placeholder={result.defaultIntervalKm === null ? t.common.none : shown(result.defaultIntervalKm)}
                 className="tabular-nums"
                 value={km}
                 onChange={(event) => setKm(event.target.value)}
@@ -204,7 +204,9 @@ function IntervalForm({
                 type="number"
                 min={1}
                 max={120}
-                placeholder={result.intervalMonths === null ? t.common.none : String(result.intervalMonths)}
+                placeholder={
+                  result.defaultIntervalMonths === null ? t.common.none : String(result.defaultIntervalMonths)
+                }
                 className="tabular-nums"
                 value={months}
                 onChange={(event) => setMonths(event.target.value)}

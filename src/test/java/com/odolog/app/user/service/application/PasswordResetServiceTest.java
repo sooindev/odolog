@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -215,6 +216,49 @@ class PasswordResetServiceTest {
         // 가입 여부와 무관하게 같은 일만 하고 반환
         verify(rateLimiter).acquire(eq("password-reset:me@odolog.com"), any(), anyString());
         org.mockito.Mockito.verifyNoInteractions(userRepository, tokenRepository, mailer);
+        assertThat(scheduled).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("동시 요청과 충돌해 발급이 실패하면 한 번 다시 시도한다 — 조용히 메일이 안 가는 것 방지")
+    void retriesOnceOnConcurrencyFailure() {
+        when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
+        when(tokenRepository.deleteByUserId(1L))
+                .thenThrow(new CannotAcquireLockException("Record has changed since last read"))
+                .thenReturn(0);
+
+        service.request("me@odolog.com");
+        runScheduled();
+
+        verify(tokenRepository).save(any());
+        verify(mailer).send(eq("me@odolog.com"), anyString(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("만료 토큰 정리가 실패해도 발급은 계속된다")
+    void cleanupFailureDoesNotBlockIssue() {
+        when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
+        when(tokenRepository.deleteByExpiresAtBefore(any()))
+                .thenThrow(new CannotAcquireLockException("Record has changed since last read"));
+
+        service.request("me@odolog.com");
+        runScheduled();
+
+        verify(tokenRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("대기 중인 발급 작업이 상한에 닿으면 더 받지 않는다 — 실행기 대기열이 끝없이 쌓이지 않게")
+    void dropsRequestsBeyondPendingLimit() {
+        for (int i = 0; i < PasswordResetService.MAX_PENDING + 5; i++) {
+            service.request("flood" + i + "@odolog.com");
+        }
+
+        assertThat(scheduled).hasSize(PasswordResetService.MAX_PENDING);
+
+        // 처리되면 자리가 다시 남
+        runScheduled();
+        service.request("me@odolog.com");
         assertThat(scheduled).hasSize(1);
     }
 

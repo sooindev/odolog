@@ -8,6 +8,7 @@ import com.odolog.app.user.dto.request.SignUpRequest;
 import com.odolog.app.user.dto.request.UpdateProfileRequest;
 import com.odolog.app.user.dto.UserResponse;
 import com.odolog.app.user.service.application.UserService;
+import com.odolog.app.common.auth.ClientIp;
 import com.odolog.app.common.auth.LoginUser;
 import com.odolog.app.common.auth.SessionConst;
 import com.odolog.app.common.auth.LoginAttemptLimiter;
@@ -23,10 +24,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.HexFormat;
 
 @RestController
 @RequestMapping("/api/users")
@@ -54,31 +51,11 @@ public class UserController {
     @PostMapping
     public ResponseEntity<UserResponse> signUp(@Valid @RequestBody SignUpRequest request,
                                                  HttpServletRequest httpRequest) {
-        String limitKey = SIGNUP_KEY_PREFIX + clientIp(httpRequest);
+        String limitKey = SIGNUP_KEY_PREFIX + ClientIp.of(httpRequest);
         attemptLimiter.acquire(limitKey, ErrorCode.TOO_MANY_SIGNUP_ATTEMPTS, "회원가입 시도가 너무 많습니다.");
 
         User user = userService.signUp(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(user));
-    }
-
-    /**
-     * X-Forwarded-For 미사용. 신뢰할 프록시가 없어 헤더 조작으로 우회 가능
-     * IPv6 는 앞 64비트로 묶음. 한 가입자가 받는 /64 안에서 주소만 바꿔 우회하는 것 방지
-     */
-    static String clientIp(HttpServletRequest request) {
-        String address = request.getRemoteAddr();
-        if (address == null || !address.contains(":")) {
-            return address;
-        }
-        try {
-            byte[] bytes = InetAddress.getByName(address).getAddress();
-            if (bytes.length != 16) {
-                return address;
-            }
-            return HexFormat.of().formatHex(bytes, 0, 8) + "/64";
-        } catch (UnknownHostException e) {
-            return address;
-        }
     }
 
     @PostMapping("/login")

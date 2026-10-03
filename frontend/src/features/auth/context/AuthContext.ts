@@ -18,8 +18,8 @@ export interface AuthContextValue {
    * 실패는 그대로 전달
    */
   withdraw: (request: WithdrawRequest) => Promise<void>
-  /** 서버가 돌려준 사용자 정보로 교체. null 은 서버가 세션을 이미 끝낸 경우(비밀번호 재설정) */
-  replaceUser: (user: UserResponse | null) => void
+  /** 서버가 돌려준 사용자 정보로 교체 */
+  replaceUser: (user: UserResponse) => void
 }
 
 // 기본값 null. Provider 누락 시 즉시 오류

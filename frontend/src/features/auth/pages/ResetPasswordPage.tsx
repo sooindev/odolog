@@ -18,7 +18,7 @@ export function ResetPasswordPage() {
   const { t } = useI18n()
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { replaceUser } = useAuth()
+  const { logout } = useAuth()
   const token = params.get('token')
 
   const [newPassword, setNewPassword] = useState('')
@@ -40,8 +40,9 @@ export function ResetPasswordPage() {
 
     try {
       await confirmPasswordReset({ token: token ?? '', newPassword })
-      // 서버가 모든 세션을 끊음. 화면도 로그아웃 상태로 맞춰야 로그인 화면이 다른 곳으로 보내지 않음
-      replaceUser(null)
+      // 서버는 그 계정의 세션만 끊음. 다른 계정으로 로그인한 브라우저도 확실히 로그아웃
+      // 화면만 비우면 새로고침 시 그 세션으로 다시 로그인된 채 14일 유지
+      await logout()
       // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
       navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
     } catch (caught) {

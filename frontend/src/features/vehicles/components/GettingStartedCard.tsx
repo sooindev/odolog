@@ -59,7 +59,8 @@ export function GettingStartedCard({
   }
 
   const done: Record<StepKey, boolean> = {
-    odometer: vehicle.odometer > 0,
+    // 등록할 때 필수로 받음. 새 차 0km 도 적은 값이라 완료
+    odometer: true,
     services: data.services > 0,
     fuel: data.fuels >= 1,
     efficiency: data.fuels >= 2,

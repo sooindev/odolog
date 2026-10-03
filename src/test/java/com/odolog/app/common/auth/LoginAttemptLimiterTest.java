@@ -220,4 +220,23 @@ class LoginAttemptLimiterTest {
         assertThatThrownBy(() -> limiter.acquire("login:victim@x.com", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "잠김."))
                 .isInstanceOf(TooManyRequestsException.class);
     }
+
+    @Test
+    @DisplayName("키마다 두 번씩 쏟아내도 맵이 상한을 넘어 자라지 않는다 — 시도 횟수가 아니라 오래 쉰 순서로 버린다")
+    void evictsIdlestEvenWhenEachKeyTriedTwice() {
+        MovableClock clock = new MovableClock();
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(clock);
+
+        for (int i = 0; i < LoginAttemptLimiter.HARD_LIMIT + 10; i++) {
+            String key = "password-reset:flood" + i + "@x.com";
+            limiter.acquire(key, ErrorCode.TOO_MANY_RESET_REQUESTS, "많음.");
+            limiter.acquire(key, ErrorCode.TOO_MANY_RESET_REQUESTS, "많음.");
+            if (i % 1000 == 0) {
+                clock.advance(Duration.ofMillis(1));
+            }
+        }
+
+        Map<?, ?> map = (Map<?, ?>) ReflectionTestUtils.getField(limiter, "attempts");
+        assertThat(map.size()).isLessThanOrEqualTo(LoginAttemptLimiter.HARD_LIMIT);
+    }
 }
