@@ -63,7 +63,8 @@ public class AccountRestoreService {
 
     @Transactional
     public AccountRestoreResponse restore(Long userId, AccountRestoreRequest request) {
-        User owner = userService.findById(userId);
+        // 가장 먼저 잠금. 같은 파일을 동시에 두 번 넣어도 두 번째는 첫 번째가 넣은 기록을 보고 건너뜀
+        User owner = userService.findByIdForUpdate(userId);
         rejectOversized(request);
         rejectFutureDates(userToday.of(owner), request);
 

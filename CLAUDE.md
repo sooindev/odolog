@@ -882,7 +882,10 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                             않아야 한다 — id 가 JSON 에 없어 종류·날짜·주행거리로
     │   │   │                             판정) · 하나라도 걸리면 전부 안 들어간다.
     │   │   │                             같은 차인지는 DB 에 묻는다(규칙 14-1). 차량 주행거리는
-    │   │   │                             파일 값과 기록의 주행거리 중 큰 쪽까지 올린다(등록과 같은 규칙)
+    │   │   │                             파일 값과 기록의 주행거리 중 큰 쪽까지 올린다(등록과 같은 규칙).
+    │   │   │                             **첫 조회가 사용자 행 잠금**(findByIdForUpdate) — 같은 파일을 동시에
+    │   │   │                             두 번 넣으면 두 배로 들어가거나 데드락이 났다. 잠금이 첫 조회여야
+    │   │   │                             대기 뒤에 앞선 가져오기의 기록이 보인다(REPEATABLE READ 스냅숏)
     │   │   ├── AccountExportService.java
     │   │   │                             export(ownerId, exportedAt) — 쿼리 3번.
     │   │   │                             "언제" 를 밖에서 받는다(테스트에서 고정하려고)
@@ -1052,6 +1055,11 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                           같은 JDK 범용 예외를 4xx 로 매핑하지 않는다(규칙 12). 그것들은
                                           500 으로 간다. 예외 문구는 내보내지 않는다(내부 사정이 실린다).
                                           DataIntegrityViolation 은 UNIQUE 면 409, 아니면 500 + 우리 문구.
+                                          UNIQUE 는 **제약 이름으로 코드를 고른다**(2026-10-03) —
+                                          uk_users_email → EMAIL_DUPLICATE, uk_vehicles_user_plate_number →
+                                          PLATE_DUPLICATE. 경합으로 서비스의 중복 검사를 지나쳐도 같은 안내.
+                                          규칙 6 의 이름 붙이기가 여기서 값을 한다.
+                                          ConcurrencyFailure(@Version 충돌·데드락) → 409 CONCURRENT_UPDATE
                                           PropertyReferenceException(잘못된 sort) → 400
 
 **폴더를 옮기면 package 와 import 가 같이 바뀐다.** 같은 패키지로 모이면 import 가 사라지고
@@ -1092,7 +1100,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 315개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 321개.
 
     src/test/java/com/odolog/app/
     ├── DependencyDirectionTest.java                패키지 사이 import 방향을 허용 목록으로 고정(2026-10-03).
@@ -1115,6 +1123,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   └── PublicIdTest.java                   12자 영문·숫자, 만 번 만들어도 안 겹침
     │   ├── SecurityHeadersFilterTest.java          헤더 셋이 붙는지 + HSTS 는 https 에만 붙는지
     │   ├── RequestSizeLimitFilterTest.java         길이를 밝히면 413, 안 밝혀도 상한에서 끊기는지
+    │   ├── exception/
+    │   │   └── GlobalExceptionHandlerTest.java     유니크 제약 이름 → 코드(감싸인 원인까지), 데드락 → 409
     │   └── SchemaDriftCheckerTest.java             @SpringBootTest — 컬럼을 일부러 어긋나게 만들고
     │                                               되돌린다. 양방향 다 본다.
     │                                               **이 장치가 조용히 고장 나면 그때부터
@@ -1172,6 +1182,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                                       비밀번호 해시가 안 담기는지, 빈 계정
     │   │   ├── AccountWithdrawalServiceTest.java   Mockito — 삭제 순서(InOrder),
     │   │   │                                       비밀번호 틀리면 아무것도 안 지움
+    │   │   ├── AccountRestoreServiceTransactionTest.java
+    │   │   │                                       실제 DB 로 같은 파일 200건을 동시에 두 번. 잠금을 빼면
+    │   │   │                                       데드락으로 실패하는 것을 확인하고 넣었다
     │   │   └── AccountWithdrawalServiceTransactionTest.java
     │   │                                           @SpringBootTest — 기록·주기·재설정 토큰이 다 찬 계정을
     │   │                                           실제 DB 로 탈퇴. 자식 테이블이 늘면 여기서 FK 로 실패
@@ -2371,7 +2384,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-110
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-107
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-108, B-109
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (315개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (321개)
 - [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (79개)
 
 ---

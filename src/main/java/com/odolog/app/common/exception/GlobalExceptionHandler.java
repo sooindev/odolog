@@ -11,7 +11,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.util.Map;
 
 /**
  * ResponseEntityExceptionHandler 상속. 405·415·404 는 부모가 상태 코드 유지
@@ -58,9 +60,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ErrorResponse.from(e));
     }
 
-    /** 같은 차량을 동시에 고친 경우(@Version). 늦게 온 쪽이 다시 시도하도록 409 */
-    @ExceptionHandler(OptimisticLockingFailureException.class)
-    public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException e) {
+    /**
+     * 같은 행을 동시에 고친 경우. 늦게 온 쪽이 다시 시도하도록 409
+     * 낙관적 잠금(@Version) 충돌과 데드락·잠금 대기 실패 둘 다. 진 쪽은 이미 롤백돼 다시 보내면 됨
+     */
+    @ExceptionHandler(ConcurrencyFailureException.class)
+    public ResponseEntity<ErrorResponse> handleConcurrencyFailure(ConcurrencyFailureException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(ErrorCode.CONCURRENT_UPDATE,
                         "다른 곳에서 먼저 바뀌었습니다. 새로고침 후 다시 시도해 주세요."));
@@ -70,14 +75,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * 중복 검사와 저장 사이에 끼어든 요청 대비. 최종 방어선은 유니크 제약
      * UNIQUE 위반만 409. 그 밖의 제약 위반은 서버 문제라 500 + ErrorResponse(규칙 11)
      */
+    /** 이름 붙은 유니크 제약(규칙 6) → 서비스의 중복 검사가 던지는 것과 같은 코드 */
+    private static final Map<String, ErrorResponse> UNIQUE_CONSTRAINT_ERRORS = Map.of(
+            "uk_users_email", ErrorResponse.of(ErrorCode.EMAIL_DUPLICATE, "이미 가입된 이메일입니다."),
+            "uk_vehicles_user_plate_number", ErrorResponse.of(ErrorCode.PLATE_DUPLICATE, "이미 등록하신 차량 번호입니다."));
+
+    private static final ErrorResponse DUPLICATE_VALUE = ErrorResponse.of(ErrorCode.DUPLICATE_VALUE,
+            "이미 등록된 값입니다. 새로고침 후 다시 시도해 주세요.");
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
-        if (e.getCause() instanceof ConstraintViolationException cause
-                && cause.getKind() == ConstraintViolationException.ConstraintKind.UNIQUE) {
-
+        ConstraintViolationException cause = constraintViolationIn(e);
+        if (cause != null && cause.getKind() == ConstraintViolationException.ConstraintKind.UNIQUE) {
+            // 이름을 아는 제약은 서비스의 중복 검사와 같은 코드. 경합으로 검사를 지나쳐도 같은 안내
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(ErrorResponse.of(ErrorCode.DUPLICATE_VALUE,
-                            "이미 등록된 값입니다. 새로고침 후 다시 시도해 주세요."));
+                    .body(UNIQUE_CONSTRAINT_ERRORS.getOrDefault(cause.getConstraintName(), DUPLICATE_VALUE));
         }
 
         log.error("데이터 제약 위반. 엔티티와 실제 스키마가 어긋났을 수 있다 "
@@ -185,5 +197,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(ErrorCode.SERVER_ERROR,
                         "서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+    }
+
+    /** 원인 사슬에서 제약 위반 찾기. 커밋 시점 위반은 한 겹 더 감싸여 올라옴 */
+    private static ConstraintViolationException constraintViolationIn(Throwable error) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof ConstraintViolationException violation) {
+                return violation;
+            }
+        }
+        return null;
     }
 }

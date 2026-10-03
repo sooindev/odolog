@@ -100,6 +100,16 @@ public class UserService {
     }
 
     /**
+     * 사용자 행을 잠그고 조회. 같은 사용자의 다음 요청은 이 트랜잭션이 끝날 때까지 대기
+     * 트랜잭션의 첫 조회여야 함. 그 전에 읽은 것이 있으면 대기 뒤에도 옛 스냅숏을 봄
+     */
+    @Transactional
+    public User findByIdForUpdate(Long userId) {
+        return userRepository.findLockedById(userId)
+                .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + userId));
+    }
+
+    /**
      * 되돌릴 수 없는 동작 앞의 비밀번호 확인. 변경·탈퇴 공용
      * 로그인과 같은 횟수 제한. 없으면 훔친 세션으로 현재 비밀번호 무제한 대입
      */

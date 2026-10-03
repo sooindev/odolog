@@ -3,6 +3,8 @@ package com.odolog.app.vehicle;
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.user.domain.entity.User;
 import org.hibernate.Hibernate;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -156,5 +158,18 @@ class VehicleRepositoryTest {
         assertThat(vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(owner.getId(), "１２가3456", mine.getId()))
                 .isFalse();
         assertThat(vehicleRepository.findByOwnerIdAndPlateNumber(owner.getId(), "１２가3456")).isPresent();
+    }
+
+    @Test
+    @DisplayName("같은 소유자의 같은 번호판은 uk_vehicles_user_plate_number 로 막힌다 — 핸들러가 이 이름으로 PLATE_DUPLICATE 를 고름")
+    void duplicatePlateReportsConstraintName() {
+        vehicleRepository.saveAndFlush(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
+
+        assertThatThrownBy(() -> vehicleRepository.saveAndFlush(new Vehicle(owner, "12가3456", "기아", "K5", 2021)))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .cause()
+                .isInstanceOf(ConstraintViolationException.class)
+                .extracting(cause -> ((ConstraintViolationException) cause).getConstraintName())
+                .isEqualTo("uk_vehicles_user_plate_number");
     }
 }

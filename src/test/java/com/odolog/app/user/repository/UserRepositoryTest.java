@@ -78,7 +78,11 @@ class UserRepositoryTest {
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .cause()
                 .isInstanceOf(ConstraintViolationException.class)
-                .extracting(cause -> ((ConstraintViolationException) cause).getKind())
-                .isEqualTo(ConstraintViolationException.ConstraintKind.UNIQUE);
+                .satisfies(cause -> {
+                    ConstraintViolationException violation = (ConstraintViolationException) cause;
+                    assertThat(violation.getKind()).isEqualTo(ConstraintViolationException.ConstraintKind.UNIQUE);
+                    // 핸들러가 이 이름으로 EMAIL_DUPLICATE 를 고름(규칙 6 의 이름 붙이기 덕)
+                    assertThat(violation.getConstraintName()).isEqualTo("uk_users_email");
+                });
     }
 }
