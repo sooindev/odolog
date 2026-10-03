@@ -119,10 +119,25 @@ public class FuelRecordService {
             record.changeTotalCost(request.totalCost());
         }
         if (request.memo() != null) record.changeMemo(blankToNull(request.memo()));
-        if (request.resetPoint() != null) record.changeResetPoint(request.resetPoint());
-
         Long id = record.getVehicle().getId();
+        if (request.resetPoint() != null) {
+            changeResetPoint(id, record, request.resetPoint());
+        }
+
         return FuelRecordResponse.of(record, findPrevious(id, record), baselineOf(id));
+    }
+
+    /**
+     * 기준점은 차량당 하나. 설정·해제 모두 다른 기준점을 지움
+     * 남겨 두면 최신 것을 해제하거나 지웠을 때 옛 기준점이 말없이 되살아남
+     */
+    private void changeResetPoint(Long vehicleId, FuelRecord target, boolean resetPoint) {
+        for (FuelRecord other : fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId)) {
+            if (other != target && other.isResetPoint()) {
+                other.changeResetPoint(false);
+            }
+        }
+        target.changeResetPoint(resetPoint);
     }
 
     @Transactional
@@ -151,7 +166,8 @@ public class FuelRecordService {
         for (FuelRecord record : records) {
             if (currency.equals(record.getCurrency())) {
                 totalCost += record.totalCostOrZero();
-            } else {
+            } else if (record.getTotalCost() != null) {
+                // 금액이 비어 있으면 뺀 것이 없어 세지 않음
                 otherCurrency++;
             }
             // BigDecimal 합산이라 null 직접 제외

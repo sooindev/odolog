@@ -17,18 +17,19 @@ export function PasswordForm() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // 문구 대신 상태·원인. 언어를 바꾸면 남아 있던 안내도 새 언어로
+  const [changed, setChanged] = useState(false)
+  const [failure, setFailure] = useState<{ kind: 'mismatch' } | { kind: 'failed'; caught: unknown } | null>(null)
   const [pending, setPending] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setMessage(null)
-    setError(null)
+    setChanged(false)
+    setFailure(null)
 
     // 확인란은 전송하지 않음
     if (newPassword !== confirmPassword) {
-      setError(t.password.mismatch)
+      setFailure({ kind: 'mismatch' })
       return
     }
 
@@ -36,14 +37,14 @@ export function PasswordForm() {
 
     try {
       await changePassword({ currentPassword, newPassword })
-      setMessage(t.profile.password.changed)
+      setChanged(true)
       // 성공 시 입력칸 비움
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
     } catch (caught) {
       // 401 = 현재 비밀번호 오류
-      setError(errorMessage(caught, t, t.profile.password.failed))
+      setFailure({ kind: 'failed', caught })
     } finally {
       setPending(false)
     }
@@ -92,8 +93,16 @@ export function PasswordForm() {
             </Field>
           </div>
 
-          {message !== null && <NoticeText message={message} />}
-          {error !== null && <ErrorText message={error} />}
+          {changed && <NoticeText message={t.profile.password.changed} />}
+          {failure !== null && (
+            <ErrorText
+              message={
+                failure.kind === 'mismatch'
+                  ? t.password.mismatch
+                  : errorMessage(failure.caught, t, t.profile.password.failed)
+              }
+            />
+          )}
 
           <FormActions>
             <Button type="submit" disabled={pending}>

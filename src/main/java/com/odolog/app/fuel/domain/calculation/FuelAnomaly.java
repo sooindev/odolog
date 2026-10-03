@@ -81,7 +81,7 @@ public final class FuelAnomaly {
         }
     }
 
-    /** 성립하는 구간만. 연비 계산과 같은 규칙 */
+    /** 성립하고 가능한 구간만. 연비 계산과 같은 규칙 */
     private record Segment(int distance, BigDecimal efficiency) {
     }
 
@@ -101,8 +101,13 @@ public final class FuelAnomaly {
                 continue;
             }
 
-            segments.add(new Segment(distance,
-                    BigDecimal.valueOf(distance).divide(used, 2, RoundingMode.HALF_UP)));
+            BigDecimal efficiency = BigDecimal.valueOf(distance).divide(used, 2, RoundingMode.HALF_UP);
+            // 불가능한 값(입력 오류)도 제외. 구간이 적을 때 중앙값을 오염시킴
+            if (isImpossible(efficiency)) {
+                continue;
+            }
+
+            segments.add(new Segment(distance, efficiency));
         }
 
         return segments;

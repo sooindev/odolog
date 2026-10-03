@@ -95,11 +95,11 @@ public class MaintenanceRecordService {
     public Page<MaintenanceRecord> findByVehicle(Long requesterId, String vehicleId,
                                                  ServiceType type, Pageable pageable) {
         Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
-        SortGuard.allowOnly(pageable, SORTABLE);
+        Pageable guarded = SortGuard.allowOnly(pageable, SORTABLE);
 
         return type == null
-                ? maintenanceRecordRepository.findByVehicleId(id, pageable)
-                : maintenanceRecordRepository.findByVehicleIdAndType(id, type, pageable);
+                ? maintenanceRecordRepository.findByVehicleId(id, guarded)
+                : maintenanceRecordRepository.findByVehicleIdAndType(id, type, guarded);
     }
 
     /**

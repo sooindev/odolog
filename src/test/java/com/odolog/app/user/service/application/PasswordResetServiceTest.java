@@ -140,7 +140,7 @@ class PasswordResetServiceTest {
     void confirmChangesPassword() {
         String raw = "raw-token-value";
         PasswordResetToken token = new PasswordResetToken(user, hashOf(raw), NOW.plusMinutes(10));
-        when(tokenRepository.findByTokenHash(hashOf(raw))).thenReturn(Optional.of(token));
+        stubConfirm(raw, token);
 
         service.confirm(new PasswordResetConfirmRequest(raw, "new-password-1234"));
 
@@ -157,7 +157,7 @@ class PasswordResetServiceTest {
     void confirmDefersSideEffectsUntilCommit() {
         String raw = "raw-token-value";
         PasswordResetToken token = new PasswordResetToken(user, hashOf(raw), NOW.plusMinutes(10));
-        when(tokenRepository.findByTokenHash(hashOf(raw))).thenReturn(Optional.of(token));
+        stubConfirm(raw, token);
 
         TransactionSynchronizationManager.initSynchronization();
         try {
@@ -182,7 +182,7 @@ class PasswordResetServiceTest {
     void rejectsExpiredToken() {
         String raw = "raw-token-value";
         PasswordResetToken token = new PasswordResetToken(user, hashOf(raw), NOW.minusMinutes(1));
-        when(tokenRepository.findByTokenHash(hashOf(raw))).thenReturn(Optional.of(token));
+        stubConfirm(raw, token);
 
         assertThatThrownBy(() -> service.confirm(new PasswordResetConfirmRequest(raw, "new-password-1234")))
                 .isInstanceOf(AuthenticationFailedException.class);
@@ -196,7 +196,7 @@ class PasswordResetServiceTest {
         String raw = "raw-token-value";
         PasswordResetToken token = new PasswordResetToken(user, hashOf(raw), NOW.plusMinutes(10));
         token.markUsed(NOW.minusMinutes(1));
-        when(tokenRepository.findByTokenHash(hashOf(raw))).thenReturn(Optional.of(token));
+        stubConfirm(raw, token);
 
         assertThatThrownBy(() -> service.confirm(new PasswordResetConfirmRequest(raw, "new-password-1234")))
                 .isInstanceOf(AuthenticationFailedException.class);
@@ -205,10 +205,41 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("없는 토큰이면 거절한다")
     void rejectsUnknownToken() {
-        when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.empty());
+        when(tokenRepository.findUserIdByTokenHash(anyString())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.confirm(new PasswordResetConfirmRequest("아무값", "new-password-1234")))
                 .isInstanceOf(AuthenticationFailedException.class);
+    }
+
+    @Test
+    @DisplayName("재설정 확정은 사용자 행을 먼저 잠그고 토큰을 나중에 잠근다(발급과 같은 순서)")
+    void confirmLocksUserBeforeToken() {
+        String raw = "raw-token-value";
+        stubConfirm(raw, new PasswordResetToken(user, hashOf(raw), NOW.plusMinutes(10)));
+
+        service.confirm(new PasswordResetConfirmRequest(raw, "new-password-1234"));
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(userRepository, tokenRepository);
+        order.verify(userRepository).findLockedById(1L);
+        order.verify(tokenRepository).findByTokenHash(hashOf(raw));
+    }
+
+    @Test
+    @DisplayName("재설정하면 비밀번호 확인 잠금도 풀린다")
+    void confirmClearsPasswordCheckLock() {
+        String raw = "raw-token-value";
+        stubConfirm(raw, new PasswordResetToken(user, hashOf(raw), NOW.plusMinutes(10)));
+
+        service.confirm(new PasswordResetConfirmRequest(raw, "new-password-1234"));
+
+        verify(rateLimiter).recordSuccess("password-check:1");
+    }
+
+    /** 주인 조회 → 사용자 잠금 → 토큰 잠금 */
+    private void stubConfirm(String raw, PasswordResetToken token) {
+        when(tokenRepository.findUserIdByTokenHash(hashOf(raw))).thenReturn(Optional.of(1L));
+        when(userRepository.findLockedById(1L)).thenReturn(Optional.of(user));
+        when(tokenRepository.findByTokenHash(hashOf(raw))).thenReturn(Optional.of(token));
     }
 
     /** 저장값과 같은 방식의 해싱 */

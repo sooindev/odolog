@@ -109,7 +109,7 @@ function Preview() {
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="text-[2.75rem] leading-none font-semibold tracking-[-0.045em] tabular-nums text-strong">
+            <span className="text-[2.75rem] leading-none font-semibold tracking-[-0.045em] text-strong">
               {f.distanceNumber(45_000)}
             </span>
             <span className="text-caption text-muted-foreground">{f.distanceUnit}</span>

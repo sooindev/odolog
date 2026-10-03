@@ -56,6 +56,13 @@ class FuelAnomalyTest {
     }
 
     @Test
+    @DisplayName("불가능한 구간은 '평소' 표본에서 뺀다 — 오타 둘이 기준을 정하지 않게")
+    void excludesImpossibleSegmentsFromBaseline() {
+        // 400km(10km/L) 하나 + 3,000km/40L(75km/L) 오타 둘. 빼면 구간 하나라 판단 보류
+        assertThat(FuelAnomaly.baselineOf(records(10000, 10400, 13400, 16400))).isEqualTo(Baseline.NONE);
+    }
+
+    @Test
     @DisplayName("주유를 한 번 빼먹으면 그 구간이 두 배가 되고, 그걸 잡아낸다")
     void catchesMissedRecord() {
         // 평소 400km(10km/L), 마지막만 800km(20km/L)

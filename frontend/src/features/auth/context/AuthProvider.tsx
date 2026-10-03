@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useMemo, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { AuthContext } from '@/features/auth/context/AuthContext'
@@ -18,6 +18,8 @@ import type {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  // 로그인·로그아웃·탈퇴가 먼저 끝났는지. 늦게 온 첫 /me 가 그 결과를 덮지 않게
+  const sessionDecided = useRef(false)
 
   // 앱 기동 시 /me 한 번으로 세션 복구
   useEffect(() => {
@@ -26,10 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function restoreSession() {
       try {
         const me = await fetchMe()
-        if (!cancelled) setUser(me)
+        if (!cancelled && !sessionDecided.current) setUser(me)
       } catch {
         // 401 = 비로그인. 서버 다운도 로그아웃 상태로 시작
-        if (!cancelled) setUser(null)
+        if (!cancelled && !sessionDecided.current) setUser(null)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -48,7 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (request: LoginRequest) => {
-    setUser(await requestLogin(request))
+    const me = await requestLogin(request)
+    sessionDecided.current = true
+    setUser(me)
   }, [])
 
   // 실패해도 상태는 비움. 호출부의 이동이 막히지 않게
@@ -58,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // 서버 다운·네트워크 끊김도 로그아웃 처리
     } finally {
+      sessionDecided.current = true
       setUser(null)
     }
   }, [])
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 상태 지우기만 먼저 그려지면 아직 /me 인 보호 라우트가 /login 으로 보냄(E2E 로 재현)
   const withdraw = useCallback(async (request: WithdrawRequest, leave: () => void) => {
     await requestWithdraw(request)
+    sessionDecided.current = true
     startTransition(() => {
       leave()
       setUser(null)

@@ -99,6 +99,19 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("줄바꿈이 든 닉네임은 가입에서도 400 — 수정과 같은 규칙")
+    void signUpRejectsNewlineNickname() throws Exception {
+        SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "첫줄\n둘째줄", null, null, null, null);
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(userService, never()).signUp(any());
+    }
+
+    @Test
     @DisplayName("이미 가입된 이메일이면 409")
     void signUpDuplicateEmail() throws Exception {
         when(userService.signUp(any())).thenThrow(new ConflictException(ErrorCode.EMAIL_DUPLICATE, "이미 가입된 이메일입니다."));
@@ -117,6 +130,7 @@ class UserControllerTest {
         User user = new User("test@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(user, "id", 1L);
         when(userService.login(any())).thenReturn(user);
+        when(userService.isPasswordCurrent(1L, "encoded")).thenReturn(true);
 
         LoginRequest request = new LoginRequest("test@odolog.com", "password1234");
 
@@ -134,6 +148,42 @@ class UserControllerTest {
         assertThat(session.getAttribute(SessionConst.LOGIN_USER_ID)).isEqualTo(1L);
         // 비밀번호 변경 시 종료 대상 목록에 등록
         verify(sessionRegistry).register(eq(1L), same(session));
+    }
+
+    @Test
+    @DisplayName("맞춰 보는 동안 비밀번호가 바뀌었으면 저장한 세션을 버리고 401")
+    void loginDiscardsSessionWhenPasswordChangedMeanwhile() throws Exception {
+        User user = new User("test@odolog.com", "encoded", "닉네임");
+        ReflectionTestUtils.setField(user, "id", 1L);
+        when(userService.login(any())).thenReturn(user);
+        // 재설정·탈퇴가 그 사이 커밋됨
+        when(userService.isPasswordCurrent(1L, "encoded")).thenReturn(false);
+
+        var result = mockMvc.perform(post("/api/users/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("test@odolog.com", "password1234"))))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+
+        assertThat(result.getRequest().getSession(false)).isNull();
+    }
+
+    @Test
+    @DisplayName("로그인은 IP 단위로도 센다")
+    void loginCountsPerIp() throws Exception {
+        when(userService.login(any()))
+                .thenThrow(new AuthenticationFailedException(ErrorCode.LOGIN_FAILED, "이메일 또는 비밀번호가 올바르지 않습니다."));
+
+        mockMvc.perform(post("/api/users/login")
+                        .with(request -> {
+                            request.setRemoteAddr("203.0.113.7");
+                            return request;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("test@odolog.com", "wrong"))))
+                .andExpect(status().isUnauthorized());
+
+        verify(attemptLimiter).acquireShared(eq("login-ip:203.0.113.7"), eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
     }
 
     @Test

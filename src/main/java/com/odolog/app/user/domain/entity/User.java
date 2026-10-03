@@ -116,7 +116,10 @@ public class User extends BaseTimeEntity {
         this.language = language;
     }
 
-    /** 지역 이름만 허용. +09:00 같은 고정 오프셋은 서머타임 미반영이라 거절 */
+    /**
+     * JDK 의 지역 이름 목록만 허용. +09:00 같은 오프셋 표기는 서머타임 미반영이라 거절
+     * UTC·Etc/GMT±N 은 목록에 있어 통과. 브라우저가 실제로 보고하는 값이라 막지 않음
+     */
     public void changeTimeZone(String timeZone) {
         if (!ZoneId.getAvailableZoneIds().contains(timeZone)) {
             throw new InvalidRequestException(ErrorCode.UNSUPPORTED_TIME_ZONE,

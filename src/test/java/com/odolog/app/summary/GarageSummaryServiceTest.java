@@ -77,6 +77,18 @@ class GarageSummaryServiceTest {
     }
 
     @Test
+    @DisplayName("금액을 비운 다른 통화 기록은 뺀 수에 넣지 않는다")
+    void doesNotCountBlankOtherCurrency() {
+        Vehicle car = vehicle(10L, "12가3456", 50000);
+        MaintenanceRecord blankDollar = record(2L, car, ServiceType.TIRE, 4567, TODAY);
+        ReflectionTestUtils.setField(blankDollar, "currency", "USD");
+        ReflectionTestUtils.setField(blankDollar, "cost", null);
+        given(List.of(car), List.of(blankDollar), List.of());
+
+        assertThat(garageSummaryService.summarize(1L, TODAY, "KRW").otherCurrencyRecordCount()).isZero();
+    }
+
+    @Test
     @DisplayName("사용자 통화가 아닌 기록은 금액 합계에서 빼고 뺀 수를 밝힌다")
     void excludesOtherCurrencyFromCost() {
         Vehicle car = vehicle(10L, "12가3456", 50000);

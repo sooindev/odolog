@@ -157,7 +157,7 @@ class VehicleRepositoryTest {
         // 자바 equalsIgnoreCase 로는 다르다고 보던 값
         assertThat(vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(owner.getId(), "１２가3456", mine.getId()))
                 .isFalse();
-        assertThat(vehicleRepository.findByOwnerIdAndPlateNumber(owner.getId(), "１２가3456")).isPresent();
+        assertThat(vehicleRepository.findLockedByOwnerIdAndPlateNumber(owner.getId(), "１２가3456")).isPresent();
     }
 
     @Test

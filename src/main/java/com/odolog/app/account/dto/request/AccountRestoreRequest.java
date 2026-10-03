@@ -34,8 +34,9 @@ public record AccountRestoreRequest(
             @NotBlank @Size(max = 20) String plateNumber,
             @NotBlank @Size(max = 50) String manufacturer,
             @NotBlank @Size(max = 100) String modelName,
-            @Min(1900) @Max(2100) Integer modelYear,
-            @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) int odometer,
+            @NotNull @Min(1900) @Max(2100) Integer modelYear,
+            // int 면 빠진 값이 조용히 0. 등록과 같이 필수
+            @NotNull @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer odometer,
 
             @NotNull @Size(max = 5000) List<@NotNull @Valid MaintenanceData> maintenanceRecords,
             @NotNull @Size(max = 5000) List<@NotNull @Valid FuelData> fuelRecords,

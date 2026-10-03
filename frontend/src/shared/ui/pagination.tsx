@@ -29,7 +29,8 @@ export function Pagination({
         size="icon-sm"
         aria-label={t.common.previousPage}
         disabled={page === 0}
-        onClick={() => onChange((current) => current - 1)}
+        // 연타해도 범위 안. 다음 장 응답 전엔 page 가 그대로라 버튼이 안 잠김
+        onClick={() => onChange((current) => Math.max(0, current - 1))}
       >
         <ChevronLeft />
       </Button>
@@ -43,7 +44,7 @@ export function Pagination({
         size="icon-sm"
         aria-label={t.common.nextPage}
         disabled={!hasNext}
-        onClick={() => onChange((current) => current + 1)}
+        onClick={() => onChange((current) => Math.min(totalPages - 1, current + 1))}
       >
         <ChevronRight />
       </Button>

@@ -33,7 +33,16 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   // 변수로 받아 타입 좁히기
   const shownError = error ?? actionError
 
-  function refresh() {
+  // 전체의 첫 기록. 주행거리 내림차순이라 마지막 장의 마지막 행
+  function isFirstRecord(index: number) {
+    return data !== null && !data.hasNext && index === data.items.length - 1
+  }
+
+  function refresh(created = false) {
+    // 새 기록은 주행거리가 커서 첫 장 위쪽. 지금 장에 머물면 저장 실패로 오해
+    if (created) {
+      setPage(0)
+    }
     setEditing('closed')
     setActionError(null)
     reload()
@@ -91,7 +100,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                 vehicleId={vehicleId}
                 record={editing === 'new' ? null : editing}
                 defaultOdometer={currentOdometer}
-                onSaved={refresh}
+                onSaved={() => refresh(editing === 'new')}
                 onCancel={() => setEditing('closed')}
               />
             </div>
@@ -111,7 +120,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
         ) : (
           <>
             <ul className="border-t border-border">
-              {data.items.map((record) => (
+              {data.items.map((record, index) => (
                 <li key={record.id} className="border-b border-border">
                   {/* 좁은 화면은 두 줄 */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
@@ -119,19 +128,24 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                       <div className="flex items-baseline gap-2">
                         {/* 연비를 맨 앞에 */}
                         {record.efficiency === null ? (
-                          // 연비가 없는 이유별 문구
-                          // distance 는 있고 liters 가 없으면 주유량 없음, 그 외는 기준 기록·기준점
+                          // 연비가 없는 이유별 문구. 주유량 없음 / 기준점·첫 기록 / 직전과 같은 주행거리
                           <span className="text-caption text-muted-foreground">
                             {record.distance !== null && record.liters === null ? (
                               <>
                                 {t.fuel.noLiters}
                                 <span className="ml-1 text-muted-foreground">{t.fuel.noEfficiency}</span>
                               </>
-                            ) : (
+                            ) : record.resetPoint || isFirstRecord(index) ? (
                               <>
                                 {record.resetPoint ? t.fuel.resetPoint : t.fuel.baseline}
                                 {/* 읽어야 하는 문구라 faint 미사용 */}
                                 <span className="ml-1 text-muted-foreground">{t.fuel.fromNext}</span>
+                              </>
+                            ) : (
+                              // 직전 기록과 주행거리가 같아 구간 없음
+                              <>
+                                {t.fuel.sameOdometer}
+                                <span className="ml-1 text-muted-foreground">{t.fuel.noEfficiency}</span>
                               </>
                             )}
                           </span>

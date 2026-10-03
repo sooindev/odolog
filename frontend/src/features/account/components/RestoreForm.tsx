@@ -4,6 +4,7 @@ import type { ChangeEvent } from 'react'
 import { ErrorText, NoticeText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
+import type { Messages } from '@/shared/i18n/messages/ko'
 import { restoreAccount } from '@/features/account/api/endpoints'
 import { MAX_BODY_BYTES } from '@/shared/lib/limits'
 import type { AccountExport, AccountRestoreResult } from '@/features/account/api/types'
@@ -15,7 +16,8 @@ import type { AccountExport, AccountRestoreResult } from '@/features/account/api
 export function RestoreForm() {
   const { t } = useI18n()
   const [result, setResult] = useState<AccountRestoreResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // 문구가 아니라 문구를 고르는 함수. 언어를 바꾸면 남은 안내도 새 언어로
+  const [error, setError] = useState<((messages: Messages) => string) | null>(null)
   const [pending, setPending] = useState(false)
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
@@ -30,25 +32,26 @@ export function RestoreForm() {
     setError(null)
     // 서버는 상한을 넘으면 연결을 끊을 수 있어 "연결 실패" 로 보임. 보내기 전에 막음
     if (file.size > MAX_BODY_BYTES) {
-      setError(t.errors.codes.PAYLOAD_TOO_LARGE)
+      setError(() => (messages: Messages) => messages.errors.codes.PAYLOAD_TOO_LARGE)
       return
     }
 
     setPending(true)
 
     try {
-      const parsed = JSON.parse(await file.text()) as { vehicles?: AccountExport['vehicles'] }
-      if (!Array.isArray(parsed.vehicles)) {
+      const parsed = JSON.parse(await file.text()) as { vehicles?: AccountExport['vehicles'] } | null
+      // null·숫자 같은 객체 아닌 JSON 도 형식이 다른 파일
+      if (typeof parsed !== 'object' || parsed === null || !Array.isArray(parsed.vehicles)) {
         // 형식이 다른 파일은 전송 전 안내
         throw new SyntaxError('vehicles missing')
       }
 
       setResult(await restoreAccount(parsed.vehicles))
     } catch (caught) {
-      setError(
+      setError(() => (messages: Messages) =>
         caught instanceof SyntaxError
-          ? t.profile.data.notOurFile
-          : errorMessage(caught, t, t.profile.data.importFailed),
+          ? messages.profile.data.notOurFile
+          : errorMessage(caught, messages, messages.profile.data.importFailed),
       )
     } finally {
       setPending(false)
@@ -97,7 +100,7 @@ export function RestoreForm() {
         />
       )}
 
-      {error !== null && <ErrorText message={error} />}
+      {error !== null && <ErrorText message={error(t)} />}
     </div>
   )
 }

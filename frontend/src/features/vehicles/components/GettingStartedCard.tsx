@@ -40,6 +40,8 @@ export function GettingStartedCard({
   const { t } = useI18n()
   const [hidden, setHidden] = useState(() => readHidden(vehicle.id))
   const [quickOpen, setQuickOpen] = useState(false)
+  // 빠른 정비가 일부 저장된 채 열려 있음. 안내 닫기로 폼이 사라져도 재조회
+  const [unreported, setUnreported] = useState(false)
 
   // 건수만 필요해 한 건씩. version 을 의존성에 넣어 재조회(재생성하면 카드가 깜빡임)
   const load = useCallback(
@@ -82,6 +84,9 @@ export function GettingStartedCard({
       // 저장 실패해도 이번 화면에서는 닫힘
     }
     setHidden(true)
+    if (unreported) {
+      onServicesSaved()
+    }
   }
 
   function goTo(elementId: string) {
@@ -171,8 +176,10 @@ export function GettingStartedCard({
                               currentOdometer={vehicle.odometer}
                               onSaved={() => {
                                 setQuickOpen(false)
+                                setUnreported(false)
                                 onServicesSaved()
                               }}
+                              onRecordSaved={() => setUnreported(true)}
                               onCancel={() => setQuickOpen(false)}
                             />
                           </div>

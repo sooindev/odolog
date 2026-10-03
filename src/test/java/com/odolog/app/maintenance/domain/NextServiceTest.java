@@ -229,6 +229,28 @@ class NextServiceTest {
     }
 
     @Test
+    @DisplayName("곧: 짧은 주기(1개월·800km)에서는 정비한 날 곧이 켜지지 않고 마지막 1/5 에서만 켜진다")
+    void dueSoonShrinksForShortIntervals() {
+        List<ServiceInterval> monthly =
+                List.of(new ServiceInterval(vehicle, ServiceType.ENGINE_OIL, null, 1));
+        List<ServiceInterval> shortKm =
+                List.of(new ServiceInterval(vehicle, ServiceType.ENGINE_OIL, 800, null));
+
+        // 1개월 주기, 오늘 정비 → 곧이 아님
+        assertThat(NextService.of(List.of(oil(20000, TODAY)), monthly, 20000, TODAY).get(0).dueSoon()).isFalse();
+        // 9/1 → 10/1 (30일). 4/5 지점은 24일째(9/25)
+        assertThat(NextService.of(List.of(oil(20000, LocalDate.of(2026, 9, 1))), monthly, 20000, TODAY)
+                .get(0).dueSoon()).isTrue();
+        assertThat(NextService.of(List.of(oil(20000, LocalDate.of(2026, 9, 2))), monthly, 20000, TODAY)
+                .get(0).dueSoon()).isFalse();
+
+        // 800km 주기 → 640km 지점부터
+        assertThat(NextService.of(List.of(oil(20000, TODAY)), shortKm, 20000, TODAY).get(0).dueSoon()).isFalse();
+        assertThat(NextService.of(List.of(oil(20000, TODAY)), shortKm, 20639, TODAY).get(0).dueSoon()).isFalse();
+        assertThat(NextService.of(List.of(oil(20000, TODAY)), shortKm, 20640, TODAY).get(0).dueSoon()).isTrue();
+    }
+
+    @Test
     @DisplayName("곧: 다음 정비 날짜가 한 달 안이면 곧")
     void dueSoonByDate() {
         // 6개월 주기. 5개월 전에 갈았으면 다음은 한 달 뒤 = 딱 경계

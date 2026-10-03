@@ -1,25 +1,19 @@
 import { expect, test } from '@playwright/test'
 
-import { PASSWORD, registerVehicle, signUp, uniqueEmail } from './helpers.ts'
+import { PASSWORD, errorGuard, registerVehicle, signUp, uniqueEmail } from './helpers.ts'
 
 // 확인 창은 전부 "확인". 취소 경로는 각 테스트에서 따로
 // 콘솔 오류·처리 안 된 예외가 하나라도 나면 실패(확인 목록 A-3 "콘솔에 빨간 줄이 새로 생기지 않는다")
-const consoleErrors: string[] = []
+const guard = errorGuard()
 
 test.beforeEach(({ page }) => {
-  consoleErrors.length = 0
-  page.on('dialog', (dialog) => dialog.accept())
-  page.on('console', (message) => {
-    // 401·404 같은 예상된 응답은 브라우저가 스스로 찍는 줄. 화면 코드의 오류가 아님
-    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) {
-      consoleErrors.push(message.text())
-    }
-  })
-  page.on('pageerror', (error) => consoleErrors.push(error.message))
+  guard.reset()
+  guard.watch(page)
 })
 
-test.afterEach(() => {
-  expect(consoleErrors).toEqual([])
+test.afterEach(async () => {
+  await guard.closeAll()
+  expect(guard.errors).toEqual([])
 })
 
 test('가입 → 차량 등록 → 기억나는 정비 → 주유 두 번으로 첫 연비', async ({ page }) => {
@@ -56,11 +50,11 @@ test('가입 → 차량 등록 → 기억나는 정비 → 주유 두 번으로 
 })
 
 test('남의 차량은 404 와 같은 화면 — 존재 여부를 알려주지 않는다', async ({ browser }) => {
-  const owner = await browser.newPage()
+  const owner = await guard.open(browser)
   await signUp(owner, uniqueEmail('owner'))
   const url = await registerVehicle(owner, '34나5678', 1000)
 
-  const stranger = await browser.newPage()
+  const stranger = await guard.open(browser)
   await signUp(stranger, uniqueEmail('stranger'))
   await stranger.goto(url)
   await expect(stranger.getByText('존재하지 않는 차량입니다.')).toBeVisible()

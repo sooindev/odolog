@@ -429,7 +429,8 @@ export const ko = {
     },
     next: {
       title: '다음 정비 시점',
-      description: '종류별 권장 주기와 마지막 정비 기록으로 계산합니다. 지난 것, 곧(1,000km 또는 한 달 안) 할 것 순으로 위에 옵니다.',
+      description: (soonDistance: string) =>
+        `종류별 권장 주기와 마지막 정비 기록으로 계산합니다. 지난 것, 곧(${soonDistance} 또는 한 달 안) 할 것 순으로 위에 옵니다.`,
       loadFailed: '다음 정비 시점을 불러오지 못했습니다.',
       empty:
         '아직 계산할 이력이 없습니다. 정비 이력을 등록하면 그 종류의 권장 주기로 다음 시점을 알려 드립니다.',
@@ -459,6 +460,7 @@ export const ko = {
     noLiters: '주유량 없음',
     noEfficiency: '· 연비 계산 안 됨',
     resetPoint: '연비 기준점',
+    sameOdometer: '직전 기록과 같은 주행거리',
     baseline: '기준 기록',
     fromNext: '· 다음 주유부터 계산',
     suspicious: '확인 필요',

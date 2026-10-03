@@ -221,7 +221,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     `equals` 는 구분해서, `"12가3456 "` 을 공백만 지워 고치면 **자기 자신과 중복으로 409** 였고,
     앞 공백은 같은 번호판 두 대를, 가져오기는 전체 실패를 만들었다(셋 다 재현).
     **"같은 번호판인가" 는 DB 가 판단한다**(2026-10-03). 차량 수정은 `existsBy…AndIdNot`(자기 자신 제외),
-    가져오기는 `findByOwnerIdAndPlateNumber` 로 묻는다. 전에는 자바에서 공백·대소문자만 무시해 비교했는데,
+    가져오기는 `findLockedByOwnerIdAndPlateNumber` 로 묻는다. 전에는 자바에서 공백·대소문자만 무시해 비교했는데,
     DB(unicode_ci)는 전각 숫자(`１２가3456`)·악센트(`Ä`)까지 같게 봐서 자기 자신과 409, 가져오기 전체 실패가
     다시 났다. 자바로 정렬 규칙을 흉내 내면 언젠가 또 갈린다. `trim()` 이 아니라 `strip()` — 전각 공백(U+3000)까지 지운다.
     **필수 칸은 `InputText.required`** 로 자른다(2026-09-30). `@NotBlank`(trim 기준)와 `\S` 는 전각 공백을
@@ -264,7 +264,11 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     IPv6 는 **앞 64비트로 묶어** 센다(2026-10-03) — 가입자 하나가 받는 `/64` 안에서 주소만 바꾸면 늘 새 키였다.
     **리미터 키에는 반드시 용도 접두사를 붙인다**(2026-10-03). 로그인만 이메일을 그대로 키로 써서,
     로그인 이메일 칸에 `password-check:1` 을 넣고 11번 틀리면 **1번 사용자의 비밀번호 변경·탈퇴가 잠겼다**(재현).
-    지금은 `login:`·`password-reset:`·`password-reset-ip:`·`signup:`·`password-check:` 다섯이다.
+    지금은 `login:`·`login-ip:`·`password-reset:`·`password-reset-ip:`·`signup:`·`password-check:` 여섯이다.
+    **로그인은 IP 로도 센다**(2026-10-04, `login-ip:`). 이메일 키만으로는 계정을 바꿔 가며 비밀번호를 뿌리는 시도를
+    못 막는다. 여러 사람이 한 IP 를 쓰므로 한도는 다섯 배(`acquireShared`).
+    **로그인은 세션을 저장한 뒤 비밀번호가 그대로인지 다시 본다**(2026-10-04). 맞춰 보는 60ms 사이에 재설정·변경·탈퇴가
+    끝나면 그쪽의 세션 끊기를 이미 지나친 세션이 14일 남았다. 그래서 세션은 `flush-mode: immediate` 다.
     **재설정 요청은 요청 스레드에서 횟수만 센다**(2026-10-03). 토큰 조회·저장까지 그 자리에서 하면
     가입된 주소만 DB 쓰기만큼 늦어(7~10ms 대 4~5ms, 측정) 메일을 미룬 것으로는 부족했다.
     **응답 시간도 같게 맞춘다**(2026-09-26). 없는 이메일이어도 `dummyHash` 와 BCrypt 비교를
@@ -668,7 +672,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │       │                         대기 작업 200개 상한(넘으면 조용히 버림), 만료 정리는 따로
     │   │       │                         트랜잭션, 발급은 사용자 행 잠금이 첫 조회(같은 주소의 동시 요청이
     │   │       │                         토큰 삭제·저장끼리 데드락 나던 것), 그래도 충돌하면 한 번 다시
-    │   │       │                         confirm 은 토큰 행을 잠근다 — 동시에 두 번 쓰이지 않게
+    │   │       │                         confirm 은 사용자 행 → 토큰 행 순서로 잠근다(발급과 같은 순서 — 반대면
+    │   │       │                         같은 주소의 발급과 데드락, 2026-10-04). 세션 끊기·잠금 해제는 커밋 뒤
     │   │       │                         **없는 주소도 조용히 성공**시킨다 — 응답이 갈리면
     │   │       │                         그게 가입 여부 조회 API 가 된다.
     │   │       │                         메일 발송 실패도 삼키고 로그로만 남긴다(같은 이유)
@@ -704,7 +709,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │                                 기록 쓰기와 차량 삭제·탈퇴를 한 줄로 세움, 2026-10-03),
     │   │                                 existsByOwnerIdAndPlateNumber(소유자별 중복 검사),
     │   │                                 existsByOwnerIdAndPlateNumberAndIdNot(수정 — 자기 자신 제외),
-    │   │                                 findByOwnerIdAndPlateNumber(가져오기의 같은 차 찾기).
+    │   │                                 findLockedByOwnerIdAndPlateNumber(가져오기의 같은 차 찾기, 행 잠금 —
+    │   │                                 같은 차를 지우는 중이면 기다린다. 안 잠그면 FK 로 500, 2026-10-04).
     │   │                                 같은 번호판인지는 DB 정렬 규칙이 판단한다(규칙 14-1)
     │   ├── dto/
     │   │   ├── request/
@@ -745,6 +751,8 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
     │   │   │                             "뭘 해야 하나"를 보는 자리다.
     │   │   │                             dueSoon(2026-10-03) — 안 지났지만 다음까지 SOON_KM(1,000km) 또는
     │   │   │                             SOON_MONTHS(1개월) 안. 지난 것에는 안 붙는다. 정렬은 지남 → 곧 → 나머지.
+    │   │   │                             범위는 주기의 마지막 1/5 을 넘지 않는다(2026-10-04) — 1개월·800km 같은
+    │   │   │                             짧은 주기는 정비한 날부터 늘 곧이었다. 기본 주기(최소 5,000km·6개월)는 그대로
     │   │   │                             count() — 지남·곧 수. 차량 목록(garage)과 홈(summary) 공용
     │   │   ├── entity/
     │   │   │   ├── ServiceInterval.java  차량별 권장 주기(2026-09-25 신설).
@@ -981,7 +989,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │                             acquire 가 확인과 집계를 한 번에 — 성공하면 recordSuccess 로 지운다.
         │   │                             **계정이 없어도 센다** — 없는 이메일만 빨리 답하면
         │   │                             그 자체가 존재 여부를 알려준다. 인메모리라 재시작하면 잊는다.
-        │   │                             **다섯 키가 접두사만 갈라 쓴다**: 로그인(`login:`+이메일) ·
+        │   │                             **여섯 키가 접두사만 갈라 쓴다**: 로그인(`login:`+이메일, `login-ip:`+IP — 한도 5배) ·
         │   │                             재설정 요청(`password-reset:`+이메일, `password-reset-ip:`+IP) ·
         │   │                             회원가입(`signup:`+IP) ·
         │   │                             비밀번호 확인(`password-check:`+사용자 id — 변경·탈퇴,
@@ -1053,7 +1061,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │                                 설정이고 이쪽은 요청마다 도는 실행 코드
         ├── RequestSizeLimitFilter.java   요청 본문 10MB 상한(2026-10-03). Jackson 이 본문을 다 읽은 뒤에야
         │                                 @Size 가 돌아서, 그 전에는 19MB 로그인 본문도 끝까지 파싱했다.
-        │                                 길이를 밝히면 413, 안 밝히면 상한에서 읽기 실패
+        │                                 길이를 밝히면 413, 안 밝히면 상한에서 읽기 실패.
+        │                                 **순서는 CORS 바로 뒤**(2026-10-04) — 순서가 없던 동안 FormContentFilter(-9900)가
+        │                                 PATCH·DELETE 의 폼 본문을 상한 없이 먼저 읽었다. getReader 도 같은 상한
         ├── config/
         │   ├── WebConfig.java            ArgumentResolver 등록 + CORS(credentials). 허용 주소는 odolog.cors.allowed-origins
         │   │                             (로컬 5173, 운영은 CORS_ALLOWED_ORIGINS 필수 — 2026-10-03 에 코드에서 뺐다).
@@ -1072,7 +1082,9 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
         │   │                             엔티티를 타고 들어가는 정렬을 그대로 받는다 —
         │   │                             암묵적 조인이 생기고 의도한 적 없는 표면이 열린다.
         │   │                             **블랙리스트가 아닌 이유**: 엔티티에 필드를 더하면
-        │   │                             자동으로 정렬 대상이 된다. 막을 것을 세는 쪽은 뒤처진다
+        │   │                             자동으로 정렬 대상이 된다. 막을 것을 세는 쪽은 뒤처진다.
+        │   │                             통과하면 마지막에 같은 방향의 id 를 붙여 돌려준다(2026-10-04) — 동점끼리
+        │   │                             DB 가 순서를 보장하지 않아 페이지마다 겹치거나 빠졌다
         │   └── response/                 요청 DTO가 없어 response만 있다
         │       ├── ErrorResponse.java    record(code, message, field?, retryAfterMinutes?).
         │       │                         화면은 code 로 자기 언어의 문구를 고른다(Phase 7).
@@ -1134,6 +1146,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                          ddl-auto=validate(스키마는 Flyway), open-in-view=false.
                                          flyway.baseline-on-migrate(기존 운영 DB 를 V1 로 간주),
                                          session.jdbc.initialize-schema=never(세션 표는 V3),
+                                         session.jdbc.flush-mode=immediate(로그인 재확인 전에 세션이 DB 에 있어야 한다),
                                          쿠키 이름 JSESSIONID(Spring Session 기본 SESSION 대신 그대로),
                                          data.web.pageable.max-page-size=100(2026-10-03 — 기본 2000).
                                          세션 쿠키 http-only + same-site=lax (브라우저 기본값에
@@ -1183,7 +1196,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
                                          없게 일부러). 세션·쿠키·페이지 상한은 양쪽에 따로 적고 ConfigParityTest 가 같은지 본다.
                                          Flyway 는 끄고 엔티티 표는 create-drop, 세션 표는 V3 를 sql.init 으로
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 345개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 364개.
 
     src/test/java/com/odolog/app/
     ├── TestOdoLogApplication.java                  E2E 용 백엔드(`./gradlew bootTestRun`). 테스트 설정 그대로 18080 에,
@@ -1584,7 +1597,7 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 ### 프론트엔드 — 테스트
 
 **테스트는 대상 파일 옆에 둔다**(`format.ts` 옆에 `format.test.ts`). 백엔드가 테스트 경로를
-대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 79개, 파일 11개**다.
+대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 82개, 파일 11개**다.
 **실제 브라우저 E2E 는 `frontend/e2e`**(`npm run e2e`, 13개, Playwright) — 위 구조 트리의 `e2e/` 참고.
 화면을 그려 보는 테스트가 없어 폼 key·화면 이동 같은 버그가 코드 점검에서만 잡히던 구멍을 거기서 막는다.
 
@@ -2532,8 +2545,8 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-110
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-107
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-108, B-109
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (345개)
-- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (79개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (364개)
+- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (82개)
 - [ ] 실제 브라우저 E2E 통과 — `npm run e2e` (13개)
 
 ---

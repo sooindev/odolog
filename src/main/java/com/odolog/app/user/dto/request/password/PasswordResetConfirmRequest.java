@@ -7,7 +7,9 @@ import jakarta.validation.constraints.Size;
 /** 새 비밀번호 제한은 가입·변경과 동일 */
 public record PasswordResetConfirmRequest(
 
+        // 발급 토큰은 43자. 넉넉히 두되 수 MB 를 해시하지 않게
         @NotBlank
+        @Size(max = 100)
         String token,
 
         @NotBlank

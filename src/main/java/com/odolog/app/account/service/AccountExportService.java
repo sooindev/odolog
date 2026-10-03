@@ -14,7 +14,9 @@ import com.odolog.app.vehicle.VehicleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -46,9 +48,10 @@ public class AccountExportService {
         this.fuelRecordRepository = fuelRecordRepository;
     }
 
-    /** exportedAt 은 밖에서 주입. 테스트 고정용 */
-    public AccountExportResponse export(Long userId, LocalDateTime exportedAt) {
+    /** exportedAt 은 밖에서 주입. 테스트 고정용. 파일에는 사용자 시간대의 시각으로 */
+    public AccountExportResponse export(Long userId, Instant exportedAt) {
         User user = userService.findById(userId);
+        LocalDateTime localExportedAt = LocalDateTime.ofInstant(exportedAt, ZoneId.of(user.getTimeZone()));
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(userId);
 
         Map<Long, List<MaintenanceRecord>> maintenanceByVehicle =
@@ -63,7 +66,7 @@ public class AccountExportService {
                 serviceIntervalRepository.findByVehicle_Owner_Id(userId).stream()
                         .collect(Collectors.groupingBy(interval -> interval.getVehicle().getId()));
 
-        return AccountExportResponse.of(exportedAt, user, vehicles,
+        return AccountExportResponse.of(localExportedAt, user, vehicles,
                 maintenanceByVehicle, fuelByVehicle, intervalsByVehicle);
     }
 }

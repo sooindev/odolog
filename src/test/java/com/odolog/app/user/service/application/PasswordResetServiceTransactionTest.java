@@ -1,6 +1,9 @@
 package com.odolog.app.user.service.application;
 
+import com.odolog.app.common.exception.type.AuthenticationFailedException;
+import com.odolog.app.user.domain.entity.PasswordResetToken;
 import com.odolog.app.user.domain.entity.User;
+import com.odolog.app.user.dto.request.password.PasswordResetConfirmRequest;
 import com.odolog.app.user.repository.PasswordResetTokenRepository;
 import com.odolog.app.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -11,7 +14,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -76,5 +83,46 @@ class PasswordResetServiceTransactionTest {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test
+    @DisplayName("재설정 확정과 같은 주소의 발급이 겹쳐도 데드락 없이 끝난다")
+    void confirmAndIssueDoNotDeadlock() throws Exception {
+        User user = userRepository.save(new User("both@odolog.com", "encoded-pw", "재설정"));
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 10; round++) {
+                String raw = "raw-token-" + round;
+                tokenRepository.save(new PasswordResetToken(user, sha256(raw), LocalDateTime.now().plusMinutes(10)));
+                CyclicBarrier start = new CyclicBarrier(2);
+
+                Future<?> confirm = pool.submit(() -> {
+                    start.await();
+                    try {
+                        passwordResetService.confirm(new PasswordResetConfirmRequest(raw, "new-password-" + raw));
+                    } catch (AuthenticationFailedException alreadyReplaced) {
+                        // 발급이 먼저 토큰을 갈아 끼웠으면 정상적인 거절
+                    }
+                    return null;
+                });
+                Future<?> issue = pool.submit(() -> {
+                    start.await();
+                    tx.executeWithoutResult(status -> passwordResetService.issue("both@odolog.com"));
+                    return null;
+                });
+
+                // 데드락이면 여기서 ConcurrencyFailureException
+                confirm.get(60, TimeUnit.SECONDS);
+                issue.get(60, TimeUnit.SECONDS);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private static String sha256(String raw) throws Exception {
+        return HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8)));
     }
 }

@@ -31,10 +31,10 @@ export function RegionForm({ user }: { user: UserResponse }) {
   const [unitSystem, setUnitSystem] = useState(user.unitSystem)
   const [currency, setCurrency] = useState(user.currency)
   const [timeZone, setTimeZone] = useState(user.timeZone)
-  const [message, setMessage] = useState<string | null>(null)
-  // 문구 대신 표시 여부. 언어를 바꾼 저장이면 저장 직후의 새 언어로 보여야 함
+  // 문구 대신 표시 여부·원인. 언어를 바꾼 저장이면 저장 직후의 새 언어로 보여야 함
+  const [noChanges, setNoChanges] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [failure, setFailure] = useState<{ caught: unknown } | null>(null)
   const [pending, setPending] = useState(false)
 
   const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -52,9 +52,9 @@ export function RegionForm({ user }: { user: UserResponse }) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setMessage(null)
+    setNoChanges(false)
     setSaved(false)
-    setError(null)
+    setFailure(null)
 
     // 바뀐 필드만
     const request: UpdateProfileRequest = {}
@@ -64,7 +64,7 @@ export function RegionForm({ user }: { user: UserResponse }) {
     if (timeZone !== user.timeZone) request.timeZone = timeZone
 
     if (Object.keys(request).length === 0) {
-      setMessage(t.common.noChanges)
+      setNoChanges(true)
       return
     }
 
@@ -73,7 +73,7 @@ export function RegionForm({ user }: { user: UserResponse }) {
       replaceUser(await updateProfile(request))
       setSaved(true)
     } catch (caught) {
-      setError(errorMessage(caught, t, t.profile.region.failed))
+      setFailure({ caught })
     } finally {
       setPending(false)
     }
@@ -134,9 +134,9 @@ export function RegionForm({ user }: { user: UserResponse }) {
             </Field>
           </div>
 
-          {message !== null && <NoticeText message={message} />}
+          {noChanges && <NoticeText message={t.common.noChanges} />}
           {saved && <NoticeText message={t.common.saved} />}
-          {error !== null && <ErrorText message={error} />}
+          {failure !== null && <ErrorText message={errorMessage(failure.caught, t, t.profile.region.failed)} />}
 
           <FormActions>
             <Button type="submit" disabled={pending}>

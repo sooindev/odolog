@@ -26,7 +26,8 @@ export function VehicleListPage() {
   }
 
   // 오류·빈 상태도 머리말(h1) 유지. 버튼은 빈 상태 안의 하나만
-  if (error !== null || data === null || data.totalElements === 0) {
+  // 받아 둔 목록이 있으면 오류만 위에 덧붙임. 페이지 이동 실패로 목록이 통째로 사라지지 않게
+  if (data === null || data.totalElements === 0) {
     return (
       <Page eyebrow="Garage" title={t.vehicles.list.title}>
         {error !== null ? <ErrorText message={error} /> : <EmptyGarage />}
@@ -49,6 +50,7 @@ export function VehicleListPage() {
     >
       {/* 목록과 페이지 이동 한 덩어리 */}
       <div className="flex flex-col gap-10">
+        {error !== null && <ErrorText message={error} />}
         {/* 카드 대신 괘선 행. 번호판·주행거리 세로 정렬로 여러 대 비교 */}
         <ul className="border-t border-border">
           {data.items.map((vehicle) => (

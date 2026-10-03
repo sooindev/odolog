@@ -41,8 +41,13 @@ function Dashboard({ nickname }: { nickname: string }) {
     return <DashboardSkeleton />
   }
 
+  // 오류도 머리말(h1) 유지
   if (error !== null) {
-    return <ErrorText message={error} />
+    return (
+      <Page eyebrow="Overview" title={t.home.title(nickname)}>
+        <ErrorText message={error} />
+      </Page>
+    )
   }
 
   if (data === null || data.vehicleCount === 0) {

@@ -29,7 +29,8 @@ class ConfigParityTest {
             "server.servlet.session.cookie.max-age",
             "spring.data.web.pageable.max-page-size",
             "spring.jpa.open-in-view",
-            "spring.session.jdbc.initialize-schema");
+            "spring.session.jdbc.initialize-schema",
+            "spring.session.jdbc.flush-mode");
 
     @Test
     @DisplayName("운영과 테스트 설정이 세션·쿠키·페이지 상한에서 같다")

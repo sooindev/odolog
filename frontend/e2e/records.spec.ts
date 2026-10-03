@@ -1,22 +1,17 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { PASSWORD, registerVehicle, signUp, uniqueEmail } from './helpers.ts'
+import { PASSWORD, errorGuard, registerVehicle, signUp, uniqueEmail } from './helpers.ts'
 
-const consoleErrors: string[] = []
+const guard = errorGuard()
 
 test.beforeEach(({ page }) => {
-  consoleErrors.length = 0
-  page.on('dialog', (dialog) => dialog.accept())
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) {
-      consoleErrors.push(message.text())
-    }
-  })
-  page.on('pageerror', (error) => consoleErrors.push(error.message))
+  guard.reset()
+  guard.watch(page)
 })
 
-test.afterEach(() => {
-  expect(consoleErrors).toEqual([])
+test.afterEach(async () => {
+  await guard.closeAll()
+  expect(guard.errors).toEqual([])
 })
 
 /** 제목으로 카드 하나를 고름. 같은 이름의 버튼(수정·삭제)이 여러 카드에 있어서 */
@@ -121,7 +116,7 @@ test('내보낸 파일을 새 계정에 가져오면 차량과 기록이 그대�
   ])
   const file = await download.path()
 
-  const other = await browser.newPage()
+  const other = await guard.open(browser)
   await signUp(other, uniqueEmail('import'))
   await other.goto('/me')
   await other.locator('input[type=file]').setInputFiles(file)

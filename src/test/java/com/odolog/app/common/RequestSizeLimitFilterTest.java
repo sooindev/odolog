@@ -9,6 +9,7 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -72,5 +73,23 @@ class RequestSizeLimitFilterTest {
         filter.doFilter(request, new MockHttpServletResponse(), chain);
 
         assertThat(chain.getRequest().getInputStream().readAllBytes()).hasSize(10);
+    }
+
+    @Test
+    @DisplayName("문자로 읽어도 상한에서 끊긴다")
+    void limitsReader() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("PATCH", "/api/users/me") {
+            @Override
+            public long getContentLengthLong() {
+                return -1;
+            }
+        };
+        request.setContent(new byte[11]);
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, new MockHttpServletResponse(), chain);
+
+        BufferedReader reader = chain.getRequest().getReader();
+        assertThatThrownBy(() -> reader.lines().count()).hasRootCauseInstanceOf(IOException.class);
     }
 }

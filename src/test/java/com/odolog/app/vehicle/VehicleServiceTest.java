@@ -117,7 +117,7 @@ class VehicleServiceTest {
     void updateOdometerDecreaseFails() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.updateOdometer(50000);
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         assertThatThrownBy(() -> vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(40000, null)))
                 .isInstanceOf(ConflictException.class);
@@ -128,7 +128,7 @@ class VehicleServiceTest {
     void updateOdometerForcedDecrease() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.updateOdometer(5000000);
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         // 자리수 오타 복구 경로
         vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(500000, true));
@@ -141,7 +141,7 @@ class VehicleServiceTest {
     void updateOdometerForceFalseStillBlocks() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.updateOdometer(50000);
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         assertThatThrownBy(() -> vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(40000, false)))
                 .isInstanceOf(ConflictException.class);
@@ -152,7 +152,7 @@ class VehicleServiceTest {
     void updateOdometerForcedIncrease() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.updateOdometer(50000);
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(60000, true));
 
@@ -163,7 +163,7 @@ class VehicleServiceTest {
     @DisplayName("차량 수정은 보낸 필드만 바꾸고 나머지는 건드리지 않는다")
     void updateChangesOnlyGivenFields() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         vehicleService.update(1L, "V10", new VehicleUpdateRequest(null, "기아", null, null));
 
@@ -177,7 +177,7 @@ class VehicleServiceTest {
     @DisplayName("번호판을 그대로 둔 채 다른 필드만 고치면 중복 검사를 아예 하지 않는다")
     void updateSkipsDuplicateCheckWhenPlateNumberUnchanged() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         // 같은 번호판 전송. 자기 자신 중복 판정 방지
         vehicleService.update(1L, "V10", new VehicleUpdateRequest("12가3456", "기아", null, null));
@@ -209,7 +209,7 @@ class VehicleServiceTest {
         // DB 는 뒤 공백 무시 비교라 검사 시 자기 자신과 충돌
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         vehicle.changePlateNumber("12가3456 ");
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         vehicleService.update(1L, "V10", new VehicleUpdateRequest("12가3456", null, null, null));
 
@@ -222,7 +222,7 @@ class VehicleServiceTest {
     @DisplayName("번호판을 이미 가진 다른 차량의 번호로 바꾸면 예외가 발생한다")
     void updateDuplicatePlateNumberFails() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
         when(vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(1L, "99하9999", 10L)).thenReturn(true);
 
         assertThatThrownBy(() -> vehicleService.update(1L, "V10",
@@ -236,7 +236,7 @@ class VehicleServiceTest {
     @DisplayName("남의 차량은 수정할 수 없다")
     void updateOtherUsersVehicleFails() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
-        when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
+        when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
         assertThatThrownBy(() -> vehicleService.update(999L, "V10",
                 new VehicleUpdateRequest(null, "기아", null, null)))

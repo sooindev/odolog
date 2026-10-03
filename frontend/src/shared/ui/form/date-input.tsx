@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { cn } from 'cn'
 import { controlClassName } from '@/shared/ui/form/control'
@@ -41,7 +41,11 @@ function DateWheel({
   const [open, setOpen] = useState(false)
   const wheelRef = useRef<HTMLDivElement>(null)
   // 오늘·절단 기준은 계정 시간대. 서버의 미래 판정과 같은 선
-  const { year, month, day } = parse(value, timeZone)
+  const thisYear = todayParts(timeZone).year
+  // 빈 값은 오늘, 선택 범위 밖(시간대를 바꾼 뒤의 '내일')은 오늘 이하로 절단한 값을 보여 줌
+  const parsed = parse(value, timeZone)
+  const shown = join(Math.min(parsed.year, thisYear), parsed.month, parsed.day, timeZone)
+  const { year, month, day } = parse(shown, timeZone)
 
   // 펼친 휠을 화면 안으로. block: 'nearest' 로 필요할 때만 이동
   useEffect(() => {
@@ -50,7 +54,6 @@ function DateWheel({
   }, [open])
 
   // 칸 목록도 오늘까지만. 데스크톱의 max 와 같은 선
-  const thisYear = todayParts(timeZone).year
   // 기본 20년치, 현재 값이 더 오래됐으면 그 해까지 확장
   const firstYear = Math.min(thisYear - YEARS_BACK, year)
   const columns: Record<DatePart, { label: string; values: number[]; value: number; pick: (next: number) => string }> = {
@@ -81,11 +84,11 @@ function DateWheel({
         id={id}
         type="button"
         aria-expanded={open}
-        aria-label={ariaLabel === undefined ? undefined : `${ariaLabel}, ${f.date(value)}`}
+        aria-label={ariaLabel === undefined ? undefined : `${ariaLabel}, ${f.date(shown)}`}
         className={cn(controlClassName, 'flex items-center justify-between text-left')}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="tabular-nums">{f.date(value)}</span>
+        <span className="tabular-nums">{f.date(shown)}</span>
         <span className="text-caption text-muted-foreground">
           {open ? t.dateWheel.done : t.dateWheel.change}
         </span>
@@ -139,15 +142,19 @@ function WheelColumn({
   const ref = useRef<HTMLDivElement>(null)
   const index = values.indexOf(value)
 
-  const commit = useCallback(() => {
-    const el = ref.current
-    if (el === null) return
+  // 최신 확정 함수를 ref 로. 렌더마다 구독을 다시 걸면 대기 중인 타이머가 지워져 값이 안 바뀜
+  const commitRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    commitRef.current = () => {
+      const el = ref.current
+      if (el === null) return
 
-    const next = values[Math.round(el.scrollTop / ITEM_HEIGHT)]
-    if (next !== undefined && next !== value) {
-      onChange(next)
+      const next = values[Math.round(el.scrollTop / ITEM_HEIGHT)]
+      if (next !== undefined && next !== value) {
+        onChange(next)
+      }
     }
-  }, [values, value, onChange])
+  })
 
   // 값 변경 시 해당 위치로 스크롤. 일수 보정 때만 실제 이동
   useEffect(() => {
@@ -164,7 +171,8 @@ function WheelColumn({
     const el = ref.current
     if (el === null) return
 
-    // scrollend(없으면 마지막 scroll 후 대기) 시점에 확정. 도중 커밋 방지
+    // scrollend(없으면 마지막 scroll 후 대기) 시점에 확정. 도중 커밋 방지. 구독은 한 번
+    const commit = () => commitRef.current()
     if ('onscrollend' in window) {
       el.addEventListener('scrollend', commit)
       return () => el.removeEventListener('scrollend', commit)
@@ -180,7 +188,7 @@ function WheelColumn({
       window.clearTimeout(timer)
       el.removeEventListener('scroll', onScroll)
     }
-  }, [commit])
+  }, [])
 
   function handleKeyDown(event: React.KeyboardEvent) {
     // 키보드 조작 지원

@@ -24,6 +24,8 @@ public class AccountWithdrawalService {
 
     @Transactional
     public void withdraw(Long userId, WithdrawRequest request) {
+        // 첫 조회가 사용자 행 잠금. 같은 계정의 가져오기·재설정과 한 줄로 세움(엇갈리면 데드락)
+        userService.findByIdForUpdate(userId);
         // 비밀번호 확인 먼저
         userService.verifyPassword(userId, request.password());
 

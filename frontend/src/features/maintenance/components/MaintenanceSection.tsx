@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import { MaintenanceForm } from '@/features/maintenance/components/MaintenanceForm'
 import { Button } from '@/shared/ui/base/button'
@@ -37,14 +37,6 @@ export function MaintenanceSection({ vehicleId, currentOdometer, refreshVersion,
   // 삭제 중인 행 id
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // 목록 밖에서 기록이 생기면 필터를 풂. 다른 종류로 저장된 기록이 안 보이면 실패로 오해(refresh 와 같은 이유)
-  // 이펙트 대신 렌더 중 비교. 직전 값을 상태로 들고 바뀐 순간에만 한 번
-  const [seenVersion, setSeenVersion] = useState(refreshVersion)
-  if (seenVersion !== refreshVersion) {
-    setSeenVersion(refreshVersion)
-    setFilter(null)
-  }
-
   const load = useCallback(
     () => fetchRecords(vehicleId, page, filter),
     [vehicleId, page, filter],
@@ -52,10 +44,15 @@ export function MaintenanceSection({ vehicleId, currentOdometer, refreshVersion,
   const { data, loading, error, reload } = useAsyncData(load, t.maintenance.loadFailed)
   usePageInRange(data, setPage)
 
-  // 조건이 같아도 다시 조회. 0 은 첫 조회가 이미 함
-  useEffect(() => {
-    if (refreshVersion > 0) reload()
-  }, [refreshVersion, reload])
+  // 목록 밖에서 기록이 생기면 필터를 풀고 첫 장으로. 새 기록은 첫 장 위쪽이라 안 보이면 실패로 오해
+  // 렌더 중 비교. 셋을 한 번에 바꿔 조회도 한 번
+  const [seenVersion, setSeenVersion] = useState(refreshVersion)
+  if (seenVersion !== refreshVersion) {
+    setSeenVersion(refreshVersion)
+    setFilter(null)
+    setPage(0)
+    reload()
+  }
 
   // 변수로 받아 타입 좁히기
   const shownError = error ?? actionError
@@ -64,18 +61,20 @@ export function MaintenanceSection({ vehicleId, currentOdometer, refreshVersion,
    * 방금 저장한 종류
    * 필터 밖 종류로 저장했으면 필터 해제. 저장 실패로 오해해 중복 등록하는 문제 방지
    */
-  function refresh(savedType?: ServiceType) {
+  function refresh(savedType?: ServiceType, created = false) {
+    // 새 기록은 첫 장 위쪽. 지금 장에 머물면 저장 실패로 오해
+    if (created) {
+      setPage(0)
+    }
+    if (savedType !== undefined && filter !== null && filter !== savedType) {
+      setFilter(null)
+      setPage(0)
+    }
+
     setEditing('closed')
     setActionError(null)
     onChanged()
-
-    if (savedType !== undefined && filter !== null && filter !== savedType) {
-      // filter 변경만으로 재조회
-      setFilter(null)
-      setPage(0)
-      return
-    }
-
+    // 조건 변경과 같은 렌더로 묶여 조회는 한 번
     reload()
   }
 
@@ -153,7 +152,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, refreshVersion,
                 vehicleId={vehicleId}
                 record={editing === 'new' ? null : editing}
                 defaultOdometer={currentOdometer}
-                onSaved={refresh}
+                onSaved={(type) => refresh(type, editing === 'new')}
                 onCancel={() => setEditing('closed')}
               />
             </div>

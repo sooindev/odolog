@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -177,26 +178,46 @@ public class PasswordResetService {
         }
     }
 
-    /** 토큰으로 비밀번호 변경. 성공 시 토큰 즉시 만료 */
-    @Transactional
+    /**
+     * 토큰으로 비밀번호 변경. 성공 시 토큰 즉시 만료
+     * 잠금은 발급과 같은 순서(사용자 → 토큰). 반대 순서면 같은 주소의 발급과 겹칠 때 데드락
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void confirm(PasswordResetConfirmRequest request) {
+        String tokenHash = hash(request.token());
+
+        // 주인 확인은 잠금 없이 따로. 잠그는 트랜잭션의 첫 조회가 사용자 행 잠금이 되게
+        Long userId = tokenRepository.findUserIdByTokenHash(tokenHash).orElseThrow(PasswordResetService::invalidLink);
+
+        transactionTemplate.executeWithoutResult(status -> confirmLocked(userId, tokenHash, request.newPassword()));
+    }
+
+    private void confirmLocked(Long userId, String tokenHash, String newPassword) {
         LocalDateTime now = LocalDateTime.now(clock);
 
-        PasswordResetToken token = tokenRepository.findByTokenHash(hash(request.token()))
+        User user = userRepository.findLockedById(userId).orElseThrow(PasswordResetService::invalidLink);
+        // 기다리는 사이 재발급·사용으로 바뀌었으면 여기서 걸림
+        PasswordResetToken token = tokenRepository.findByTokenHash(tokenHash)
                 .filter(candidate -> candidate.isUsable(now))
-                .orElseThrow(() -> new AuthenticationFailedException(ErrorCode.RESET_LINK_INVALID,
-                        "링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요."));
+                .orElseThrow(PasswordResetService::invalidLink);
 
-        token.getUser().changePassword(passwordEncoder.encode(request.newPassword()));
+        user.changePassword(passwordEncoder.encode(newPassword));
         token.markUsed(now);
 
         // 잠금 해제·세션 종료는 커밋 뒤. 세션 표는 별도 트랜잭션이라 안에서 지우면 롤백돼도 사라짐
-        String loginKey = UserService.LOGIN_KEY_PREFIX + token.getUser().getEmail();
-        Long userId = token.getUser().getId();
+        String loginKey = UserService.LOGIN_KEY_PREFIX + user.getEmail();
+        String passwordCheckKey = UserService.PASSWORD_CHECK_KEY_PREFIX + userId;
         afterCommit(() -> {
             rateLimiter.recordSuccess(loginKey);
+            // 비밀번호 확인 잠금도 해제. 남기면 재설정 직후 변경·탈퇴가 10분간 막힘
+            rateLimiter.recordSuccess(passwordCheckKey);
             sessionRegistry.invalidateAll(userId);
         });
+    }
+
+    private static AuthenticationFailedException invalidLink() {
+        return new AuthenticationFailedException(ErrorCode.RESET_LINK_INVALID,
+                "링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요.");
     }
 
     /** 트랜잭션 밖(단위 테스트)이면 바로 실행 */

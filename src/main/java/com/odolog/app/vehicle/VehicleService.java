@@ -48,7 +48,8 @@ public class VehicleService {
 
     @Transactional
     public Vehicle update(Long requesterId, String vehicleId, VehicleUpdateRequest request) {
-        Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
+        // 잠금. 기록 쓰기·차량 삭제와 한 줄로 세움. 겹치면 409 대신 앞선 결과(삭제면 404)를 보고 진행
+        Vehicle vehicle = findOwnedVehicleForUpdate(requesterId, vehicleId);
 
         // 번호판 먼저 처리. 다른 필드 변경 후 exists 전 자동 flush 로 자기 중복 판정 방지
         String plateNumber = InputText.required(request.plateNumber(), "plateNumber");
@@ -75,7 +76,8 @@ public class VehicleService {
 
     @Transactional
     public Vehicle updateOdometer(Long requesterId, String vehicleId, UpdateOdometerRequest request) {
-        Vehicle vehicle = findOwnedVehicle(requesterId, vehicleId);
+        // 잠금. 주유가 그 사이 올린 값을 보고 판정(감소면 현재 값을 담은 409)
+        Vehicle vehicle = findOwnedVehicleForUpdate(requesterId, vehicleId);
 
         // 기본은 감소 금지. force 일 때만 정정
         if (request.forced()) {
@@ -109,7 +111,7 @@ public class VehicleService {
     }
 
     /**
-     * 위와 같고 행을 잠금. 기록 등록·수정·삭제와 차량 삭제 전용
+     * 위와 같고 행을 잠금. 차량 수정·주행거리, 기록 등록·수정·삭제, 차량 삭제
      * 트랜잭션의 첫 조회여야 함. 대기 뒤에 앞선 쓰기의 결과가 보이게(REPEATABLE READ 스냅숏)
      */
     @Transactional

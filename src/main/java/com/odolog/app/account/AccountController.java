@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 경로는 /api/users/me, 패키지는 account
@@ -49,7 +49,7 @@ public class AccountController {
      */
     @GetMapping("/api/users/me/export")
     public AccountExportResponse export(@LoginUser Long userId) {
-        return accountExportService.export(userId, LocalDateTime.now());
+        return accountExportService.export(userId, Instant.now());
     }
 
     /** 내보낸 JSON 복원. 같은 기록은 건너뜀, 하나라도 검증 실패면 전체 취소 */

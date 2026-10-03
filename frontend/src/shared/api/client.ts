@@ -59,6 +59,7 @@ export function setUnauthorizedHandler(handler: () => void) {
 // POST /login: 비밀번호 오류 · GET /me: 비로그인 확인 · DELETE /me: 탈퇴 비밀번호 오류 · PATCH /me/password: 현재 비밀번호 오류
 // PATCH /password-reset: 만료·사용된 링크(로그인 상태와 무관)
 // 메서드까지 비교. PATCH /me 의 세션 만료는 전역 처리 대상
+// GET /me 를 뺀 나머지는 코드가 LOGIN_REQUIRED 면 진짜 세션 만료라 전역 처리
 const SKIP_UNAUTHORIZED_HANDLER = [
   'POST /api/users/login',
   'GET /api/users/me',
@@ -66,6 +67,18 @@ const SKIP_UNAUTHORIZED_HANDLER = [
   'PATCH /api/users/me/password',
   'PATCH /api/users/password-reset',
 ]
+
+// 늦게 온 첫 /me 가 그 사이의 로그인을 지우지 않게 항상 제외
+const ALWAYS_SKIP_UNAUTHORIZED_HANDLER = 'GET /api/users/me'
+
+function isSessionExpired(method: Method, path: string, body: Partial<ErrorResponse>) {
+  const key = `${method} ${path}`
+  if (!SKIP_UNAUTHORIZED_HANDLER.includes(key)) {
+    return true
+  }
+
+  return key !== ALWAYS_SKIP_UNAUTHORIZED_HANDLER && body.code === 'LOGIN_REQUIRED'
+}
 
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const hasBody = body !== undefined
@@ -97,10 +110,10 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
   }
 
   if (!response.ok) {
-    if (response.status === 401 && !SKIP_UNAUTHORIZED_HANDLER.includes(`${method} ${path}`)) {
+    const body = await readErrorBody(response)
+    if (response.status === 401 && isSessionExpired(method, path, body)) {
       onUnauthorized?.()
     }
-    const body = await readErrorBody(response)
     throw new ApiError(response.status, body.message ?? `HTTP ${response.status}`, body)
   }
 

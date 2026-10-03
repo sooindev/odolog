@@ -69,6 +69,18 @@ class LoginAttemptLimiterTest {
     }
 
     @Test
+    @DisplayName("공유 키(IP)는 한 사람 한도의 다섯 배까지 받는다")
+    void sharedKeyAllowsFiveTimes() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());
+        for (int i = 0; i < 50; i++) {
+            limiter.acquireShared("login-ip:1.2.3.4", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON);
+        }
+
+        assertThatThrownBy(() -> limiter.acquireShared("login-ip:1.2.3.4", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON))
+                .isInstanceOf(TooManyRequestsException.class);
+    }
+
+    @Test
     @DisplayName("한도를 넘는 시도는 429를 던진다")
     void locksOverThreshold() {
         LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());

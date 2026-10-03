@@ -13,7 +13,11 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 요청 본문 크기 상한. Jackson 이 본문 전체를 객체로 만든 뒤에야 @Size 가 돌아서 그 전에 차단
@@ -66,6 +70,14 @@ public class RequestSizeLimitFilter extends OncePerRequestFilter {
                 limited = new LimitedInputStream(super.getInputStream(), maxBytes);
             }
             return limited;
+        }
+
+        /** 문자로 읽는 쪽도 같은 상한. 감싸지 않으면 원본 스트림을 그대로 읽음 */
+        @Override
+        public BufferedReader getReader() throws IOException {
+            String encoding = getCharacterEncoding();
+            Charset charset = encoding == null ? StandardCharsets.ISO_8859_1 : Charset.forName(encoding);
+            return new BufferedReader(new InputStreamReader(getInputStream(), charset));
         }
     }
 

@@ -3,6 +3,8 @@
 import type { Messages } from '@/shared/i18n/messages/ko'
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
+// 문장 첫머리에 오는 칸 이름('the email')의 첫 글자
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
 export const en: Messages = {
   app: {
@@ -67,8 +69,8 @@ export const en: Messages = {
     http: (status: number) => `Request failed (HTTP ${status})`,
     codes: {
       VALIDATION_FAILED: (field: string) => `Please check ${field}.`,
-      MALFORMED_BODY: (field: string) => `${field} isn’t in a valid format.`,
-      INVALID_PARAMETER: (field: string) => `${field} isn’t valid.`,
+      MALFORMED_BODY: (field: string) => `${capitalize(field)} isn’t in a valid format.`,
+      INVALID_PARAMETER: (field: string) => `${capitalize(field)} isn’t valid.`,
       INVALID_SORT: 'That field can’t be sorted.',
       FUTURE_DATE: 'Dates after today aren’t allowed.',
       UNSUPPORTED_TIME_ZONE: 'That time zone isn’t supported.',
@@ -430,7 +432,8 @@ export const en: Messages = {
     },
     next: {
       title: 'Next service',
-      description: 'Calculated from each type’s recommended interval and your last record. Overdue items come first, then those due soon (within 1,000 km or a month).',
+      description: (soonDistance: string) =>
+        `Calculated from each type’s recommended interval and your last record. Overdue items come first, then those due soon (within ${soonDistance} or a month).`,
       loadFailed: 'Couldn’t load upcoming services.',
       empty: 'Nothing to calculate yet. Add a service record and we’ll show when that type is due next.',
       overdue: 'Overdue',
@@ -459,6 +462,7 @@ export const en: Messages = {
     noLiters: 'No fuel amount',
     noEfficiency: '· no economy',
     resetPoint: 'Reset point',
+    sameOdometer: 'Same odometer as the previous fill-up',
     baseline: 'Baseline',
     fromNext: '· calculated from the next fill-up',
     suspicious: 'Check this',

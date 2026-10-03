@@ -32,11 +32,12 @@ class AccountWithdrawalServiceTest {
     private AccountWithdrawalService accountWithdrawalService;
 
     @Test
-    @DisplayName("비밀번호 확인 → 차량 삭제 → 사용자 삭제 순서로 진행한다")
+    @DisplayName("사용자 잠금 → 비밀번호 확인 → 차량 삭제 → 사용자 삭제 순서로 진행한다")
     void withdrawFollowsOrder() {
         accountWithdrawalService.withdraw(1L, new WithdrawRequest("password1234"));
 
         InOrder order = inOrder(userService, vehicleRemovalService);
+        order.verify(userService).findByIdForUpdate(1L);
         order.verify(userService).verifyPassword(1L, "password1234");
         order.verify(vehicleRemovalService).deleteAllOwnedBy(1L);
         order.verify(userService).delete(1L);

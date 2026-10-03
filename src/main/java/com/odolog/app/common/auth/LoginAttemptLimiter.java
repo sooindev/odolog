@@ -43,6 +43,9 @@ public class LoginAttemptLimiter {
     private final Map<String, Attempt> attempts = new ConcurrentHashMap<>();
     private final Clock clock;
     private final int maxAttempts;
+
+    /** 공유 키의 한도 배수. 같은 공유기 뒤의 가족·사무실이 함께 걸리지 않을 만큼 */
+    static final int SHARED_FACTOR = 5;
     private volatile Instant lastPurge = Instant.EPOCH;
 
     @Autowired
@@ -65,6 +68,15 @@ public class LoginAttemptLimiter {
      * reason 은 완성된 문장. 조사 자동 결합 시 받침 오류 방지. 화면 문구는 code 로
      */
     public void acquire(String key, ErrorCode code, String reason) {
+        acquire(key, maxAttempts, code, reason);
+    }
+
+    /** 여러 사람이 함께 쓰는 키(IP). 한 사람 기준 한도의 SHARED_FACTOR 배 */
+    public void acquireShared(String key, ErrorCode code, String reason) {
+        acquire(key, maxAttempts * SHARED_FACTOR, code, reason);
+    }
+
+    private void acquire(String key, int limit, ErrorCode code, String reason) {
         Instant now = clock.instant();
         Instant[] lockedUntil = new Instant[1];
 
@@ -86,7 +98,7 @@ public class LoginAttemptLimiter {
             attempt.attempts += 1;
             attempt.lastAttempt = now;
 
-            if (attempt.attempts > maxAttempts) {
+            if (attempt.attempts > limit) {
                 attempt.lockedUntil = now.plus(LOCK);
                 lockedUntil[0] = attempt.lockedUntil;
             }

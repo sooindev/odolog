@@ -18,6 +18,8 @@ spring:
   session:
     jdbc:
       initialize-schema: never
+      # 속성을 넣는 즉시 저장. 로그인이 세션을 저장한 뒤 비밀번호가 그대로인지 다시 확인하려면 필요
+      flush-mode: immediate
 
   # 페이지 크기 상한. 기본 2000 이면 ?size=2000 한 번에 차량·이력이 통째로
   data:

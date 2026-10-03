@@ -47,9 +47,7 @@ public class VehicleListService {
     }
 
     public Page<VehicleResponse> findMyVehicles(Long ownerId, Pageable pageable) {
-        SortGuard.allowOnly(pageable, SORTABLE);
-
-        Page<Vehicle> page = vehicleRepository.findByOwnerId(ownerId, pageable);
+        Page<Vehicle> page = vehicleRepository.findByOwnerId(ownerId, SortGuard.allowOnly(pageable, SORTABLE));
         if (page.isEmpty()) {
             return page.map(vehicle -> VehicleResponse.of(vehicle, 0, 0));
         }

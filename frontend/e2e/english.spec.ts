@@ -1,9 +1,22 @@
 import { expect, test } from '@playwright/test'
 
-import { PASSWORD, uniqueEmail } from './helpers.ts'
+import { PASSWORD, errorGuard, uniqueEmail } from './helpers.ts'
 
 // 미국 브라우저로 가입하면 영어·마일·달러. 저장은 km 라도 화면은 마일(7-H 일부)
 test.use({ locale: 'en-US', timezoneId: 'America/Los_Angeles' })
+
+// 콘솔 오류가 하나라도 나면 실패. 다른 spec 과 같은 기준
+const guard = errorGuard()
+
+test.beforeEach(({ page }) => {
+  guard.reset()
+  guard.watch(page)
+})
+
+test.afterEach(async () => {
+  await guard.closeAll()
+  expect(guard.errors).toEqual([])
+})
 
 test('영어 브라우저로 가입하면 화면이 영어이고 주행거리는 마일이다', async ({ page }) => {
   await page.goto('/signup')

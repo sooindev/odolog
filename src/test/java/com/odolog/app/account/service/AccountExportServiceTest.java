@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -49,7 +50,8 @@ class AccountExportServiceTest {
     @InjectMocks
     private AccountExportService accountExportService;
 
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 9, 21, 12, 0);
+    /** 서울 2026-09-21 12:00 */
+    private static final Instant NOW = Instant.parse("2026-09-21T03:00:00Z");
 
     private User owner;
     private Vehicle first;
@@ -133,6 +135,23 @@ class AccountExportServiceTest {
         AccountExportResponse response = accountExportService.export(1L, NOW);
 
         assertThat(response.vehicles()).isEmpty();
-        assertThat(response.exportedAt()).isEqualTo(NOW);
+        // 기본 시간대(서울) 기준 시각
+        assertThat(response.exportedAt()).isEqualTo(LocalDateTime.of(2026, 9, 21, 12, 0));
+    }
+
+    @Test
+    @DisplayName("내보낸 시각은 서버가 아니라 사용자 시간대로 적는다")
+    void exportedAtInUserTimeZone() {
+        owner.changeTimeZone("America/Los_Angeles");
+        when(userService.findById(1L)).thenReturn(owner);
+        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of());
+        when(maintenanceRecordRepository.findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(1L))
+                .thenReturn(List.of());
+        when(fuelRecordRepository.findByVehicle_Owner_IdOrderByOdometerAscIdAsc(1L))
+                .thenReturn(List.of());
+
+        // 서울 9/21 12:00 = 로스앤젤레스 9/20 20:00
+        assertThat(accountExportService.export(1L, NOW).exportedAt())
+                .isEqualTo(LocalDateTime.of(2026, 9, 20, 20, 0));
     }
 }

@@ -143,7 +143,8 @@ export function VehicleNewPage() {
                 <Button type="submit" disabled={pending}>
                   {pending ? t.common.registering : t.common.register}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
+                {/* 목록으로. 주소를 직접 열었으면 뒤로가기가 앱 밖으로 나감 */}
+                <Button type="button" variant="ghost" onClick={() => navigate('/vehicles')}>
                   {t.common.cancel}
                 </Button>
               </FormActions>

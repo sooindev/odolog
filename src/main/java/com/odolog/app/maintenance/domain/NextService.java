@@ -4,6 +4,7 @@ import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.entity.ServiceInterval;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -75,6 +76,9 @@ public record NextService(
     public static final int SOON_KM = 1_000;
     public static final int SOON_MONTHS = 1;
 
+    /** 곧 범위의 상한. 주기의 1/5. 기본 주기(최소 5,000km·6개월)에서는 위 두 값이 그대로 쓰임 */
+    static final int SOON_SHARE_DENOMINATOR = 5;
+
     /** 지난·곧 정비 수. 차량 목록·홈 요약 공용 */
     public record Counts(int overdue, int dueSoon) {
     }
@@ -118,12 +122,27 @@ public record NextService(
                 || (nextDate != null && !today.isBefore(nextDate));
 
         // 지난 것은 곧이 아님. 경계는 지남과 같이 딱 그 값·그 날 포함
+        // 범위는 주기의 마지막 1/5 을 넘지 않음. 짧은 주기면 정비한 날부터 늘 곧
         boolean dueSoon = !overdue
-                && ((nextOdometer != null && currentOdometer >= nextOdometer - SOON_KM)
-                || (nextDate != null && !today.plusMonths(SOON_MONTHS).isBefore(nextDate)));
+                && ((nextOdometer != null && currentOdometer >= soonFromOdometer(record.getServiceOdometer(), intervalKm))
+                || (nextDate != null && !today.isBefore(soonFromDate(record.getServiceDate(), nextDate))));
 
         return new NextService(type, record.getServiceOdometer(), nextOdometer,
                 record.getServiceDate(), nextDate, overdue, dueSoon,
                 intervalKm, intervalMonths, override != null, customKm, customMonths);
+    }
+
+    /** 곧이 켜지는 주행거리. 다음 시점 SOON_KM 전, 단 주기의 4/5 지점보다 이르지 않게 */
+    private static int soonFromOdometer(int serviceOdometer, int intervalKm) {
+        int nextOdometer = serviceOdometer + intervalKm;
+        return Math.max(nextOdometer - SOON_KM, serviceOdometer + intervalKm * (SOON_SHARE_DENOMINATOR - 1) / SOON_SHARE_DENOMINATOR);
+    }
+
+    /** 곧이 켜지는 날. 다음 날짜 SOON_MONTHS 전, 단 주기의 4/5 지점보다 이르지 않게 */
+    private static LocalDate soonFromDate(LocalDate serviceDate, LocalDate nextDate) {
+        long days = ChronoUnit.DAYS.between(serviceDate, nextDate);
+        LocalDate shareStart = serviceDate.plusDays(days * (SOON_SHARE_DENOMINATOR - 1) / SOON_SHARE_DENOMINATOR);
+        LocalDate windowStart = nextDate.minusMonths(SOON_MONTHS);
+        return shareStart.isAfter(windowStart) ? shareStart : windowStart;
     }
 }

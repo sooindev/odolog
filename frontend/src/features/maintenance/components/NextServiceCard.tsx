@@ -18,6 +18,9 @@ import {
 } from '@/features/maintenance/api/endpoints'
 import type { NextServiceResponse, ServiceType } from '@/features/maintenance/api/types'
 
+/** '곧' 의 거리 기준(km). 백엔드 NextService.SOON_KM 과 같은 값 */
+const SOON_KM = 1000
+
 /**
  * 종류별 다음 정비 시점. 요청 1번, 이력 있는 종류만
  * 재조회는 부모의 key 변경
@@ -41,7 +44,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
     <Card>
       <CardHeader>
         <CardTitle>{t.maintenance.next.title}</CardTitle>
-        <CardDescription>{t.maintenance.next.description}</CardDescription>
+        <CardDescription>{t.maintenance.next.description(i18n.f.distance(SOON_KM))}</CardDescription>
       </CardHeader>
       <CardContent>
         {loading && (
@@ -103,6 +106,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                   <button
                     type="button"
                     className="shrink-0 text-unit text-muted-foreground underline-offset-4 transition-opacity duration-200 ease-apple hover:opacity-70 hover:underline"
+                    aria-expanded={editing === result.type}
                     onClick={() => setEditing(editing === result.type ? null : result.type)}
                   >
                     {result.customized ? t.maintenance.next.intervalCustomized : t.maintenance.next.interval}

@@ -161,4 +161,34 @@ describe('401 전역 처리', () => {
 
     expect(handler).toHaveBeenCalledOnce()
   })
+
+  it('비밀번호 변경의 401 도 코드가 LOGIN_REQUIRED 면 세션 만료다', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    mockFetch(401, { code: 'LOGIN_REQUIRED', message: '로그인이 필요합니다.' })
+
+    await api.patch('/api/users/me/password', {}).catch(() => undefined)
+
+    expect(handler).toHaveBeenCalledOnce()
+  })
+
+  it('비밀번호 변경의 401 이 WRONG_PASSWORD 면 로그아웃시키지 않는다', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    mockFetch(401, { code: 'WRONG_PASSWORD', message: '비밀번호가 올바르지 않습니다.' })
+
+    await api.patch('/api/users/me/password', {}).catch(() => undefined)
+
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('GET /me 는 LOGIN_REQUIRED 여도 전역 처리하지 않는다', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    mockFetch(401, { code: 'LOGIN_REQUIRED', message: '로그인이 필요합니다.' })
+
+    await api.get('/api/users/me').catch(() => undefined)
+
+    expect(handler).not.toHaveBeenCalled()
+  })
 })

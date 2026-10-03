@@ -18,17 +18,18 @@ export function ProfileForm({ user }: { user: UserResponse }) {
   const { t } = useI18n()
 
   const [nickname, setNickname] = useState(user.nickname)
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // 문구 대신 종류·원인. 언어를 바꾸면 남아 있던 안내도 새 언어로
+  const [message, setMessage] = useState<'saved' | 'noChanges' | null>(null)
+  const [failure, setFailure] = useState<{ caught: unknown } | null>(null)
   const [pending, setPending] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setMessage(null)
-    setError(null)
+    setFailure(null)
 
     if (nickname === user.nickname) {
-      setMessage(t.common.noChanges)
+      setMessage('noChanges')
       return
     }
 
@@ -38,9 +39,9 @@ export function ProfileForm({ user }: { user: UserResponse }) {
       replaceUser(updated)
       // 입력칸도 서버 저장값으로. 공백 정리 후 재전송 방지
       setNickname(updated.nickname)
-      setMessage(t.common.saved)
+      setMessage('saved')
     } catch (caught) {
-      setError(errorMessage(caught, t, t.profile.account.failed))
+      setFailure({ caught })
     } finally {
       setPending(false)
     }
@@ -67,8 +68,10 @@ export function ProfileForm({ user }: { user: UserResponse }) {
             </Field>
           </div>
 
-          {message !== null && <NoticeText message={message} />}
-          {error !== null && <ErrorText message={error} />}
+          {message !== null && <NoticeText message={t.common[message]} />}
+          {failure !== null && (
+            <ErrorText message={errorMessage(failure.caught, t, t.profile.account.failed)} />
+          )}
 
           <FormActions>
             <Button type="submit" disabled={pending}>

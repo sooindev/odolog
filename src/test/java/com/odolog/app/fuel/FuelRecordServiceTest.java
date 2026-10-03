@@ -244,6 +244,20 @@ class FuelRecordServiceTest {
     }
 
     @Test
+    @DisplayName("금액을 비운 다른 통화 기록은 '합계에서 뺀 건수' 에 넣지 않는다")
+    void summaryDoesNotCountBlankOtherCurrency() {
+        Vehicle vehicle = vehicle(11000);
+        FuelRecord blankDollar = record(2L, vehicle, 10500, "25.00", 4567);
+        ReflectionTestUtils.setField(blankDollar, "currency", "USD");
+        ReflectionTestUtils.setField(blankDollar, "totalCost", null);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
+                record(1L, vehicle, 10000, "30.00", 60000), blankDollar));
+
+        assertThat(fuelRecordService.summary(1L, "V10").otherCurrencyRecordCount()).isZero();
+    }
+
+    @Test
     @DisplayName("유류비 합계는 사용자 통화만. 다른 통화는 건수로 밝힌다")
     void summaryCostIsInUserCurrencyOnly() {
         Vehicle vehicle = vehicle(11000);
@@ -480,5 +494,27 @@ class FuelRecordServiceTest {
         assertThat(after.resetPoint()).isTrue();
         assertThat(after.efficiency()).isNull();
         assertThat(after.distance()).isNull();
+    }
+
+    @Test
+    @DisplayName("기준점은 차량당 하나 — 새로 찍거나 해제하면 옛 기준점도 지운다")
+    void resetPointIsSinglePerVehicle() {
+        Vehicle vehicle = vehicle(30000);
+        FuelRecord older = resetPointAt(1L, vehicle, 20000, "30.00", 60000);
+        FuelRecord latest = record(2L, vehicle, 25000, "30.00", 60000);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(fuelRecordRepository.findByPublicIdAndVehicleId("R2", 10L)).thenReturn(Optional.of(latest));
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(older, latest));
+
+        fuelRecordService.update(1L, "V10", "R2",
+                new FuelRecordUpdateRequest(null, null, null, null, null, null, null, true));
+        assertThat(older.isResetPoint()).isFalse();
+        assertThat(latest.isResetPoint()).isTrue();
+
+        // 해제하면 전체 평균. 옛 기준점이 되살아나지 않음
+        fuelRecordService.update(1L, "V10", "R2",
+                new FuelRecordUpdateRequest(null, null, null, null, null, null, null, false));
+        assertThat(older.isResetPoint()).isFalse();
+        assertThat(latest.isResetPoint()).isFalse();
     }
 }

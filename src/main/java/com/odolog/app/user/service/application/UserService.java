@@ -33,7 +33,7 @@ public class UserService {
     public static final String LOGIN_KEY_PREFIX = "login:";
 
     /** 로그인·가입·재설정과 공용 리미터, 키만 구분. 세션 사용자 id 기준 */
-    private static final String PASSWORD_CHECK_KEY_PREFIX = "password-check:";
+    public static final String PASSWORD_CHECK_KEY_PREFIX = "password-check:";
 
     /** 없는 계정의 비교 상대. 같은 인코더로 생성해 비용 동일 */
     private final String dummyHash = passwordEncoder.encode("no-such-account");
@@ -94,6 +94,13 @@ public class UserService {
         return user;
     }
 
+    /** 로그인이 맞춰 본 해시가 지금도 그대로인지. 새 트랜잭션이라 그 사이 커밋된 변경·탈퇴가 보임 */
+    public boolean isPasswordCurrent(Long userId, String matchedHash) {
+        return userRepository.findById(userId)
+                .map(user -> user.getPassword().equals(matchedHash))
+                .orElse(false);
+    }
+
     public User findById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + userId));
@@ -135,6 +142,8 @@ public class UserService {
 
     @Transactional
     public void changePassword(Long userId, ChangePasswordRequest request) {
+        // 첫 조회가 사용자 행 잠금. 재설정 확정과 겹치면 늦은 쪽이 앞선 쪽의 결과를 보고 진행
+        findByIdForUpdate(userId);
         // 현재 비밀번호 확인. 열린 세션만으로는 변경 불가
         verifyPassword(userId, request.currentPassword());
 

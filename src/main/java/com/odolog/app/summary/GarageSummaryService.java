@@ -70,7 +70,11 @@ public class GarageSummaryService {
         List<FuelRecord> pricedFuels = fuels.stream()
                 .filter(record -> currency.equals(record.getCurrency()))
                 .toList();
-        int otherCurrency = (records.size() - pricedRecords.size()) + (fuels.size() - pricedFuels.size());
+        // 금액이 비어 있는 기록은 빼지 않았으므로 세지 않음
+        int otherCurrency = (int) (records.stream()
+                .filter(record -> record.getCost() != null && !currency.equals(record.getCurrency())).count()
+                + fuels.stream()
+                .filter(record -> record.getTotalCost() != null && !currency.equals(record.getCurrency())).count());
 
         long maintenanceCost = pricedRecords.stream().mapToLong(MaintenanceRecord::costOrZero).sum();
         // 금액을 안 적은 기록은 합계에서 0

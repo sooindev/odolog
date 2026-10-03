@@ -82,7 +82,7 @@ public class AccountRestoreService {
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
             String plateNumber = InputText.required(data.plateNumber(), "plateNumber");
             // 같은 차인지는 DB 정렬 규칙으로. 파일 안에서 앞서 만든 차도 찾음(IDENTITY 라 저장 즉시 INSERT)
-            Vehicle vehicle = vehicleRepository.findByOwnerIdAndPlateNumber(userId, plateNumber).orElse(null);
+            Vehicle vehicle = vehicleRepository.findLockedByOwnerIdAndPlateNumber(userId, plateNumber).orElse(null);
             boolean created = vehicle == null;
 
             if (created) {
@@ -109,6 +109,9 @@ public class AccountRestoreService {
                 existingFuel.add(fuelKey(record));
             }
 
+            // 이번에 실제로 넣은 기록 중 가장 큰 주행거리. 있던 차량은 이것만 따라 올림
+            int addedHighest = 0;
+
             for (AccountRestoreRequest.MaintenanceData record : inInsertOrder(data.maintenanceRecords())) {
                 String key = maintenanceKey(record);
                 if (existingMaintenance.contains(key)) {
@@ -120,6 +123,9 @@ public class AccountRestoreService {
                         blankToNull(record.description()), record.cost(), currencyOf(record.currency()),
                         record.serviceOdometer(), record.serviceDate()));
                 addedMaintenance++;
+                if (record.serviceOdometer() != null) {
+                    addedHighest = Math.max(addedHighest, record.serviceOdometer());
+                }
             }
 
             for (AccountRestoreRequest.FuelData record : data.fuelRecords()) {
@@ -137,6 +143,7 @@ public class AccountRestoreService {
 
                 fuelRecordRepository.save(fuel);
                 addedFuel++;
+                addedHighest = Math.max(addedHighest, record.odometer());
             }
 
             // 이미 설정된 종류는 유지
@@ -146,8 +153,11 @@ public class AccountRestoreService {
             }
 
             for (AccountRestoreRequest.IntervalData interval : data.serviceIntervals()) {
-                if (!settled.add(interval.type())
-                        || (interval.intervalKm() == null && interval.intervalMonths() == null)) {
+                // 빈 항목 먼저 거름. 순서가 반대면 빈 항목이 같은 종류의 뒤 항목을 막음
+                if (interval.intervalKm() == null && interval.intervalMonths() == null) {
+                    continue;
+                }
+                if (!settled.add(interval.type())) {
                     continue;
                 }
 
@@ -156,8 +166,9 @@ public class AccountRestoreService {
                 addedIntervals++;
             }
 
-            // 기록 추가 후 한 번만. 파일 값·기록의 주행거리·기존 값 중 가장 큰 쪽(등록과 같은 규칙)
-            vehicle.liftOdometerTo(Math.max(data.odometer(), highestOdometer(data)));
+            // 기록 추가 후 한 번만. 등록과 같은 규칙(올리기만)
+            // 있던 차량은 파일의 차량 값·건너뛴 기록을 보지 않음. 옛 파일이 손으로 낮춘 주행거리를 되살림
+            vehicle.liftOdometerTo(created ? Math.max(data.odometer(), addedHighest) : addedHighest);
         }
 
         return new AccountRestoreResponse(addedVehicles, addedMaintenance, addedFuel,
@@ -220,45 +231,31 @@ public class AccountRestoreService {
     }
 
     // 중복 판정 열쇠. JSON 에 id 가 없어 내용으로 판정
-    // 정비: 종류·날짜·주행거리·비용·설명 / 주유: 날짜·주행거리·주유량·금액
+    // 정비: 종류·날짜·주행거리·비용·통화·설명 / 주유: 날짜·주행거리·주유량·금액·통화
     // 날짜·주행거리만 보면 같은 날의 서로 다른 기록(와이퍼·경적 수리, 두 번 나눠 넣은 주유)을 하나로 봄
     private String maintenanceKey(MaintenanceRecord record) {
         return record.getType() + "|" + record.getServiceDate() + "|" + record.getServiceOdometer()
-                + "|" + record.getCost() + "|" + record.getDescription();
+                + "|" + record.getCost() + "|" + record.getCurrency() + "|" + record.getDescription();
     }
 
     private String maintenanceKey(AccountRestoreRequest.MaintenanceData record) {
         return record.type() + "|" + record.serviceDate() + "|" + record.serviceOdometer()
-                + "|" + record.cost() + "|" + blankToNull(record.description());
+                + "|" + record.cost() + "|" + currencyOf(record.currency()) + "|" + blankToNull(record.description());
     }
 
     private String fuelKey(FuelRecord record) {
         return record.getFueledAt() + "|" + record.getOdometer() + "|" + litersKey(record.getLiters())
-                + "|" + record.getTotalCost();
+                + "|" + record.getTotalCost() + "|" + record.getCurrency();
     }
 
     private String fuelKey(AccountRestoreRequest.FuelData record) {
         return record.fueledAt() + "|" + record.odometer() + "|" + litersKey(record.liters())
-                + "|" + record.totalCost();
+                + "|" + record.totalCost() + "|" + currencyOf(record.currency());
     }
 
     /** DB 는 32.40, 파일은 32.4 일 수 있어 자리수 맞춤 */
     private String litersKey(BigDecimal liters) {
         return liters == null ? "null" : liters.stripTrailingZeros().toPlainString();
-    }
-
-    /** 파일 기록 중 가장 큰 주행거리. 없으면 0 */
-    private int highestOdometer(AccountRestoreRequest.VehicleData data) {
-        int highest = 0;
-        for (AccountRestoreRequest.MaintenanceData record : data.maintenanceRecords()) {
-            if (record.serviceOdometer() != null) {
-                highest = Math.max(highest, record.serviceOdometer());
-            }
-        }
-        for (AccountRestoreRequest.FuelData record : data.fuelRecords()) {
-            highest = Math.max(highest, record.odometer());
-        }
-        return highest;
     }
 
     /**

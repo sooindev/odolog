@@ -55,6 +55,7 @@ class UserServiceTest {
         User user = new User("me@odolog.com", new BCryptPasswordEncoder().encode("password1234"),
                 "나");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findLockedById(1L)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.changePassword(1L,
                 new ChangePasswordRequest("password1234", "password1234")))
@@ -193,6 +194,7 @@ class UserServiceTest {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         User user = new User("test@odolog.com", encoder.encode("oldpassword"), "닉네임");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findLockedById(1L)).thenReturn(Optional.of(user));
 
         userService.changePassword(1L, new ChangePasswordRequest("oldpassword", "newpassword1234"));
 
@@ -210,6 +212,7 @@ class UserServiceTest {
         String original = encoder.encode("oldpassword");
         User user = new User("test@odolog.com", original, "닉네임");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findLockedById(1L)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.changePassword(1L,
                 new ChangePasswordRequest("wrongpassword", "newpassword1234")))

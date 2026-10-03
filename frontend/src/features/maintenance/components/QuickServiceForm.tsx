@@ -40,12 +40,15 @@ export function QuickServiceForm({
   vehicleId,
   currentOdometer,
   onSaved,
+  onRecordSaved,
   onCancel,
 }: {
   vehicleId: string
   /** 차량의 현재 주행거리(km). 급증 확인 기준 */
   currentOdometer: number
   onSaved: () => void
+  /** 한 줄 저장될 때마다. 폼이 다른 길로 닫혀도 부모가 재조회할 수 있게 */
+  onRecordSaved?: () => void
   onCancel: () => void
 }) {
   const { t, f, unitSystem, timeZone } = useI18n()
@@ -113,6 +116,7 @@ export function QuickServiceForm({
         update(type, { choice: 'unknown', odometer: '' })
         saved += 1
         setSavedCount((current) => current + 1)
+        onRecordSaved?.()
       }
       onSaved()
     } catch (caught) {
