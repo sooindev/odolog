@@ -31,6 +31,10 @@ spring:
           auth: true
           starttls:
             enable: true
+          # 시간 제한(ms). 없으면 응답 없는 메일 서버에 실행기 스레드가 영구히 묶여 재설정 발급까지 멈춤
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 # 세션 쿠키 속성 명시. 브라우저 기본값에 기대지 않음
 # secure 는 로컬(http) 기본 false, 배포 시 SESSION_COOKIE_SECURE=true
@@ -50,6 +54,9 @@ odolog:
   # 재설정 링크의 프런트 주소
   app:
     base-url: ${APP_BASE_URL:http://localhost:5173}
+  # 메일 설정이 없는 로컬에서 재설정 흐름을 확인하려고 발송 실패 시 링크를 로그에. 운영은 끔
+  mail:
+    log-link-on-failure: true
 
 # Swagger UI 의 CSRF 헤더 전송. 운영에서는 문서 비활성(application-prod.yml)
 springdoc:

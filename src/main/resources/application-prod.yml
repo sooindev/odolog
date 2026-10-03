@@ -35,3 +35,6 @@ server:
 odolog:
   app:
     base-url: ${APP_BASE_URL}
+  # 토큰이 로그에 남으면 로그를 보는 사람이 남의 비밀번호를 바꿀 수 있음
+  mail:
+    log-link-on-failure: false

@@ -59,8 +59,8 @@ export function QuickServiceForm({
   )
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
-  // 일부만 저장된 채 실패했는지. 닫을 때 부모가 새 기록을 다시 읽게
-  const [savedSome, setSavedSome] = useState(false)
+  // 앞선 시도까지 저장된 건수. 닫을 때 부모가 새 기록을 다시 읽고, 실패 문구에 누적으로 밝힘
+  const [savedCount, setSavedCount] = useState(0)
 
   function update(type: ServiceType, patch: Partial<Row>) {
     setRows((current) => ({ ...current, [type]: { ...current[type], ...patch } }))
@@ -112,13 +112,15 @@ export function QuickServiceForm({
         // 저장된 줄은 모름으로 되돌림. 중간에 실패해 다시 눌러도 같은 기록이 두 번 들어가지 않게
         update(type, { choice: 'unknown', odometer: '' })
         saved += 1
-        setSavedSome(true)
+        setSavedCount((current) => current + 1)
       }
       onSaved()
     } catch (caught) {
       const reason = errorMessage(caught, t, t.maintenance.quick.failed)
       // 저장된 줄이 있으면 밝힘. 안 그러면 아무것도 안 들어간 줄 알고 다시 적음
-      setError(saved > 0 ? t.maintenance.quick.partlySaved(saved, reason) : reason)
+      // 앞선 시도에서 저장된 것까지. 다시 눌러 또 실패해도 이미 들어간 건수가 사라지지 않게
+      const total = savedCount + saved
+      setError(total > 0 ? t.maintenance.quick.partlySaved(total, reason) : reason)
       setPending(false)
     }
   }
@@ -200,7 +202,7 @@ export function QuickServiceForm({
         <Button type="submit" disabled={pending}>
           {pending ? t.common.saving : t.maintenance.quick.submit}
         </Button>
-        <Button type="button" variant="ghost" onClick={savedSome ? onSaved : onCancel}>
+        <Button type="button" variant="ghost" onClick={savedCount > 0 ? onSaved : onCancel}>
           {t.common.cancel}
         </Button>
       </FormActions>

@@ -1,8 +1,10 @@
 package com.odolog.app.vehicle;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +18,17 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
     /** URL 의 공개 id 로 조회 */
     Optional<Vehicle> findByPublicId(String publicId);
+
+    /**
+     * 행 잠금 조회. 기록 쓰기와 차량 삭제를 한 줄로 세움
+     * 잠그지 않으면 차량을 지우는 동안 들어온 기록이 남아 마지막 차량 DELETE 가 FK 로 실패
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Vehicle> findLockedByPublicId(String publicId);
+
+    /** 탈퇴용 잠금 조회. 위와 같은 이유 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Vehicle> findLockedByOwnerId(Long ownerId);
 
     boolean existsByOwnerIdAndPlateNumber(Long ownerId, String plateNumber);
 

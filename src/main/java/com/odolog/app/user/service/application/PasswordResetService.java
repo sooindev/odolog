@@ -153,7 +153,8 @@ public class PasswordResetService {
 
     /** 토큰 발급 + 커밋 후 메일 예약. 다른 스레드에서 트랜잭션 안에 실행 */
     void issue(String email) {
-        Optional<User> found = userRepository.findByEmail(email);
+        // 첫 조회가 잠금. 같은 주소의 동시 요청은 여기서 기다렸다가 앞선 발급의 결과를 보고 진행
+        Optional<User> found = userRepository.findLockedByEmail(email);
         if (found.isEmpty()) {
             return;
         }

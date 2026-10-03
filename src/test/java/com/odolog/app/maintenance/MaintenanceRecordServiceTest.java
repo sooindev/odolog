@@ -72,7 +72,7 @@ class MaintenanceRecordServiceTest {
     @DisplayName("사용자 기준 미래 날짜면 저장하지 않는다")
     void registerRejectsFutureDate() {
         LocalDate tomorrow = LocalDate.of(2026, 9, 30);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(createVehicle(10L));
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(createVehicle(10L));
         doThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "serviceDate: 오늘 이후 날짜는 입력할 수 없습니다."))
                 .when(userToday).rejectFuture(1L, tomorrow, "serviceDate");
 
@@ -87,7 +87,7 @@ class MaintenanceRecordServiceTest {
     void registerTakesOwnerCurrency() {
         Vehicle vehicle = createVehicle(10L);
         vehicle.getOwner().changeCurrency("USD");
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -104,7 +104,7 @@ class MaintenanceRecordServiceTest {
     @DisplayName("정비 이력 등록 성공")
     void registerSuccess() {
         Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -127,7 +127,7 @@ class MaintenanceRecordServiceTest {
         Vehicle vehicle = createVehicle(10L);
         MaintenanceRecord record = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, "기존 메모",
                 50000, "KRW", 40000, LocalDate.of(2026, 1, 1));
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L)).thenReturn(Optional.of(record));
 
         MaintenanceRecordUpdateRequest request = new MaintenanceRecordUpdateRequest(
@@ -144,7 +144,7 @@ class MaintenanceRecordServiceTest {
     @DisplayName("다른 차량 소속의 정비 이력 id로 접근하면 ResourceNotFoundException")
     void updateRecordNotBelongingToVehicle() {
         Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R999", 10L)).thenReturn(Optional.empty());
 
         MaintenanceRecordUpdateRequest request = new MaintenanceRecordUpdateRequest(
@@ -274,7 +274,7 @@ class MaintenanceRecordServiceTest {
     void registerLiftsVehicleOdometer() {
         Vehicle vehicle = createVehicle(10L);
         vehicle.updateOdometer(30000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -290,7 +290,7 @@ class MaintenanceRecordServiceTest {
     void registerDoesNotLowerVehicleOdometer() {
         Vehicle vehicle = createVehicle(10L);
         vehicle.updateOdometer(50000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -308,7 +308,7 @@ class MaintenanceRecordServiceTest {
         vehicle.updateOdometer(30000);
         MaintenanceRecord existing = record(100L, vehicle, ServiceType.ENGINE_OIL, 30000,
                 LocalDate.of(2026, 9, 1));
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L))
                 .thenReturn(Optional.of(existing));
 
@@ -326,7 +326,7 @@ class MaintenanceRecordServiceTest {
         // 타던 차를 등록하며 "석 달 전에 오일 갈았다" 만 기억하는 경우
         Vehicle vehicle = createVehicle(10L);
         vehicle.updateOdometer(85000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.save(any(MaintenanceRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -346,7 +346,7 @@ class MaintenanceRecordServiceTest {
         Vehicle vehicle = createVehicle(10L);
         MaintenanceRecord existing = record(100L, vehicle, ServiceType.ENGINE_OIL, 30000,
                 LocalDate.of(2026, 9, 1));
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L))
                 .thenReturn(Optional.of(existing));
 

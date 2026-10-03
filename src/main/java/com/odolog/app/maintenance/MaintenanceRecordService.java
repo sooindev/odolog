@@ -51,7 +51,7 @@ public class MaintenanceRecordService {
     public void changeInterval(Long requesterId, String vehicleId, ServiceType type,
                                Integer intervalKm, Integer intervalMonths) {
 
-        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Vehicle vehicle = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId);
 
         serviceIntervalRepository.findByVehicleIdAndType(vehicle.getId(), type).ifPresentOrElse(
                 existing -> {
@@ -70,7 +70,7 @@ public class MaintenanceRecordService {
 
     @Transactional
     public MaintenanceRecord register(Long requesterId, String vehicleId, MaintenanceRecordRegisterRequest request) {
-        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Vehicle vehicle = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId);
         userToday.rejectFuture(requesterId, request.serviceDate(), "serviceDate");
 
         // 통화는 기록 시점의 사용자 설정
@@ -123,7 +123,7 @@ public class MaintenanceRecordService {
     @Transactional
     public MaintenanceRecord update(Long requesterId, String vehicleId, String recordId,
                                      MaintenanceRecordUpdateRequest request) {
-        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Vehicle vehicle = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId);
         MaintenanceRecord record = findRecordInVehicle(vehicle.getId(), recordId);
         userToday.rejectFuture(requesterId, request.serviceDate(), "serviceDate");
 
@@ -155,7 +155,7 @@ public class MaintenanceRecordService {
 
     @Transactional
     public void delete(Long requesterId, String vehicleId, String recordId) {
-        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Vehicle vehicle = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId);
         MaintenanceRecord record = findRecordInVehicle(vehicle.getId(), recordId);
 
         maintenanceRecordRepository.delete(record);

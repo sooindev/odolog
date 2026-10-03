@@ -261,8 +261,23 @@ public class AccountRestoreService {
         return highest;
     }
 
-    /** 빈 문자열은 null */
+    /**
+     * 빈 문자열은 null. 짝 없는 서로게이트는 DB 가 저장하는 모양('?')으로 미리 바꿈
+     * 안 바꾸면 비교 열쇠와 저장값이 달라 같은 파일을 다시 넣을 때마다 기록이 늘어남(손으로 만든 파일)
+     */
     private String blankToNull(String value) {
-        return (value == null || value.isBlank()) ? null : value;
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        StringBuilder text = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isHighSurrogate(c) && i + 1 < value.length() && Character.isLowSurrogate(value.charAt(i + 1))) {
+                text.append(c).append(value.charAt(++i));
+            } else {
+                text.append(Character.isSurrogate(c) ? '?' : c);
+            }
+        }
+        return text.toString();
     }
 }

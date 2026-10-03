@@ -421,4 +421,20 @@ class AccountRestoreServiceTest {
         assertThat(saved.getAllValues()).extracting(MaintenanceRecord::getServiceOdometer)
                 .containsExactly(500, 1000, 2000);
     }
+
+    @Test
+    @DisplayName("짝 없는 서로게이트는 DB 가 저장하는 '?' 로 바꿔 넣는다 — 같은 파일을 다시 넣어도 늘지 않게")
+    void normalizesLoneSurrogates() {
+        emptyAccount();
+
+        accountRestoreService.restore(1L,
+                new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                        List.of(new AccountRestoreRequest.MaintenanceData(ServiceType.OTHER, "\ud800x", null, null, null,
+                                LocalDate.of(2026, 9, 1))),
+                        List.of()))));
+
+        ArgumentCaptor<MaintenanceRecord> saved = ArgumentCaptor.forClass(MaintenanceRecord.class);
+        verify(maintenanceRecordRepository).save(saved.capture());
+        assertThat(saved.getValue().getDescription()).isEqualTo("?x");
+    }
 }

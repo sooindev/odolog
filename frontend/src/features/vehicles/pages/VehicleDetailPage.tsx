@@ -44,8 +44,10 @@ export function VehicleDetailPage() {
     setData: setVehicle,
   } = useAsyncData(load, t.vehicles.detail.loadFailed)
 
-  // 주행거리 409 문구. 폼은 주행거리 key 로 재생성되므로 재조회 뒤에도 남게 여기 보관
-  const [odometerConflict, setOdometerConflict] = useState<string | null>(null)
+  // 주행거리 409 문구와 그때의 값. 폼은 주행거리 key 로 재생성되므로 재조회 뒤에도 남게 여기 보관
+  const [odometerConflict, setOdometerConflict] = useState<{ message: string; staleOdometer: number } | null>(
+    null,
+  )
 
   // 정비 이력 변경 시 증가. 다음 정비 카드 재생성
   const [maintenanceVersion, setMaintenanceVersion] = useState(0)
@@ -130,10 +132,8 @@ export function VehicleDetailPage() {
             vehicle={vehicle}
             onUpdated={setVehicle}
             conflict={odometerConflict}
-            // 409 뒤 재조회가 실패하면 "현재" 값을 말할 수 없음
-            reloadFailed={error !== null}
             onConflict={(message) => {
-              setOdometerConflict(message)
+              setOdometerConflict(message === null ? null : { message, staleOdometer: vehicle.odometer })
               // 다른 곳에서 값이 오름. 최신 값을 받아 입력 기준도 맞춤
               if (message !== null) reloadVehicle()
             }}
@@ -284,14 +284,12 @@ function OdometerForm({
   vehicle,
   onUpdated,
   conflict,
-  reloadFailed,
   onConflict,
 }: {
   vehicle: VehicleResponse
   onUpdated: (vehicle: VehicleResponse) => void
-  /** 직전 409 문구. 현재 값은 다시 불러온 vehicle 로 그림 */
-  conflict: string | null
-  reloadFailed: boolean
+  /** 직전 409 문구와 그때의 값. 다시 불러와 값이 바뀐 뒤에만 "현재" 를 말함 */
+  conflict: { message: string; staleOdometer: number } | null
   onConflict: (message: string | null) => void
 }) {
   const { t, f, unitSystem } = useI18n()
@@ -374,7 +372,12 @@ function OdometerForm({
           {error !== null && <ErrorText message={error} />}
           {conflict !== null && (
             <ErrorText
-              message={reloadFailed ? conflict : t.vehicles.odometer.conflict(conflict, f.distance(vehicle.odometer))}
+              message={
+                // 재조회 전·실패 시에는 옛 값이라 "현재" 를 붙이지 않음
+                vehicle.odometer === conflict.staleOdometer
+                  ? conflict.message
+                  : t.vehicles.odometer.conflict(conflict.message, f.distance(vehicle.odometer))
+              }
             />
           )}
         </form>

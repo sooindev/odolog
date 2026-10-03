@@ -83,7 +83,7 @@ class PasswordResetServiceTest {
     @DisplayName("가입되지 않은 주소면 아무 일도 하지 않는다")
     void doesNothingForUnknownEmail() {
         // 없는 주소도 조용히 성공. 가입 여부 노출 방지
-        when(userRepository.findByEmail("nobody@odolog.com")).thenReturn(Optional.empty());
+        when(userRepository.findLockedByEmail("nobody@odolog.com")).thenReturn(Optional.empty());
 
         service.request("nobody@odolog.com");
         runScheduled();
@@ -95,7 +95,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("가입된 주소면 토큰을 저장하고 메일을 보낸다")
     void issuesTokenAndSendsMail() {
-        when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
+        when(userRepository.findLockedByEmail("me@odolog.com")).thenReturn(Optional.of(user));
 
         service.request("me@odolog.com");
         runScheduled();
@@ -115,7 +115,7 @@ class PasswordResetServiceTest {
     @DisplayName("저장하는 것은 원본이 아니라 해시다")
     void storesHashNotRawToken() {
         // DB 유출만으로는 비밀번호 변경 불가
-        when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
+        when(userRepository.findLockedByEmail("me@odolog.com")).thenReturn(Optional.of(user));
 
         service.request("me@odolog.com");
         runScheduled();
@@ -198,7 +198,7 @@ class PasswordResetServiceTest {
     @DisplayName("메일 발송이 실패해도 요청은 성공으로 끝난다")
     void survivesMailFailure() {
         // 메일 실패도 성공 응답. 가입된 주소에서만 500 이 나는 것 방지
-        when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
+        when(userRepository.findLockedByEmail("me@odolog.com")).thenReturn(Optional.of(user));
         org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("SMTP 실패"))
                 .when(mailer).send(anyString(), anyString(), anyInt(), any());
 
@@ -222,7 +222,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("동시 요청과 충돌해 발급이 실패하면 한 번 다시 시도한다 — 조용히 메일이 안 가는 것 방지")
     void retriesOnceOnConcurrencyFailure() {
-        when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
+        when(userRepository.findLockedByEmail("me@odolog.com")).thenReturn(Optional.of(user));
         when(tokenRepository.deleteByUserId(1L))
                 .thenThrow(new CannotAcquireLockException("Record has changed since last read"))
                 .thenReturn(0);
@@ -237,7 +237,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("만료 토큰 정리가 실패해도 발급은 계속된다")
     void cleanupFailureDoesNotBlockIssue() {
-        when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
+        when(userRepository.findLockedByEmail("me@odolog.com")).thenReturn(Optional.of(user));
         when(tokenRepository.deleteByExpiresAtBefore(any()))
                 .thenThrow(new CannotAcquireLockException("Record has changed since last read"));
 

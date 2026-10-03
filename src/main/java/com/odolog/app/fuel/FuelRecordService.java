@@ -49,7 +49,7 @@ public class FuelRecordService {
     @Transactional
     public FuelRecordResponse register(Long requesterId, String vehicleId,
                                        FuelRecordRegisterRequest request) {
-        Vehicle vehicle = vehicleService.findOwnedVehicle(requesterId, vehicleId);
+        Vehicle vehicle = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId);
         Long id = vehicle.getId();
         userToday.rejectFuture(requesterId, request.fueledAt(), "fueledAt");
 
@@ -209,7 +209,7 @@ public class FuelRecordService {
     }
 
     private FuelRecord findRecordInVehicle(Long requesterId, String vehicleId, String recordId) {
-        Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
+        Long id = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId).getId();
 
         return fuelRecordRepository.findByPublicIdAndVehicleId(recordId, id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.FUEL_RECORD_NOT_FOUND, "존재하지 않는 주유 기록입니다: " + recordId));

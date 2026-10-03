@@ -86,7 +86,7 @@ class FuelRecordServiceTest {
     @DisplayName("사용자 기준 미래 날짜면 저장하지 않는다")
     void registerRejectsFutureDate() {
         LocalDate tomorrow = LocalDate.of(2026, 9, 30);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle(0));
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle(0));
         doThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
                 .when(userToday).rejectFuture(1L, tomorrow, "fueledAt");
 
@@ -100,7 +100,7 @@ class FuelRecordServiceTest {
     @DisplayName("직전 기록이 없으면 연비와 주행거리가 null 이다")
     void firstRecordHasNoEfficiency() {
         Vehicle vehicle = vehicle(0);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
@@ -119,7 +119,7 @@ class FuelRecordServiceTest {
     @DisplayName("연비는 직전 주유 이후 달린 거리를 이번 주유량으로 나눈 값이다")
     void efficiencyFromPrevious() {
         Vehicle vehicle = vehicle(10000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any()))
@@ -137,7 +137,7 @@ class FuelRecordServiceTest {
     @DisplayName("주유 기록의 주행거리가 더 크면 차량의 주행거리도 따라 올라간다")
     void registerUpdatesVehicleOdometer() {
         Vehicle vehicle = vehicle(9000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
@@ -152,7 +152,7 @@ class FuelRecordServiceTest {
     @DisplayName("과거 주유를 뒤늦게 입력해도 차량의 주행거리는 내려가지 않는다")
     void registerDoesNotLowerVehicleOdometer() {
         Vehicle vehicle = vehicle(50000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
@@ -219,7 +219,7 @@ class FuelRecordServiceTest {
     void blankMemoBecomesNull() {
         // 빈 문자열은 null
         Vehicle vehicle = vehicle(10000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(call -> call.getArgument(0));
 
         fuelRecordService.register(1L, "V10", new FuelRecordRegisterRequest(
@@ -377,7 +377,7 @@ class FuelRecordServiceTest {
     void updateLiftsVehicleOdometer() {
         Vehicle vehicle = vehicle(10000);
         FuelRecord existing = record(1L, vehicle, 10000, "30.00", 60000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findByPublicIdAndVehicleId("R1", 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
@@ -395,7 +395,7 @@ class FuelRecordServiceTest {
     void updateDoesNotLowerVehicleOdometer() {
         Vehicle vehicle = vehicle(50000);
         FuelRecord existing = record(1L, vehicle, 20000, "30.00", 60000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findByPublicIdAndVehicleId("R1", 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
@@ -464,7 +464,7 @@ class FuelRecordServiceTest {
     void resetPointBreaksSegment() {
         Vehicle vehicle = vehicle(20000);
         FuelRecord existing = record(2L, vehicle, 20000, "25.00", 50000);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findByPublicIdAndVehicleId("R2", 10L)).thenReturn(Optional.of(existing));
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));

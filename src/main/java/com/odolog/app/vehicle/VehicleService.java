@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -86,9 +87,10 @@ public class VehicleService {
         return vehicle;
     }
 
-    /** 소유 차량 전부. 회원 탈퇴 전용, 페이지를 나눌 수 없음 */
-    public List<Vehicle> findAllOwnedBy(Long ownerId) {
-        return vehicleRepository.findAllByOwnerId(ownerId);
+    /** 소유 차량 전부, 행 잠금. 회원 탈퇴 전용(페이지를 나눌 수 없음) */
+    @Transactional
+    public List<Vehicle> findAllOwnedByForUpdate(Long ownerId) {
+        return vehicleRepository.findLockedByOwnerId(ownerId);
     }
 
     /** 차량만 삭제. 자식 기록은 VehicleRemovalService 가 먼저 지움 */
@@ -103,8 +105,20 @@ public class VehicleService {
      */
     public Vehicle findOwnedVehicle(Long requesterId, String vehicleId) {
         // 공개 id 로 조회. 예전 숫자 주소는 없는 차량
-        Vehicle vehicle = vehicleRepository.findByPublicId(vehicleId)
-                .orElseThrow(() -> notFound(vehicleId));
+        return owned(requesterId, vehicleId, vehicleRepository.findByPublicId(vehicleId));
+    }
+
+    /**
+     * 위와 같고 행을 잠금. 기록 등록·수정·삭제와 차량 삭제 전용
+     * 트랜잭션의 첫 조회여야 함. 대기 뒤에 앞선 쓰기의 결과가 보이게(REPEATABLE READ 스냅숏)
+     */
+    @Transactional
+    public Vehicle findOwnedVehicleForUpdate(Long requesterId, String vehicleId) {
+        return owned(requesterId, vehicleId, vehicleRepository.findLockedByPublicId(vehicleId));
+    }
+
+    private Vehicle owned(Long requesterId, String vehicleId, Optional<Vehicle> found) {
+        Vehicle vehicle = found.orElseThrow(() -> notFound(vehicleId));
 
         if (!vehicle.getOwner().getId().equals(requesterId)) {
             throw notFound(vehicleId);

@@ -200,10 +200,12 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
           <ul className="divide-y divide-border">
             {recent.map((item) => (
               // key 에 kind 포함. 테이블이 달라 id 충돌 가능
-              <li
-                key={`${item.kind}-${item.recordId}`}
-                className="flex items-start justify-between gap-4 py-5 first:pt-0 last:pb-0"
-              >
+              <li key={`${item.kind}-${item.recordId}`} className="py-5 first:pt-0 last:pb-0">
+                {/* 그 차량 상세로. 차량별 목록과 같은 모양 */}
+                <Link
+                  to={`/vehicles/${item.vehicleId}`}
+                  className="flex items-start justify-between gap-4 transition-opacity duration-200 ease-apple hover:opacity-70"
+                >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="text-body text-strong">
                     {item.type === null ? t.home.recent.fuel : t.serviceTypes[item.type]}
@@ -224,6 +226,7 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
                     {f.date(item.date)}
                   </p>
                 </div>
+                </Link>
               </li>
             ))}
           </ul>

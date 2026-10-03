@@ -22,8 +22,7 @@ public record FuelSummaryResponse(
         /** 평균 연비. 계산 불가면 null */
         BigDecimal averageEfficiency,
 
-        /** 최근 주유 기록 id. 없으면 null. 연비 초기화 대상 */
-        /** 공개 id */
+        /** 최근 주유 기록의 공개 id. 없으면 null. 연비 초기화 대상 */
         String latestRecordId,
         /** 적용 중인 기준점 id. 없으면 null */
         String resetPointId,

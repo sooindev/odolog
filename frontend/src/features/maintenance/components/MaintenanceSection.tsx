@@ -37,6 +37,14 @@ export function MaintenanceSection({ vehicleId, currentOdometer, refreshVersion,
   // 삭제 중인 행 id
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  // 목록 밖에서 기록이 생기면 필터를 풂. 다른 종류로 저장된 기록이 안 보이면 실패로 오해(refresh 와 같은 이유)
+  // 이펙트 대신 렌더 중 비교. 직전 값을 상태로 들고 바뀐 순간에만 한 번
+  const [seenVersion, setSeenVersion] = useState(refreshVersion)
+  if (seenVersion !== refreshVersion) {
+    setSeenVersion(refreshVersion)
+    setFilter(null)
+  }
+
   const load = useCallback(
     () => fetchRecords(vehicleId, page, filter),
     [vehicleId, page, filter],
@@ -44,7 +52,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, refreshVersion,
   const { data, loading, error, reload } = useAsyncData(load, t.maintenance.loadFailed)
   usePageInRange(data, setPage)
 
-  // 0 은 첫 조회가 이미 함
+  // 조건이 같아도 다시 조회. 0 은 첫 조회가 이미 함
   useEffect(() => {
     if (refreshVersion > 0) reload()
   }, [refreshVersion, reload])

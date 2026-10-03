@@ -4,6 +4,9 @@ import com.odolog.app.user.domain.type.Language;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -22,13 +25,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /** 발송 시점과 스레드. 요청 스레드에서 보내면 응답 시간 차이 발생 */
+@ExtendWith(OutputCaptureExtension.class)
 class PasswordResetMailerTest {
 
     private final JavaMailSender mailSender = mock(JavaMailSender.class);
     // 실행 대기열만 수집. 요청 스레드 미발송 확인용
     private final List<Runnable> queued = new ArrayList<>();
     private final PasswordResetMailer mailer =
-            new PasswordResetMailer(mailSender, queued::add, "http://localhost:5173", "");
+            new PasswordResetMailer(mailSender, queued::add, "http://localhost:5173", "", false);
 
     @AfterEach
     void clearSynchronization() {
@@ -84,5 +88,20 @@ class PasswordResetMailerTest {
         // 토큰의 + 는 인코딩. 안 하면 링크에서 공백으로 읽힘
         assertThat(english.getText()).contains("http://localhost:5173/reset-password?token=a%2Bb");
         assertThat(korean.getText()).contains("http://localhost:5173/reset-password?token=a%2Bb");
+    }
+
+    @Test
+    @DisplayName("발송이 실패하면 개발 설정에서만 링크를 로그에 남긴다 — 운영은 토큰이 로그에 남지 않게")
+    void logsLinkOnFailureOnlyWhenEnabled(CapturedOutput output) {
+        doThrow(new MailSendException("SMTP 실패")).when(mailSender).send(any(SimpleMailMessage.class));
+        PasswordResetMailer local =
+                new PasswordResetMailer(mailSender, queued::add, "http://localhost:5173", "", true);
+
+        mailer.send("me@odolog.com", "secret-off", 30, Language.KO);
+        local.send("me@odolog.com", "secret-on", 30, Language.KO);
+        queued.forEach(Runnable::run);
+
+        assertThat(output.getOut()).contains("/reset-password?token=secret-on");
+        assertThat(output.getOut()).doesNotContain("secret-off");
     }
 }

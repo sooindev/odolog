@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -127,16 +128,21 @@ public class LoginAttemptLimiter {
         if (excess <= 0) {
             return;
         }
+        // 시각을 먼저 복사해 정렬. 정렬 중에 다른 요청이 값을 바꾸면 비교 규칙이 깨져 예외(500)
+        record Candidate(String key, Attempt attempt, Instant lastAttempt) {
+        }
         attempts.entrySet().stream()
-                .filter(entry -> {
+                .map(entry -> {
                     Attempt attempt = entry.getValue();
-                    return attempt.lastAttempt != null
-                            && (attempt.lockedUntil == null || now.isAfter(attempt.lockedUntil));
+                    Instant last = attempt.lastAttempt;
+                    Instant locked = attempt.lockedUntil;
+                    boolean evictable = last != null && (locked == null || now.isAfter(locked));
+                    return evictable ? new Candidate(entry.getKey(), attempt, last) : null;
                 })
-                .sorted(Comparator.comparing(entry -> entry.getValue().lastAttempt))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(Candidate::lastAttempt))
                 .limit(excess)
-                .toList()
-                .forEach(entry -> attempts.remove(entry.getKey(), entry.getValue()));
+                .forEach(candidate -> attempts.remove(candidate.key(), candidate.attempt()));
     }
 
     private static final class Attempt {

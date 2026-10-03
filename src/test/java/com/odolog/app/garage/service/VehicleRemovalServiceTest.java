@@ -45,7 +45,7 @@ class VehicleRemovalServiceTest {
     @DisplayName("차량 삭제 시 정비·주유 기록을 먼저 지운 뒤 차량을 지운다")
     void deleteRemovesRecordsBeforeVehicle() {
         Vehicle vehicle = createVehicle(10L);
-        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
 
         vehicleRemovalService.delete(1L, "V10");
 
@@ -61,7 +61,7 @@ class VehicleRemovalServiceTest {
     void deleteAllOwnedByRemovesRecordsFirst() {
         Vehicle first = createVehicle(10L);
         Vehicle second = createVehicle(11L);
-        when(vehicleService.findAllOwnedBy(1L)).thenReturn(List.of(first, second));
+        when(vehicleService.findAllOwnedByForUpdate(1L)).thenReturn(List.of(first, second));
 
         vehicleRemovalService.deleteAllOwnedBy(1L);
 

@@ -31,13 +31,13 @@ public class VehicleRemovalService {
 
     @Transactional
     public void delete(Long requesterId, String vehicleId) {
-        removeWithRecords(List.of(vehicleService.findOwnedVehicle(requesterId, vehicleId)));
+        removeWithRecords(List.of(vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId)));
     }
 
     /** 한 사용자의 차량 일괄 삭제. 회원 탈퇴 전용 */
     @Transactional
     public void deleteAllOwnedBy(Long ownerId) {
-        removeWithRecords(vehicleService.findAllOwnedBy(ownerId));
+        removeWithRecords(vehicleService.findAllOwnedByForUpdate(ownerId));
     }
 
     // 자식 먼저, 차량 나중. FK 제약

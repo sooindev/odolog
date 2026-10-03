@@ -55,5 +55,11 @@ export function useAsyncData<T>(load: () => Promise<T>, fallbackMessage: string)
     }
   }, [load, fallbackMessage, reloadCount, t])
 
-  return { data, loading, error, reload, setData }
+  // 갱신 응답으로 교체하면 직전 재조회 실패 문구는 낡음
+  const replaceData = useCallback<Dispatch<SetStateAction<T | null>>>((next) => {
+    setData(next)
+    setError(null)
+  }, [])
+
+  return { data, loading, error, reload, setData: replaceData }
 }
