@@ -1,6 +1,6 @@
 package com.odolog.app.common.exception.type;
 
-import com.odolog.app.common.exception.code.ErrorCode;
+import com.odolog.app.common.exception.ErrorCode;
 
 /** 401 전용 */
 public class AuthenticationFailedException extends ApiException {

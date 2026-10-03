@@ -1,10 +1,10 @@
 import { Link, useLocation, useNavigate } from 'react-router'
 
-import { useAuth } from '@/features/auth/context/definition/AuthContext'
-import { useI18n } from '@/shared/i18n/context/I18nContext'
-import { ThemeToggle } from '@/shared/theme/toggle/ThemeToggle'
+import { useAuth } from '@/features/auth/context/AuthContext'
+import { useI18n } from '@/shared/i18n/I18nContext'
+import { ThemeToggle } from '@/shared/theme/ThemeToggle'
 import { Button } from '@/shared/ui/base/button'
-import { GaugeMark } from '@/shared/ui/brand/mark'
+import { GaugeMark } from '@/shared/ui/mark'
 
 /** 상단 고정 바. 불투명 바닥색 + 아래 1px 괘선 */
 export function Header() {

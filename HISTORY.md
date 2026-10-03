@@ -18,6 +18,43 @@
 
 ---
 
+- [x] 구조 점검 후 정리 — 조율 층 garage, 프로필 화면 분리, 의존 방향 테스트, 폴더 기준 변경 (2026-10-03)
+      → 구조를 숫자로 재 봤다. 공통 → 기능 import 0건, `shared → features` 0건으로 방향은 지켜지고 있었는데,
+        **`VehicleService` 하나가 문서보다 넓게 다른 기능을 알고 있었다.** CLAUDE.md 의 "알려진 예외"는 정비 이력
+        리포지토리 하나였지만 실제로는 정비·주기·주유 리포지토리 셋에 `NextService`·`ServiceInterval` 까지였다.
+        삭제 순서(9/17 주유 추가 때)와 목록의 지난 정비 수(9/25)가 붙을 때마다 늘었고, 문서는 따라가지 못했다.
+      → 그 두 일은 **조율 층이 하는 일**이었다 — 삭제 순서는 `account` 의 탈퇴와, 지남 수 집계는 `summary` 와 같은 종류다.
+        새 조율 층 `garage` 를 만들어 옮겼다. `VehicleRemovalService`(서비스 주입, 순서만), `VehicleListService`(리포지토리 주입).
+        정비·주유 서비스에 `deleteAllOf(vehicleId)`, 차량 서비스에 `findAllOwnedBy`·`remove` 를 더해 실제 삭제는 각 기능이 한다.
+        이제 `vehicle` 은 `user` 만 안다. 탈퇴는 `garage` 를 거친다(`account → garage`).
+      → **`account` 에 넣지 않은 이유**: 그쪽은 "계정 전체" 동작이라 차량 하나 삭제가 들어가면 이름이 거짓말을 한다.
+        **이벤트로 뒤집지 않은 이유**: 차량이 `VehicleDeleting` 이벤트를 던지고 정비·주유가 받아 지우면 순환은 끊기지만,
+        "이력 먼저, 차량 나중" 이라는 순서가 코드 어디에도 안 보이게 된다. 조율 층은 그 순서를 한 메서드에 적는다.
+      → 대가: `GET /api/vehicles` 와 `DELETE /api/vehicles/{id}` 가 `vehicle` 이 아닌 `GarageVehicleController` 에 있다.
+        `AccountController` 가 `/api/users/me` 를 맡은 것과 같은 모양이다. 화면·API 는 그대로다.
+      → 지남 수 계산이 홈 요약과 차량 목록에 두 벌이라 `NextService.overdueCount` 로 합쳤다.
+      → **프로필 화면**(658줄, 컴포넌트 9개 한 파일)을 나눴다. 백엔드에는 `account` 가 따로 있는데 프론트는 내보내기·
+        가져오기·탈퇴까지 `features/auth` 에 있어서 경계도 어긋나 있었다. `features/account` 를 만들어 내보내기·가져오기·
+        탈퇴·화면 구역과 `/me` 화면을 두고, 닉네임·비밀번호·언어 폼은 `features/auth/components` 로 갔다(`account → auth`,
+        백엔드 `account → user` 와 같은 방향). 탈퇴 API 는 세션까지 끝내므로 `AuthContext` 에 남겼다.
+        정비 폼과 언어 폼에 따로 있던 select + 화살표는 `shared/ui/form/native-select.tsx` 로 합쳤다.
+      → **의존 방향을 테스트로 옮겼다.** 백엔드 `DependencyDirectionTest`, 프론트 `src/dependency-direction.test.ts`.
+        소스의 import 를 허용 목록과 대조하고, 등록 안 된 패키지·기능이 있으면 실패한다. 문서로만 적어 둔 동안
+        두 군데가 어긋났다(위의 백엔드 예외, 프론트의 `vehicles → fuel` 누락) — 문장은 아무도 다시 세지 않는다.
+        ArchUnit 을 안 쓴 이유: 의존성 하나가 늘고, import 문자열만 보면 이 프로젝트 규모에서는 충분하다.
+        대신 와일드카드 import·상대 경로 `../` 를 따로 막는다 — 그 둘은 이 검사가 방향을 읽지 못한다.
+      → **폴더 기준을 다시 바꿨다(사용자 결정).** 09-13 의 "파일의 성격을 폴더 이름이 말한다" 에서
+        **"형제가 생겼을 때, 또는 소유자가 다를 때만 폴더"** 로. 그 기준에서 파일을 가진 폴더가 백엔드 74개 중 63개,
+        프론트 59개 중 45개가 1개짜리였다. 대부분 `service/application/` 처럼 형제가 생길 기약이 없었고,
+        `api/endpoints/endpoints.ts` 처럼 폴더와 파일이 같은 말을 했다.
+        두 단계로 접었다 — ① 파일 1개짜리 폴더는 파일을 부모로(안쪽부터 반복), ② 파일 없이 하위 폴더 하나만 품은
+        통로 폴더(`repository/jpa/` 등)는 접기. `shared/ui/base/` 만 예외(shadcn 소유). 백엔드(테스트 포함) 100여 개, 프론트 64개 파일을
+        `git mv` 로 옮기고 package·import 를 스크립트로 바꿨다. 결과는 백엔드 40개 중 7개, 프론트 29개 중 1개.
+        남은 1개짜리는 하위 폴더를 형제로 가진 자리라 기준에 맞는다.
+      → 대가: 기능마다 깊이가 달라졌고(`vehicle/` 는 거의 평평, `user/` 는 깊다), 두 번째 파일이 생기면 첫 파일을
+        폴더로 옮겨야 한다. CLAUDE.md 의 구조 트리는 옛 트리의 설명을 파일 이름으로 모아 새 배치에 다시 붙였다.
+      → 테스트 백엔드 300 → 305, 프론트 74 → 77. 옮긴 뒤에도 전부 통과(tsc·oxlint·build 포함).
+
 - [x] 전체 코드 점검 후 수정 (2026-10-01)
       → 다섯 갈래로 파일을 전부 읽었다. 테스트·tsc·oxlint·build 는 다 통과하던 상태였고, 찾은 것은 그것들이 못 보는 자리다.
       → **로그인 시도 제한 우회**: DB(unicode_ci)가 `kím@x.com`·`ｋim@x.com` 을 `kim@x.com` 과 같게 봐서(로컬 MariaDB 로 확인)

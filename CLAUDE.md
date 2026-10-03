@@ -165,14 +165,14 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
    `@PrePersist`/`@PreUpdate` 를 복사했다). `createdAt` 에는 `updatable = false` 를 준다.
    **엔티티 3개까지는 복사가 옳았다** — 상속이 없으면 파일 하나만 열어도 모든 필드가 보인다.
    4개째(`FuelRecord`)에서 뒤집혔다. 새 엔티티는 `extends BaseTimeEntity` 만 하면 된다.
-   **스위치는 `common/config/jpa/JpaAuditingConfig`** 이고, `@DataJpaTest` 는 그걸 자동으로
+   **스위치는 `common/config/JpaAuditingConfig`** 이고, `@DataJpaTest` 는 그걸 자동으로
    집어 가지 못하므로 리포지토리 테스트에 `@Import(JpaAuditingConfig.class)` 가 필요하다.
 8. **타입 선택**: "없음"이라는 상태가 존재하는 값만 래퍼 타입(`Integer`), 아니면 기본형(`int`).
    PK는 저장 전 `null` 구분을 위해 항상 `Long`.
 9. **테이블명은 복수형** (`users`, `vehicles`). `user` 는 예약어라 반드시 `users`.
 9-1. **숫자 PK 는 서버 밖으로 내보내지 않는다** (2026-09-26 — 차량, 같은 날 정비·주유 기록까지).
     URL·API 에는 12자 무작위
-    `public_id`(`common/domain/identifier/PublicId`)가 나간다. 1,2,3… 은 남의 차를 못 열어도
+    `public_id`(`common/domain/PublicId`)가 나간다. 1,2,3… 은 남의 차를 못 열어도
     **서비스 규모와 등록 순서**를 말한다 — 화면 캡처 한 장에 실려 나간다.
     PK 를 UUID 로 바꾸지 않은 이유: 외래키 네 곳이 따라 바뀌고, InnoDB 는 PK 순서로 행을 저장해서
     무작위 PK 는 넣을 때마다 중간에 끼워 넣는다. 인코딩(Hashids/Sqids)은 되돌릴 수 있어 숨기는 게 아니다.
@@ -210,7 +210,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
     `''` 가 아니라 `null` 로 저장한다(2026-09-23 에 메모·설명까지 맞췄다). 그대로 두면
     "없음" 이 두 모양이 되고, **내보낸 JSON 에도 그 차이가 그대로 나간다.**
     자르는 자리는 서비스다 — DTO 접근자에서 자르면 부분 수정에서 "안 보냄"과 "지움"이 같아진다.
-    **필수 입력의 앞뒤 공백도 서비스가 자른다**(2026-09-26, `common/text/InputText`).
+    **필수 입력의 앞뒤 공백도 서비스가 자른다**(2026-09-26, `common/InputText`).
     번호판·제조사·모델명·닉네임. DB(unicode_ci)는 뒤 공백·대소문자를 무시하고 비교하는데 자바
     `equals` 는 구분해서, `"12가3456 "` 을 공백만 지워 고치면 **자기 자신과 중복으로 409** 였고,
     앞 공백은 같은 번호판 두 대를, 가져오기는 전체 실패를 만들었다(셋 다 재현).
@@ -367,7 +367,7 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
        cn('text-[0.8125rem]', 'text-strong')    → 둘 다 남는다        임의 값은 크기로 인식
        cn('text-sm', 'text-strong')             → 둘 다 남는다        기본 스케일도 인식
 
-   · **`base/card.tsx`·`label.tsx`·`feedback/state.tsx`** — 한 문자열에 크기 토큰과 색이 같이
+   · **`base/card.tsx`·`label.tsx`·`ui/state.tsx`** — 한 문자열에 크기 토큰과 색이 같이
      있어 **크기가 통째로 지워졌다.** `CardTitle` 은 2026-09-11 에 `text-section` 을 넣은 뒤로
      줄곧 17px·굵기 600·자간 -0.022em 을 **전부 잃고** 16px·굵기 400 으로 렌더되고 있었다.
    · **`button.tsx` 의 size variant** — `cva` 는 클래스를 이어 붙이기만 하므로 base 의
@@ -540,9 +540,8 @@ JDBC의 `localSocket=` 파라미터도 시도했으나 동작하지 않았다.
 DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘지만, "클라이언트가 보내는 것"과
 "서버가 돌려주는 것"이 섞이지 않아 검증 애노테이션을 어디에 붙일지 헷갈리지 않는다.
 
-**그 아래 한 겹이 더 있다 (2026-09-13).** `dto/request/login/`, `domain/entity/`,
-`repository/jpa/`, `controller/rest/`, `shared/ui/base/` 처럼 **파일의 성격을 폴더 이름이 말한다.**
-파일 개수를 기준으로 삼지 않으므로 파일 1개짜리 폴더가 많다 — 기준과 그 대가는
+**폴더는 형제가 생겼을 때, 또는 소유자가 다를 때만 만든다** (2026-10-03).
+파일 1개짜리 폴더와, 파일 없이 하위 폴더 하나만 품은 통로 폴더는 두지 않는다. 기준과 그 경위는
 아래 트리 뒤에 정리해 뒀다.
 
 ### 저장소 루트
@@ -570,475 +569,473 @@ DTO는 `request/` 와 `response/` 로 한 겹 더 나눈다. 폴더 수는 늘�
 
 ### 백엔드 — `src/main/java/com/odolog/app/`
 
-계층(`domain`/`repository`/`dto`/`service`/`controller`) 아래에 **성격을 말하는 한 겹이 더** 있다.
-`domain/entity` 와 `domain/type`(enum), `repository/jpa`(구현 기술), `dto/request/<유스케이스>`,
-`service/application`, `controller/rest`(노출 방식).
+파일이 하나뿐인 계층은 폴더 없이 기능 폴더 바로 아래에 둔다(`vehicle/VehicleService.java`).
+같은 계층에 파일이 둘 이상 모이면 그때 폴더가 생긴다(`user/repository/`, `maintenance/domain/entity/`).
+그래서 기능마다 깊이가 다르다 — 크기가 다르다는 뜻이고, 그대로 둔다.
 
     com/odolog/app/
-    ├── OdoLogApplication.java                @SpringBootApplication.
-    │                                         **앱 시간대를 Asia/Seoul 로 고정한다**(2026-09-23).
-    │                                         "오늘" 판정은 Phase 7 에서 사용자 시간대(UserToday)로
-    │                                         옮겨서, 지금 이 설정은 createdAt 같은 기록 시각에만
-    │                                         남는다. 바꾸면 저장된 시각의 뜻이 9시간 밀린다.
-    │                                         run() 보다 먼저 부른다 — 커넥션 풀과 Hibernate 가
-    │                                         뜰 때 한 번 읽어 가므로 그 뒤엔 늦다.
-    │                                         **이 파일만 더 내려가지 못한다.** 컴포넌트 스캔이
-    │                                         이 클래스의 패키지부터 시작하므로 bootstrap/ 같은
-    │                                         하위 폴더로 옮기면 scanBasePackages·@EntityScan·
-    │                                         @EnableJpaRepositories 를 전부 손으로 지정해야 한다
-    │
-    ├── user/  ────────────────────────────── 회원가입·로그인·프로필
+    ├── OdoLogApplication.java            @SpringBootApplication.
+    │                                     **앱 시간대를 Asia/Seoul 로 고정한다**(2026-09-23).
+    │                                     "오늘" 판정은 Phase 7 에서 사용자 시간대(UserToday)로
+    │                                     옮겨서, 지금 이 설정은 createdAt 같은 기록 시각에만
+    │                                     남는다. 바꾸면 저장된 시각의 뜻이 9시간 밀린다.
+    │                                     run() 보다 먼저 부른다 — 커넥션 풀과 Hibernate 가
+    │                                     뜰 때 한 번 읽어 가므로 그 뒤엔 늦다.
+    │                                     **이 파일만 더 내려가지 못한다.** 컴포넌트 스캔이
+    │                                     이 클래스의 패키지부터 시작하므로 bootstrap/ 같은
+    │                                     하위 폴더로 옮기면 scanBasePackages·@EntityScan·
+    │                                     @EnableJpaRepositories 를 전부 손으로 지정해야 한다
+    ├── user/                             회원가입·로그인·프로필
     │   ├── domain/
-    │   │   ├── type/Language.java · UnitSystem.java
-    │   │   │                                 @Convert 용 enum(안에 Converter). CHECK 없는 varchar
+    │   │   ├── type/
+    │   │   │   └── Language.java · UnitSystem.java
+    │   │   │                             @Convert 용 enum(안에 Converter). CHECK 없는 varchar
     │   │   └── entity/
-    │   │       ├── User.java                 @Entity(users). uk_users_email 유니크 제약.
-    │   │       │                             changeNickname() — setter 없음. 전화번호는 받지 않는다(Phase 7).
-    │   │       │                             설정 넷(language·timeZone·currency·unitSystem, Phase 7).
-    │   │       │                             시간대는 IANA 지역 이름만(고정 오프셋은 서머타임 미반영),
-    │   │       │                             통화는 ISO 4217 만 — 검증은 JDK 목록에 맡긴다
-    │   │       └── PasswordResetToken.java   @Entity. **원본이 아니라 SHA-256 해시를 저장한다** —
-    │   │                                     DB 가 새어도 그것만으로 남의 비밀번호를 못 바꾼다.
-    │   │                                     한 번 쓰면 used_at 이 찍혀 죽는다
+    │   │       ├── User.java             @Entity(users). uk_users_email 유니크 제약.
+    │   │       │                         changeNickname() — setter 없음. 전화번호는 받지 않는다(Phase 7).
+    │   │       │                         설정 넷(language·timeZone·currency·unitSystem, Phase 7).
+    │   │       │                         시간대는 IANA 지역 이름만(고정 오프셋은 서머타임 미반영),
+    │   │       │                         통화는 ISO 4217 만 — 검증은 JDK 목록에 맡긴다
+    │   │       └── PasswordResetToken.java
+    │   │                                 @Entity. **원본이 아니라 SHA-256 해시를 저장한다** —
+    │   │                                 DB 가 새어도 그것만으로 남의 비밀번호를 못 바꾼다.
+    │   │                                 한 번 쓰면 used_at 이 찍혀 죽는다
     │   ├── repository/
-    │   │   └── jpa/
-    │   │       ├── UserRepository.java       findByEmail, existsByEmail
-    │   │       └── PasswordResetTokenRepository.java
-    │   │                                     findByTokenHash, deleteByUserId(재발급·탈퇴 공용),
-    │   │                                     deleteByExpiresAtBefore(만료분 정리 — 스케줄러를
-    │   │                                     두지 않고 request() 가 부른다. 토큰이 쌓이는
-    │   │                                     유일한 경로가 거기라 쌓이는 만큼 치워진다)
+    │   │   ├── UserRepository.java       findByEmail, existsByEmail
+    │   │   └── PasswordResetTokenRepository.java
+    │   │                                 findByTokenHash, deleteByUserId(재발급·탈퇴 공용),
+    │   │                                 deleteByExpiresAtBefore(만료분 정리 — 스케줄러를
+    │   │                                 두지 않고 request() 가 부른다. 토큰이 쌓이는
+    │   │                                 유일한 경로가 거기라 쌓이는 만큼 치워진다)
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── signup/
-    │   │   │   │   └── SignUpRequest.java    @NotBlank/@Email/@Size(min=8,max=100).
-    │   │   │   │                             설정 넷(언어·시간대·통화·단위)은 선택 — 화면이 브라우저 값으로 채움
-    │   │   │   ├── login/
-    │   │   │   │   └── LoginRequest.java     email, password
-    │   │   │   └── profile/
-    │   │   │       ├── UpdateProfileRequest.java
-    │   │   │       │                         전부 nullable — 보낸 필드만 변경.
-    │   │   │       │                         설정 넷(언어·시간대·통화·단위)도 여기로 바꾼다
-    │   │   │       └── (password/)ChangePasswordRequest.java
-    │   │   │                                 current/new 둘 다 @NotBlank — 부분 수정이 아니다.
-    │   │   │                                 new 의 길이 제한은 가입과 같아야 한다
-    │   │   └── response/
-    │   │       └── profile/
-    │   │           └── UserResponse.java     from() 팩토리. password는 절대 담지 않음. 설정 넷 포함
+    │   │   │   ├── SignUpRequest.java    @NotBlank/@Email/@Size(min=8,max=100).
+    │   │   │   │                         설정 넷(언어·시간대·통화·단위)은 선택 — 화면이 브라우저 값으로 채움
+    │   │   │   ├── LoginRequest.java     email, password
+    │   │   │   ├── UpdateProfileRequest.java
+    │   │   │   │                         전부 nullable — 보낸 필드만 변경.
+    │   │   │   │                         설정 넷(언어·시간대·통화·단위)도 여기로 바꾼다
+    │   │   │   └── password/
+    │   │   │       ├── ChangePasswordRequest.java
+    │   │   │       │                     current/new 둘 다 @NotBlank — 부분 수정이 아니다.
+    │   │   │       │                     new 의 길이 제한은 가입과 같아야 한다
+    │   │   │       ├── PasswordResetConfirmRequest.java
+    │   │   │       └── PasswordResetRequest.java
+    │   │   └── UserResponse.java         from() 팩토리. password는 절대 담지 않음. 설정 넷 포함
     │   ├── service/
-    │   │   ├── time/
-    │   │   │   └── UserToday.java            사용자 시간대 기준 "오늘"(Phase 7). 서버 시간대와 무관.
-    │   │   │                                 지남 판정·다음 정비·홈 월별 12칸이 공유 — 한 곳이라도
-    │   │   │                                 LocalDate.now() 로 남으면 화면마다 오늘이 갈린다.
-    │   │   │                                 사용자 조회 1번이 붙는다. 이미 읽은 User 가 있으면
-    │   │   │                                 of(User) 로 — 같은 요청에서 두 번 읽지 않게
-    │   │   ├── mail/
-    │   │   │   └── PasswordResetMailer.java  링크는 백엔드가 아니라 **프런트 주소**를 가리킨다 —
-    │   │   │                                 토큰을 받아 입력받는 것은 화면의 일이다.
-    │   │   │                                 **발송은 커밋 뒤, 다른 스레드에서**(2026-09-25) —
-    │   │   │                                 요청 스레드에서 보내면 가입된 주소만 SMTP 시간만큼
-    │   │   │                                 늦게 답해 응답 시간이 가입 여부를 알려준다
+    │   │   ├── UserToday.java            사용자 시간대 기준 "오늘"(Phase 7). 서버 시간대와 무관.
+    │   │   │                             지남 판정·다음 정비·홈 월별 12칸이 공유 — 한 곳이라도
+    │   │   │                             LocalDate.now() 로 남으면 화면마다 오늘이 갈린다.
+    │   │   │                             사용자 조회 1번이 붙는다. 이미 읽은 User 가 있으면
+    │   │   │                             of(User) 로 — 같은 요청에서 두 번 읽지 않게
+    │   │   ├── PasswordResetMailer.java  링크는 백엔드가 아니라 **프런트 주소**를 가리킨다 —
+    │   │   │                             토큰을 받아 입력받는 것은 화면의 일이다.
+    │   │   │                             **발송은 커밋 뒤, 다른 스레드에서**(2026-09-25) —
+    │   │   │                             요청 스레드에서 보내면 가입된 주소만 SMTP 시간만큼
+    │   │   │                             늦게 답해 응답 시간이 가입 여부를 알려준다
     │   │   └── application/
-    │   │       ├── PasswordResetService.java request(메일 발송) / confirm(비밀번호 교체).
-    │   │       │                             **없는 주소도 조용히 성공**시킨다 — 응답이 갈리면
-    │   │       │                             그게 가입 여부 조회 API 가 된다.
-    │   │       │                             메일 발송 실패도 삼키고 로그로만 남긴다(같은 이유)
-    │   │       └── UserService.java          signUp(중복 체크·BCrypt), login(사유 통일),
-    │   │                                     findById, updateProfile(널 아닌 필드만),
-    │   │                                     verifyPassword(되돌릴 수 없는 동작 앞의 관문 —
-    │   │                                     changePassword 와 탈퇴가 공유), changePassword, delete
+    │   │       ├── PasswordResetService.java
+    │   │       │                         request(메일 발송) / confirm(비밀번호 교체).
+    │   │       │                         **없는 주소도 조용히 성공**시킨다 — 응답이 갈리면
+    │   │       │                         그게 가입 여부 조회 API 가 된다.
+    │   │       │                         메일 발송 실패도 삼키고 로그로만 남긴다(같은 이유)
+    │   │       └── UserService.java      signUp(중복 체크·BCrypt), login(사유 통일),
+    │   │                                 findById, updateProfile(널 아닌 필드만),
+    │   │                                 verifyPassword(되돌릴 수 없는 동작 앞의 관문 —
+    │   │                                 changePassword 와 탈퇴가 공유), changePassword, delete
     │   └── controller/
-    │       └── rest/
-    │           ├── PasswordResetController.java
-    │           │                             POST·PATCH /api/users/password-reset (둘 다 204).
-    │           │                             **로그인하지 않은 사람이 쓰는 유일한 쓰기 경로**
-    │           └── UserController.java       POST /api/users, /login(+changeSessionId),
-    │                                         /logout(204), GET·PATCH /api/users/me,
-    │                                         PATCH /api/users/me/password(204)
-    │
-    ├── vehicle/  ─────────────────────────── 차량 등록·조회·주행거리·삭제
-    │   ├── domain/entity/Vehicle.java        @Entity(vehicles). owner→User(@ManyToOne LAZY).
-    │   │                                     uk_vehicles_user_plate_number(소유자+번호판 복합).
-    │   │                                     주행거리를 건드리는 메서드가 셋. 의도가 달라 이름도 셋이다:
-    │   │                                     updateOdometer()는 감소 시 ConflictException,
-    │   │                                     liftOdometerTo()는 크면 올리고 작으면 넘어간다
-    │   │                                     (정비·주유를 기록하다 따라오는 경로),
-    │   │                                     correctOdometer()는 감소도 그대로 반영한다
-    │   │                                     — 계기판 교체·자리수 오타 정정 전용, force 로만 닿는다
-    │   ├── repository/jpa/VehicleRepository.java
-    │   │                                     findByPublicId(URL 의 공개 id — findOwnedVehicle 이 쓴다),
-    │   │                                     findByOwnerId(Pageable), findAllByOwnerId(탈퇴용 —
-    │   │                                     "한 사람의 전부"가 대상이라 페이지를 나눌 수 없다),
-    │   │                                     existsByOwnerIdAndPlateNumber(소유자별 중복 검사)
+    │       ├── PasswordResetController.java
+    │       │                             POST·PATCH /api/users/password-reset (둘 다 204).
+    │       │                             **로그인하지 않은 사람이 쓰는 유일한 쓰기 경로**
+    │       └── UserController.java       POST /api/users, /login(+changeSessionId),
+    │                                     /logout(204), GET·PATCH /api/users/me,
+    │                                     PATCH /api/users/me/password(204)
+    ├── vehicle/                          차량 등록·조회·주행거리·삭제
+    │   ├── Vehicle.java                  @Entity(vehicles). owner→User(@ManyToOne LAZY).
+    │   │                                 uk_vehicles_user_plate_number(소유자+번호판 복합).
+    │   │                                 주행거리를 건드리는 메서드가 셋. 의도가 달라 이름도 셋이다:
+    │   │                                 updateOdometer()는 감소 시 ConflictException,
+    │   │                                 liftOdometerTo()는 크면 올리고 작으면 넘어간다
+    │   │                                 (정비·주유를 기록하다 따라오는 경로),
+    │   │                                 correctOdometer()는 감소도 그대로 반영한다
+    │   │                                 — 계기판 교체·자리수 오타 정정 전용, force 로만 닿는다
+    │   ├── VehicleRepository.java        findByPublicId(URL 의 공개 id — findOwnedVehicle 이 쓴다),
+    │   │                                 findByOwnerId(Pageable), findAllByOwnerId(탈퇴용 —
+    │   │                                 "한 사람의 전부"가 대상이라 페이지를 나눌 수 없다),
+    │   │                                 existsByOwnerIdAndPlateNumber(소유자별 중복 검사)
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── register/VehicleRegisterRequest.java
-    │   │   │   │                             owner 없음 — 세션에서 식별.
-    │   │   │   │                             modelYear @NotNull/@Min(1900)/@Max(2100).
-    │   │   │   │                             **odometer @NotNull**(2026-09-30) — 타던 차가 0km 로 시작하지 않게
-    │   │   │   ├── odometer/UpdateOdometerRequest.java   @PositiveOrZero
-    │   │   │   └── update/VehicleUpdateRequest.java
-    │   │   │                                 전부 nullable. @NotBlank 대신
-    │   │   │                                 @Size(min=1)+@Pattern — 둘 다 null 을 통과시킨다
-    │   │   └── response/
-    │   │       └── vehicle/VehicleResponse.java
-    │   │                                     owner 없음 — LAZY 미접근으로 N+1 방지
-    │   ├── service/application/VehicleService.java
-    │   │                                     register,
-    │   │                                     findMyVehicles(Pageable) — **DTO 를 돌려준다.**
-    │   │                                     지남 수가 엔티티에 없는 계산값이라서
-    │   │                                     (FuelRecordService.findByVehicle 과 같은 이유).
-    │   │                                     쿼리 5번(페이지·개수·이력·주기·사용자 시간대) — 이력·주기를 소유자 단위로 한 번에 읽고
-    │   │                                     나눈다. 차량마다면 페이지 크기만큼 는다,
-    │   │                                     update(번호판이 실제로 바뀔 때만 중복 검사),
-    │   │                                     updateOdometer(dirty checking),
-    │   │                                     delete(이력 먼저 → 차량),
-    │   │                                     deleteAllOwnedBy(탈퇴용 일괄 삭제),
-    │   │                                     findOwnedVehicle(남의 차량도 404 — 규칙 11.
-    │   │                                     maintenance·fuel 도 이걸 재사용)
-    │   └── controller/rest/VehicleController.java
-    │                                         POST·GET /api/vehicles,
-    │                                         GET·PATCH·DELETE /api/vehicles/{id},
-    │                                         PATCH /api/vehicles/{id}/odometer
-    │
-    ├── maintenance/  ─────────────────────── 정비 이력·다음 정비 시점
+    │   │   │   ├── VehicleRegisterRequest.java
+    │   │   │   │                         owner 없음 — 세션에서 식별.
+    │   │   │   │                         modelYear @NotNull/@Min(1900)/@Max(2100).
+    │   │   │   │                         **odometer @NotNull**(2026-09-30) — 타던 차가 0km 로 시작하지 않게
+    │   │   │   ├── UpdateOdometerRequest.java
+    │   │   │   │                         @PositiveOrZero
+    │   │   │   └── VehicleUpdateRequest.java
+    │   │   │                             전부 nullable. @NotBlank 대신
+    │   │   │                             @Size(min=1)+@Pattern — 둘 다 null 을 통과시킨다
+    │   │   └── VehicleResponse.java      owner 없음 — LAZY 미접근으로 N+1 방지
+    │   ├── VehicleService.java           **user 밖의 기능을 모른다**(2026-10-03). 목록·삭제는 garage 로 옮겼다.
+    │   │                                 register,
+    │   │                                 update(번호판이 실제로 바뀔 때만 중복 검사),
+    │   │                                 updateOdometer(dirty checking),
+    │   │                                 findAllOwnedBy · remove(차량만 지운다 — 자식 기록은
+    │   │                                 garage 가 먼저 지운 뒤에 부른다),
+    │   │                                 findOwnedVehicle(남의 차량도 404 — 규칙 11.
+    │   │                                 maintenance·fuel·garage 가 재사용)
+    │   └── VehicleController.java        POST /api/vehicles,
+    │                                     GET·PATCH /api/vehicles/{id},
+    │                                     PATCH /api/vehicles/{id}/odometer.
+    │                                     목록(GET)과 DELETE 는 garage 의 GarageVehicleController
+    ├── maintenance/                      정비 이력·다음 정비 시점
     │   ├── domain/
-    │   │   ├── calculation/NextService.java  다음 정비 시점 + **지남 판정**(2026-09-25 신설).
-    │   │   │                                 엔티티가 아니라 값 계산이라 entity 와 형제 —
-    │   │   │                                 fuel/domain/calculation 과 같은 자리.
-    │   │   │                                 **차량 상세와 홈 요약이 공유한다** — 두 벌이면
-    │   │   │                                 한 화면은 지났다 하고 한 화면은 아무 말도 안 한다.
-    │   │   │                                 km·개월 중 **하나라도** 넘으면 지남(권장 주기가
-    │   │   │                                 "먼저 오는 것"이라서). 딱 그 값·그 날도 지남.
-    │   │   │                                 **지난 것이 먼저** 오도록 정렬 — 이 목록은
-    │   │   │                                 "뭘 해야 하나"를 보는 자리다
-    │   │   ├── entity/ServiceInterval.java   차량별 권장 주기(2026-09-25 신설).
-    │   │   │                                 주기가 enum 상수로 고정돼 있어 엔진오일이 언제나
-    │   │   │                                 5,000km(광유 기준)였다 — 합성유는 10,000~15,000km 라
-    │   │   │                                 **`지남` 이 늘 켜진 경고등**이 됐고, 늘 켜진 경고는
-    │   │   │                                 아무도 안 본다. 차량 단위인 이유: 주기는 사람이 아니라
-    │   │   │                                 차의 성질이다. km·개월을 따로 비울 수 있다 —
-    │   │   │                                 합성유는 거리만 늘고 기간은 그대로인 게 보통.
-    │   │   │                                 둘 다 비면 행을 지운다(customized 가 거짓말하지 않게)
-    │   │   ├── entity/MaintenanceRecord.java @Entity. type은 @Enumerated(STRING).
-    │   │   │                                 필드별 change 메서드 5개.
-    │   │   │                                 **cost·serviceOdometer 는 비어 있을 수 있다**(2026-09-30,
-    │   │   │                                 타던 차의 "언제 갈았는지만 기억"). 주유의 liters·total_cost 와
-    │   │   │                                 같은 규칙 — 0 으로 채우지 않고, 합계만 costOrZero().
-    │   │   │                                 주행거리가 비면 다음 정비는 날짜 기준만
-    │   │   └── type/ServiceType.java         enum 15종(부위별로 묶어 선언 — 화면 선택 목록이
-    │   │                                     이 순서를 따른다). recommendedIntervalKm +
-    │   │                                     recommendedIntervalMonths (OTHER는 둘 다 null).
-    │   │                                     **entity 와 형제 폴더로 갈라 둔 이유**: 엔티티가 아니라
-    │   │                                     값의 종류라서, 한 폴더에 섞이면 @Entity 인지
-    │   │                                     아닌지를 파일을 열어 봐야 안다
-    │   ├── repository/jpa/ServiceIntervalRepository.java
-    │   │                                     차량별 주기. findByVehicle_Owner_Id(목록·홈이 한 번에 읽음)
-    │   ├── repository/jpa/MaintenanceRecordRepository.java
-    │   │                                     findByVehicleId(Pageable),
-    │   │                                     findByVehicleIdOrderByServiceDateDescIdDesc(종류별
-    │   │                                     최신 1건을 한 번에 — 종류마다 findTopBy 면 15쿼리),
-    │   │                                     findByPublicIdAndVehicleId(타 차량 소속 차단),
-    │   │                                     deleteByVehicleId
+    │   │   ├── NextService.java          다음 정비 시점 + **지남 판정**(2026-09-25 신설).
+    │   │   │                             엔티티가 아니라 값 계산이라 entity/ 밖에 둔다.
+    │   │   │                             **차량 상세와 홈 요약이 공유한다** — 두 벌이면
+    │   │   │                             한 화면은 지났다 하고 한 화면은 아무 말도 안 한다.
+    │   │   │                             km·개월 중 **하나라도** 넘으면 지남(권장 주기가
+    │   │   │                             "먼저 오는 것"이라서). 딱 그 값·그 날도 지남.
+    │   │   │                             **지난 것이 먼저** 오도록 정렬 — 이 목록은
+    │   │   │                             "뭘 해야 하나"를 보는 자리다.
+    │   │   │                             overdueCount — 차량 목록(garage)과 홈(summary) 공용
+    │   │   ├── entity/
+    │   │   │   ├── ServiceInterval.java  차량별 권장 주기(2026-09-25 신설).
+    │   │   │   │                         주기가 enum 상수로 고정돼 있어 엔진오일이 언제나
+    │   │   │   │                         5,000km(광유 기준)였다 — 합성유는 10,000~15,000km 라
+    │   │   │   │                         **`지남` 이 늘 켜진 경고등**이 됐고, 늘 켜진 경고는
+    │   │   │   │                         아무도 안 본다. 차량 단위인 이유: 주기는 사람이 아니라
+    │   │   │   │                         차의 성질이다. km·개월을 따로 비울 수 있다 —
+    │   │   │   │                         합성유는 거리만 늘고 기간은 그대로인 게 보통.
+    │   │   │   │                         둘 다 비면 행을 지운다(customized 가 거짓말하지 않게)
+    │   │   │   └── MaintenanceRecord.java
+    │   │   │                             @Entity. type은 @Enumerated(STRING).
+    │   │   │                             필드별 change 메서드 5개.
+    │   │   │                             **cost·serviceOdometer 는 비어 있을 수 있다**(2026-09-30,
+    │   │   │                             타던 차의 "언제 갈았는지만 기억"). 주유의 liters·total_cost 와
+    │   │   │                             같은 규칙 — 0 으로 채우지 않고, 합계만 costOrZero().
+    │   │   │                             주행거리가 비면 다음 정비는 날짜 기준만
+    │   │   └── ServiceType.java          enum 15종(부위별로 묶어 선언 — 화면 선택 목록이
+    │   │                                 이 순서를 따른다). recommendedIntervalKm +
+    │   │                                 recommendedIntervalMonths (OTHER는 둘 다 null).
+    │   │                                 entity/ 밖에 두는 이유: 엔티티가 아니라 값의 종류라서,
+    │   │                                 한 폴더에 섞이면 @Entity 인지 파일을 열어 봐야 안다
+    │   ├── repository/
+    │   │   ├── ServiceIntervalRepository.java
+    │   │   │                             차량별 주기. findByVehicle_Owner_Id(목록·홈이 한 번에 읽음)
+    │   │   └── MaintenanceRecordRepository.java
+    │   │                                 findByVehicleId(Pageable),
+    │   │                                 findByVehicleIdOrderByServiceDateDescIdDesc(종류별
+    │   │                                 최신 1건을 한 번에 — 종류마다 findTopBy 면 15쿼리),
+    │   │                                 findByPublicIdAndVehicleId(타 차량 소속 차단),
+    │   │                                 deleteByVehicleId
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── register/MaintenanceRecordRegisterRequest.java
-    │   │   │   │                             type·serviceDate 만 @NotNull. 비용·주행거리는 선택.
-    │   │   │   │                             수정 쪽은 clearCost·clearServiceOdometer 플래그(주유와 같은 이유)
-    │   │   │   └── update/MaintenanceRecordUpdateRequest.java
-    │   │   │                                 전부 nullable. cost/serviceOdometer는
-    │   │   │                                 Integer로 "안 보냄"과 "0"을 구분
+    │   │   │   ├── MaintenanceRecordRegisterRequest.java
+    │   │   │   │                         type·serviceDate 만 @NotNull. 비용·주행거리는 선택.
+    │   │   │   │                         수정 쪽은 clearCost·clearServiceOdometer 플래그(주유와 같은 이유)
+    │   │   │   ├── MaintenanceRecordUpdateRequest.java
+    │   │   │   │                         전부 nullable. cost/serviceOdometer는
+    │   │   │   │                         Integer로 "안 보냄"과 "0"을 구분
+    │   │   │   └── ServiceIntervalRequest.java
     │   │   └── response/
-    │   │       ├── record/MaintenanceRecordResponse.java     from() 팩토리
-    │   │       └── schedule/NextServiceResponse.java         주행거리·날짜 두 기준 + overdue.
-    │   │                                                     판정을 서버가 하는 이유 — 화면이
-    │   │                                                     직접 오늘과 비교하면 차량 상세와
-    │   │                                                     홈이 다른 말을 하게 된다
-    │   ├── service/application/MaintenanceRecordService.java
-    │   │                                     register(+차량 주행거리 자동 갱신),
-    │   │                                     findByVehicle(Pageable),
-    │   │                                     calculateAllNextServices(km·개월, 이력 있는 종류만),
-    │   │                                     update(부분), delete.
-    │   │                                     VehicleService.findOwnedVehicle()를 주입받아 재사용
-    │   └── controller/rest/MaintenanceRecordController.java
-    │                                         POST·GET  .../maintenance-records,
-    │                                         PATCH·DELETE  .../{recordId},
-    │                                         GET  .../next-services (이력 있는 종류 전체).
-    │                                         단건 조회와 next-service(단수)는 화면이 안 써서
-    │                                         2026-09-16 에 걷어냈다
-    │
-    ├── fuel/  ────────────────────────────── 주유 기록·연비. maintenance 와 같은 모양이다
-    │   ├── domain/entity/FuelRecord.java     @Entity(fuel_records). vehicle→Vehicle(LAZY).
-    │   │                                     liters 는 BigDecimal(6,2) — int 로는 32.45L 를
-    │   │                                     못 담고, double 은 합산 시 오차가 쌓인다.
-    │   │                                     단가가 아니라 총액(total_cost)을 저장한다.
-    │   │                                     **liters·total_cost 는 비어 있을 수 있다**
-    │   │                                     (2026-09-23). 그래서 total_cost 가 int 가 아니라
-    │   │                                     Integer 다(원칙 8). 0 으로 채우지 않는 이유 —
-    │   │                                     0 은 "0L 를 0원에 넣었다" 라는 다른 사실이고,
-    │   │                                     연비가 0 으로 나누기가 된다.
-    │   │                                     더할 때만 둘이 같은 뜻이라 totalCostOrZero() 가 있다
-    │   ├── repository/jpa/FuelRecordRepository.java
-    │   │                                     findByVehicleId(Pageable), findByPublicIdAndVehicleId,
-    │   │                                     findPrevious(직전 1건 — **(주행거리, id) 순서**.
-    │   │                                     주행거리만 보면 같은 값 2건이 페이지 경계에 걸릴 때
-    │   │                                     같은 구간이 두 번 보인다. 이 저장소의 유일한 @Query),
-    │   │                                     findAllByVehicleIdOrderByOdometerAscIdAsc(요약용),
-    │   │                                     deleteByVehicleId
-    │   ├── domain/calculation/              엔티티가 아니라 **값 계산**이라 entity 와 형제로 뒀다
-    │   │   ├── FuelEfficiency.java           평균 연비 공식. 차량 상세와 홈 요약이 **공유한다** —
-    │   │   │                                 두 벌이면 화면마다 다른 연비가 뜬다(2026-09-17 통합).
-    │   │   │                                 Σ(구간 거리) ÷ Σ(구간 주유량). 총합 나누기와 결과는
-    │   │   │                                 같지만, 구간 단위라야 불가능한 구간을 골라낼 수 있다
-    │   │   └── FuelAnomaly.java              빠진 기록 탐지. 절대 임계값으로는 못 잡아 그 차량의
-    │   │                                     평소 구간과 견준다. 기준은 평균이 아니라 **중앙값** —
-    │   │                                     평균은 잡으려는 이상값 자체에 끌려 올라간다
+    │   │       ├── MaintenanceRecordResponse.java
+    │   │       │                         from() 팩토리
+    │   │       └── NextServiceResponse.java
+    │   │                                 주행거리·날짜 두 기준 + overdue.
+    │   │                                 판정을 서버가 하는 이유 — 화면이
+    │   │                                 직접 오늘과 비교하면 차량 상세와
+    │   │                                 홈이 다른 말을 하게 된다
+    │   ├── MaintenanceRecordService.java
+    │   │                                 register(+차량 주행거리 자동 갱신),
+    │   │                                 findByVehicle(Pageable),
+    │   │                                 calculateAllNextServices(km·개월, 이력 있는 종류만),
+    │   │                                 update(부분), delete,
+    │   │                                 deleteAllOf(차량 하나의 이력·주기 — 차량 삭제 조율 전용).
+    │   │                                 VehicleService.findOwnedVehicle()를 주입받아 재사용
+    │   └── MaintenanceRecordController.java
+    │                                     POST·GET  .../maintenance-records,
+    │                                     PATCH·DELETE  .../{recordId},
+    │                                     GET  .../next-services (이력 있는 종류 전체).
+    │                                     단건 조회와 next-service(단수)는 화면이 안 써서
+    │                                     2026-09-16 에 걷어냈다
+    ├── fuel/                             주유 기록·연비. maintenance 와 같은 모양이다
+    │   ├── domain/
+    │   │   ├── FuelRecord.java           @Entity(fuel_records). vehicle→Vehicle(LAZY).
+    │   │   │                             liters 는 BigDecimal(6,2) — int 로는 32.45L 를
+    │   │   │                             못 담고, double 은 합산 시 오차가 쌓인다.
+    │   │   │                             단가가 아니라 총액(total_cost)을 저장한다.
+    │   │   │                             **liters·total_cost 는 비어 있을 수 있다**
+    │   │   │                             (2026-09-23). 그래서 total_cost 가 int 가 아니라
+    │   │   │                             Integer 다(원칙 8). 0 으로 채우지 않는 이유 —
+    │   │   │                             0 은 "0L 를 0원에 넣었다" 라는 다른 사실이고,
+    │   │   │                             연비가 0 으로 나누기가 된다.
+    │   │   │                             더할 때만 둘이 같은 뜻이라 totalCostOrZero() 가 있다
+    │   │   └── calculation/              엔티티가 아니라 **값 계산**이라 entity 와 형제로 뒀다
+    │   │       ├── FuelEfficiency.java   평균 연비 공식. 차량 상세와 홈 요약이 **공유한다** —
+    │   │       │                         두 벌이면 화면마다 다른 연비가 뜬다(2026-09-17 통합).
+    │   │       │                         Σ(구간 거리) ÷ Σ(구간 주유량). 총합 나누기와 결과는
+    │   │       │                         같지만, 구간 단위라야 불가능한 구간을 골라낼 수 있다
+    │   │       └── FuelAnomaly.java      빠진 기록 탐지. 절대 임계값으로는 못 잡아 그 차량의
+    │   │                                 평소 구간과 견준다. 기준은 평균이 아니라 **중앙값** —
+    │   │                                 평균은 잡으려는 이상값 자체에 끌려 올라간다
+    │   ├── FuelRecordRepository.java     findByVehicleId(Pageable), findByPublicIdAndVehicleId,
+    │   │                                 findPrevious(직전 1건 — **(주행거리, id) 순서**.
+    │   │                                 주행거리만 보면 같은 값 2건이 페이지 경계에 걸릴 때
+    │   │                                 같은 구간이 두 번 보인다. 이 저장소의 유일한 @Query),
+    │   │                                 findAllByVehicleIdOrderByOdometerAscIdAsc(요약용),
+    │   │                                 deleteByVehicleId
     │   ├── dto/
-    │   │   ├── request/{register,update}/    liters 는 @Positive — 0 이면 연비가 0으로 나누기다.
-    │   │   │                                 날짜의 미래 검사는 서비스가 사용자 시간대로(UserToday).
-    │   │   │                                 **liters·totalCost 에 @NotNull 이 없다**(2026-09-23).
-    │   │   │                                 수정 쪽은 clearLiters·clearTotalCost 플래그가 따로 있다 —
-    │   │   │                                 JSON 은 "키가 없음"과 "null"이 서버에 똑같이 도착해서
-    │   │   │                                 null 하나로는 '유지'와 '비움'을 못 가른다.
-    │   │   │                                 **Optional 로 감싸는 방법은 안 된다** — Jackson 이
-    │   │   │                                 키가 없을 때도 Optional.empty() 를 채운다(테스트로 확인)
+    │   │   ├── request/                  liters 는 @Positive — 0 이면 연비가 0으로 나누기다.
+    │   │   │   │                         날짜의 미래 검사는 서비스가 사용자 시간대로(UserToday).
+    │   │   │   │                         **liters·totalCost 에 @NotNull 이 없다**(2026-09-23).
+    │   │   │   │                         수정 쪽은 clearLiters·clearTotalCost 플래그가 따로 있다 —
+    │   │   │   │                         JSON 은 "키가 없음"과 "null"이 서버에 똑같이 도착해서
+    │   │   │   │                         null 하나로는 '유지'와 '비움'을 못 가른다.
+    │   │   │   │                         **Optional 로 감싸는 방법은 안 된다** — Jackson 이
+    │   │   │   │                         키가 없을 때도 Optional.empty() 를 채운다(테스트로 확인)
+    │   │   │   ├── FuelRecordRegisterRequest.java
+    │   │   │   └── FuelRecordUpdateRequest.java
     │   │   └── response/
-    │   │       ├── record/FuelRecordResponse.java
-    │   │       │                             저장값 + 계산값(단가·거리·연비)이 함께 온다.
-    │   │       │                             표시 플래그 둘: efficiencySuspicious(불가능한 값) ·
-    │   │       │                             missingRecordSuspected(기록이 빠진 구간).
-    │   │       │                             **한 행에 둘이 같이 붙지 않는다** — 무엇을 하라는
-    │   │       │                             건지 흐려지므로 불가능한 값 쪽이 먼저다.
-    │   │       │                             **계산값은 DB 에 없다** — 직전 기록이 바뀌면
-    │   │       │                             달라지므로 읽을 때 계산해야 언제나 맞다.
-    │   │       │                             구간이 성립 안 하면 null(0 이 아니다)
-    │   │       └── summary/FuelSummaryResponse.java
-    │   │                                     평균 + latestRecordId·resetPointId(연비 초기화용),
-    │   │                                     longSegmentCount(빠진 기록으로 보여 평균에서 뺀
-    │   │                                     구간 — 2026-09-23 부터 세기만 하지 않고 실제로 뺀다),
-    │   │                                     excludedSegmentCount(평균에서 뺀 구간 수 —
-    │   │                                     말없이 빼면 그것도 거짓말이라 개수를 밝힌다)
-    │   ├── service/application/FuelRecordService.java
-    │   │                                     register(+차량 주행거리 자동 갱신),
-    │   │                                     findByVehicle(페이지당 쿼리 5번 — 차량·페이지·개수·직전 1건, 마지막이
-    │   │                                     '평소 구간' 전체 조회. 페이지 안에서 중앙값을 내면
-    │   │                                     같은 기록이 페이지마다 다르게 판정된다),
-    │   │                                     update, delete, summary.
-    │   │                                     **FIXED_SORT 로 정렬을 고정한다** — 정렬이 곧
-    │   │                                     연비 계산의 전제라 sort 파라미터를 무시한다
-    │   └── controller/rest/FuelRecordController.java
-    │                                         POST·GET  .../fuel-records,
-    │                                         GET  .../summary (리터럴이 {recordId} 보다 우선),
-    │                                         PATCH·DELETE  .../{recordId}
-    │
-    ├── account/  ─────────────────────────── 조율 층 ①. **여러 기능을 동시에 알아도 되는 자리**
-    │   │                                     (프론트의 app/ 과 같은 성격 — 아래 "의존 방향" 참고).
-    │   │                                     계정 전체에 걸친 동작 둘이 여기 있다. **거울상이다** —
-    │   │                                     한쪽은 전부 지우고(탈퇴) 한쪽은 전부 가져간다(내보내기).
-    │   │                                     그래서 주입받는 것도 다르다: 지우는 쪽은 순서를 조율해야
-    │   │                                     해서 서비스를, 내보내는 쪽은 원본만 필요해 리포지토리를
-    │   ├── dto/response/export/AccountExportResponse.java
-    │   │                                     차량 밑에 이력·주유·**차량별 주기**를 중첩한다 — 평평하게
-    │   │                                     내보내면 어느 기록이 어느 차의 것인지 우리 DB 안에서만
-    │   │                                     뜻이 있는 id 로만 안다.
-    │   │                                     **계산값(연비·단가)과 비밀번호 해시는 담지 않는다.**
-    │   │                                     주기가 빠져 있으면 복원한 차가 기본값으로 돌아가
-    │   │                                     `지남` 이 다시 늘 켜진다 — 말없이 사라지는 설정이다
-    │   ├── dto/response/restore/AccountRestoreResponse.java
-    │   │                                     추가·병합·건너뜀 수. 말없이 건너뛰면 다시 누르게 된다
-    │   ├── dto/request/restore/AccountRestoreRequest.java
-    │   │                                     내보낸 JSON 을 되돌려받는다. 패키지가 restore 인
-    │   │                                     이유는 **import 가 자바 예약어**라서.
-    │   │                                     **사용자 정보는 안 받는다** — 가져오기는 내 계정에
-    │   │                                     기록을 더하는 것이지 계정을 바꾸는 게 아니다
-    │   ├── service/application/AccountRestoreService.java
-    │   │                                     복원할 수 없으면 백업이 아니라 기념품이다.
-    │   │                                     규칙 셋: 같은 번호판이면 기록만 붙이고 차량 정보는
-    │   │                                     안 건드린다(파일이 옛날 것일 수 있다) ·
-    │   │                                     **같은 기록은 건너뛴다**(두 번 넣어도 두 배가 되지
-    │   │                                     않아야 한다 — id 가 JSON 에 없어 종류·날짜·주행거리로
-    │   │                                     판정) · 하나라도 걸리면 전부 안 들어간다
-    │   ├── service/application/AccountExportService.java
-    │   │                                     export(ownerId, exportedAt) — 쿼리 3번.
-    │   │                                     "언제" 를 밖에서 받는다(테스트에서 고정하려고)
-    │   ├── dto/request/withdraw/WithdrawRequest.java
-    │   │                                     비밀번호 @NotBlank. 체크박스로 대신하지 않는다 —
-    │   │                                     그건 실수만 막고 본인 확인이 아니다
-    │   ├── service/application/AccountWithdrawalService.java
-    │   │                                     withdraw(비밀번호 확인 → 차량·이력 → 사용자).
-    │   │                                     순서만 정하고 실제 삭제는 각 기능이 한다
-    │   └── controller/rest/AccountController.java
-    │                                         GET /api/users/me/export,
-    │                                         DELETE /api/users/me(204) + 세션 invalidate.
-    │                                         **URL 은 users 인데 패키지는 account** — UserController
-    │                                         에 두면 user 가 account 를 알게 되어 순환이다.
-    │                                         비밀번호는 본문에 싣는다(URL 에 넣으면 로그에 남는다)
-    │
-    ├── summary/  ─────────────────────────── 조율 층 ②. 홈 화면 요약 (2026-09-17 신설)
-    │   │                                     account 와 같은 문제를 풀지만 성격이 다르다 —
-    │   │                                     이쪽은 **읽어서 합친다.** 그래서 서비스가 아니라
-    │   │                                     **리포지토리를 주입받는다**: 집계에는 각 기능의
-    │   │                                     비즈니스 규칙(소유권 검사·삭제 순서)이 필요 없고,
-    │   │                                     소유자 id 로 조회하므로 남의 데이터가 안 섞인다
-    │   ├── dto/response/garage/GarageSummaryResponse.java
-    │   │                                     홈 한 장에 필요한 값 전부. 타일·월별·종류별·
-    │   │                                     차량별(평균 연비 + **지난 정비 수**)·최근 활동.
-    │   │                                     안에 record 넷이 중첩돼 있고,
-    │   │                                     RecentActivity 는 정비·주유 공용이라 kind 로 가른다
-    │   ├── service/application/GarageSummaryService.java
-    │   │                                     summarize(ownerId, today, currency) — **쿼리 4번, HTTP 1번**.
-    │   │                                     금액은 사용자 통화 기록만 더하고 나머지는 건수로 밝힌다.
-    │   │                                     "오늘"을 밖에서 받는다(안에서 now() 를 부르면
-    │   │                                     월별 12칸을 테스트에서 고정할 수 없다).
-    │   │                                     차량 이름은 이미 읽어 둔 목록에서 찾는다 — LAZY
-    │   │                                     프록시를 건드리면 1차 캐시에 기대는 코드가 된다
-    │   └── controller/rest/GarageSummaryController.java
-    │                                         GET /api/summary. **/api/vehicles/summary 가 아닌
-    │                                         이유** — 정비·주유까지 담아 차량의 하위 자원이 아니다
-    │
-    └── common/  ──────────────────────────── 기능 어디에도 속하지 않는 공통 인프라
+    │   │       ├── FuelRecordResponse.java
+    │   │       │                         저장값 + 계산값(단가·거리·연비)이 함께 온다.
+    │   │       │                         표시 플래그 둘: efficiencySuspicious(불가능한 값) ·
+    │   │       │                         missingRecordSuspected(기록이 빠진 구간).
+    │   │       │                         **한 행에 둘이 같이 붙지 않는다** — 무엇을 하라는
+    │   │       │                         건지 흐려지므로 불가능한 값 쪽이 먼저다.
+    │   │       │                         **계산값은 DB 에 없다** — 직전 기록이 바뀌면
+    │   │       │                         달라지므로 읽을 때 계산해야 언제나 맞다.
+    │   │       │                         구간이 성립 안 하면 null(0 이 아니다)
+    │   │       └── FuelSummaryResponse.java
+    │   │                                 평균 + latestRecordId·resetPointId(연비 초기화용),
+    │   │                                 longSegmentCount(빠진 기록으로 보여 평균에서 뺀
+    │   │                                 구간 — 2026-09-23 부터 세기만 하지 않고 실제로 뺀다),
+    │   │                                 excludedSegmentCount(평균에서 뺀 구간 수 —
+    │   │                                 말없이 빼면 그것도 거짓말이라 개수를 밝힌다)
+    │   ├── FuelRecordService.java        register(+차량 주행거리 자동 갱신),
+    │   │                                 findByVehicle(페이지당 쿼리 5번 — 차량·페이지·개수·직전 1건, 마지막이
+    │   │                                 '평소 구간' 전체 조회. 페이지 안에서 중앙값을 내면
+    │   │                                 같은 기록이 페이지마다 다르게 판정된다),
+    │   │                                 update, delete, summary,
+    │   │                                 deleteAllOf(차량 하나의 주유 기록 — 차량 삭제 조율 전용).
+    │   │                                 **FIXED_SORT 로 정렬을 고정한다** — 정렬이 곧
+    │   │                                 연비 계산의 전제라 sort 파라미터를 무시한다
+    │   └── FuelRecordController.java     POST·GET  .../fuel-records,
+    │                                     GET  .../summary (리터럴이 {recordId} 보다 우선),
+    │                                     PATCH·DELETE  .../{recordId}
+    ├── garage/                           조율 층 ⓪. 차량과 그 기록을 함께 다루는 동작 (2026-10-03 신설)
+    │   │                                 전에는 VehicleService 가 정비·주유 리포지토리 셋을 주입받아
+    │   │                                 vehicle ↔ maintenance·fuel 이 패키지 수준에서 순환했다.
+    │   │                                 account 와 같은 모양: 지우는 쪽은 서비스, 읽는 쪽은 리포지토리
+    │   ├── service/
+    │   │   ├── VehicleRemovalService.java
+    │   │   │                             delete · deleteAllOwnedBy(탈퇴용). 정비·주유 → 차량 순서만 정하고
+    │   │   │                             실제 삭제는 각 기능의 deleteAllOf·remove 가 한다
+    │   │   └── VehicleListService.java   findMyVehicles(Pageable) — **DTO 를 돌려준다.** 지남 수가 계산값이라서.
+    │   │                                 쿼리 5번(페이지·개수·이력·주기·사용자 시간대) — 이력·주기를 소유자
+    │   │                                 단위로 한 번에 읽고 나눈다. 정렬 화이트리스트(SortGuard)도 여기
+    │   └── GarageVehicleController.java  GET /api/vehicles, DELETE /api/vehicles/{id}.
+    │                                     **URL 은 vehicles 인데 패키지는 garage** — AccountController 와 같은 이유
+    ├── account/                          조율 층 ①. **여러 기능을 동시에 알아도 되는 자리**
+    │   │                                 (프론트의 app/ 과 같은 성격 — 아래 "의존 방향" 참고).
+    │   │                                 계정 전체에 걸친 동작 둘이 여기 있다. **거울상이다** —
+    │   │                                 한쪽은 전부 지우고(탈퇴) 한쪽은 전부 가져간다(내보내기).
+    │   │                                 그래서 주입받는 것도 다르다: 지우는 쪽은 순서를 조율해야
+    │   │                                 해서 서비스를, 내보내는 쪽은 원본만 필요해 리포지토리를
+    │   ├── dto/
+    │   │   ├── response/
+    │   │   │   ├── AccountExportResponse.java
+    │   │   │   │                         차량 밑에 이력·주유·**차량별 주기**를 중첩한다 — 평평하게
+    │   │   │   │                         내보내면 어느 기록이 어느 차의 것인지 우리 DB 안에서만
+    │   │   │   │                         뜻이 있는 id 로만 안다.
+    │   │   │   │                         **계산값(연비·단가)과 비밀번호 해시는 담지 않는다.**
+    │   │   │   │                         주기가 빠져 있으면 복원한 차가 기본값으로 돌아가
+    │   │   │   │                         `지남` 이 다시 늘 켜진다 — 말없이 사라지는 설정이다
+    │   │   │   └── AccountRestoreResponse.java
+    │   │   │                             추가·병합·건너뜀 수. 말없이 건너뛰면 다시 누르게 된다
+    │   │   └── request/
+    │   │       ├── AccountRestoreRequest.java
+    │   │       │                         내보낸 JSON 을 되돌려받는다.
+    │   │       │                         **사용자 정보는 안 받는다** — 가져오기는 내 계정에
+    │   │       │                         기록을 더하는 것이지 계정을 바꾸는 게 아니다
+    │   │       └── WithdrawRequest.java  비밀번호 @NotBlank. 체크박스로 대신하지 않는다 —
+    │   │                                 그건 실수만 막고 본인 확인이 아니다
+    │   ├── service/
+    │   │   ├── AccountRestoreService.java
+    │   │   │                             복원할 수 없으면 백업이 아니라 기념품이다.
+    │   │   │                             규칙 셋: 같은 번호판이면 기록만 붙이고 차량 정보는
+    │   │   │                             안 건드린다(파일이 옛날 것일 수 있다) ·
+    │   │   │                             **같은 기록은 건너뛴다**(두 번 넣어도 두 배가 되지
+    │   │   │                             않아야 한다 — id 가 JSON 에 없어 종류·날짜·주행거리로
+    │   │   │                             판정) · 하나라도 걸리면 전부 안 들어간다
+    │   │   ├── AccountExportService.java
+    │   │   │                             export(ownerId, exportedAt) — 쿼리 3번.
+    │   │   │                             "언제" 를 밖에서 받는다(테스트에서 고정하려고)
+    │   │   └── AccountWithdrawalService.java
+    │   │                                 withdraw(비밀번호 확인 → 차량·이력 → 사용자).
+    │   │                                 차량·이력은 garage 의 VehicleRemovalService 에 맡긴다
+    │   └── AccountController.java        GET /api/users/me/export,
+    │                                     DELETE /api/users/me(204) + 세션 invalidate.
+    │                                     **URL 은 users 인데 패키지는 account** — UserController
+    │                                     에 두면 user 가 account 를 알게 되어 순환이다.
+    │                                     비밀번호는 본문에 싣는다(URL 에 넣으면 로그에 남는다)
+    ├── summary/                          조율 층 ②. 홈 화면 요약 (2026-09-17 신설)
+    │   │                                 account 와 같은 문제를 풀지만 성격이 다르다 —
+    │   │                                 이쪽은 **읽어서 합친다.** 그래서 서비스가 아니라
+    │   │                                 **리포지토리를 주입받는다**: 집계에는 각 기능의
+    │   │                                 비즈니스 규칙(소유권 검사·삭제 순서)이 필요 없고,
+    │   │                                 소유자 id 로 조회하므로 남의 데이터가 안 섞인다
+    │   ├── GarageSummaryResponse.java    홈 한 장에 필요한 값 전부. 타일·월별·종류별·
+    │   │                                 차량별(평균 연비 + **지난 정비 수**)·최근 활동.
+    │   │                                 안에 record 넷이 중첩돼 있고,
+    │   │                                 RecentActivity 는 정비·주유 공용이라 kind 로 가른다
+    │   ├── GarageSummaryService.java     summarize(ownerId, today, currency) — **쿼리 4번, HTTP 1번**.
+    │   │                                 금액은 사용자 통화 기록만 더하고 나머지는 건수로 밝힌다.
+    │   │                                 "오늘"을 밖에서 받는다(안에서 now() 를 부르면
+    │   │                                 월별 12칸을 테스트에서 고정할 수 없다).
+    │   │                                 차량 이름은 이미 읽어 둔 목록에서 찾는다 — LAZY
+    │   │                                 프록시를 건드리면 1차 캐시에 기대는 코드가 된다
+    │   └── GarageSummaryController.java  GET /api/summary. **/api/vehicles/summary 가 아닌
+    │                                     이유** — 정비·주유까지 담아 차량의 하위 자원이 아니다
+    └── common/                           기능 어디에도 속하지 않는 공통 인프라
         ├── auth/
-        │   ├── ratelimit/LoginAttemptLimiter.java
-        │   │                                 비밀번호 대입 방어. 10분 안에 10번 넘게 시도하면 10분 잠금.
-        │   │                                 acquire 가 확인과 집계를 한 번에 — 성공하면 recordSuccess 로 지운다.
-        │   │                                 **계정이 없어도 센다** — 없는 이메일만 빨리 답하면
-        │   │                                 그 자체가 존재 여부를 알려준다. 인메모리라 재시작하면 잊는다.
-        │   │                                 **네 곳이 키만 갈라 쓴다**: 로그인(이메일) ·
-        │   │                                 재설정 요청(`password-reset:`+이메일) ·
-        │   │                                 회원가입(`signup:`+IP) ·
-        │   │                                 비밀번호 확인(`password-check:`+사용자 id — 변경·탈퇴,
-        │   │                                 2026-09-30. 훔친 세션의 무제한 대입 방지). 그래서 잠겼을 때의 문구는
-        │   │                                 부르는 쪽이 넘긴다 — 안 그러면 가입 화면에
-        │   │                                 "로그인 시도가 너무 많습니다" 가 뜬다.
-        │   │                                 **이름이 이미 좁다** — 넷을 다 뜻하는 이름으로
-        │   │                                 바꿀 값이 생기면 그때 바꾼다
-        │   ├── csrf/CsrfTokenFilter.java     쿠키의 토큰과 헤더의 토큰을 비교(double submit).
-        │   │                                 세션 보관 방식을 안 쓴 이유는 토큰을 내주려면 세션이
-        │   │                                 필요해져 비로그인 방문자에게도 세션이 생기기 때문.
-        │   │                                 **테스트에서는 꺼 둔다** — @WebMvcTest 가 Filter 빈을
-        │   │                                 같이 올려서 기존 쓰기 테스트가 전부 403 이 된다
-        │   ├── session/LoginSessionRegistry.java
-        │   │                                 사용자별 로그인 세션 목록(2026-09-25). 비밀번호 변경은
-        │   │                                 **지금 세션만 남기고**, 재설정·탈퇴는 **전부** 끊는다.
-        │   │                                 세션이 14일이라 안 끊으면 훔친 세션이 재설정 뒤에도 산다.
-        │   │                                 세션과 같이 메모리에 둔다 — DB 버전 비교는 요청마다
-        │   │                                 조회가 늘고 WebConfig 가 리포지토리를 알게 된다.
-        │   │                                 등록할 때 다른 사용자 목록에서 먼저 뺀다 — 로그인은 세션을
-        │   │                                 id 만 바꿔 다시 쓰므로 로그아웃 없이 계정을 바꾸면 둘에 남는다
-        │   ├── annotation/LoginUser.java     @Target(PARAMETER) 커스텀 애노테이션
-        │   ├── resolver/LoginUserArgumentResolver.java
-        │   │                                 세션 LOGIN_USER_ID → Long 주입. 없으면 401
-        │   └── constant/SessionConst.java    세션 키 상수
+        │   ├── LoginAttemptLimiter.java  비밀번호 대입 방어. 10분 안에 10번 넘게 시도하면 10분 잠금.
+        │   │                             acquire 가 확인과 집계를 한 번에 — 성공하면 recordSuccess 로 지운다.
+        │   │                             **계정이 없어도 센다** — 없는 이메일만 빨리 답하면
+        │   │                             그 자체가 존재 여부를 알려준다. 인메모리라 재시작하면 잊는다.
+        │   │                             **네 곳이 키만 갈라 쓴다**: 로그인(이메일) ·
+        │   │                             재설정 요청(`password-reset:`+이메일) ·
+        │   │                             회원가입(`signup:`+IP) ·
+        │   │                             비밀번호 확인(`password-check:`+사용자 id — 변경·탈퇴,
+        │   │                             2026-09-30. 훔친 세션의 무제한 대입 방지). 그래서 잠겼을 때의 문구는
+        │   │                             부르는 쪽이 넘긴다 — 안 그러면 가입 화면에
+        │   │                             "로그인 시도가 너무 많습니다" 가 뜬다.
+        │   │                             **이름이 이미 좁다** — 넷을 다 뜻하는 이름으로
+        │   │                             바꿀 값이 생기면 그때 바꾼다
+        │   ├── CsrfTokenFilter.java      쿠키의 토큰과 헤더의 토큰을 비교(double submit).
+        │   │                             세션 보관 방식을 안 쓴 이유는 토큰을 내주려면 세션이
+        │   │                             필요해져 비로그인 방문자에게도 세션이 생기기 때문.
+        │   │                             **테스트에서는 꺼 둔다** — @WebMvcTest 가 Filter 빈을
+        │   │                             같이 올려서 기존 쓰기 테스트가 전부 403 이 된다
+        │   ├── LoginSessionRegistry.java
+        │   │                             사용자별 로그인 세션 목록(2026-09-25). 비밀번호 변경은
+        │   │                             **지금 세션만 남기고**, 재설정·탈퇴는 **전부** 끊는다.
+        │   │                             세션이 14일이라 안 끊으면 훔친 세션이 재설정 뒤에도 산다.
+        │   │                             세션과 같이 메모리에 둔다 — DB 버전 비교는 요청마다
+        │   │                             조회가 늘고 WebConfig 가 리포지토리를 알게 된다.
+        │   │                             등록할 때 다른 사용자 목록에서 먼저 뺀다 — 로그인은 세션을
+        │   │                             id 만 바꿔 다시 쓰므로 로그아웃 없이 계정을 바꾸면 둘에 남는다
+        │   ├── LoginUser.java            @Target(PARAMETER) 커스텀 애노테이션
+        │   ├── LoginUserArgumentResolver.java
+        │   │                             세션 LOGIN_USER_ID → Long 주입. 없으면 401
+        │   └── SessionConst.java         세션 키 상수
         ├── domain/
-        │   ├── identifier/PublicId.java      URL·API 용 12자 무작위 id(SecureRandom, 약 71비트).
-        │   │                                 차량·정비 이력·주유 기록이 쓴다 — 규칙 9-1
-        │   └── entity/BaseTimeEntity.java    @MappedSuperclass + @EntityListeners.
-        │                                     createdAt/updatedAt 을 네 엔티티가 상속받는다.
-        │                                     테이블을 만들지 않고 필드만 자식에 합쳐지므로
-        │                                     컬럼 이름이 그대로다(ddl-auto 가 안 건드린다)
-        ├── text/InputText.java               입력 앞뒤 공백 정리. strip / required(비면 400). 규칙 14-1
-        ├── money/CurrencyCode.java           ISO 4217 판정(JDK 목록) + LEGACY("KRW", 통화 칸 없던
-        │                                     시절의 기록·파일). 사용자 설정과 가져오기가 공유
+        │   ├── PublicId.java             URL·API 용 12자 무작위 id(SecureRandom, 약 71비트).
+        │   │                             차량·정비 이력·주유 기록이 쓴다 — 규칙 9-1
+        │   └── BaseTimeEntity.java       @MappedSuperclass + @EntityListeners.
+        │                                 createdAt/updatedAt 을 네 엔티티가 상속받는다.
+        │                                 테이블을 만들지 않고 필드만 자식에 합쳐지므로
+        │                                 컬럼 이름이 그대로다(ddl-auto 가 안 건드린다)
+        ├── InputText.java                입력 앞뒤 공백 정리. strip / required(비면 400). 규칙 14-1
+        ├── CurrencyCode.java             ISO 4217 판정(JDK 목록) + LEGACY("KRW", 통화 칸 없던
+        │                                 시절의 기록·파일). 사용자 설정과 가져오기가 공유
         ├── validation/
-        │   ├── limit/InputLimits.java         주행거리·금액 상한 상수. 애노테이션에 숫자를 직접
-        │   │                                  적으면 8곳에 흩어져 한 곳만 고치게 된다.
-        │   │                                  **상한의 목적은 "말이 되는 값인가" 가 아니라
-        │   │                                  되돌릴 수 없게 망가지는 것을 막는 것** —
-        │   │                                  liftOdometerTo 가 최댓값을 잡아 두므로 한 번 크게
-        │   │                                  잘못 넣으면 그 뒤 모든 폼이 그 값을 기준으로 말한다.
-        │   │                                  프런트 shared/lib/limits 와 같은 숫자(의도한 중복)
-        │   ├── annotation/MaxBytes.java       UTF-8 바이트 상한. @Size 는 글자 수라
-        │   │                                  한글에서 3배로 벌어진다 — BCrypt 의 72바이트
-        │   │                                  상한을 @Size(max = 100) 이 못 막았다
-        │   └── validator/MaxBytesValidator.java
-        │                                      null 은 통과시킨다 — "비었는가"는 @NotBlank 의 몫
-        ├── schema/
-        │   └── drift/SchemaDriftChecker.java
-        │                                     기동할 때 엔티티의 nullable 과 실제 DB 컬럼을 한 번
-        │                                     대조하고, 어긋나면 고칠 ALTER 까지 찍는다(경고만,
-        │                                     막지는 않는다). **ddl-auto: validate 로는 안 된다** —
-        │                                     Hibernate 의 스키마 검증은 존재와 타입만 보고
-        │                                     nullability 는 아예 보지 않는다(2026-09-23 실험으로 확인).
-        │                                     @Column·@JoinColumn 이 붙은 필드만 본다 — 애노테이션이
-        │                                     없으면 기본값을 추측해야 하는데 기본형에 Hibernate 가
-        │                                     NOT NULL 을 붙이는 등 예외가 많아 오탐이 난다.
-        │                                     **유니크 제약도 이름으로 양방향 대조한다**(2026-09-27):
-        │                                     DB 에 없음(생성이 조용히 실패 — 공개 id 때 밟을 뻔했다) /
-        │                                     엔티티에 없음(옛 제약이 남음 — 9/7 번호판 때 밟았다).
-        │                                     규칙 6 덕에 모든 유니크에 이름이 있어 가능하다
-        ├── web/
-        │   └── header/SecurityHeadersFilter.java
-        │                                     모든 응답에 nosniff · X-Frame-Options: DENY ·
-        │                                     Referrer-Policy: no-referrer. 스프링 시큐리티를
-        │                                     안 써서 공짜로 따라오는 헤더가 하나도 없다.
-        │                                     HSTS 는 request.isSecure() 일 때만 — http 에서
-        │                                     켜면 그 도메인이 https 전용으로 굳는다.
-        │                                     config/web 이 아닌 이유: WebConfig 는 한 번 알려주는
-        │                                     설정이고 이쪽은 요청마다 도는 실행 코드
+        │   ├── InputLimits.java          주행거리·금액 상한 상수. 애노테이션에 숫자를 직접
+        │   │                             적으면 8곳에 흩어져 한 곳만 고치게 된다.
+        │   │                             **상한의 목적은 "말이 되는 값인가" 가 아니라
+        │   │                             되돌릴 수 없게 망가지는 것을 막는 것** —
+        │   │                             liftOdometerTo 가 최댓값을 잡아 두므로 한 번 크게
+        │   │                             잘못 넣으면 그 뒤 모든 폼이 그 값을 기준으로 말한다.
+        │   │                             프런트 shared/lib/limits 와 같은 숫자(의도한 중복)
+        │   ├── MaxBytes.java             UTF-8 바이트 상한. @Size 는 글자 수라
+        │   │                             한글에서 3배로 벌어진다 — BCrypt 의 72바이트
+        │   │                             상한을 @Size(max = 100) 이 못 막았다
+        │   └── MaxBytesValidator.java    null 은 통과시킨다 — "비었는가"는 @NotBlank 의 몫
+        ├── SchemaDriftChecker.java       기동할 때 엔티티의 nullable 과 실제 DB 컬럼을 한 번
+        │                                 대조하고, 어긋나면 고칠 ALTER 까지 찍는다(경고만,
+        │                                 막지는 않는다). **ddl-auto: validate 로는 안 된다** —
+        │                                 Hibernate 의 스키마 검증은 존재와 타입만 보고
+        │                                 nullability 는 아예 보지 않는다(2026-09-23 실험으로 확인).
+        │                                 @Column·@JoinColumn 이 붙은 필드만 본다 — 애노테이션이
+        │                                 없으면 기본값을 추측해야 하는데 기본형에 Hibernate 가
+        │                                 NOT NULL 을 붙이는 등 예외가 많아 오탐이 난다.
+        │                                 **유니크 제약도 이름으로 양방향 대조한다**(2026-09-27):
+        │                                 DB 에 없음(생성이 조용히 실패 — 공개 id 때 밟을 뻔했다) /
+        │                                 엔티티에 없음(옛 제약이 남음 — 9/7 번호판 때 밟았다).
+        │                                 규칙 6 덕에 모든 유니크에 이름이 있어 가능하다
+        ├── SecurityHeadersFilter.java    모든 응답에 nosniff · X-Frame-Options: DENY ·
+        │                                 Referrer-Policy: no-referrer. 스프링 시큐리티를
+        │                                 안 써서 공짜로 따라오는 헤더가 하나도 없다.
+        │                                 HSTS 는 request.isSecure() 일 때만 — http 에서
+        │                                 켜면 그 도메인이 https 전용으로 굳는다.
+        │                                 config/web 이 아닌 이유: WebConfig 는 한 번 알려주는
+        │                                 설정이고 이쪽은 요청마다 도는 실행 코드
         ├── config/
-        │   ├── web/WebConfig.java            ArgumentResolver 등록 + CORS(5173, credentials).
-        │   │                                 **CORS 는 필터로, 맨 앞에**(2026-09-25). addCorsMappings 는
-        │   │                                 필터 뒤에서 붙어서 CsrfTokenFilter 의 403 에 헤더가 없었다 —
-        │   │                                 브라우저가 그걸 "서버에 연결하지 못했습니다" 로 읽는다
-        │   ├── jpa/JpaAuditingConfig.java    @EnableJpaAuditing 스위치.
-        │   │                                 **OdoLogApplication 에 두면 @WebMvcTest 가 전부
-        │   │                                 깨진다**(JPA 메타모델이 비어 있음). 대신 여기 두면
-        │   │                                 @DataJpaTest 가 못 집어 가므로 리포지토리 테스트에
-        │   │                                 @Import 가 필요하다 — 실제로 둘 다 밟고 정했다
-        │   └── openapi/OpenApiConfig.java    문서 제목/설명 + @LoginUser를 스펙에서 제외
+        │   ├── WebConfig.java            ArgumentResolver 등록 + CORS(5173, credentials).
+        │   │                             **CORS 는 필터로, 맨 앞에**(2026-09-25). addCorsMappings 는
+        │   │                             필터 뒤에서 붙어서 CsrfTokenFilter 의 403 에 헤더가 없었다 —
+        │   │                             브라우저가 그걸 "서버에 연결하지 못했습니다" 로 읽는다
+        │   ├── JpaAuditingConfig.java    @EnableJpaAuditing 스위치.
+        │   │                             **OdoLogApplication 에 두면 @WebMvcTest 가 전부
+        │   │                             깨진다**(JPA 메타모델이 비어 있음). 대신 여기 두면
+        │   │                             @DataJpaTest 가 못 집어 가므로 리포지토리 테스트에
+        │   │                             @Import 가 필요하다 — 실제로 둘 다 밟고 정했다
+        │   └── OpenApiConfig.java        문서 제목/설명 + @LoginUser를 스펙에서 제외
         ├── dto/
-        │   ├── request/
-        │   │   └── page/SortGuard.java       정렬 가능한 속성을 화이트리스트로 제한(2026-09-23).
-        │   │                                 Spring Data 는 ?sort=owner.password 처럼 연관
-        │   │                                 엔티티를 타고 들어가는 정렬을 그대로 받는다 —
-        │   │                                 암묵적 조인이 생기고 의도한 적 없는 표면이 열린다.
-        │   │                                 **블랙리스트가 아닌 이유**: 엔티티에 필드를 더하면
-        │   │                                 자동으로 정렬 대상이 된다. 막을 것을 세는 쪽은 뒤처진다
-        │   └── response/                     요청 DTO가 없어 response만 있다
-        │       ├── error/ErrorResponse.java   record(code, message, field?, retryAfterMinutes?).
-        │       │                              화면은 code 로 자기 언어의 문구를 고른다(Phase 7).
-        │       │                              message 는 로그·개발자용 한국어 원문
-        │       └── page/PageResponse.java     record<T>(items/page/size/totalElements/
-        │                                      totalPages/hasNext) + Page<T>.from()
-        └── exception/                        ※ 기능별로 나누지 않는다. 세 기능이 모두 쓰는
-            │                                   것이라 어느 한 기능으로 옮기면 잘못된 방향의
-            │                                   의존이 생긴다
-            ├── code/ErrorCode.java           응답 오류의 종류 31개. 이름이 API 계약이라 프론트
-            │                                 shared/api/types 의 ERROR_CODES 와 같아야 한다
-            ├── type/                         예외 타입만 모아 둔다 (상태 코드 하나당 하나)
-            │   ├── ApiException.java                   공통 부모. ErrorCode 필수 — 코드 없이
-            │   │                                        던질 수 없게 생성자가 받는다
-            │   ├── ConflictException.java              409 전용
-            │   ├── InvalidRequestException.java        400 전용. 지금까지 400 은 전부
-            │   │                                        프레임워크가 만들었는데, 검증 애노테이션으로
-            │   │                                        표현할 수 없는 규칙(정렬 화이트리스트)이
-            │   │                                        생겨 추가했다
-            │   ├── TooManyRequestsException.java       429 전용. 로그인·재설정 요청·회원가입
-            │   │                                        셋이 같은 리미터를 키만 갈라 쓴다
-            │   ├── AuthenticationFailedException.java  401 전용
-            │   ├── ForbiddenAccessException.java       403 전용. **지금 던지는 곳이 없다** —
-            │   │                                        남의 자원은 404 로 통일(규칙 11)
-            │   └── ResourceNotFoundException.java      404 전용
-            └── handler/GlobalExceptionHandler.java
-                                              **ResponseEntityExceptionHandler 를 이어받는다**(2026-09-26).
-                                              405·415·404 같은 스프링 내부 예외는 부모가 맡아 상태 코드를
-                                              지키고, 본문만 handleExceptionInternal 이 우리 모양으로 바꾼다.
-                                              그 밖의 예외는 맨 아래 Exception 처리기가 **500 + 우리 문구**
-                                              (규칙 11). 부모 없이 Exception 을 잡으면 4xx 까지 500 이 된다.
-                                              ⚠️ HttpMessageNotReadable·MethodArgumentNotValid 는
-                                              @ExceptionHandler 가 아니라 **덮어쓰기**다 — 부모가 이미 맡고 있어
-                                              둘이면 기동이 실패한다.
-                                              409/401/403/404/400/429 는 전용 예외만 잡는다 — IllegalArgument
-                                              같은 JDK 범용 예외를 4xx 로 매핑하지 않는다(규칙 12). 그것들은
-                                              500 으로 간다. 예외 문구는 내보내지 않는다(내부 사정이 실린다).
-                                              DataIntegrityViolation 은 UNIQUE 면 409, 아니면 500 + 우리 문구.
-                                              PropertyReferenceException(잘못된 sort) → 400
+        │   ├── SortGuard.java            정렬 가능한 속성을 화이트리스트로 제한(2026-09-23).
+        │   │                             Spring Data 는 ?sort=owner.password 처럼 연관
+        │   │                             엔티티를 타고 들어가는 정렬을 그대로 받는다 —
+        │   │                             암묵적 조인이 생기고 의도한 적 없는 표면이 열린다.
+        │   │                             **블랙리스트가 아닌 이유**: 엔티티에 필드를 더하면
+        │   │                             자동으로 정렬 대상이 된다. 막을 것을 세는 쪽은 뒤처진다
+        │   └── response/                 요청 DTO가 없어 response만 있다
+        │       ├── ErrorResponse.java    record(code, message, field?, retryAfterMinutes?).
+        │       │                         화면은 code 로 자기 언어의 문구를 고른다(Phase 7).
+        │       │                         message 는 로그·개발자용 한국어 원문
+        │       └── PageResponse.java     record<T>(items/page/size/totalElements/
+        │                                 totalPages/hasNext) + Page<T>.from()
+        └── exception/                    ※ 기능별로 나누지 않는다. 세 기능이 모두 쓰는
+            │                             것이라 어느 한 기능으로 옮기면 잘못된 방향의
+            │                             의존이 생긴다
+            ├── ErrorCode.java            응답 오류의 종류 31개. 이름이 API 계약이라 프론트
+            │                             shared/api/types 의 ERROR_CODES 와 같아야 한다
+            ├── type/                     예외 타입만 모아 둔다 (상태 코드 하나당 하나)
+            │   ├── ApiException.java     공통 부모. ErrorCode 필수 — 코드 없이
+            │   │                         던질 수 없게 생성자가 받는다
+            │   ├── ConflictException.java
+            │   │                         409 전용
+            │   ├── InvalidRequestException.java
+            │   │                         400 전용. 지금까지 400 은 전부
+            │   │                         프레임워크가 만들었는데, 검증 애노테이션으로
+            │   │                         표현할 수 없는 규칙(정렬 화이트리스트)이
+            │   │                         생겨 추가했다
+            │   ├── TooManyRequestsException.java
+            │   │                         429 전용. 로그인·재설정 요청·회원가입
+            │   │                         셋이 같은 리미터를 키만 갈라 쓴다
+            │   ├── AuthenticationFailedException.java
+            │   │                         401 전용
+            │   ├── ForbiddenAccessException.java
+            │   │                         403 전용. **지금 던지는 곳이 없다** —
+            │   │                         남의 자원은 404 로 통일(규칙 11)
+            │   └── ResourceNotFoundException.java
+            │                             404 전용
+            └── GlobalExceptionHandler.java
+                                          **ResponseEntityExceptionHandler 를 이어받는다**(2026-09-26).
+                                          405·415·404 같은 스프링 내부 예외는 부모가 맡아 상태 코드를
+                                          지키고, 본문만 handleExceptionInternal 이 우리 모양으로 바꾼다.
+                                          그 밖의 예외는 맨 아래 Exception 처리기가 **500 + 우리 문구**
+                                          (규칙 11). 부모 없이 Exception 을 잡으면 4xx 까지 500 이 된다.
+                                          ⚠️ HttpMessageNotReadable·MethodArgumentNotValid 는
+                                          @ExceptionHandler 가 아니라 **덮어쓰기**다 — 부모가 이미 맡고 있어
+                                          둘이면 기동이 실패한다.
+                                          409/401/403/404/400/429 는 전용 예외만 잡는다 — IllegalArgument
+                                          같은 JDK 범용 예외를 4xx 로 매핑하지 않는다(규칙 12). 그것들은
+                                          500 으로 간다. 예외 문구는 내보내지 않는다(내부 사정이 실린다).
+                                          DataIntegrityViolation 은 UNIQUE 면 409, 아니면 500 + 우리 문구.
+                                          PropertyReferenceException(잘못된 sort) → 400
 
-**같은 패키지였던 것이 갈라지면 import 가 새로 필요해진다.** 세분화하면서 실제로 컴파일이
-세 곳에서 깨졌다: `LoginUserArgumentResolver`(→`LoginUser`,`SessionConst`),
-`GlobalExceptionHandler`(→예외 4개), `MaintenanceRecord`(→`ServiceType`). 전에는 같은 패키지라
-import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 드러낸 결합이다** — 이제 파일 맨 위만
-봐도 그 클래스가 무엇에 기대는지 보인다.
+**폴더를 옮기면 package 와 import 가 같이 바뀐다.** 같은 패키지로 모이면 import 가 사라지고
+(10-03 에 `LoginUser`·`SessionConst`·`LoginUserArgumentResolver` 가 다시 `common/auth` 한 곳이 됐다),
+갈라지면 생긴다. 기능 경계를 넘는 import 는 `DependencyDirectionTest` 가 본다.
 
 ### 백엔드 — 리소스와 테스트
 
@@ -1074,109 +1071,108 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
                                          spring.mail.host 도 있어야 한다 — 없으면 JavaMailSender 빈이
                                          안 만들어져 @SpringBootTest 가 컨텍스트를 못 띄운다
 
-**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 300개.
+**테스트는 대상과 같은 경로를 그대로 따라간다.** 총 305개.
 
     src/test/java/com/odolog/app/
+    ├── DependencyDirectionTest.java                패키지 사이 import 방향을 허용 목록으로 고정(2026-10-03).
+    │                                               대상이 프로젝트 전체라 루트에 있다. 새 패키지는 여기 먼저 등록
+    ├── garage/
+    │   ├── service/
+    │   │   ├── VehicleRemovalServiceTest.java      Mockito — 정비·주유 → 차량 순서(InOrder)
+    │   │   └── VehicleListServiceTest.java         정렬 화이트리스트
+    │   └── GarageVehicleControllerTest.java        @WebMvcTest — 목록 페이지 응답, 잘못된 sort 400, 삭제 204·401
     ├── common/
     │   ├── auth/
-    │   │   ├── ratelimit/LoginAttemptLimiterTest.java
-    │   │   │                                   시계를 밖에서 넣는다 — 안에서 now() 를 부르면
-    │   │   │                                   잠금 만료를 테스트할 수 없다. 대소문자 우회·동시 시도 200개도 본다
-    │   │   ├── csrf/CsrfTokenFilterTest.java   필터를 직접 호출한다. @WebMvcTest 로 하면
-    │   │   │                                   Filter 빈이 같이 올라와 기존 테스트가 전부 403
-    │   │   └── session/LoginSessionRegistryTest.java
-    │   │                                       지금 세션만 남기기, 남의 세션 불가침, 계정 전환·끝난 세션 정리
-    │   ├── config/web/WebConfigCorsTest.java   CORS 필터가 가장 먼저 돌고, CSRF 403 에도 CORS 헤더가 붙는지
-    │   ├── domain/identifier/PublicIdTest.java 12자 영문·숫자, 만 번 만들어도 안 겹침
-    │   ├── web/header/SecurityHeadersFilterTest.java
-    │   │                                       헤더 셋이 붙는지 + HSTS 는 https 에만 붙는지
-    │   └── schema/drift/SchemaDriftCheckerTest.java
-    │                                           @SpringBootTest — 컬럼을 일부러 어긋나게 만들고
-    │                                           되돌린다. 양방향 다 본다.
-    │                                           **이 장치가 조용히 고장 나면 그때부터
-    │                                           아무것도 못 잡는다**
+    │   │   ├── LoginAttemptLimiterTest.java        시계를 밖에서 넣는다 — 안에서 now() 를 부르면
+    │   │   │                                       잠금 만료를 테스트할 수 없다. 대소문자 우회·동시 시도 200개도 본다
+    │   │   ├── CsrfTokenFilterTest.java            필터를 직접 호출한다. @WebMvcTest 로 하면
+    │   │   │                                       Filter 빈이 같이 올라와 기존 테스트가 전부 403
+    │   │   └── LoginSessionRegistryTest.java       지금 세션만 남기기, 남의 세션 불가침, 계정 전환·끝난 세션 정리
+    │   ├── config/
+    │   │   └── WebConfigCorsTest.java              CORS 필터가 가장 먼저 돌고, CSRF 403 에도 CORS 헤더가 붙는지
+    │   ├── domain/
+    │   │   └── PublicIdTest.java                   12자 영문·숫자, 만 번 만들어도 안 겹침
+    │   ├── SecurityHeadersFilterTest.java          헤더 셋이 붙는지 + HSTS 는 https 에만 붙는지
+    │   └── SchemaDriftCheckerTest.java             @SpringBootTest — 컬럼을 일부러 어긋나게 만들고
+    │                                               되돌린다. 양방향 다 본다.
+    │                                               **이 장치가 조용히 고장 나면 그때부터
+    │                                               아무것도 못 잡는다**
     ├── user/
-    │   ├── domain/entity/UserTest.java                 기본 설정, 시간대(IANA 이름만)·통화(ISO 4217) 검증
-    │   ├── service/time/UserTodayTest.java             사용자 시간대의 오늘(서울이 전날인 시각의 오클랜드), 미래 날짜 400
-    │   ├── service/mail/PasswordResetMailerTest.java   커밋 뒤·다른 스레드에서 발송, 실패를 삼키는지, 받는 사람 언어
-    │   ├── repository/jpa/PasswordResetTokenRepositoryTest.java
-    │   │                                              @DataJpaTest — 해시 조회, 해시 유니크,
-    │   │                                              일괄 삭제. IDENTITY 라 save() 시점에 터진다
-    │   ├── service/application/PasswordResetServiceTest.java
-    │   │                                              Mockito — 없는 주소는 조용히, 저장은 해시로,
-    │   │                                              만료·재사용 거절, **메일 실패해도 성공**
-    │   ├── controller/rest/PasswordResetControllerTest.java
-    │   │                                              @WebMvcTest — 204/400/401/429.
-    │   │                                              가입 여부와 무관하게 같은 응답인지
-    │   ├── repository/jpa/UserRepositoryTest.java      @DataJpaTest — save/findByEmail/
-    │   │                                              existsByEmail + 이메일 유니크 위반 시
-    │   │                                              올라오는 예외의 "모양" 고정
-    │   ├── service/application/UserServiceTest.java    Mockito — 중복·암호화·로그인·부분수정,
-    │   │                                              비밀번호 확인 잠금, 변경 시 재설정 링크 폐기, 전각 공백 거부
-    │   └── controller/rest/UserControllerTest.java     @WebMvcTest — 201/409, 세션 저장, /me
+    │   ├── domain/
+    │   │   └── entity/
+    │   │       └── UserTest.java                   기본 설정, 시간대(IANA 이름만)·통화(ISO 4217) 검증
+    │   ├── service/
+    │   │   ├── UserTodayTest.java                  사용자 시간대의 오늘(서울이 전날인 시각의 오클랜드), 미래 날짜 400
+    │   │   ├── PasswordResetMailerTest.java        커밋 뒤·다른 스레드에서 발송, 실패를 삼키는지, 받는 사람 언어
+    │   │   └── application/
+    │   │       ├── PasswordResetServiceTest.java   Mockito — 없는 주소는 조용히, 저장은 해시로,
+    │   │       │                                   만료·재사용 거절, **메일 실패해도 성공**
+    │   │       └── UserServiceTest.java            Mockito — 중복·암호화·로그인·부분수정,
+    │   │                                           비밀번호 확인 잠금, 변경 시 재설정 링크 폐기, 전각 공백 거부
+    │   ├── repository/
+    │   │   ├── PasswordResetTokenRepositoryTest.java
+    │   │   │                                       @DataJpaTest — 해시 조회, 해시 유니크,
+    │   │   │                                       일괄 삭제. IDENTITY 라 save() 시점에 터진다
+    │   │   └── UserRepositoryTest.java             @DataJpaTest — save/findByEmail/
+    │   │                                           existsByEmail + 이메일 유니크 위반 시
+    │   │                                           올라오는 예외의 "모양" 고정
+    │   └── controller/
+    │       ├── PasswordResetControllerTest.java    @WebMvcTest — 204/400/401/429.
+    │       │                                       가입 여부와 무관하게 같은 응답인지
+    │       └── UserControllerTest.java             @WebMvcTest — 201/409, 세션 저장, /me
     ├── vehicle/
-    │   ├── repository/jpa/VehicleRepositoryTest.java   @DataJpaTest — 페이징·LAZY·주행거리·
-    │   │                                              소유자별 번호판 중복
-    │   ├── service/application/
-    │   │   ├── VehicleServiceTest.java                 Mockito — 404·403·감소방지·
-    │   │   │                                           삭제순서(InOrder)
-    │   │   └── VehicleServiceTransactionTest.java      @SpringBootTest — 유일하게 진짜 컨테이너를
-    │   │                                               띄운다. dirty checking이 DB까지 가는지 검증
-    │   └── controller/rest/VehicleControllerTest.java  @WebMvcTest — 401/400/201/404/403,
-    │                                                   페이지 응답
+    │   ├── VehicleRepositoryTest.java              @DataJpaTest — 페이징·LAZY·주행거리·
+    │   │                                           소유자별 번호판 중복
+    │   ├── VehicleServiceTest.java                 Mockito — 404·감소방지·번호판 중복·공백
+    │   ├── VehicleServiceTransactionTest.java      @SpringBootTest — 유일하게 진짜 컨테이너를
+    │   │                                           띄운다. dirty checking이 DB까지 가는지 검증
+    │   └── VehicleControllerTest.java              @WebMvcTest — 401/400/201/404, 500 본문, 405
     ├── fuel/
-    │   ├── domain/calculation/
-    │   │   ├── FuelEfficiencyTest.java             순수 계산 — 첫 주유량 제외, 불가능 구간 제외,
-    │   │   │                                       거리 0 구간, 기준점 이후만, 2건 미만
-    │   │   └── FuelAnomalyTest.java                임계보다 **판단하지 않아야 할 때**를 더 본다:
+    │   ├── domain/
+    │   │   └── calculation/
+    │   │       ├── FuelEfficiencyTest.java         순수 계산 — 첫 주유량 제외, 불가능 구간 제외,
+    │   │       │                                   거리 0 구간, 기준점 이후만, 2건 미만
+    │   │       └── FuelAnomalyTest.java            임계보다 **판단하지 않아야 할 때**를 더 본다:
     │   │                                           고른 구간, 1.5배 편차, 구간 3개 미만,
     │   │                                           그리고 **장거리 여행**(거리만 두 배)
-    │   ├── repository/jpa/FuelRecordRepositoryTest.java
-    │   │                                           @DataJpaTest — 직전 기록 조회, 타 차량 차단,
+    │   ├── FuelRecordRepositoryTest.java           @DataJpaTest — 직전 기록 조회, 타 차량 차단,
     │   │                                           BigDecimal 소수 보존, 일괄 삭제
-    │   ├── service/application/FuelRecordServiceTest.java
-    │   │                                           Mockito — 연비 계산, 페이지 경계(쿼리 2번),
+    │   ├── FuelRecordServiceTest.java              Mockito — 연비 계산, 페이지 경계(쿼리 2번),
     │   │                                           차량 주행거리 자동 갱신, 평균 연비, 연비 초기화
-    │   └── controller/rest/FuelRecordControllerTest.java
-    │                                               @WebMvcTest — 201/401/400(0L·누락·소수 3자리·
+    │   └── FuelRecordControllerTest.java           @WebMvcTest — 201/401/400(0L·누락·소수 3자리·
     │                                               미래 날짜), /summary 라우팅, 목록 페이지
     ├── account/
-    │   ├── service/application/AccountRestoreServiceTest.java
-    │   │                                           같은 번호판은 기록만 붙이기, 같은 기록 건너뛰기,
-    │   │                                           통화 칸 없는 옛 파일은 원화, 미래 날짜 하나면 전부 취소,
-    │   │                                           차량 주행거리는 오르기만
-    │   ├── service/application/AccountExportServiceTest.java
-    │   │                                           Mockito — 이력을 각 차량 밑으로 나누는지,
-    │   │                                           비밀번호 해시가 안 담기는지, 빈 계정
-    │   ├── service/application/AccountWithdrawalServiceTest.java
-    │   │                                           Mockito — 삭제 순서(InOrder),
-    │   │                                           비밀번호 틀리면 아무것도 안 지움
-    │   ├── service/application/AccountWithdrawalServiceTransactionTest.java
+    │   ├── service/
+    │   │   ├── AccountRestoreServiceTest.java      같은 번호판은 기록만 붙이기, 같은 기록 건너뛰기,
+    │   │   │                                       통화 칸 없는 옛 파일은 원화, 미래 날짜 하나면 전부 취소,
+    │   │   │                                       차량 주행거리는 오르기만
+    │   │   ├── AccountExportServiceTest.java       Mockito — 이력을 각 차량 밑으로 나누는지,
+    │   │   │                                       비밀번호 해시가 안 담기는지, 빈 계정
+    │   │   ├── AccountWithdrawalServiceTest.java   Mockito — 삭제 순서(InOrder),
+    │   │   │                                       비밀번호 틀리면 아무것도 안 지움
+    │   │   └── AccountWithdrawalServiceTransactionTest.java
     │   │                                           @SpringBootTest — 기록·주기·재설정 토큰이 다 찬 계정을
     │   │                                           실제 DB 로 탈퇴. 자식 테이블이 늘면 여기서 FK 로 실패
-    │   └── controller/rest/AccountControllerTest.java
-    │                                               @WebMvcTest — 204+세션 무효화, 401, 400
+    │   └── AccountControllerTest.java              @WebMvcTest — 204+세션 무효화, 401, 400
     ├── summary/
-    │   ├── service/application/GarageSummaryServiceTest.java
-    │   │                                           Mockito — 월별 12칸 경계, 종류별 정렬,
+    │   ├── GarageSummaryServiceTest.java           Mockito — 월별 12칸 경계, 종류별 정렬,
     │   │                                           차량별 평균 연비, **같은 날짜면 정비 먼저**
-    │   └── controller/rest/GarageSummaryControllerTest.java
-    │                                               @WebMvcTest — 200/401
+    │   └── GarageSummaryControllerTest.java        @WebMvcTest — 200/401
     └── maintenance/
-        ├── domain/calculation/NextServiceTest.java     지남 판정(딱 그 값·그 날도 지남), 차량별 주기,
-        │                                               한쪽만 덮어쓴 주기(customIntervalKm/Months)
-        ├── domain/type/ServiceTypeTest.java            값을 다시 적지 않고 **약속만** 고정 —
-        │                                               "OTHER 를 뺀 모든 종류는 주기가 최소
-        │                                               하나", 양수, 이름 30자 이하(컬럼 폭)
-        ├── repository/jpa/MaintenanceRecordRepositoryTest.java
-        │                                               @DataJpaTest — 같은 날짜 동점 처리,
-        │                                               페이징, 타 차량 차단, 이력 일괄 삭제
-        ├── service/application/MaintenanceRecordServiceTest.java
-        │                                               Mockito — 다음정비 3케이스, 부분수정,
-        │                                               차량 주행거리 따라 올리기
-        └── controller/rest/MaintenanceRecordControllerTest.java
-                                                        @WebMvcTest — next-services, enum 400,
-                                                        미래 날짜 400·오늘 201, delete 204
+        ├── domain/
+        │   ├── NextServiceTest.java                지남 판정(딱 그 값·그 날도 지남), 차량별 주기,
+        │   │                                       한쪽만 덮어쓴 주기(customIntervalKm/Months)
+        │   └── ServiceTypeTest.java                값을 다시 적지 않고 **약속만** 고정 —
+        │                                           "OTHER 를 뺀 모든 종류는 주기가 최소
+        │                                           하나", 양수, 이름 30자 이하(컬럼 폭)
+        ├── repository/
+        │   └── MaintenanceRecordRepositoryTest.java
+        │                                           @DataJpaTest — 같은 날짜 동점 처리,
+        │                                           페이징, 타 차량 차단, 이력 일괄 삭제
+        ├── MaintenanceRecordServiceTest.java       Mockito — 다음정비 3케이스, 부분수정,
+        │                                           차량 주행거리 따라 올리기
+        └── MaintenanceRecordControllerTest.java    @WebMvcTest — next-services, enum 400,
+                                                    미래 날짜 400·오늘 201, delete 204
 
     ※ Mockito 테스트는 스프링 프록시를 안 거치므로 `@Transactional` 이 아예 적용되지 않고,
       `@WebMvcTest` 는 서비스가 `@MockitoBean` 이라 진짜 코드가 돌지 않는다. 즉 트랜잭션 설정
@@ -1184,8 +1180,9 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 
 ### 프론트엔드 — `frontend/`
 
-백엔드와 같은 기준으로 한 겹 더 내려간다. 화면은 화면 이름 폴더 안에(`pages/login/LoginPage.tsx`),
-`api` 는 `endpoints/` 와 `types/` 로, `shared/ui` 는 성격별로.
+백엔드와 같은 기준이다. 화면이 여럿이면 `pages/`(`pages/LoginPage.tsx`), 하나면 기능 폴더 바로 아래
+(`account/ProfilePage.tsx`). `api/` 는 `endpoints.ts`·`types.ts` 두 파일.
+`shared/ui/base/` 는 파일 수와 무관하게 남는다 — shadcn 이 쓰는 자리라 소유자가 다르다.
 
     frontend/
     ├── .nvmrc                        Node 26. Java 는 Gradle toolchain 이 박아 두는데
@@ -1209,208 +1206,217 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     ├── public/favicon.svg            계기판 마크. mark.tsx 와 같은 도형이지만 이쪽은 값이 박혀 있다
     │                                 — 정적 파일이라 테마를 못 따라가므로 다크 바닥(#17171a) 고정
     └── src/
-        ├── main.tsx                  Vite 진입점. **index.html이 이 경로를 직접 가리키므로
-        │                             폴더로 내려보낼 수 없다** (백엔드의 OdoLogApplication 과
-        │                             같은 이유로 남은 예외).
-        │                             ThemeProvider > BrowserRouter > AuthProvider > App
-        ├── index.css                 디자인 토큰 전부가 여기 한 파일에 있다 (위 "디자인 시스템").
-        │                             :root = 라이트, :root.dark = 다크. 값은 여기에만 있다.
-        │                             .reveal(스크롤 진입 연출)과 View Transition 규칙도 여기.
-        │                             @source not 으로 테스트 파일을 스캔에서 뺀다 — 안 빼면
-        │                             테스트가 적은 클래스 이름이 운영 CSS 에 섞인다
-        ├── env.d.ts                  import.meta.env 타입 선언
-        │
-        ├── app/  ──────────────────── 조립층. **여러 기능을 동시에 알아도 되는 유일한 자리**
-        │   ├── root/App.tsx          라우트 12개 정의 + Header·Footer 배치. 본문 폭 76rem
-        │   ├── i18n/I18nProvider.tsx 언어·단위·통화·시간대 공급(Phase 7). 로그인하면 계정 설정,
-        │   │                         아니면 브라우저 추정값. 사용자를 알아야 해서 shared 가 아니라 여기
-        │   ├── legal/LegalPage.tsx   /privacy · /terms. 문구는 사전(t.legal). 운영자 정보는 자리표시자
-        │   ├── routing/ProtectedRoute.tsx
-        │   │                         로그인 안 했으면 /login으로. loading 중엔 대기
+        ├── main.tsx                        Vite 진입점. **index.html이 이 경로를 직접 가리키므로
+        │                                   폴더로 내려보낼 수 없다** (백엔드의 OdoLogApplication 과
+        │                                   같은 이유로 남은 예외).
+        │                                   ThemeProvider > BrowserRouter > AuthProvider > App
+        ├── env.d.ts                        import.meta.env 타입 선언
+        ├── app/                            조립층. **여러 기능을 동시에 알아도 되는 유일한 자리**
+        │   ├── App.tsx                     라우트 12개 정의 + Header·Footer 배치. 본문 폭 76rem
+        │   ├── I18nProvider.tsx            언어·단위·통화·시간대 공급(Phase 7). 로그인하면 계정 설정,
+        │   │                               아니면 브라우저 추정값. 사용자를 알아야 해서 shared 가 아니라 여기
+        │   ├── LegalPage.tsx               /privacy · /terms. 문구는 사전(t.legal). 운영자 정보는 자리표시자
+        │   ├── ProtectedRoute.tsx          로그인 안 했으면 /login으로. loading 중엔 대기
         │   ├── layout/
-        │   │   ├── Header.tsx        로고 · 화면 모드 · (로그인 | 닉네임·로그아웃)
-        │   │   ├── Footer.tsx        모든 화면 아래. 약관·개인정보처리방침 링크
-        │   │   └── AuthLayout.tsx    로그인·회원가입을 감싸는 2단 레이아웃(lg 이상).
-        │   │                         ProtectedRoute 와 같은 "라우트를 감싸는 울타리"라 여기 있다
+        │   │   ├── Header.tsx              로고 · 화면 모드 · (로그인 | 닉네임·로그아웃)
+        │   │   ├── Footer.tsx              모든 화면 아래. 약관·개인정보처리방침 링크
+        │   │   └── AuthLayout.tsx          로그인·회원가입을 감싸는 2단 레이아웃(lg 이상).
+        │   │                               ProtectedRoute 와 같은 "라우트를 감싸는 울타리"라 여기 있다
         │   ├── home/
-        │   │   ├── HomePage.tsx      '/' 의 갈림. 비로그인 → LandingPage, 로그인+0대 → 등록 권유,
-        │   │   │                     로그인+차량 있음 → 통계(Dashboard).
-        │   │   │                     통계·차트·최근 활동이 모두 정비 + 주유를 함께 본다
-        │   │   ├── charts/HomeCharts.tsx
-        │   │   │                     월별 비용(세로 막대) · 종류별 비용(가로 막대).
-        │   │   │                     라이브러리 없이 HTML/CSS 로만 그린다
-        │   │   ├── charts/niceMax.ts 축 눈금을 1·2·5 × 10ⁿ 로 올림. 컴포넌트 파일에서
-        │   │   │                     내보내면 핫 리로드가 깨져 .ts 로 갈라 둔다
-        │   │   └── stats/homeStats.ts
-        │   │                         홈 요약 타입 + 조회. GET /api/summary 한 번 — 계산은 서버가 한다
-        │   └── landing/LandingPage.tsx
-        │                             소개 화면(비로그인 전용). API·상태 없이 shared/ui 조립만
-        │                             하는 화면이라 features/ 가 아니라 여기 있다
-        │
-        ├── features/  ─────────────── 기능별. 백엔드의 user/vehicle/maintenance와 짝을 이룬다
+        │   │   ├── HomePage.tsx            '/' 의 갈림. 비로그인 → LandingPage, 로그인+0대 → 등록 권유,
+        │   │   │                           로그인+차량 있음 → 통계(Dashboard).
+        │   │   │                           통계·차트·최근 활동이 모두 정비 + 주유를 함께 본다
+        │   │   ├── charts/
+        │   │   │   ├── HomeCharts.tsx      월별 비용(세로 막대) · 종류별 비용(가로 막대).
+        │   │   │   │                       라이브러리 없이 HTML/CSS 로만 그린다
+        │   │   │   ├── niceMax.ts          축 눈금을 1·2·5 × 10ⁿ 로 올림. 컴포넌트 파일에서
+        │   │   │   │                       내보내면 핫 리로드가 깨져 .ts 로 갈라 둔다
+        │   │   │   └── niceMax.test.ts
+        │   │   └── homeStats.ts            홈 요약 타입 + 조회. GET /api/summary 한 번 — 계산은 서버가 한다
+        │   └── LandingPage.tsx             소개 화면(비로그인 전용). API·상태 없이 shared/ui 조립만
+        │                                   하는 화면이라 features/ 가 아니라 여기 있다
+        ├── features/                       기능별. 백엔드의 user/vehicle/maintenance와 짝을 이룬다
         │   ├── auth/
         │   │   ├── api/
-        │   │   │   ├── endpoints/endpoints.ts  fetchMe·signUp·login·logout·updateProfile·
-        │   │   │   │                           changePassword·withdraw·export/restoreAccount·
-        │   │   │   │                           requestPasswordReset·confirmPasswordReset
-        │   │   │   └── types/types.ts          백엔드 user.dto 대응
+        │   │   │   ├── endpoints.ts        fetchMe·signUp·login·logout·updateProfile·
+        │   │   │   │                       changePassword·withdraw·
+        │   │   │   │                       requestPasswordReset·confirmPasswordReset
+        │   │   │   └── types.ts            백엔드 user.dto 대응
         │   │   ├── context/
-        │   │   │   ├── definition/AuthContext.ts
-        │   │   │   │                     Context 정의 + useAuth 훅 (컴포넌트 아닌 것만)
-        │   │   │   └── provider/AuthProvider.tsx
-        │   │   │                         세션 복구(/me 1회)·login·logout·401 핸들러 등록
-        │   │   └── pages/
-        │   │       ├── forgot-password/ForgotPasswordPage.tsx
-        │   │       │                         재설정 링크 요청. **보냈는지 여부를 말하지 않는다** —
-        │   │       │                         "가입된 주소라면 보냈습니다" 하나로 끝낸다
-        │   │       ├── reset-password/ResetPasswordPage.tsx
-        │   │       │                         ?token= 을 읽어 새 비밀번호를 받는다. 토큰이 없으면
-        │   │       │                         폼 대신 안내. **성공해도 자동 로그인시키지 않는다**
-        │   │       ├── login/LoginPage.tsx    401 → 폼 에러. 원래 가려던 곳으로 복귀
-        │   │       ├── signup/SignUpPage.tsx  가입 후 이어서 로그인까지. 409 → 폼 에러.
-        │   │       │                          설정 넷은 **지금 화면이 쓰는 값**(useI18n)을 보낸다 —
-        │   │       │                          브라우저 추정값만 보내면 모르는 지역은 서버 기본값(원화)이 된다
-        │   │       └── profile/ProfilePage.tsx
-        │   │                                  Section 6개(계정 / 비밀번호 / 언어·단위 / 화면 / 내 기록 / 탈퇴).
-        │   │                                  바뀐 필드만 PATCH. null 걸러내는 겉 + 폼 2단 구조.
-        │   │                                  내보내기는 받아 온 JSON 을 Blob 으로 만들어 내려준다 —
-        │   │                                  <a href> 로 바로 받으면 세션·CSRF 헤더가 빠진다
+        │   │   │   ├── AuthContext.ts      Context 정의 + useAuth 훅 (컴포넌트 아닌 것만)
+        │   │   │   └── AuthProvider.tsx    세션 복구(/me 1회)·login·logout·401 핸들러 등록
+        │   │   ├── pages/
+        │   │   │   ├── ForgotPasswordPage.tsx
+        │   │   │   │                       재설정 링크 요청. **보냈는지 여부를 말하지 않는다** —
+        │   │   │   │                       "가입된 주소라면 보냈습니다" 하나로 끝낸다
+        │   │   │   ├── ResetPasswordPage.tsx
+        │   │   │   │                       ?token= 을 읽어 새 비밀번호를 받는다. 토큰이 없으면
+        │   │   │   │                       폼 대신 안내. **성공해도 자동 로그인시키지 않는다**
+        │   │   │   ├── LoginPage.tsx       401 → 폼 에러. 원래 가려던 곳으로 복귀
+        │   │   │   └── SignUpPage.tsx      가입 후 이어서 로그인까지. 409 → 폼 에러.
+        │   │   │                           설정 넷은 **지금 화면이 쓰는 값**(useI18n)을 보낸다 —
+        │   │   │                           브라우저 추정값만 보내면 모르는 지역은 서버 기본값(원화)이 된다
+        │   │   └── components/             프로필 화면(account)에 얹히는 구역 셋
+        │   │       ├── ProfileForm.tsx     닉네임. 바뀐 필드만 PATCH
+        │   │       ├── PasswordForm.tsx    현재·새·확인 세 칸. 확인란은 전송하지 않는다
+        │   │       └── RegionForm.tsx      언어·단위·통화·시간대. 저장하면 화면 전체가 바뀐다
+        │   ├── account/                    백엔드 account 와 짝(2026-10-03 신설). account → auth 한 방향
+        │   │   ├── api/                    내보내기·가져오기. 탈퇴는 세션까지 끝내므로 auth 의 AuthContext 에 남았다
+        │   │   │   ├── endpoints.ts
+        │   │   │   └── types.ts
+        │   │   ├── components/
+        │   │   │   ├── ExportCard.tsx      받아 온 JSON 을 Blob 으로 만들어 내려준다 —
+        │   │   │   │                       <a href> 로 바로 받으면 세션·CSRF 헤더가 빠진다
+        │   │   │   ├── RestoreForm.tsx     파일을 브라우저에서 읽어 JSON 으로 보낸다
+        │   │   │   ├── WithdrawCard.tsx    접힌 채 시작. 비밀번호 확인
+        │   │   │   └── AppearanceCard.tsx
+        │   │   └── ProfilePage.tsx         /me. Section 6개(계정 / 비밀번호 / 언어·단위 / 화면 / 내 기록 / 탈퇴).
+        │   │                               null 걸러내는 겉만 남았다 — 구역은 전부 components 로
         │   ├── vehicles/
         │   │   ├── components/
-        │   │   │   ├── getting-started/GettingStartedCard.tsx
-        │   │   │   │                     타던 차의 첫 단계(주행거리 → 기억나는 정비 → 첫 주유 → 첫 연비).
-        │   │   │   │                     완료는 **저장된 기록으로 판정**(따로 저장 안 함), 다 끝나면 사라진다.
-        │   │   │   │                     닫기만 localStorage(기기별 편의). 재생성 대신 version 으로 재조회 —
-        │   │   │   │                     key 로 재생성하면 로딩 동안 카드가 빠졌다 들어와 아래가 튄다
-        │   │   │   └── info-form/VehicleInfoForm.tsx
-        │   │   │                         차량 정보(번호판·제조사·모델·연식) 수정.
-        │   │   │                         닫혀 있을 땐 값 4개, 열면 폼(.form-open).
-        │   │   │                         바뀐 필드만 PATCH
+        │   │   │   ├── GettingStartedCard.tsx
+        │   │   │   │                       타던 차의 첫 단계(주행거리 → 기억나는 정비 → 첫 주유 → 첫 연비).
+        │   │   │   │                       완료는 **저장된 기록으로 판정**(따로 저장 안 함), 다 끝나면 사라진다.
+        │   │   │   │                       닫기만 localStorage(기기별 편의). 재생성 대신 version 으로 재조회 —
+        │   │   │   │                       key 로 재생성하면 로딩 동안 카드가 빠졌다 들어와 아래가 튄다
+        │   │   │   └── VehicleInfoForm.tsx
+        │   │   │                           차량 정보(번호판·제조사·모델·연식) 수정.
+        │   │   │                           닫혀 있을 땐 값 4개, 열면 폼(.form-open).
+        │   │   │                           바뀐 필드만 PATCH
         │   │   ├── api/
-        │   │   │   ├── endpoints/endpoints.ts  차량 엔드포인트 6개
-        │   │   │   └── types/types.ts          백엔드 vehicle.dto 대응
+        │   │   │   ├── endpoints.ts        차량 엔드포인트 6개
+        │   │   │   └── types.ts            백엔드 vehicle.dto 대응
         │   │   └── pages/
-        │   │       ├── list/VehicleListPage.tsx
-        │   │       │                     괘선으로 나눈 행 + 페이지네이션 + 빈 상태.
-        │   │       │                     행 왼쪽 1px 표식이 hover·focus-visible 에 세로로 그어진다
-        │   │       ├── new/VehicleNewPage.tsx
-        │   │       │                     등록 폼. 409(번호판 중복) → 폼 에러
-        │   │       └── detail/VehicleDetailPage.tsx
-        │   │                             lg에서 2단. 왼쪽=차량정보·주행거리·삭제(sticky),
-        │   │                             오른쪽=다음정비·이력
-        │   ├── fuel/                     주유 기록·연비. pages/ 가 없다 — maintenance 와 같이
-        │   │   │                         자기 라우트 없이 차량 상세에 얹힌다
-        │   │   ├── api/{endpoints,types}/  sort 를 보내지 않는다(서버가 고정)
+        │   │       ├── VehicleListPage.tsx
+        │   │       │                       괘선으로 나눈 행 + 페이지네이션 + 빈 상태.
+        │   │       │                       행 왼쪽 1px 표식이 hover·focus-visible 에 세로로 그어진다
+        │   │       ├── VehicleNewPage.tsx  등록 폼. 409(번호판 중복) → 폼 에러
+        │   │       └── VehicleDetailPage.tsx
+        │   │                               lg에서 2단. 왼쪽=차량정보·주행거리·삭제(sticky),
+        │   │                               오른쪽=다음정비·이력
+        │   ├── fuel/                       주유 기록·연비. pages/ 가 없다 — maintenance 와 같이
+        │   │   │                           자기 라우트 없이 차량 상세에 얹힌다
+        │   │   ├── api/                    sort 를 보내지 않는다(서버가 고정)
+        │   │   │   ├── endpoints.ts
+        │   │   │   └── types.ts
         │   │   └── components/
-        │   │       ├── summary/FuelSummaryCard.tsx   평균 연비 히어로 + 통계 4칸
-        │   │       ├── section/FuelSection.tsx       목록 + 페이지네이션 + 삭제 + 폼 토글. 폼 key 필수(정비와 같다)
-        │   │       └── form/FuelForm.tsx             등록·수정 겸용. 입력 중 리터당 단가 표시
+        │   │       ├── FuelSummaryCard.tsx
+        │   │       │                       평균 연비 히어로 + 통계 4칸
+        │   │       ├── FuelSection.tsx     목록 + 페이지네이션 + 삭제 + 폼 토글. 폼 key 필수(정비와 같다)
+        │   │       └── FuelForm.tsx        등록·수정 겸용. 입력 중 리터당 단가 표시
         │   └── maintenance/
         │       ├── api/
-        │       │   ├── endpoints/endpoints.ts  정비 이력 엔드포인트 6개(차량별 주기 설정 포함)
-        │       │   └── types/types.ts          ServiceType 유니온 + SERVICE_TYPE_GROUPS(부위별 묶음) + DTO.
-        │       │                               종류 이름은 사전(t.serviceTypes)
-        │       └── components/           pages/ 가 없다 — 자기 라우트 없이 차량 상세에 얹힌다
-        │           ├── next-service/NextServiceCard.tsx
-        │           │                     이력 있는 종류의 다음 정비 시점(요청 1번) + 차량별 주기 폼.
-        │           │                     재조회는 부모가 key 를 바꿔 재생성
-        │           ├── section/MaintenanceSection.tsx
-        │           │                     목록 + 페이지네이션 + 삭제 + 폼 토글.
-        │           │                     폼에 key(기록 id) 필수 — 없으면 열린 폼의 입력이 다른 행에 덮어써진다
-        │           ├── form/MaintenanceForm.tsx
-        │           │                     등록·수정 겸용 (record가 null이면 등록). 비용·주행거리 빈칸 = null
-        │           └── quick/QuickServiceForm.tsx
-        │                                 기억나는 최근 정비 한 번에(엔진오일·타이어·브레이크 패드·배터리·
-        │                                 에어컨 필터). 모름 / 3·6·12개월 전 / 날짜 지정. 비용은 묻지 않는다.
-        │                                 저장한 줄은 바로 '모름' 으로 — 중간 실패 후 재시도가 두 번 넣지 않게
-        │
-        └── shared/  ───────────────── 어느 기능에도 속하지 않는 것. 백엔드의 common과 같은 자리
-            ├── api/
-            │   ├── client/client.test.ts BASE_URL 대비책과 네트워크 실패 변환을 고정한다
-            │   ├── client/client.ts      fetch 래퍼. credentials:'include' / ApiError /
-            │   │                         204 처리 / 401 전역 핸들러 등록 창구
-            │   └── types/types.ts        PageResponse<T> / ErrorResponse / ERROR_CODES(백엔드 ErrorCode 와 짝).
-            │                             기능별 DTO는 features/*/api/types/ 로 옮겼다
-            ├── i18n/                     화면 문구(Phase 7). 라이브러리 없이 직접 — 사전은 객체라
-            │   │                         t.vehicles.list.title 처럼 쓰고, 키가 틀리면 tsc 가 잡는다
-            │   ├── messages/ko.ts        한국어판. Messages 타입의 원본
-            │   ├── messages/en.ts        영어판. `en: Messages` 라 모양이 다르면 컴파일 실패
-            │   ├── context/I18nContext.ts useI18n() → { t, f, language, locale, timeZone, currency, unitSystem }
-            │   └── errors/errorMessage.ts 잡은 오류 → 문구. 서버 code 로 고르고, 모르면 호출부 문구.
-            │                             **서버 원문(message)은 화면에 내보내지 않는다** — 한국어라서
-            ├── theme/                    라이트/다크. AuthContext와 똑같이 3파일로 나뉜다
-            │   ├── context/ThemeContext.ts   Theme 타입 + localStorage 키 + useTheme 훅
-            │   ├── provider/ThemeProvider.tsx 저장·복원, OS 설정 추적, View Transition 전환
-            │   └── toggle/ThemeToggle.tsx    해/모니터/달 3칸 세그먼트 컨트롤 (헤더에 배치)
-            ├── lib/
-            │   ├── locale/preferences.ts 가입 때 브라우저에서 읽는 설정 넷(Phase 7). 통화·단위는
-            │   │                         태그에 **적힌** 지역으로만 추정 — maximize() 는 en → US 라
-            │   │                         영국 사용자도 달러로 시작한다. 목록 밖 지역은 안 보낸다
-            │   ├── units/units.ts        km·L ↔ 마일·갤런, km/L ↔ L/100km·mpg. **저장은 언제나 km·L**,
-            │   │                         변환은 화면에서만. 주행거리 판정(looksBigJump)도 km 로 바꾼 뒤
-            │   ├── money/money.ts        통화의 최소 단위 ↔ 입력칸 값. 소수 자리는 Intl 에서
-            │   ├── odometer/odometer.ts  주행거리 입력 판정(looksPast·looksBigJump). 주유·정비·갱신 폼 공용
-            │   ├── limits/limits.ts      주행거리·금액 상한 + 비밀번호 바이트 계산.
-            │   │                         maxLength 는 글자 수만 세서 한글 24자(=72바이트)를
-            │   │                         못 막는다 — 저장 전에 알려 주려면 직접 세야 한다.
-            │   │                         백엔드 InputLimits 와 같은 숫자다 —
-            │   │                         브라우저가 먼저 막아 주면 저장을 누르기 전에 알고,
-            │   │                         서버는 화면을 안 거치는 요청까지 막는다.
-            │   │                         한쪽만 고치면 "화면은 되는데 저장이 안 되는" 상태가 된다
-            │   ├── format/format.ts      createFormatter(설정 넷) → 화면이 useI18n().f 로 받는 한 벌
-            │   │                         (거리·부피·연비·금액·날짜·월). todayString(시간대) 는 따로
-            │   ├── format/format.test.ts  todayString 을 자정 직후·직전 두 시각으로 본다 —
-            │   │                         어느 표준시대에서 돌려도 결과가 같아야 한다
-            │   └── hooks/
-            │       ├── useAsyncData.ts   조회 4곳의 공통 훅. data/loading/error +
-            │       │                     reload()/setData. cancelled 플래그가 여기 한 곳에만
-            │       └── useCountUp.ts     직전 값에서 새 값으로 굴러가는 숫자.
-            │                             연출 도중 값이 또 바뀌면 **화면에 보이던 값**에서
-            │                             이어간다 — 옛 목표에서 다시 시작하면 숫자가 한 번 튄다.
-            │                             **첫 렌더에서는 안 움직인다** — 값이 실제로 바뀐
-            │                             순간에만. 지속 시간은 변화 폭에 비례(0.45~1.4s)
-            │       └── useCountUp.test.ts  위 두 줄을 고정한다. matchMedia 는 jsdom 에 없어
-            │                             직접 심고, rAF 는 가짜 타이머로 돌린다
-            └── ui/                       **base/ 만 shadcn 이 건드리는 자리이고 나머지는 우리 것.**
-                │                         전에는 한 폴더(12개)에 섞여 있어서 문서로만 구분했다
-                ├── base/                 shadcn CLI 가 복사해 넣는 자리 (components.json 이 여길 가리킨다)
-                │   ├── button.tsx        asChild 없음. Base UI의 render prop 사용
-                │   ├── card.tsx
-                │   ├── input.tsx
-                │   ├── label.tsx
-                │   └── textarea.tsx
-                ├── form/
-                │   ├── date-input.tsx    날짜 입력. 터치 기기면 드럼 휠(년/월/일), 아니면
-                │   │                     네이티브 date 입력. scroll-snap 이 드래그를 대신한다.
-                │   │                     **칸 목록도 오늘에서 끊는다**(2026-09-23) — 년만 막고
-                │   │                     월·일을 열어 두면 올해 남은 달이 그대로 선택되고
-                │   │                     저장할 때야 400 이 난다. 데스크톱은 max 로 막는 자리라
-                │   │                     안 맞추면 기기마다 되는 날짜가 달라진다
-                │   ├── date-parts.ts     날짜 문자열 ↔ 년·월·일. 일수 보정(1/31 → 2/28)은
-                │                         윤년을 직접 계산하지 않고 Date 에 맡긴다.
-                │                         lastSelectableMonth/Day 가 "오늘 이후 금지" 를 쥐고 있고
-                │                         join 이 년→월→일 순서로 자른다 — 굴린 칸의 뜻을
-                │                         최대한 살리려고 순서가 있다
-                │   ├── field.tsx         라벨+입력+도움말 한 벌. htmlFor 필수(접근성)
-                │   └── control.ts        입력 요소 공통 클래스 문자열.
-                │                         input·textarea·네이티브 select 셋이 공유한다.
-                │                         .tsx 가 아닌 이유는 AuthContext 와 같다 —
-                │                         컴포넌트와 값을 한 파일에서 내보내면 핫 리로드가 깨진다
-                ├── layout/
-                │   ├── page.tsx          Page — 앱 화면 한 장의 껍데기(뒤로가기·머리말·간격).
-                │   │                     FormActions — 폼 맨 아래 버튼 줄.
-                │   │                     **모든 앱 화면이 이 둘을 쓴다** (랜딩만 예외)
-                │   └── section.tsx       설정 화면용 2단(왼쪽 설명 / 오른쪽 내용).
-                │                         넓은 화면의 남는 폭을 여백이 아니라 정보로 채운다
-                ├── feedback/state.tsx    LoadingText / ErrorText / NoticeText / Skeleton
-                ├── nav/pagination.tsx    목록 2곳이 복사해 쓰던 페이지 이동 UI
-                ├── brand/mark.tsx        계기판 로고 SVG. 헤더·로그인·빈 상태 3곳이 공유
-                └── cn-usage.test.ts      한 기능에 속하지 않는 가드라 여기 있다. 아래 참고
+        │       │   ├── endpoints.ts        정비 이력 엔드포인트 6개(차량별 주기 설정 포함)
+        │       │   └── types.ts            ServiceType 유니온 + SERVICE_TYPE_GROUPS(부위별 묶음) + DTO.
+        │       │                           종류 이름은 사전(t.serviceTypes)
+        │       └── components/             pages/ 가 없다 — 자기 라우트 없이 차량 상세에 얹힌다
+        │           ├── NextServiceCard.tsx
+        │           │                       이력 있는 종류의 다음 정비 시점(요청 1번) + 차량별 주기 폼.
+        │           │                       재조회는 부모가 key 를 바꿔 재생성
+        │           ├── MaintenanceSection.tsx
+        │           │                       목록 + 페이지네이션 + 삭제 + 폼 토글.
+        │           │                       폼에 key(기록 id) 필수 — 없으면 열린 폼의 입력이 다른 행에 덮어써진다
+        │           ├── MaintenanceForm.tsx
+        │           │                       등록·수정 겸용 (record가 null이면 등록). 비용·주행거리 빈칸 = null
+        │           └── QuickServiceForm.tsx
+        │                                   기억나는 최근 정비 한 번에(엔진오일·타이어·브레이크 패드·배터리·
+        │                                   에어컨 필터). 모름 / 3·6·12개월 전 / 날짜 지정. 비용은 묻지 않는다.
+        │                                   저장한 줄은 바로 '모름' 으로 — 중간 실패 후 재시도가 두 번 넣지 않게
+        ├── shared/                         어느 기능에도 속하지 않는 것. 백엔드의 common과 같은 자리
+        │   ├── api/
+        │   │   ├── client.test.ts          BASE_URL 대비책과 네트워크 실패 변환을 고정한다
+        │   │   ├── client.ts               fetch 래퍼. credentials:'include' / ApiError /
+        │   │   │                           204 처리 / 401 전역 핸들러 등록 창구
+        │   │   └── types.ts                PageResponse<T> / ErrorResponse / ERROR_CODES(백엔드 ErrorCode 와 짝).
+        │   │                               기능별 DTO는 features/*/api/types.ts 로 옮겼다
+        │   ├── i18n/                       화면 문구(Phase 7). 라이브러리 없이 직접 — 사전은 객체라
+        │   │   │                           t.vehicles.list.title 처럼 쓰고, 키가 틀리면 tsc 가 잡는다
+        │   │   ├── messages/
+        │   │   │   ├── ko.ts               한국어판. Messages 타입의 원본
+        │   │   │   └── en.ts               영어판. `en: Messages` 라 모양이 다르면 컴파일 실패
+        │   │   ├── I18nContext.ts          useI18n() → { t, f, language, locale, timeZone, currency, unitSystem }
+        │   │   ├── errorMessage.ts         잡은 오류 → 문구. 서버 code 로 고르고, 모르면 호출부 문구.
+        │   │   │                           **서버 원문(message)은 화면에 내보내지 않는다** — 한국어라서
+        │   │   └── errorMessage.test.ts
+        │   ├── theme/                      라이트/다크. AuthContext와 똑같이 3파일로 나뉜다
+        │   │   ├── ThemeContext.ts         Theme 타입 + localStorage 키 + useTheme 훅
+        │   │   ├── ThemeProvider.tsx       저장·복원, OS 설정 추적, View Transition 전환
+        │   │   └── ThemeToggle.tsx         해/모니터/달 3칸 세그먼트 컨트롤 (헤더에 배치)
+        │   ├── lib/
+        │   │   ├── preferences.ts          가입 때 브라우저에서 읽는 설정 넷(Phase 7). 통화·단위는
+        │   │   │                           태그에 **적힌** 지역으로만 추정 — maximize() 는 en → US 라
+        │   │   │                           영국 사용자도 달러로 시작한다. 목록 밖 지역은 안 보낸다
+        │   │   ├── units.ts                km·L ↔ 마일·갤런, km/L ↔ L/100km·mpg. **저장은 언제나 km·L**,
+        │   │   │                           변환은 화면에서만. 주행거리 판정(looksBigJump)도 km 로 바꾼 뒤
+        │   │   ├── money.ts                통화의 최소 단위 ↔ 입력칸 값. 소수 자리는 Intl 에서
+        │   │   ├── odometer.ts             주행거리 입력 판정(looksPast·looksBigJump). 주유·정비·갱신 폼 공용
+        │   │   ├── limits.ts               주행거리·금액 상한 + 비밀번호 바이트 계산.
+        │   │   │                           maxLength 는 글자 수만 세서 한글 24자(=72바이트)를
+        │   │   │                           못 막는다 — 저장 전에 알려 주려면 직접 세야 한다.
+        │   │   │                           백엔드 InputLimits 와 같은 숫자다 —
+        │   │   │                           브라우저가 먼저 막아 주면 저장을 누르기 전에 알고,
+        │   │   │                           서버는 화면을 안 거치는 요청까지 막는다.
+        │   │   │                           한쪽만 고치면 "화면은 되는데 저장이 안 되는" 상태가 된다
+        │   │   ├── format.ts               createFormatter(설정 넷) → 화면이 useI18n().f 로 받는 한 벌
+        │   │   │                           (거리·부피·연비·금액·날짜·월). todayString(시간대) 는 따로
+        │   │   ├── format.test.ts          todayString 을 자정 직후·직전 두 시각으로 본다 —
+        │   │   │                           어느 표준시대에서 돌려도 결과가 같아야 한다
+        │   │   ├── hooks/
+        │   │   │   ├── useAsyncData.ts     조회 4곳의 공통 훅. data/loading/error +
+        │   │   │   │                       reload()/setData. cancelled 플래그가 여기 한 곳에만
+        │   │   │   ├── useCountUp.ts       직전 값에서 새 값으로 굴러가는 숫자.
+        │   │   │   │                       연출 도중 값이 또 바뀌면 **화면에 보이던 값**에서
+        │   │   │   │                       이어간다 — 옛 목표에서 다시 시작하면 숫자가 한 번 튄다.
+        │   │   │   │                       **첫 렌더에서는 안 움직인다** — 값이 실제로 바뀐
+        │   │   │   │                       순간에만. 지속 시간은 변화 폭에 비례(0.45~1.4s)
+        │   │   │   └── useCountUp.test.ts  위 두 줄을 고정한다. matchMedia 는 jsdom 에 없어
+        │   │   │                           직접 심고, rAF 는 가짜 타이머로 돌린다
+        │   │   ├── money.test.ts
+        │   │   ├── preferences.test.ts
+        │   │   └── units.test.ts
+        │   └── ui/                         **base/ 만 shadcn 이 건드리는 자리이고 나머지는 우리 것.**
+        │       │                           전에는 한 폴더(12개)에 섞여 있어서 문서로만 구분했다
+        │       ├── base/                   shadcn CLI 가 복사해 넣는 자리 (components.json 이 여길 가리킨다)
+        │       │   ├── button.tsx          asChild 없음. Base UI의 render prop 사용
+        │       │   ├── card.tsx
+        │       │   ├── input.tsx
+        │       │   ├── label.tsx
+        │       │   └── textarea.tsx
+        │       ├── form/
+        │       │   ├── date-input.tsx      날짜 입력. 터치 기기면 드럼 휠(년/월/일), 아니면
+        │       │   │                       네이티브 date 입력. scroll-snap 이 드래그를 대신한다.
+        │       │   │                       **칸 목록도 오늘에서 끊는다**(2026-09-23) — 년만 막고
+        │       │   │                       월·일을 열어 두면 올해 남은 달이 그대로 선택되고
+        │       │   │                       저장할 때야 400 이 난다. 데스크톱은 max 로 막는 자리라
+        │       │   │                       안 맞추면 기기마다 되는 날짜가 달라진다
+        │       │   ├── date-parts.ts       날짜 문자열 ↔ 년·월·일. 일수 보정(1/31 → 2/28)은
+        │       │   │                       윤년을 직접 계산하지 않고 Date 에 맡긴다.
+        │       │   │                       lastSelectableMonth/Day 가 "오늘 이후 금지" 를 쥐고 있고
+        │       │   │                       join 이 년→월→일 순서로 자른다 — 굴린 칸의 뜻을
+        │       │   │                       최대한 살리려고 순서가 있다
+        │       │   ├── field.tsx           라벨+입력+도움말 한 벌. htmlFor 필수(접근성)
+        │       │   ├── native-select.tsx   네이티브 select + 같은 톤 화살표. 정비 종류·언어·통화가 공유
+        │       │   ├── control.ts          입력 요소 공통 클래스 문자열.
+        │       │   │                       input·textarea·네이티브 select 셋이 공유한다.
+        │       │   │                       .tsx 가 아닌 이유는 AuthContext 와 같다 —
+        │       │   │                       컴포넌트와 값을 한 파일에서 내보내면 핫 리로드가 깨진다
+        │       │   └── date-parts.test.ts
+        │       ├── layout/
+        │       │   ├── page.tsx            Page — 앱 화면 한 장의 껍데기(뒤로가기·머리말·간격).
+        │       │   │                       FormActions — 폼 맨 아래 버튼 줄.
+        │       │   │                       **모든 앱 화면이 이 둘을 쓴다** (랜딩만 예외)
+        │       │   └── section.tsx         설정 화면용 2단(왼쪽 설명 / 오른쪽 내용).
+        │       │                           넓은 화면의 남는 폭을 여백이 아니라 정보로 채운다
+        │       ├── state.tsx               LoadingText / ErrorText / NoticeText / Skeleton
+        │       ├── pagination.tsx          목록 2곳이 복사해 쓰던 페이지 이동 UI
+        │       ├── mark.tsx                계기판 로고 SVG. 헤더·로그인·빈 상태 3곳이 공유
+        │       └── cn-usage.test.ts        한 기능에 속하지 않는 가드라 여기 있다. 아래 참고
+        └── dependency-direction.test.ts
 
 ### 프론트엔드 — 테스트
 
 **테스트는 대상 파일 옆에 둔다**(`format.ts` 옆에 `format.test.ts`). 백엔드가 테스트 경로를
-대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 74개, 파일 10개**다.
+대상과 맞추는 것과 같다. `npm run test` 로 돌리고 **총 77개, 파일 11개**다.
 
     cn-usage.test.ts        cn() 과 cva() 인자에 타입 스케일 토큰이 없는지 소스를 훑는다.
                             **이 가드가 없던 8일 동안 CardTitle 이 17px·600 을 잃고
@@ -1432,6 +1438,9 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
     units.test.ts           마일·갤런 왕복 반올림이 원래 값으로 돌아오는지, L/100km 의 0 처리
     money.test.ts           통화별 소수 자리(KRW 0 · USD 2)와 최소 단위 변환
     preferences.test.ts     태그에 **적힌** 지역으로만 통화·단위를 추정하는지(en → 추정 안 함)
+    dependency-direction.test.ts
+                            app → features → shared 와 기능 사이 허용 목록을 import 로 확인(2026-10-03).
+                            src 바로 아래 — 대상이 프론트 전체다. 새 기능은 FEATURE_DEPENDENCIES 에 먼저 등록
 
     **컴포넌트를 실제로 그려 보는 테스트는 없다.** 그래서 폼 key 누락 같은 버그는 여기서 못 잡고
     6-B 체크리스트(B-44-1·B-68-1)가 대신한다.
@@ -1440,27 +1449,36 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 빼고(안 빼면 테스트가 적은 클래스가 운영 CSS 에 생긴다 — 실제로 `text-red-500` 이 들어갔다),
 `vitest` 설정은 `vite.config.ts` 안에 둔다(별도 파일이면 `@` 별칭이 두 곳으로 갈린다).
 
-**폴더는 파일의 성격을 드러낼 때 만든다 — 파일 개수로 정하지 않는다.**
-전에는 "폴더는 파일이 2개가 될 때 만든다"였고, 그 기준으로 2026-09-09에 "세분화는 끝났다"고
-결론 냈었다. 2026-09-13에 **사용자 요청으로 그 기준을 바꿨다.** 바뀐 기준에서는
-`dto/request/LoginRequest.java` 보다 `dto/request/login/LoginRequest.java` 가 낫다 —
-폴더 이름이 "이 DTO는 로그인 유스케이스의 것"이라고 말해 주고, 형제 폴더 목록이 곧
-그 기능의 유스케이스 목록이 된다.
+**폴더는 형제가 생겼을 때, 또는 소유자가 다를 때만 만든다** (2026-10-03, 사용자 결정).
+파일 1개짜리 폴더는 그 파일을 부모로 올리고, 파일 없이 하위 폴더 하나만 품은 통로 폴더(`repository/jpa/`)는
+접는다. 예외는 소유자가 다른 `shared/ui/base/`(shadcn) 하나다.
 
-**치르는 값은 정직하게 적어 둔다.** 파일을 보유한 폴더가 45개 → 81개, 그중 파일 1개짜리가
-24개 → 74개가 됐다(그 뒤로 fuel·summary 가 붙어 **2026-09-18 기준 97개 / 89개**).
-경로가 길어지고, 새 파일을 놓을 자리를 매번 판단해야 한다.
-`exception/type/` 처럼 4개가 모인 곳이나 `ui/base/` 처럼 **소유자가 다른 파일을 갈라놓는**
-자리는 값을 치를 만하고, `service/application/` 처럼 형제가 생길 기약이 없는 곳은 순수 비용이다.
+경위: 처음엔 "파일이 2개가 될 때 폴더"(~09-09), 09-13 에 사용자 요청으로 "파일의 성격을 폴더 이름이 말한다"로
+바꿨다(`dto/request/login/LoginRequest.java`). 그 기준에서 파일을 가진 폴더가 백엔드 74개 중 **63개가 1개짜리**,
+프론트 59개 중 45개였다. `service/application/` 처럼 형제가 생길 기약이 없는 자리가 대부분이라 경로만 길어지고,
+`api/endpoints/endpoints.ts` 처럼 폴더와 파일이 같은 말을 되풀이했다. 10-03 구조 점검 뒤 다시 바꿨다.
+지금은 백엔드 40개 중 7개, 프론트 29개 중 1개(`src/` 자체)다 — 남은 1개짜리는 하위 폴더를 형제로 가진 자리다.
+
+**대가**: 기능마다 깊이가 다르고(`vehicle/` 는 거의 평평, `user/` 는 깊다), 두 번째 파일이 생기는 순간
+첫 파일을 폴더로 옮겨야 한다. 옮길 때는 package 선언·import 가 같이 바뀐다 — IDE 의 Move 를 쓴다.
 
 ### 의존 방향
 
-    백엔드:  {account, summary} → {fuel, maintenance, vehicle, user},  전부 common 을 쓴다
+    백엔드:  account → garage
+             {account, garage, summary} → {fuel, maintenance, vehicle, user},  전부 common 을 쓴다
              fuel → vehicle → user
              maintenance → vehicle → user
     프론트:  app → features → shared
+             기능 사이: vehicles → {maintenance, fuel}, account → auth
 
-**`account` 와 `summary` 가 백엔드의 조율 층이다** (2026-09-16 / 09-17 신설).
+**이 방향은 테스트가 지킨다**(2026-10-03). 백엔드 `DependencyDirectionTest`, 프론트
+`src/dependency-direction.test.ts` 가 import 를 훑어 허용 목록 밖이면 실패한다. 전에는 이 절의 문장만
+있었고, 그동안 실제 코드와 두 군데가 어긋나 있었다(백엔드 예외가 문서보다 넓었고, 프론트는
+`vehicles → fuel` 이 빠져 있었다). **새 패키지·기능을 만들면 허용 목록에 먼저 더한다** — 등록 안 된
+패키지가 있으면 그 자체로 실패한다.
+
+**`account`·`summary`·`garage` 가 백엔드의 조율 층이다** (2026-09-16 / 09-17 / 10-03 신설).
+`garage` 는 차량 단위의 같은 일을 한다 — 차량 삭제의 순서(서비스 주입), 차량 목록의 지난 정비 수(리포지토리 주입).
 `summary` 는 홈 화면 요약을 위해 세 기능을 **읽어서 합치고**, `account` 는 회원 탈퇴에서
 **순서를 조율한다**. 그래서 `summary` 는 리포지토리를, `account` 는 서비스를 주입받는다 —
 집계에는 각 기능의 비즈니스 규칙이 필요 없고, 삭제에는 필요하기 때문이다. 프론트의 `app/` 과 정확히 같은 성격 —
@@ -1478,25 +1496,16 @@ import 없이 쓰던 것들이다. **이건 부작용이 아니라 세분화가 
 `features/auth` 를 import 해서 "shared가 features를 아는" 역방향 의존이 있었는데 이것으로 없앴다.
 같은 이유로 모든 기능의 DTO를 담고 있던 `shared/api/types.ts` 도 기능별로 나눴다.
 
-기능 간 참조는 현재 **`vehicles → maintenance` 한 방향뿐**이다 (차량 상세 화면이
-`MaintenanceSection`·`NextServiceCard` 를 얹는다). 이 문서에 한동안 반대로(`maintenance →
-vehicles`) 적혀 있었으나, 실제 import 를 세어 바로잡았다.
+기능 간 참조는 **`vehicles → maintenance·fuel`**(차량 상세가 두 기능의 카드를 얹는다)과
+**`account → auth`**(프로필 화면이 계정 구역을 얹는다) 둘이다. 백엔드 `account → user` 와 같은 방향이다.
 
 반대 방향 의존(`user`가 `vehicle`을 알거나, `shared`가 `features`를 아는 것)이 생기면
 설계가 잘못된 신호로 보고 재검토한다.
 
-**백엔드에는 알려진 예외가 하나 있다.** 패키지 수준으로 보면 `vehicle` 과 `maintenance` 는
-서로를 안다:
-
-    vehicle/service/application/VehicleService
-        → maintenance/repository/jpa/MaintenanceRecordRepository
-    maintenance/service/application/MaintenanceRecordService
-        → vehicle/service/application/VehicleService
-
-차량 삭제 시 "이력 먼저, 차량 나중" 순서를 서비스가 직접 제어하려고 `VehicleService` 가
-`MaintenanceRecordRepository` 를 주입받기 때문이다. 서비스끼리 주입하면 스프링이 잡아내는
-진짜 순환 참조가 되므로 리포지토리를 골랐고, 그래서 **클래스 수준에서는 순환이 아니다.**
-위의 한 줄 요약(`maintenance → vehicle`)이 이 사실을 가리고 있어 여기 적어 둔다.
+**백엔드에 있던 알려진 예외(`vehicle ↔ maintenance`)는 없어졌다**(2026-10-03). `VehicleService` 가
+삭제 순서를 직접 쥐려고 정비·주유 리포지토리를 주입받았고, 그 뒤 목록의 지난 정비 수까지 붙으면서
+문서에 적힌 것(리포지토리 하나)보다 넓어져 있었다(리포지토리 셋 + `NextService`·`ServiceInterval`).
+둘 다 조율 층의 일이라 `garage` 로 옮겼고, 이제 `vehicle` 은 `user` 만 안다.
 
 ### 세분화가 멈추는 두 지점
 
@@ -2327,8 +2336,8 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 차량 삭제 시 정비 이력·주유 기록도 함께 사라짐 — B-110
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-107
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-108, B-109
-- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (300개)
-- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (74개)
+- [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (305개)
+- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (77개)
 
 ---
 

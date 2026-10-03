@@ -1,6 +1,6 @@
 package com.odolog.app.user.dto.request.password;
 
-import com.odolog.app.common.validation.limit.InputLimits;
+import com.odolog.app.common.validation.InputLimits;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

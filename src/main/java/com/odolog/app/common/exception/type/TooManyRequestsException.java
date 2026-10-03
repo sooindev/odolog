@@ -1,6 +1,6 @@
 package com.odolog.app.common.exception.type;
 
-import com.odolog.app.common.exception.code.ErrorCode;
+import com.odolog.app.common.exception.ErrorCode;
 
 /** 429 전용. 시도 횟수 초과 */
 public class TooManyRequestsException extends ApiException {

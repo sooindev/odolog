@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
-import { useI18n } from '@/shared/i18n/context/I18nContext'
-import { errorMessage } from '@/shared/i18n/errors/errorMessage'
+import { useI18n } from '@/shared/i18n/I18nContext'
+import { errorMessage } from '@/shared/i18n/errorMessage'
 
 export interface AsyncData<T> {
   /** 성공 전이면 null. 재조회 중에는 직전 값 유지 */

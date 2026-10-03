@@ -5,7 +5,7 @@
 
 Spring Boot 3.5 + MariaDB 백엔드에 React 19 SPA 를 붙인 구성이고, 인증은 **세션 쿠키**다.
 한국어·영어 두 벌이고, 계정마다 언어·시간대·통화·단위(km/L · L/100km · mpg)를 따로 가진다.
-백엔드 API 29개 · 화면 12 라우트가 모두 동작하고 테스트 374개(백엔드 300 · 프론트 74)가 통과한다.
+백엔드 API 29개 · 화면 12 라우트가 모두 동작하고 테스트 382개(백엔드 305 · 프론트 77)가 통과한다.
 **이미 타던 차**를 등록하는 경우를 기본으로 본다 — 현재 주행거리와 기억나는 정비 몇 가지만 적으면
 다음 정비 시점이 바로 뜨고, 이후 주유·정비를 적을 때마다 기록이 쌓인다.
 
@@ -159,8 +159,8 @@ npm run dev     # http://localhost:5173
 ### 4. 검사
 
 ```
-./gradlew test                  # 백엔드 300개
-cd frontend && npm run test     # 프론트 74개 (vitest)
+./gradlew test                  # 백엔드 305개
+cd frontend && npm run test     # 프론트 77개 (vitest)
 cd frontend && npm run lint     # oxlint
 cd frontend && npm run build    # tsc -b + vite build
 ```
@@ -306,9 +306,10 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 보존된다.
     ├── src/                       백엔드 (Spring Boot)
     │   └── main/java/com/odolog/app/
     │       ├── user/              회원가입, 로그인/로그아웃, 프로필, 비밀번호 변경
-    │       ├── vehicle/           차량 등록·조회·수정·주행거리 갱신·삭제
+    │       ├── vehicle/           차량 등록·조회·수정·주행거리 갱신
     │       ├── maintenance/       정비 이력, 다음 정비 시점 계산
     │       ├── fuel/              주유 기록, 연비 계산
+    │       ├── garage/            차량 목록(지난 정비 수)·차량 삭제 — 차량과 그 기록을 함께 다룬다
     │       ├── account/           회원 탈퇴·기록 내보내기·가져오기 — 여러 기능에 걸친 동작
     │       ├── summary/           홈 화면 요약 — 여러 기능을 읽어서 합친다
     │       └── common/            인증(세션·CSRF·시도 제한), 보안 응답 헤더,
@@ -318,50 +319,48 @@ enum 은 값을 문자열로 저장하므로 기존 데이터는 보존된다.
         └── src/
             ├── app/               라우트 정의, Header·Footer, ProtectedRoute, I18nProvider,
             │                      홈(통계·차트)·랜딩·약관 화면
-            ├── features/          auth / vehicles / maintenance / fuel
+            ├── features/          auth / account / vehicles / maintenance / fuel
             └── shared/            api 클라이언트, i18n 사전(ko·en), 단위·금액·포맷,
                                    공용 훅, UI 컴포넌트, 테마
 
-백엔드의 각 기능 패키지는 `domain / repository / dto / service / controller`로 나뉘고,
-그 아래 한 겹이 더 있다 — 파일의 성격을 폴더 이름으로 드러내는 층이다.
+백엔드의 각 기능 패키지는 `domain / repository / dto / service / controller` 계층으로 나뉘되,
+**폴더는 같은 계층에 파일이 둘 이상일 때만 만든다.** 하나뿐이면 기능 폴더 바로 아래에 둔다.
 
-    user/
-    ├── domain/entity/User.java
-    ├── domain/type/UnitSystem.java
-    ├── repository/jpa/UserRepository.java
-    ├── dto/request/signup/SignUpRequest.java
-    ├── dto/request/login/LoginRequest.java
-    ├── dto/request/profile/UpdateProfileRequest.java
-    ├── dto/response/profile/UserResponse.java
-    ├── service/application/UserService.java
-    └── controller/rest/UserController.java
+    vehicle/                       user/
+    ├── Vehicle.java               ├── domain/{entity,type}/
+    ├── VehicleRepository.java     ├── repository/        UserRepository · PasswordResetTokenRepository
+    ├── VehicleService.java        ├── dto/request/ · dto/UserResponse.java
+    ├── VehicleController.java     ├── service/           UserToday · PasswordResetMailer · application/
+    └── dto/                       └── controller/        UserController · PasswordResetController
 
-`domain/entity` 와 `domain/type`(enum), `repository/jpa`(구현 기술),
-`dto/request/<유스케이스>`, `controller/rest`(노출 방식) 같은 식이다.
-테스트도 같은 경로를 그대로 따라간다.
+기능마다 깊이가 다른 것은 크기가 다르기 때문이다. 테스트도 같은 경로를 그대로 따라간다.
 
-프론트엔드의 각 기능 폴더는 `api`(엔드포인트 + 그 기능의 DTO 타입)와
-`pages`(라우트가 있는 화면) 또는 `components`(다른 화면에 얹히는 조각)로 나뉘고,
-역시 그 아래 한 겹이 더 있다 (`pages/login/LoginPage.tsx`,
-`api/endpoints/endpoints.ts`). `auth`에는 로그인 상태를 들고 있는 `context`가 추가로 있다.
-`shared/ui` 는 성격별로 `base`(shadcn이 복사해 넣는 자리) / `form` / `layout` /
-`feedback` / `nav` / `brand` 로 나뉜다. `form/date-input.tsx` 는 기기에 따라 **터치면 드럼 휠,
+프론트엔드의 각 기능 폴더는 `api`(`endpoints.ts` + 그 기능의 DTO `types.ts`)와
+`pages`(라우트가 있는 화면) 또는 `components`(다른 화면에 얹히는 조각)로 나뉜다.
+`auth`에는 로그인 상태를 들고 있는 `context`가 추가로 있다.
+`shared/ui` 는 `base`(shadcn이 복사해 넣는 자리) / `form` / `layout` 폴더와,
+혼자인 `state`·`pagination`·`mark` 파일로 되어 있다. `form/date-input.tsx` 는 기기에 따라 **터치면 드럼 휠,
 아니면 네이티브 date 입력**으로 갈린다 — 폰에서 OS 캘린더는 달을 여러 번 넘겨야 하고,
 데스크톱에서는 날짜를 타이핑하는 게 제일 빠르기 때문이다.
 
 프론트엔드의 의존 방향은 `app → features → shared` 한 방향이다. `app`은 여러 기능을 동시에
 알아도 되는 유일한 층이라, `useAuth`를 쓰는 `Header`와 `ProtectedRoute`가 여기에 있다.
 
-백엔드는 `fuel → vehicle → user`, `maintenance → vehicle → user` 이고, **`account` 와 `summary` 가
+백엔드는 `fuel → vehicle → user`, `maintenance → vehicle → user` 이고, **`garage`·`account`·`summary` 가
 프론트의 `app` 과 같은 자리**다 — 여러 기능을 동시에 알아도 되는 층이다.
+차량 삭제는 정비·주유 기록을 먼저 지워야 하고 차량 목록은 지난 정비 수를 함께 보여 주는데,
+이 둘을 `VehicleService` 에 두면 `vehicle ↔ maintenance` 가 서로를 알게 된다. 그래서 `garage` 가 맡는다.
 회원 탈퇴는 회원·차량·정비 이력·주유 기록을 모두 지워야 하는데, 이걸 `UserService` 에 넣으면
 `user → vehicle` 역방향 의존이 생긴다.
 
-둘은 하는 일이 달라서 주입받는 것도 다르다. `account` 는 **순서를 조율**하므로 각 기능의
-**서비스**를 받아 실제 삭제는 그쪽에 맡기고, `summary` 는 **읽어서 합치기**만 하므로
+하는 일에 따라 주입받는 것이 다르다. **순서를 조율**하는 쪽(탈퇴·차량 삭제)은 각 기능의
+**서비스**를 받아 실제 삭제는 그쪽에 맡기고, **읽어서 합치기**만 하는 쪽(홈 요약·차량 목록)은
 **리포지토리**를 직접 받는다 — 집계에는 소유권 검사나 삭제 순서 같은 규칙이 필요 없다.
 
-시간 필드(`createdAt`/`updatedAt`)는 네 엔티티가 `common/domain/entity/BaseTimeEntity` 를
+이 방향은 문서가 아니라 테스트가 지킨다. 백엔드 `DependencyDirectionTest`, 프론트
+`src/dependency-direction.test.ts` 가 소스의 import 를 훑어 허용 목록 밖의 방향이 생기면 실패한다.
+
+시간 필드(`createdAt`/`updatedAt`)는 네 엔티티가 `common/domain/BaseTimeEntity` 를
 상속해서 얻는다. 엔티티가 3개일 때는 `@PrePersist` 를 복사하는 편이 나았고, 4개째에서 뒤집혔다.
 
 설계 결정과 지켜야 할 규칙은 `CLAUDE.md`, 완료한 작업과 그 근거는 `HISTORY.md` 에 있다.
@@ -571,7 +570,7 @@ BCrypt 는 같은 값도 매번 다른 해시를 내놓아 조회 키로 못 쓴
 ## 진행 상황
 
 백엔드 API **29개**와 프론트엔드 화면 12장(라우트 기준. `/` 가 세 얼굴을 가지는 등 실제로 볼 상태는
-15개)이 모두 동작하는 상태다. 백엔드 테스트 **300개**, 프론트엔드 테스트 **74개**가 통과하고,
+15개)이 모두 동작하는 상태다. 백엔드 테스트 **305개**, 프론트엔드 테스트 **77개**가 통과하고,
 프론트엔드는 `tsc -b` / `oxlint` / `vite build` 도 통과한다.
 커밋마다 GitHub Actions 가 이 넷을 전부 돌린다 (`.github/workflows/ci.yml`).
 
@@ -765,7 +764,7 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 지금은 모든 에러가 `ErrorText` 인라인이다. 토스트는 아직 한 줄도 없다.
 
 - [ ] 기준 확정: **폼 검증 실패(400/409)는 인라인**, 그 외(500·네트워크 끊김)는 토스트
-- [ ] `ApiError.status` 로 분기 — `shared/api/client/client.ts` 가 이미 status 를 들고 있다
+- [ ] `ApiError.status` 로 분기 — `shared/api/client.ts` 가 이미 status 를 들고 있다
 - [ ] 토스트 구현 선택: shadcn `sonner` 도입 vs 직접 만든 최소 구현
       (도입한다면 `components.json` 의 `aliases.ui` 가 `@/shared/ui/base` 를 가리키는지 먼저 확인)
 - [ ] Provider 를 `main.tsx` 의 어느 층에 끼울지 (`AuthProvider` 안쪽/바깥쪽)
@@ -781,7 +780,7 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 - [ ] 도입 여부 결정 — 안 하면 백로그로 남긴다
 - [ ] (도입 시) `ErrorResponse` 에 `fieldErrors` 추가
 - [ ] (도입 시) `GlobalExceptionHandler` 에서 `BindingResult` 의 필드명·메시지를 전부 추출
-- [ ] (도입 시) 프론트 `shared/api/types/types.ts` 갱신
+- [ ] (도입 시) 프론트 `shared/api/types.ts` 갱신
 - [ ] (도입 시) 폼 6곳(로그인·회원가입·프로필·차량 등록·주행거리·정비)에서 필드 아래 표시로 연결
 
 ### 3. 영어권 대응 (코드 완료, 확인 남음)
@@ -838,7 +837,7 @@ Phase 6에서 **이미 끝난 것**. 아래 "남은 작업"에 다시 적지 않
 ### 완료 판정 기준
 
 위 0번을 처음부터 끝까지 막힘없이 수행할 수 있고, `./gradlew test` 가 통과하면 "완성"으로 본다.
-(테스트 **374개**(백엔드 300 · 프론트 74)는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
+(테스트 **382개**(백엔드 305 · 프론트 77)는 지금 통과 중이다. **남은 것은 사람 눈 확인 하나뿐이다.**)
 배포(서버 인프라, 도메인, CI/CD)는 이 프로젝트의 범위 밖이며, **로컬에서 완전히 동작하는 것**까지가 목표다.
 
 ## 트러블슈팅
@@ -895,7 +894,7 @@ DOM 에 도달하지 못했고**, 카드 제목 열 곳이 17px·굵기 600·자
 뒤로 계속 그랬다.
 
 **해결**: `cn()` 을 거치는 네 파일(`base/card.tsx`·`base/label.tsx`·`base/button.tsx`·
-`feedback/state.tsx`)에서 크기를 임의 값으로 적는다. 토큰이 행간·굵기·자간까지 묶고 있던
+`state.tsx`)에서 크기를 임의 값으로 적는다. 토큰이 행간·굵기·자간까지 묶고 있던
 자리는 그 값들을 그대로 풀어 썼다. 화면 파일은 `cn()` 을 거치지 않으므로 토큰을 그대로 쓴다.
 
 **검증**: `cn` 을 실제로 호출해 `cn()` 안의 모든 문자열에서 사라지는 클래스가 없는지
@@ -970,7 +969,7 @@ UserRepositoryTest > 사용자를 저장하면 id와 createdAt이 채워진다 F
 **원인**: `@DataJpaTest` 는 JPA 와 무관한 `@Configuration` 을 전부 걸러낸다.
 Auditing 이 켜지지 않아 `created_at` 이 null 인 채로 INSERT 되고 NOT NULL 위반이 났다.
 
-**해결**: 별도 설정 클래스(`common/config/jpa/JpaAuditingConfig`)에 두고,
+**해결**: 별도 설정 클래스(`common/config/JpaAuditingConfig`)에 두고,
 리포지토리 테스트에만 `@Import` 로 직접 끌어온다.
 
 ```java

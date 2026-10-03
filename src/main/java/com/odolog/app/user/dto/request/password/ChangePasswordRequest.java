@@ -1,6 +1,6 @@
 package com.odolog.app.user.dto.request.password;
 
-import com.odolog.app.common.validation.annotation.MaxBytes;
+import com.odolog.app.common.validation.MaxBytes;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 

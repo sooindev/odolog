@@ -1,6 +1,6 @@
 package com.odolog.app.common.exception.type;
 
-import com.odolog.app.common.exception.code.ErrorCode;
+import com.odolog.app.common.exception.ErrorCode;
 
 /** 404 전용. 없는 자원과 남의 자원을 같은 응답으로 */
 public class ResourceNotFoundException extends ApiException {

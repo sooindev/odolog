@@ -1,9 +1,9 @@
 package com.odolog.app.user.domain.entity;
 
-import com.odolog.app.common.exception.code.ErrorCode;
-import com.odolog.app.common.domain.entity.BaseTimeEntity;
+import com.odolog.app.common.exception.ErrorCode;
+import com.odolog.app.common.domain.BaseTimeEntity;
 import com.odolog.app.common.exception.type.InvalidRequestException;
-import com.odolog.app.common.money.CurrencyCode;
+import com.odolog.app.common.CurrencyCode;
 import com.odolog.app.user.domain.type.Language;
 import com.odolog.app.user.domain.type.UnitSystem;
 import jakarta.persistence.Column;

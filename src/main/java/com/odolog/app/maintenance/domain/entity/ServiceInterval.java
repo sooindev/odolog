@@ -1,8 +1,8 @@
 package com.odolog.app.maintenance.domain.entity;
 
-import com.odolog.app.common.domain.entity.BaseTimeEntity;
-import com.odolog.app.maintenance.domain.type.ServiceType;
-import com.odolog.app.vehicle.domain.entity.Vehicle;
+import com.odolog.app.common.domain.BaseTimeEntity;
+import com.odolog.app.maintenance.domain.ServiceType;
+import com.odolog.app.vehicle.Vehicle;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

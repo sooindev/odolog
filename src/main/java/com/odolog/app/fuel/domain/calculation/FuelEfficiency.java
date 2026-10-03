@@ -1,6 +1,6 @@
 package com.odolog.app.fuel.domain.calculation;
 
-import com.odolog.app.fuel.domain.entity.FuelRecord;
+import com.odolog.app.fuel.domain.FuelRecord;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

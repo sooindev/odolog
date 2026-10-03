@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 
-import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { useI18n } from '@/shared/i18n/I18nContext'
 
 /** 모든 화면 맨 아래. 약관·개인정보처리방침은 어디서든 한 번에 닿아야 함 */
 export function Footer() {

@@ -1,15 +1,15 @@
 package com.odolog.app.user.service.application;
 
-import com.odolog.app.common.exception.code.ErrorCode;
-import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
-import com.odolog.app.common.auth.session.LoginSessionRegistry;
+import com.odolog.app.common.exception.ErrorCode;
+import com.odolog.app.common.auth.LoginAttemptLimiter;
+import com.odolog.app.common.auth.LoginSessionRegistry;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.user.domain.entity.PasswordResetToken;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.password.PasswordResetConfirmRequest;
-import com.odolog.app.user.repository.jpa.PasswordResetTokenRepository;
-import com.odolog.app.user.repository.jpa.UserRepository;
-import com.odolog.app.user.service.mail.PasswordResetMailer;
+import com.odolog.app.user.repository.PasswordResetTokenRepository;
+import com.odolog.app.user.repository.UserRepository;
+import com.odolog.app.user.service.PasswordResetMailer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

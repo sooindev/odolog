@@ -1,14 +1,14 @@
 package com.odolog.app.user.service.application;
 
-import com.odolog.app.common.auth.session.LoginSessionRegistry;
-import com.odolog.app.common.auth.ratelimit.LoginAttemptLimiter;
+import com.odolog.app.common.auth.LoginSessionRegistry;
+import com.odolog.app.common.auth.LoginAttemptLimiter;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
 import com.odolog.app.user.domain.entity.PasswordResetToken;
 import com.odolog.app.user.domain.entity.User;
 import com.odolog.app.user.dto.request.password.PasswordResetConfirmRequest;
-import com.odolog.app.user.repository.jpa.PasswordResetTokenRepository;
-import com.odolog.app.user.repository.jpa.UserRepository;
-import com.odolog.app.user.service.mail.PasswordResetMailer;
+import com.odolog.app.user.repository.PasswordResetTokenRepository;
+import com.odolog.app.user.repository.UserRepository;
+import com.odolog.app.user.service.PasswordResetMailer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,6 @@
-import type { MonthlyCost, TypeCost } from '@/app/home/stats/homeStats'
+import type { MonthlyCost, TypeCost } from '@/app/home/homeStats'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/base/card'
-import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { useI18n } from '@/shared/i18n/I18nContext'
 import { niceMax } from '@/app/home/charts/niceMax'
 
 // 홈 차트 둘. 라이브러리 없이 HTML·CSS

@@ -1,8 +1,8 @@
 import { ArrowRight } from 'lucide-react'
 import { Link, Outlet } from 'react-router'
 
-import { useI18n } from '@/shared/i18n/context/I18nContext'
-import { GaugeMark } from '@/shared/ui/brand/mark'
+import { useI18n } from '@/shared/i18n/I18nContext'
+import { GaugeMark } from '@/shared/ui/mark'
 
 // 로그인·회원가입 공용 2단 레이아웃
 // 왼쪽 패널은 lg 미만에서 숨김

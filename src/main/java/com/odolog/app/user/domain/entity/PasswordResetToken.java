@@ -1,6 +1,6 @@
 package com.odolog.app.user.domain.entity;
 
-import com.odolog.app.common.domain.entity.BaseTimeEntity;
+import com.odolog.app.common.domain.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

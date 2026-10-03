@@ -1,16 +1,16 @@
 import { Link } from 'react-router'
 
-import { useAuth } from '@/features/auth/context/definition/AuthContext'
-import { LandingPage } from '@/app/landing/LandingPage'
+import { useAuth } from '@/features/auth/context/AuthContext'
+import { LandingPage } from '@/app/LandingPage'
 import { MonthlyCostChart, TypeCostChart } from '@/app/home/charts/HomeCharts'
-import { loadHomeData } from '@/app/home/stats/homeStats'
-import type { HomeData } from '@/app/home/stats/homeStats'
+import { loadHomeData } from '@/app/home/homeStats'
+import type { HomeData } from '@/app/home/homeStats'
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
-import { GaugeMark } from '@/shared/ui/brand/mark'
+import { GaugeMark } from '@/shared/ui/mark'
 import { Page } from '@/shared/ui/layout/page'
-import { ErrorText, LoadingText, Skeleton } from '@/shared/ui/feedback/state'
-import { useI18n } from '@/shared/i18n/context/I18nContext'
+import { ErrorText, LoadingText, Skeleton } from '@/shared/ui/state'
+import { useI18n } from '@/shared/i18n/I18nContext'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 
 /**

@@ -1,6 +1,6 @@
 package com.odolog.app.common.exception.type;
 
-import com.odolog.app.common.exception.code.ErrorCode;
+import com.odolog.app.common.exception.ErrorCode;
 
 /**
  * 우리가 던지는 예외의 공통 부모. 코드는 필수

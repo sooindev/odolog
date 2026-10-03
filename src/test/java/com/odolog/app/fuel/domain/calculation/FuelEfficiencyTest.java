@@ -1,7 +1,7 @@
 package com.odolog.app.fuel.domain.calculation;
 
-import com.odolog.app.fuel.domain.entity.FuelRecord;
-import com.odolog.app.vehicle.domain.entity.Vehicle;
+import com.odolog.app.fuel.domain.FuelRecord;
+import com.odolog.app.vehicle.Vehicle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

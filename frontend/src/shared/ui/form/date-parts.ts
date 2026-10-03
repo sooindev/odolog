@@ -2,7 +2,7 @@
 // .ts 분리: 핫 리로드 유지
 // timeZone 을 주면 그 지역의 오늘 기준(서버 미래 판정과 같은 선). 없으면 브라우저 지역
 
-import { todayString } from '@/shared/lib/format/format'
+import { todayString } from '@/shared/lib/format'
 
 export function daysInMonth(year: number, month: number) {
   // 다음 달 0일 = 이번 달 마지막 날. 윤년 자동

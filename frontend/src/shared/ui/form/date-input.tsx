@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { cn } from 'cn'
 import { controlClassName } from '@/shared/ui/form/control'
-import { useI18n } from '@/shared/i18n/context/I18nContext'
-import { todayString } from '@/shared/lib/format/format'
+import { useI18n } from '@/shared/i18n/I18nContext'
+import { todayString } from '@/shared/lib/format'
 import {
   join,
   lastSelectableDay,
