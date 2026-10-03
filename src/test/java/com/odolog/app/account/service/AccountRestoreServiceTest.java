@@ -28,11 +28,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -97,7 +99,7 @@ class AccountRestoreServiceTest {
     /** 빈 계정 + 차량 저장 시 id 부여 */
     private void emptyAccount() {
         when(userService.findById(1L)).thenReturn(owner);
-        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of());
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.empty());
         when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(call -> {
             Vehicle saved = call.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", 10L);
@@ -161,7 +163,7 @@ class AccountRestoreServiceTest {
     @DisplayName("빈 계정에 넣으면 차량과 기록이 그대로 들어간다")
     void restoresIntoEmptyAccount() {
         when(userService.findById(1L)).thenReturn(owner);
-        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of());
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.empty());
         when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(call -> {
             Vehicle saved = call.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", 10L);
@@ -185,7 +187,7 @@ class AccountRestoreServiceTest {
         // id 없는 JSON 이라 내용(종류·날짜·주행거리)으로 중복 판정
         Vehicle vehicle = existing("12가1212", 10L);
         when(userService.findById(1L)).thenReturn(owner);
-        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.of(vehicle));
 
         MaintenanceRecord already = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL,
                 null, 80000, "KRW", 30000, LocalDate.of(2026, 5, 1));
@@ -215,7 +217,7 @@ class AccountRestoreServiceTest {
         Vehicle vehicle = existing("12가1212", 10L);
         vehicle.changeModelName("카니발 하이리무진");
         when(userService.findById(1L)).thenReturn(owner);
-        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.of(vehicle));
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of());
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
@@ -235,7 +237,7 @@ class AccountRestoreServiceTest {
         // DB 는 "12가1212 ", 파일은 "12가1212". 새 차로 저장하면 유니크 위반으로 전체 실패
         Vehicle vehicle = existing("12가1212 ", 10L);
         when(userService.findById(1L)).thenReturn(owner);
-        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.of(vehicle));
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of());
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
@@ -254,7 +256,7 @@ class AccountRestoreServiceTest {
         Vehicle vehicle = existing("12가1212", 10L);
         vehicle.updateOdometer(50000);
         when(userService.findById(1L)).thenReturn(owner);
-        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.of(vehicle));
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of());
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
@@ -291,7 +293,7 @@ class AccountRestoreServiceTest {
         // 옛 백업의 기준점이 들어오면 사용자가 하지 않은 초기화가 생김
         Vehicle vehicle = existing("12가1212", 10L);
         when(userService.findById(1L)).thenReturn(owner);
-        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.of(vehicle));
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of());
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
@@ -342,7 +344,7 @@ class AccountRestoreServiceTest {
     void restoresIntervals() {
         Vehicle vehicle = existing("12가1212", 10L);
         when(userService.findById(1L)).thenReturn(owner);
-        when(vehicleRepository.findAllByOwnerId(1L)).thenReturn(List.of(vehicle));
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.of(vehicle));
         when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
                 .thenReturn(List.of());
         when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
@@ -359,5 +361,27 @@ class AccountRestoreServiceTest {
 
         assertThat(result.addedServiceIntervals()).isEqualTo(1);
         verify(serviceIntervalRepository).save(any(ServiceInterval.class));
+    }
+
+    @Test
+    @DisplayName("새로 만든 차량은 파일 기록의 가장 큰 주행거리까지 올라간다 — 등록과 같은 규칙")
+    void liftsNewVehicleToRecordOdometer() {
+        when(userService.findById(1L)).thenReturn(owner);
+        when(vehicleRepository.findByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.empty());
+        when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(call -> {
+            Vehicle saved = call.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 10L);
+            return saved;
+        });
+
+        // 파일의 차량 주행거리는 30,000, 주유 기록은 30,100km
+        accountRestoreService.restore(1L,
+                new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                        List.of(oilData(LocalDate.of(2026, 5, 1), 30000)),
+                        List.of(fuelData(LocalDate.of(2026, 5, 2), 30100))))));
+
+        ArgumentCaptor<Vehicle> saved = ArgumentCaptor.forClass(Vehicle.class);
+        verify(vehicleRepository).save(saved.capture());
+        assertThat(saved.getValue().getOdometer()).isEqualTo(30100);
     }
 }

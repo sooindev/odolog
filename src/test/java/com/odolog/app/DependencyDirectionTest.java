@@ -39,6 +39,9 @@ class DependencyDirectionTest {
     private static final Pattern IMPORT = Pattern.compile(
             "^import\\s+(?:static\\s+)?com\\.odolog\\.app\\.([a-z]+)\\.", Pattern.MULTILINE);
 
+    /** import 없이 전체 이름으로 쓴 참조. import 만 보면 놓침 */
+    private static final Pattern QUALIFIED = Pattern.compile("com\\.odolog\\.app\\.([a-z]+)\\.");
+
     private static final Pattern WILDCARD = Pattern.compile(
             "^import\\s+(?:static\\s+)?com\\.odolog\\.app\\..*\\*;", Pattern.MULTILINE);
 
@@ -55,10 +58,12 @@ class DependencyDirectionTest {
             String source = Files.readString(file);
             Matcher matcher = IMPORT.matcher(source);
             while (matcher.find()) {
-                String target = matcher.group(1);
-                if (!target.equals(owner) && !ALLOWED.get(owner).contains(target)) {
-                    violations.add(SOURCE_ROOT.relativize(file) + " → " + target);
-                }
+                check(file, owner, matcher.group(1), violations);
+            }
+            // package·import 줄을 뺀 본문의 전체 이름 참조
+            Matcher qualified = QUALIFIED.matcher(source.replaceAll("(?m)^(package|import) .*;$", ""));
+            while (qualified.find()) {
+                check(file, owner, qualified.group(1), violations);
             }
         }
 
@@ -88,6 +93,12 @@ class DependencyDirectionTest {
         }
 
         assertThat(found).isEmpty();
+    }
+
+    private void check(Path file, String owner, String target, List<String> violations) {
+        if (!target.equals(owner) && !ALLOWED.get(owner).contains(target)) {
+            violations.add(SOURCE_ROOT.relativize(file) + " → " + target);
+        }
     }
 
     private List<Path> javaFiles() throws IOException {

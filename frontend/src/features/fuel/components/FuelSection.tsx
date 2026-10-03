@@ -8,6 +8,7 @@ import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
 import { deleteFuelRecord, fetchFuelRecords } from '@/features/fuel/api/endpoints'
 import type { FuelRecordResponse } from '@/features/fuel/api/types'
 
@@ -27,6 +28,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
 
   const load = useCallback(() => fetchFuelRecords(vehicleId, page), [vehicleId, page])
   const { data, loading, error, reload } = useAsyncData(load, t.fuel.loadFailed)
+  usePageInRange(data, setPage)
 
   // 변수로 받아 타입 좁히기
   const shownError = error ?? actionError
@@ -61,7 +63,8 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
     } catch (caught) {
       setActionError(errorMessage(caught, t, t.fuel.deleteFailed))
     } finally {
-      setDeletingId(null)
+      // 먼저 끝난 삭제가 다른 행의 잠금을 풀지 않게
+      setDeletingId((current) => (current === recordId ? null : current))
     }
   }
 

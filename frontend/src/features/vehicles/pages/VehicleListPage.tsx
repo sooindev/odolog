@@ -9,6 +9,7 @@ import { Page } from '@/shared/ui/layout/page'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
 import { fetchVehicles } from '@/features/vehicles/api/endpoints'
 
 export function VehicleListPage() {
@@ -18,6 +19,7 @@ export function VehicleListPage() {
   // page 변경 시 재조회
   const load = useCallback(() => fetchVehicles(page), [page])
   const { data, loading, error } = useAsyncData(load, t.vehicles.list.loadFailed)
+  usePageInRange(data, setPage)
 
   if (loading) {
     return <VehicleListSkeleton />

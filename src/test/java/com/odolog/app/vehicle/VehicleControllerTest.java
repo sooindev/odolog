@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -296,5 +297,19 @@ class VehicleControllerTest {
         mockMvc.perform(put("/api/vehicles/10").session(loginSessionOf(1L)))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.message").value("허용되지 않는 요청 방식입니다."));
+    }
+
+    @Test
+    @DisplayName("같은 차량을 동시에 고쳐 늦게 온 쪽은 409 CONCURRENT_UPDATE — 500 이 아니다")
+    void concurrentUpdateIsConflict() throws Exception {
+        when(vehicleService.update(any(), any(), any()))
+                .thenThrow(new ObjectOptimisticLockingFailureException(Vehicle.class, 10L));
+
+        mockMvc.perform(patch("/api/vehicles/V10")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"manufacturer\":\"기아\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONCURRENT_UPDATE"));
     }
 }

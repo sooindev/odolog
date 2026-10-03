@@ -87,10 +87,12 @@ export const en: Messages = {
       NOT_FOUND: 'Page not found.',
       METHOD_NOT_ALLOWED: 'That request method isn’t allowed.',
       UNSUPPORTED_MEDIA_TYPE: 'That request format isn’t supported.',
+      PAYLOAD_TOO_LARGE: 'That’s too large to send. Check the file size.',
       EMAIL_DUPLICATE: 'An account with this email already exists.',
       PLATE_DUPLICATE: 'You’ve already added a vehicle with this plate.',
       ODOMETER_DECREASE: 'The odometer can’t go down.',
       DUPLICATE_VALUE: 'That value already exists. Refresh and try again.',
+      CONCURRENT_UPDATE: 'This was changed somewhere else first. Refresh and try again.',
       TOO_MANY_LOGIN_ATTEMPTS: (minutes: number) =>
         `Too many login attempts. Try again in ${minutes} ${plural(minutes, 'minute', 'minutes')}.`,
       TOO_MANY_SIGNUP_ATTEMPTS: (minutes: number) =>
@@ -422,6 +424,8 @@ export const en: Messages = {
       submit: 'Save',
       nothingPicked: 'Nothing picked yet. Even one item you remember helps.',
       failed: 'Couldn’t save.',
+      partlySaved: (saved: number, reason: string) =>
+        `Saved ${saved}, but couldn’t save the rest. ${reason}`,
     },
     next: {
       title: 'Next service',

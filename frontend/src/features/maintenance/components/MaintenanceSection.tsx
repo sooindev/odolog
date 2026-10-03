@@ -8,6 +8,7 @@ import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
 import { deleteRecord, fetchRecords } from '@/features/maintenance/api/endpoints'
 import { SERVICE_TYPES } from '@/features/maintenance/api/types'
 import { controlClassName } from '@/shared/ui/form/control'
@@ -39,6 +40,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
     [vehicleId, page, filter],
   )
   const { data, loading, error, reload } = useAsyncData(load, t.maintenance.loadFailed)
+  usePageInRange(data, setPage)
 
   // 변수로 받아 타입 좁히기
   const shownError = error ?? actionError
@@ -84,7 +86,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, onChanged }: Pr
     } catch (caught) {
       setActionError(errorMessage(caught, t, t.maintenance.deleteFailed))
     } finally {
-      setDeletingId(null)
+      // 먼저 끝난 삭제가 다른 행의 잠금을 풀지 않게
+      setDeletingId((current) => (current === recordId ? null : current))
     }
   }
 

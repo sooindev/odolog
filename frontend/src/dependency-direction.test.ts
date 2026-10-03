@@ -21,7 +21,11 @@ const sources = import.meta.glob('/src/**/*.{ts,tsx}', {
   eager: true,
 }) as Record<string, string>
 
-const IMPORT = /(?:from|import)\s*\(?\s*'@\/([^']+)'/g
+// 따옴표 둘 다. shadcn 이 복사해 넣는 파일은 큰따옴표
+const IMPORT = /(?:from|import)\s*\(?\s*['"]@\/([^'"]+)['"]/g
+
+/** src 바로 아래에 둘 수 있는 것. 층 밖의 진입점 */
+const ROOT_FILES = ['main.tsx', 'env.d.ts', 'index.css', 'dependency-direction.test.ts']
 
 /** 'features/fuel/...' → 'features/fuel', 'shared/...' → 'shared' */
 function layerOf(path: string) {
@@ -31,7 +35,7 @@ function layerOf(path: string) {
 
 function allowed(from: string, to: string) {
   // main.tsx 진입점은 층 밖
-  if (from !== 'app' && from !== 'shared' && !from.startsWith('features/')) return true
+  if (ROOT_FILES.includes(from)) return true
   if (from === to) return true
   if (to === 'shared') return true
   if (from === 'shared') return false
@@ -74,8 +78,16 @@ describe('의존 방향', () => {
   it('상대 경로로 위층을 거슬러 import 하지 않는다', () => {
     // '../' 는 이 검사가 방향을 읽지 못함
     const found = Object.entries(sources)
-      .filter(([path, source]) => !path.includes('.test.') && /from\s+'\.\.\//.test(source))
+      .filter(([path, source]) => !path.includes('.test.') && /from\s+['"]\.\.\//.test(source))
       .map(([path]) => path)
     expect(found).toEqual([])
+  })
+
+  it('src 바로 아래에는 정해 둔 층과 진입점만 있다 — 새 층은 이 검사부터 고친다', () => {
+    const tops = new Set(Object.keys(sources).map((path) => path.split('/')[2]))
+    const unknown = [...tops].filter(
+      (top) => !['app', 'features', 'shared'].includes(top) && !ROOT_FILES.includes(top),
+    )
+    expect(unknown).toEqual([])
   })
 })

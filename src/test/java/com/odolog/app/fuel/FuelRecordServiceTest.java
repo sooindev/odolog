@@ -430,10 +430,10 @@ class FuelRecordServiceTest {
         FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
         // 1000km ÷ (80 - 30)L = 20.00. 초기화 무시 시 11,000km 구간 포함
-        assertThat(summary.totalDistance()).isEqualTo(1000);
         assertThat(summary.averageEfficiency()).isEqualByComparingTo("20.00");
 
-        // 건수·비용·주유량은 전체 기준. 초기화 대상은 연비만
+        // 건수·비용·주유량·주행은 전체 기준. 초기화 대상은 연비만
+        assertThat(summary.totalDistance()).isEqualTo(11000);
         assertThat(summary.recordCount()).isEqualTo(5);
         assertThat(summary.totalCost()).isEqualTo(520000);
         assertThat(summary.totalLiters()).isEqualByComparingTo("260.00");
@@ -455,7 +455,8 @@ class FuelRecordServiceTest {
         FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
 
         assertThat(summary.averageEfficiency()).isNull();
-        assertThat(summary.totalDistance()).isNull();
+        // 통계 칸의 주행은 초기화와 무관
+        assertThat(summary.totalDistance()).isEqualTo(10000);
     }
 
     @Test

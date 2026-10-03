@@ -13,10 +13,13 @@ import com.odolog.app.user.service.PasswordResetMailer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -46,6 +49,8 @@ public class PasswordResetService {
     private final PasswordResetMailer mailer;
     private final LoginAttemptLimiter rateLimiter;
     private final LoginSessionRegistry sessionRegistry;
+    private final TaskExecutor taskExecutor;
+    private final TransactionTemplate transactionTemplate;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom random = new SecureRandom();
     private final Clock clock;
@@ -56,9 +61,11 @@ public class PasswordResetService {
                                 PasswordResetTokenRepository tokenRepository,
                                 PasswordResetMailer mailer,
                                 LoginAttemptLimiter rateLimiter,
-                                LoginSessionRegistry sessionRegistry) {
+                                LoginSessionRegistry sessionRegistry,
+                                TaskExecutor taskExecutor,
+                                PlatformTransactionManager transactionManager) {
         this(userRepository, tokenRepository, mailer, rateLimiter, sessionRegistry,
-                Clock.systemDefaultZone());
+                taskExecutor, transactionManager, Clock.systemDefaultZone());
     }
 
     PasswordResetService(UserRepository userRepository,
@@ -66,23 +73,40 @@ public class PasswordResetService {
                          PasswordResetMailer mailer,
                          LoginAttemptLimiter rateLimiter,
                          LoginSessionRegistry sessionRegistry,
+                         TaskExecutor taskExecutor,
+                         PlatformTransactionManager transactionManager,
                          Clock clock) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.mailer = mailer;
         this.rateLimiter = rateLimiter;
         this.sessionRegistry = sessionRegistry;
+        this.taskExecutor = taskExecutor;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.clock = clock;
     }
 
-    /** 재설정 링크 발송. 없는 주소도 같은 정상 응답(가입 여부 노출 방지) */
-    @Transactional
+    /**
+     * 재설정 링크 발송. 없는 주소도 같은 정상 응답(가입 여부 노출 방지)
+     * 횟수 집계만 요청 스레드에서. 조회·토큰 저장은 다른 스레드라 가입 여부와 무관하게 같은 응답 시간
+     */
     public void request(String email) {
         String limitKey = RATE_LIMIT_PREFIX + email;
         rateLimiter.acquire(limitKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
 
+        taskExecutor.execute(() -> {
+            try {
+                transactionTemplate.executeWithoutResult(status -> issue(email));
+            } catch (RuntimeException e) {
+                // 응답은 이미 나감. 로그로만
+                log.error("비밀번호 재설정 토큰 발급 실패.", e);
+            }
+        });
+    }
+
+    /** 토큰 발급 + 커밋 후 메일 예약. request 의 다른 스레드에서 트랜잭션 안에 실행 */
+    void issue(String email) {
         // 만료 토큰 정리. 토큰이 쌓이는 유일한 경로라 스케줄러 불필요
-        // 가입 여부 확인 전 실행. 주소 유무와 관계없이 같은 작업
         tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now(clock));
 
         Optional<User> found = userRepository.findByEmail(email);
@@ -98,11 +122,10 @@ public class PasswordResetService {
         LocalDateTime expiresAt = LocalDateTime.now(clock).plusMinutes(VALID_MINUTES);
         tokenRepository.save(new PasswordResetToken(user, hash(token), expiresAt));
 
-        // 실제 발송은 커밋 후 다른 스레드(PasswordResetMailer). 응답 시간 차이 방지
         try {
             mailer.send(user.getEmail(), token, VALID_MINUTES, user.getLanguage());
         } catch (RuntimeException e) {
-            // 발송 예약 실패도 삼킴. 가입된 주소에서만 500 이 나는 것 방지
+            // 토큰은 저장. 메일만 실패
             log.error("비밀번호 재설정 메일 예약 실패.", e);
         }
     }
@@ -121,7 +144,7 @@ public class PasswordResetService {
         token.markUsed(now);
 
         // 로그인 잠금 해제
-        rateLimiter.recordSuccess(token.getUser().getEmail());
+        rateLimiter.recordSuccess(UserService.LOGIN_KEY_PREFIX + token.getUser().getEmail());
 
         // 열려 있던 세션 전부 종료
         sessionRegistry.invalidateAll(token.getUser().getId());

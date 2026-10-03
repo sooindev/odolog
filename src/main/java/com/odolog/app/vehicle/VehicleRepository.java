@@ -18,4 +18,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
     Optional<Vehicle> findByPublicId(String publicId);
 
     boolean existsByOwnerIdAndPlateNumber(Long ownerId, String plateNumber);
+
+    /** 자기 자신 제외 중복 검사. 같은 번호판인지는 DB 정렬 규칙이 판단(전각·악센트까지) */
+    boolean existsByOwnerIdAndPlateNumberAndIdNot(Long ownerId, String plateNumber, Long id);
+
+    /** 가져오기의 같은 차 찾기. 판단 기준은 위와 같이 DB */
+    Optional<Vehicle> findByOwnerIdAndPlateNumber(Long ownerId, String plateNumber);
 }

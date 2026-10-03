@@ -52,9 +52,8 @@ public class VehicleService {
         // 번호판 먼저 처리. 다른 필드 변경 후 exists 전 자동 flush 로 자기 중복 판정 방지
         String plateNumber = InputText.required(request.plateNumber(), "plateNumber");
         if (plateNumber != null && !plateNumber.equals(vehicle.getPlateNumber())) {
-            // 다른 번호판으로 바꿀 때만 검사. DB 와 같은 기준(앞뒤 공백·대소문자 무시)
-            if (!plateNumber.equalsIgnoreCase(vehicle.getPlateNumber().strip())
-                    && vehicleRepository.existsByOwnerIdAndPlateNumber(requesterId, plateNumber)) {
+            // 같은 번호판인지는 DB 가 판단. 자바 비교는 전각 숫자·악센트에서 DB 와 갈려 자기 자신과 409
+            if (vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(requesterId, plateNumber, vehicle.getId())) {
                 throw new ConflictException(ErrorCode.PLATE_DUPLICATE, "이미 등록하신 차량 번호입니다: " + plateNumber);
             }
             vehicle.changePlateNumber(plateNumber);

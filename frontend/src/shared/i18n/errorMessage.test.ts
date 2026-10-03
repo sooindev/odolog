@@ -55,4 +55,16 @@ describe('번역 누락', () => {
       expect(en.errors.codes[code], code).toBeDefined()
     }
   })
+
+  it('가져오기의 중첩 경로는 마지막 조각으로, 끝내 모르는 칸은 기본 문구', () => {
+    const nested = new ApiError(400, '…', {
+      code: 'VALIDATION_FAILED',
+      field: 'vehicles[0].fuelRecords[3].liters',
+    })
+    const unknownField = new ApiError(400, '…', { code: 'VALIDATION_FAILED', field: 'vehicles[0]' })
+
+    expect(errorMessage(nested, ko, 'x')).toBe('주유량 값을 확인해 주세요.')
+    // 영문 경로를 문장에 넣지 않음
+    expect(errorMessage(unknownField, ko, '가져오지 못했습니다.')).toBe('가져오지 못했습니다.')
+  })
 })

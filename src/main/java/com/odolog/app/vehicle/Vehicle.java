@@ -16,6 +16,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
+import org.hibernate.annotations.ColumnDefault;
 
 
 @Entity
@@ -62,6 +64,15 @@ public class Vehicle extends BaseTimeEntity {
 
     @Column(nullable = false)
     private int odometer;
+
+    /**
+     * 낙관적 잠금. 행 전체를 다시 쓰므로 동시 수정 시 늦게 커밋한 쪽이 올라간 주행거리를 되돌림
+     * 기존 행은 0 으로 채움(ddl-auto 가 컬럼 추가 시 사용)
+     */
+    @Version
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private long version;
 
 
     protected Vehicle() {

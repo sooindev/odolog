@@ -62,6 +62,19 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("로그인 시도는 login: 접두사 키로 센다 — 이메일 칸에 다른 용도의 키를 넣어 남을 잠그지 못하게")
+    void loginUsesItsOwnLimiterKey() {
+        when(userRepository.findByEmail("password-check:1")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.login(new LoginRequest("password-check:1", "x")))
+                .isInstanceOf(AuthenticationFailedException.class);
+
+        // 비밀번호 확인 키(password-check:1)와 겹치지 않음
+        verify(loginAttemptLimiter).acquire(eq("login:password-check:1"), eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
+        verify(loginAttemptLimiter, never()).acquire(eq("password-check:1"), any(), any());
+    }
+
+    @Test
     @DisplayName("회원가입 시 비밀번호는 암호화되어 저장된다")
     void signUpEncodesPassword() {
         SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", "닉네임", null, null, null, null);

@@ -30,10 +30,12 @@ function DateWheel({
   id,
   value,
   onChange,
+  ariaLabel,
 }: {
   id: string
   value: string
   onChange: (value: string) => void
+  ariaLabel?: string
 }) {
   const { t, f, locale, timeZone } = useI18n()
   const [open, setOpen] = useState(false)
@@ -79,6 +81,7 @@ function DateWheel({
         id={id}
         type="button"
         aria-expanded={open}
+        aria-label={ariaLabel === undefined ? undefined : `${ariaLabel}, ${f.date(value)}`}
         className={cn(controlClassName, 'flex items-center justify-between text-left')}
         onClick={() => setOpen((current) => !current)}
       >
@@ -228,12 +231,15 @@ export function DateInput({
   value,
   onChange,
   required,
+  ariaLabel,
 }: {
   id: string
   value: string
   onChange: (value: string) => void
   /** 네이티브 입력 전용. 휠은 빈 값 불가 */
   required?: boolean
+  /** label 로 이름을 줄 수 없는 자리 전용 */
+  ariaLabel?: string
 }) {
   const { timeZone } = useI18n()
   // 초기값은 useState 초기화 함수에서. 첫 프레임 컴포넌트 교체 방지
@@ -254,6 +260,7 @@ export function DateInput({
         id={id}
         type="date"
         required={required}
+        aria-label={ariaLabel}
         // 오늘까지만(계정 시간대). 휠·서버와 같은 선
         max={todayString(timeZone)}
         className={controlClassName}
@@ -263,5 +270,5 @@ export function DateInput({
     )
   }
 
-  return <DateWheel id={id} value={value} onChange={onChange} />
+  return <DateWheel id={id} value={value} onChange={onChange} ariaLabel={ariaLabel} />
 }

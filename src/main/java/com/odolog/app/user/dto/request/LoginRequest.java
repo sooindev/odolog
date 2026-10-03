@@ -13,7 +13,9 @@ public record LoginRequest(
         @Pattern(regexp = InputLimits.EMAIL_CHARS)
         String email,
 
+        // 확인용 칸도 상한. 긴 문자열로 BCrypt·메모리 낭비 방지
         @NotBlank
+        @Size(max = InputLimits.MAX_PASSWORD_LENGTH)
         String password
 ) {
 }

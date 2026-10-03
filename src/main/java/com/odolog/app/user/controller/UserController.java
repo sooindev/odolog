@@ -24,6 +24,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.HexFormat;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -57,9 +61,24 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(user));
     }
 
-    /** X-Forwarded-For 미사용. 신뢰할 프록시가 없어 헤더 조작으로 우회 가능 */
-    private String clientIp(HttpServletRequest request) {
-        return request.getRemoteAddr();
+    /**
+     * X-Forwarded-For 미사용. 신뢰할 프록시가 없어 헤더 조작으로 우회 가능
+     * IPv6 는 앞 64비트로 묶음. 한 가입자가 받는 /64 안에서 주소만 바꿔 우회하는 것 방지
+     */
+    static String clientIp(HttpServletRequest request) {
+        String address = request.getRemoteAddr();
+        if (address == null || !address.contains(":")) {
+            return address;
+        }
+        try {
+            byte[] bytes = InetAddress.getByName(address).getAddress();
+            if (bytes.length != 16) {
+                return address;
+            }
+            return HexFormat.of().formatHex(bytes, 0, 8) + "/64";
+        } catch (UnknownHostException e) {
+            return address;
+        }
     }
 
     @PostMapping("/login")

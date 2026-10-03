@@ -213,7 +213,8 @@ class VehicleServiceTest {
 
         vehicleService.update(1L, "V10", new VehicleUpdateRequest("12가3456", null, null, null));
 
-        verify(vehicleRepository, never()).existsByOwnerIdAndPlateNumber(any(), any());
+        // 판단은 DB 에. 자기 자신은 빼고 묻는다
+        verify(vehicleRepository).existsByOwnerIdAndPlateNumberAndIdNot(1L, "12가3456", 10L);
         assertThat(vehicle.getPlateNumber()).isEqualTo("12가3456");
     }
 
@@ -222,7 +223,7 @@ class VehicleServiceTest {
     void updateDuplicatePlateNumberFails() {
         Vehicle vehicle = createVehicle(10L, createOwner(1L));
         when(vehicleRepository.findByPublicId("V10")).thenReturn(Optional.of(vehicle));
-        when(vehicleRepository.existsByOwnerIdAndPlateNumber(1L, "99하9999")).thenReturn(true);
+        when(vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(1L, "99하9999", 10L)).thenReturn(true);
 
         assertThatThrownBy(() -> vehicleService.update(1L, "V10",
                 new VehicleUpdateRequest("99하9999", null, null, null)))

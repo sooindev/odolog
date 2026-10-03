@@ -1,5 +1,6 @@
 package com.odolog.app.user.dto.request.password;
 
+import com.odolog.app.common.validation.InputLimits;
 import com.odolog.app.common.validation.MaxBytes;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.Size;
 public record ChangePasswordRequest(
 
         @NotBlank
+        @Size(max = InputLimits.MAX_PASSWORD_LENGTH)
         String currentPassword,
 
         @NotBlank

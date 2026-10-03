@@ -104,13 +104,17 @@ class CsrfTokenFilterTest {
     }
 
     @Test
-    @DisplayName("/api 밖은 검사하지 않는다")
-    void skipsNonApiPaths() throws Exception {
-        // swagger-ui·정적 파일은 검사 제외
-        MockFilterChain chain = new MockFilterChain();
+    @DisplayName("경로와 무관하게 쓰기 요청은 검사한다 — 인코딩·경로 매개변수로 /api 비교를 비껴가지 못하게")
+    void checksEncodedPaths() throws Exception {
+        // 스프링은 /%61pi/users 와 /api;x=1/users 를 /api/users 로 라우팅
+        for (String uri : new String[]{"/%61pi/users", "/api;x=1/users", "/swagger-ui.html"}) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request("POST", "/swagger-ui.html"), new MockHttpServletResponse(), chain);
+            filter.doFilter(request("POST", uri), response, chain);
 
-        assertThat(chain.getRequest()).isNotNull();
+            assertThat(response.getStatus()).as(uri).isEqualTo(403);
+            assertThat(chain.getRequest()).as(uri).isNull();
+        }
     }
 }

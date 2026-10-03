@@ -143,4 +143,18 @@ class VehicleRepositoryTest {
         assertThatThrownBy(() -> vehicle.updateOdometer(14999))
                 .isInstanceOf(ConflictException.class);
     }
+
+    @Test
+    @DisplayName("같은 번호판인지는 DB 정렬 규칙이 판단한다 — 전각 숫자도 같은 번호판, 자기 자신은 빼고")
+    void plateEqualityFollowsCollation() {
+        Vehicle mine = new Vehicle(owner, "12가3456", "현대", "아반떼", 2020);
+        em.persist(mine);
+        em.flush();
+        em.clear();
+
+        // 자바 equalsIgnoreCase 로는 다르다고 보던 값
+        assertThat(vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(owner.getId(), "１２가3456", mine.getId()))
+                .isFalse();
+        assertThat(vehicleRepository.findByOwnerIdAndPlateNumber(owner.getId(), "１２가3456")).isPresent();
+    }
 }

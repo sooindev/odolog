@@ -162,6 +162,10 @@ public class FuelRecordService {
 
         FuelEfficiency efficiency = FuelEfficiency.of(records);
 
+        // 주행은 기록·주유량·비용과 같은 전체 기준. 초기화·제외 구간과 무관(B-77)
+        Integer totalDistance = records.size() < 2 ? null
+                : records.get(records.size() - 1).getOdometer() - records.get(0).getOdometer();
+
         // 오름차순의 마지막 = 최근
         String latestId = records.isEmpty() ? null : records.get(records.size() - 1).getPublicId();
 
@@ -176,7 +180,7 @@ public class FuelRecordService {
 
         // 빠진 구간 수는 평균에서 뺀 개수 그대로 사용
         return new FuelSummaryResponse(records.size(), totalCost, currency, otherCurrency, totalLiters,
-                efficiency.distance(), efficiency.average(), latestId, resetPointId,
+                totalDistance, efficiency.average(), latestId, resetPointId,
                 efficiency.missingSegments(), efficiency.excludedSegments(),
                 // 이미 읽은 records 재사용. 추가 쿼리 없음
                 FuelEfficiency.trend(records, TREND_POINTS).stream()

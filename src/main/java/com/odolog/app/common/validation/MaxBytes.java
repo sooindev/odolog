@@ -17,7 +17,7 @@ import static java.lang.annotation.ElementType.RECORD_COMPONENT;
  * BCrypt 72바이트 상한 대응
  */
 @Documented
-@Constraint(validatedBy = com.odolog.app.common.validation.MaxBytesValidator.class)
+@Constraint(validatedBy = MaxBytesValidator.class)
 @Target({FIELD, PARAMETER, RECORD_COMPONENT, ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MaxBytes {

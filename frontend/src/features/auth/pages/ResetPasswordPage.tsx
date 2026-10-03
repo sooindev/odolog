@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 
 import { confirmPasswordReset } from '@/features/auth/api/endpoints'
+import { useAuth } from '@/features/auth/context/AuthContext'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { Button } from '@/shared/ui/base/button'
@@ -17,6 +18,7 @@ export function ResetPasswordPage() {
   const { t } = useI18n()
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const { replaceUser } = useAuth()
   const token = params.get('token')
 
   const [newPassword, setNewPassword] = useState('')
@@ -38,6 +40,8 @@ export function ResetPasswordPage() {
 
     try {
       await confirmPasswordReset({ token: token ?? '', newPassword })
+      // 서버가 모든 세션을 끊음. 화면도 로그아웃 상태로 맞춰야 로그인 화면이 다른 곳으로 보내지 않음
+      replaceUser(null)
       // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
       navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
     } catch (caught) {

@@ -7,6 +7,7 @@ import com.odolog.app.vehicle.dto.VehicleResponse;
 import com.odolog.app.common.auth.LoginUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 목록·삭제는 다른 기능의 기록을 함께 다뤄 garage 가 담당 */
+// 두 컨트롤러가 같은 주소를 나눠 맡음. 문서에서는 한 묶음
+@Tag(name = "vehicles")
 @RestController
 @RequestMapping("/api/vehicles")
 public class VehicleController {

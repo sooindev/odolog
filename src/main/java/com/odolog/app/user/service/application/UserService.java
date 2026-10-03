@@ -29,6 +29,9 @@ public class UserService {
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    /** 로그인 시도 키. 접두사 없이 이메일만 쓰면 다른 용도의 키("password-check:1")와 겹침 */
+    public static final String LOGIN_KEY_PREFIX = "login:";
+
     /** 로그인·가입·재설정과 공용 리미터, 키만 구분. 세션 사용자 id 기준 */
     private static final String PASSWORD_CHECK_KEY_PREFIX = "password-check:";
 
@@ -75,7 +78,7 @@ public class UserService {
 
     public User login(LoginRequest request) {
         // 검증보다 먼저 집계. 잠긴 동안은 맞는 비밀번호도 거절
-        loginAttemptLimiter.acquire(request.email(), ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
+        loginAttemptLimiter.acquire(LOGIN_KEY_PREFIX + request.email(), ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
 
         User user = userRepository.findByEmail(request.email()).orElse(null);
 
@@ -87,7 +90,7 @@ public class UserService {
             throw new AuthenticationFailedException(ErrorCode.LOGIN_FAILED, "이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        loginAttemptLimiter.recordSuccess(request.email());
+        loginAttemptLimiter.recordSuccess(LOGIN_KEY_PREFIX + request.email());
         return user;
     }
 

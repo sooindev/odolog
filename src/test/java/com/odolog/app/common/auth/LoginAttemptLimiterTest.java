@@ -4,11 +4,13 @@ import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.TooManyRequestsException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Map;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -194,5 +196,28 @@ class LoginAttemptLimiterTest {
         assertThat(pool.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
 
         assertThat(passed.get()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("서로 다른 키가 상한을 넘게 쏟아져도 한 번만 시도한 키부터 버리고 잠긴 키는 남긴다")
+    void dropsOneShotKeysWhenFlooded() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());
+        for (int i = 0; i < 11; i++) {
+            try {
+                limiter.acquire("login:victim@x.com", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "잠김.");
+            } catch (TooManyRequestsException expected) {
+                // 11번째에 잠김
+            }
+        }
+
+        // 10분 안의 서로 다른 키 대량 유입
+        for (int i = 0; i < 100_002; i++) {
+            limiter.acquire("password-reset:flood" + i + "@x.com", ErrorCode.TOO_MANY_RESET_REQUESTS, "많음.");
+        }
+
+        Map<?, ?> map = (Map<?, ?>) ReflectionTestUtils.getField(limiter, "attempts");
+        assertThat(map.size()).isLessThan(100_000);
+        assertThatThrownBy(() -> limiter.acquire("login:victim@x.com", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "잠김."))
+                .isInstanceOf(TooManyRequestsException.class);
     }
 }

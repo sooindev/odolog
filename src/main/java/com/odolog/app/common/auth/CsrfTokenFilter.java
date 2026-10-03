@@ -60,12 +60,6 @@ public class CsrfTokenFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** /api 밖(정적 파일·swagger)은 검사 제외 */
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith("/api/");
-    }
-
     private Optional<String> readCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {

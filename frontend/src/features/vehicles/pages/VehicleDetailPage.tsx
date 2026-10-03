@@ -44,6 +44,9 @@ export function VehicleDetailPage() {
     setData: setVehicle,
   } = useAsyncData(load, t.vehicles.detail.loadFailed)
 
+  // 주행거리 409 문구. 폼은 주행거리 key 로 재생성되므로 재조회 뒤에도 남게 여기 보관
+  const [odometerConflict, setOdometerConflict] = useState<string | null>(null)
+
   // 정비 이력 변경 시 증가. 다음 정비 카드 재생성
   const [maintenanceVersion, setMaintenanceVersion] = useState(0)
   // 주유 요약 카드 재생성용
@@ -120,6 +123,12 @@ export function VehicleDetailPage() {
             key={`odometer-form-${vehicle.odometer}`}
             vehicle={vehicle}
             onUpdated={setVehicle}
+            conflict={odometerConflict}
+            onConflict={(message) => {
+              setOdometerConflict(message)
+              // 다른 곳에서 값이 오름. 최신 값을 받아 입력 기준도 맞춤
+              if (message !== null) reloadVehicle()
+            }}
           />
 
           {/* 응답으로 바로 교체. 재조회 불필요 */}
@@ -265,9 +274,14 @@ function OdometerHero({ odometer }: { odometer: number }) {
 function OdometerForm({
   vehicle,
   onUpdated,
+  conflict,
+  onConflict,
 }: {
   vehicle: VehicleResponse
   onUpdated: (vehicle: VehicleResponse) => void
+  /** 직전 409 문구. 현재 값은 다시 불러온 vehicle 로 그림 */
+  conflict: string | null
+  onConflict: (message: string | null) => void
 }) {
   const { t, f, unitSystem } = useI18n()
   // 입력칸은 화면 단위. 손대지 않았으면 저장값(km) 그대로 써서 왕복 반올림 오차 차단
@@ -279,6 +293,7 @@ function OdometerForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+    onConflict(null)
 
     const next = odometer === initial ? vehicle.odometer : toKm(unitSystem, Number(odometer))
 
@@ -307,13 +322,13 @@ function OdometerForm({
     try {
       onUpdated(await updateOdometer(vehicle.id, { odometer: next, force }))
     } catch (caught) {
-      // 409 = 다른 곳에서 값이 오른 경우. 현재 값 함께 표시
+      // 409 = 다른 곳에서 값이 오른 경우. 부모가 다시 불러오고 현재 값과 함께 표시
       const message = errorMessage(caught, t, t.vehicles.odometer.failed)
-      setError(
-        caught instanceof ApiError && caught.status === 409
-          ? t.vehicles.odometer.conflict(message, f.distance(vehicle.odometer))
-          : message,
-      )
+      if (caught instanceof ApiError && caught.status === 409) {
+        onConflict(message)
+      } else {
+        setError(message)
+      }
     } finally {
       setPending(false)
     }
@@ -346,6 +361,9 @@ function OdometerForm({
           </Field>
 
           {error !== null && <ErrorText message={error} />}
+          {conflict !== null && (
+            <ErrorText message={t.vehicles.odometer.conflict(conflict, f.distance(vehicle.odometer))} />
+          )}
         </form>
       </CardContent>
     </Card>

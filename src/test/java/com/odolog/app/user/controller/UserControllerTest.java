@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -341,5 +342,19 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("가입 시도 키는 IPv6 를 앞 64비트로 묶는다 — 한 가입자의 주소 범위 안에서 바꿔 가며 우회하지 못하게")
+    void groupsIpv6ByPrefix() {
+        MockHttpServletRequest a = new MockHttpServletRequest();
+        a.setRemoteAddr("2001:db8:1:2:aaaa::1");
+        MockHttpServletRequest b = new MockHttpServletRequest();
+        b.setRemoteAddr("2001:db8:1:2:bbbb::9");
+        MockHttpServletRequest v4 = new MockHttpServletRequest();
+        v4.setRemoteAddr("192.0.2.1");
+
+        assertThat(UserController.clientIp(a)).isEqualTo(UserController.clientIp(b));
+        assertThat(UserController.clientIp(v4)).isEqualTo("192.0.2.1");
     }
 }

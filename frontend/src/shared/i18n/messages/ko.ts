@@ -86,10 +86,12 @@ export const ko = {
       NOT_FOUND: '요청한 주소를 찾을 수 없습니다.',
       METHOD_NOT_ALLOWED: '허용되지 않는 요청 방식입니다.',
       UNSUPPORTED_MEDIA_TYPE: '지원하지 않는 요청 형식입니다.',
+      PAYLOAD_TOO_LARGE: '보낸 내용이 너무 큽니다. 파일 크기를 확인해 주세요.',
       EMAIL_DUPLICATE: '이미 가입된 이메일입니다.',
       PLATE_DUPLICATE: '이미 등록하신 차량 번호입니다.',
       ODOMETER_DECREASE: '주행거리는 줄어들 수 없습니다.',
       DUPLICATE_VALUE: '이미 등록된 값입니다. 새로고침 후 다시 시도해 주세요.',
+      CONCURRENT_UPDATE: '다른 곳에서 먼저 바뀌었습니다. 새로고침 후 다시 시도해 주세요.',
       TOO_MANY_LOGIN_ATTEMPTS: (minutes: number) =>
         `로그인 시도가 너무 많습니다. ${minutes}분 후 다시 시도해 주세요.`,
       TOO_MANY_SIGNUP_ATTEMPTS: (minutes: number) =>
@@ -420,6 +422,9 @@ export const ko = {
       submit: '저장',
       nothingPicked: '고른 항목이 없습니다. 기억나는 것 하나만 골라도 됩니다.',
       failed: '저장하지 못했습니다.',
+      /** 일부만 저장. 저장된 줄은 이미 '모름' 으로 돌아가 있음 */
+      partlySaved: (saved: number, reason: string) =>
+        `${saved}건은 저장했고 나머지는 저장하지 못했습니다. ${reason}`,
     },
     next: {
       title: '다음 정비 시점',

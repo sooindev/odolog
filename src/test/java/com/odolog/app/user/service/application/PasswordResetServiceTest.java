@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -56,6 +57,12 @@ class PasswordResetServiceTest {
     @Mock
     private LoginAttemptLimiter rateLimiter;
 
+    @Mock
+    private PlatformTransactionManager transactionManager;
+
+    /** 다른 스레드 대신 넘겨받은 작업을 모아 두는 실행기. run() 으로 실행 */
+    private final java.util.List<Runnable> scheduled = new java.util.ArrayList<>();
+
     private PasswordResetService service;
     private User user;
 
@@ -65,7 +72,7 @@ class PasswordResetServiceTest {
     @BeforeEach
     void setUp() {
         service = new PasswordResetService(userRepository, tokenRepository, mailer, rateLimiter, sessionRegistry,
-                Clock.fixed(FIXED, ZoneOffset.UTC));
+                scheduled::add, transactionManager, Clock.fixed(FIXED, ZoneOffset.UTC));
 
         user = new User("me@odolog.com", "old-hash", "닉네임");
         ReflectionTestUtils.setField(user, "id", 1L);
@@ -78,6 +85,7 @@ class PasswordResetServiceTest {
         when(userRepository.findByEmail("nobody@odolog.com")).thenReturn(Optional.empty());
 
         service.request("nobody@odolog.com");
+        runScheduled();
 
         verify(mailer, never()).send(anyString(), anyString(), anyInt(), any());
         verify(tokenRepository, never()).save(any());
@@ -89,6 +97,7 @@ class PasswordResetServiceTest {
         when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
 
         service.request("me@odolog.com");
+        runScheduled();
 
         // 재발급 시 이전 토큰 폐기
         verify(tokenRepository).deleteByUserId(1L);
@@ -108,6 +117,7 @@ class PasswordResetServiceTest {
         when(userRepository.findByEmail("me@odolog.com")).thenReturn(Optional.of(user));
 
         service.request("me@odolog.com");
+        runScheduled();
 
         ArgumentCaptor<String> mailed = ArgumentCaptor.forClass(String.class);
         verify(mailer).send(anyString(), mailed.capture(), anyInt(), any());
@@ -133,7 +143,7 @@ class PasswordResetServiceTest {
         assertThat(user.getPassword()).isNotEqualTo("old-hash");
         assertThat(token.getUsedAt()).isEqualTo(NOW);
         // 재설정 성공 시 로그인 잠금 해제
-        verify(rateLimiter).recordSuccess("me@odolog.com");
+        verify(rateLimiter).recordSuccess("login:me@odolog.com");
         // 열려 있던 세션 전부 종료
         verify(sessionRegistry).invalidateAll(1L);
     }
@@ -192,7 +202,24 @@ class PasswordResetServiceTest {
                 .when(mailer).send(anyString(), anyString(), anyInt(), any());
 
         service.request("me@odolog.com");
+        runScheduled();
 
         verify(tokenRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("요청 스레드는 횟수만 세고 조회·저장은 하지 않는다 — 응답 시간이 가입 여부를 알려주지 않게")
+    void requestThreadDoesNoAccountWork() {
+        service.request("me@odolog.com");
+
+        // 가입 여부와 무관하게 같은 일만 하고 반환
+        verify(rateLimiter).acquire(eq("password-reset:me@odolog.com"), any(), anyString());
+        org.mockito.Mockito.verifyNoInteractions(userRepository, tokenRepository, mailer);
+        assertThat(scheduled).hasSize(1);
+    }
+
+    private void runScheduled() {
+        scheduled.forEach(Runnable::run);
+        scheduled.clear();
     }
 }

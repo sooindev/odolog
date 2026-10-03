@@ -24,10 +24,7 @@ import com.odolog.app.common.InputText;
 
 import java.time.LocalDate;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -70,11 +67,6 @@ public class AccountRestoreService {
         rejectOversized(request);
         rejectFutureDates(userToday.of(owner), request);
 
-        Map<String, Vehicle> byPlate = new LinkedHashMap<>();
-        for (Vehicle vehicle : vehicleRepository.findAllByOwnerId(userId)) {
-            byPlate.put(plateKey(vehicle.getPlateNumber()), vehicle);
-        }
-
         int addedVehicles = 0;
         int mergedVehicles = 0;
         int addedMaintenance = 0;
@@ -84,7 +76,8 @@ public class AccountRestoreService {
 
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
             String plateNumber = InputText.required(data.plateNumber(), "plateNumber");
-            Vehicle vehicle = byPlate.get(plateKey(plateNumber));
+            // 같은 차인지는 DB 정렬 규칙으로. 파일 안에서 앞서 만든 차도 찾음(IDENTITY 라 저장 즉시 INSERT)
+            Vehicle vehicle = vehicleRepository.findByOwnerIdAndPlateNumber(userId, plateNumber).orElse(null);
             boolean created = vehicle == null;
 
             if (created) {
@@ -92,7 +85,6 @@ public class AccountRestoreService {
                         InputText.required(data.manufacturer(), "manufacturer"),
                         InputText.required(data.modelName(), "modelName"),
                         data.modelYear()));
-                byPlate.put(plateKey(plateNumber), vehicle);
                 addedVehicles++;
             } else {
                 mergedVehicles++;
@@ -158,8 +150,8 @@ public class AccountRestoreService {
                 addedIntervals++;
             }
 
-            // 기록 추가 후 한 번만. 파일 값과 기존 값 중 큰 쪽
-            vehicle.liftOdometerTo(data.odometer());
+            // 기록 추가 후 한 번만. 파일 값·기록의 주행거리·기존 값 중 가장 큰 쪽(등록과 같은 규칙)
+            vehicle.liftOdometerTo(Math.max(data.odometer(), highestOdometer(data)));
         }
 
         return new AccountRestoreResponse(addedVehicles, addedMaintenance, addedFuel,
@@ -226,9 +218,18 @@ public class AccountRestoreService {
         return record.fueledAt() + "|" + record.odometer();
     }
 
-    /** 같은 차 판정 열쇠. DB 유니크와 같은 기준(앞뒤 공백·대소문자 무시) */
-    private String plateKey(String plateNumber) {
-        return plateNumber.strip().toLowerCase(Locale.ROOT);
+    /** 파일 기록 중 가장 큰 주행거리. 없으면 0 */
+    private int highestOdometer(AccountRestoreRequest.VehicleData data) {
+        int highest = 0;
+        for (AccountRestoreRequest.MaintenanceData record : data.maintenanceRecords()) {
+            if (record.serviceOdometer() != null) {
+                highest = Math.max(highest, record.serviceOdometer());
+            }
+        }
+        for (AccountRestoreRequest.FuelData record : data.fuelRecords()) {
+            highest = Math.max(highest, record.odometer());
+        }
+        return highest;
     }
 
     /** 빈 문자열은 null */

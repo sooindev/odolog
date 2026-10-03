@@ -21,6 +21,15 @@ public final class InputLimits {
      */
     public static final String EMAIL_CHARS = "^[!-~]+$";
 
+    /** 비밀번호 글자 수 상한. 가입·변경과 같은 값. 확인용 칸(로그인·탈퇴)에도 적용 */
+    public static final int MAX_PASSWORD_LENGTH = 100;
+
+    /**
+     * 요청 본문 상한(바이트). 검증 애노테이션은 JSON 을 다 읽은 뒤에 돌아서 그 전에 막음
+     * 가져오기 파일(기록 2만 건, 들여쓰기 포함 약 7MB)이 들어가는 크기
+     */
+    public static final long MAX_BODY_BYTES = 10L * 1024 * 1024;
+
     private InputLimits() {
     }
 }

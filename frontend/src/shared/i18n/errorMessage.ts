@@ -28,10 +28,19 @@ export function errorMessage(caught: unknown, t: Messages, fallback: string): st
     if (caught.field === null) {
       return fallback
     }
-    // 칸 이름은 화면 이름으로. 모르는 칸은 서버가 준 이름 그대로
-    const field = t.errors.fields[caught.field] ?? caught.field
+    // 칸 이름은 화면 이름으로. 가져오기의 vehicles[0].fuelRecords[3].liters 는 마지막 조각으로
+    // 끝내 모르는 칸은 서버 이름(영문 경로)을 문장에 넣지 않고 호출부 문구
+    const field = t.errors.fields[caught.field] ?? t.errors.fields[lastSegment(caught.field)]
+    if (field === undefined) {
+      return fallback
+    }
     return (entry as (field: string) => string)(field)
   }
 
   return fallback
+}
+
+/** 'a[0].b[3].liters' → 'liters' */
+function lastSegment(path: string) {
+  return path.split('.').pop()!.replace(/\[\d+\]$/, '')
 }

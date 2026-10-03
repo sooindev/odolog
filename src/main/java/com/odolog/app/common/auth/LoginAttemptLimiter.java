@@ -27,6 +27,11 @@ public class LoginAttemptLimiter {
     private static final Duration LOCK = Duration.ofMinutes(10);
     /** 만료 항목 정리 기준 크기 */
     private static final int PURGE_THRESHOLD = 10_000;
+    /**
+     * 맵 크기 상한. 10분 안에 서로 다른 키가 쏟아지면 만료 정리로는 못 줄임
+     * 넘으면 한 번만 시도한 키부터 버림. 대입 대상은 시도가 여러 번이라 남음
+     */
+    private static final int HARD_LIMIT = 100_000;
     /** 정리 최소 간격. 기준을 넘긴 뒤 매 요청 전체 순회 방지 */
     private static final Duration PURGE_INTERVAL = Duration.ofMinutes(1);
 
@@ -100,6 +105,9 @@ public class LoginAttemptLimiter {
 
     /** 임의 이메일 대량 입력 시 맵 무한 증가 방지 */
     private void purgeIfCrowded(Instant now) {
+        if (attempts.size() > HARD_LIMIT) {
+            attempts.values().removeIf(attempt -> attempt.attempts <= 1 && attempt.lockedUntil == null);
+        }
         if (attempts.size() < PURGE_THRESHOLD || now.isBefore(lastPurge.plus(PURGE_INTERVAL))) {
             return;
         }

@@ -17,7 +17,7 @@ public record FuelSummaryResponse(
         /** 통화가 달라 totalCost 에서 뺀 기록 수 */
         int otherCurrencyRecordCount,
         BigDecimal totalLiters,
-        /** 평균 계산에 쓴 구간 거리 합(km). 2건 미만이면 null */
+        /** 첫 기록부터 마지막 기록까지 달린 거리(km). 연비 초기화와 무관. 2건 미만이면 null */
         Integer totalDistance,
         /** 평균 연비. 계산 불가면 null */
         BigDecimal averageEfficiency,

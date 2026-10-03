@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 내보낸 JSON 의 복원 요청. 패키지명 restore 는 import 가 예약어라서
+ * 내보낸 JSON 의 복원 요청
  * 사용자 정보는 받지 않음. 내 계정에 기록만 추가
  * 검증은 등록 DTO 와 동일. 파일 경로로 느슨한 데이터 유입 방지
  */
@@ -26,8 +26,8 @@ public record AccountRestoreRequest(
 
         @NotNull
         @Size(max = 50, message = "한 번에 차량 50대까지 가져올 수 있습니다")
-        @Valid
-        List<VehicleData> vehicles
+        // 원소 null 은 400. 없으면 서비스에서 NPE 로 500
+        List<@NotNull @Valid VehicleData> vehicles
 ) {
 
     public record VehicleData(
@@ -37,11 +37,11 @@ public record AccountRestoreRequest(
             @Min(1900) @Max(2100) Integer modelYear,
             @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) int odometer,
 
-            @NotNull @Size(max = 5000) @Valid List<MaintenanceData> maintenanceRecords,
-            @NotNull @Size(max = 5000) @Valid List<FuelData> fuelRecords,
+            @NotNull @Size(max = 5000) List<@NotNull @Valid MaintenanceData> maintenanceRecords,
+            @NotNull @Size(max = 5000) List<@NotNull @Valid FuelData> fuelRecords,
 
             /** 차량별 권장 주기. 옛 파일에는 없을 수 있어 null 허용 */
-            @Size(max = 30) @Valid List<IntervalData> serviceIntervals
+            @Size(max = 30) List<@NotNull @Valid IntervalData> serviceIntervals
     ) {
 
         /** 옛 파일 대비 빈 목록 반환 */
