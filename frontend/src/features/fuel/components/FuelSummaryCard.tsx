@@ -186,7 +186,8 @@ function EfficiencyTrend({
         {t.fuel.summary.trend(trend.length)}
       </figcaption>
 
-      <div className="relative h-20">
+      {/* mt-5: 가장 높은 막대의 말풍선 자리. 없으면 제목과 겹침. padding 이면 평균선 % 기준이 어긋남 */}
+      <div className="relative mt-5 h-20">
         {/* 평균선. 1px 실선 */}
         <div
           aria-hidden="true"
