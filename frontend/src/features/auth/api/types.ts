@@ -14,16 +14,6 @@ export interface LoginRequest {
   password: string
 }
 
-export interface UpdateProfileRequest extends Preferences {
-  nickname?: string
-}
-
-/** 둘 다 필수 */
-export interface ChangePasswordRequest {
-  currentPassword: string
-  newPassword: string
-}
-
 /** 본인 재확인용 비밀번호 */
 export interface WithdrawRequest {
   password: string

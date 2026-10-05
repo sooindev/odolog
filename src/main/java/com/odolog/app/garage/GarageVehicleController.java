@@ -2,14 +2,12 @@ package com.odolog.app.garage;
 
 import com.odolog.app.common.auth.LoginUser;
 import com.odolog.app.common.dto.response.PageResponse;
-import com.odolog.app.garage.service.VehicleListService;
-import com.odolog.app.garage.service.VehicleRemovalService;
-import com.odolog.app.vehicle.dto.VehicleResponse;
+import com.odolog.app.vehicle.dto.response.VehicleResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

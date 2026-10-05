@@ -1,10 +1,10 @@
 package com.odolog.app.account.dto.response;
 
 import com.odolog.app.fuel.domain.FuelRecord;
-import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
-import com.odolog.app.maintenance.domain.entity.ServiceInterval;
-import com.odolog.app.user.domain.entity.User;
-import com.odolog.app.vehicle.Vehicle;
+import com.odolog.app.maintenance.domain.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.ServiceInterval;
+import com.odolog.app.user.domain.User;
+import com.odolog.app.vehicle.domain.Vehicle;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

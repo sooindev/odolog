@@ -1,13 +1,14 @@
 package com.odolog.app.vehicle;
 
-import com.odolog.app.common.exception.ErrorCode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.odolog.app.common.auth.SessionConst;
+import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
-import com.odolog.app.user.domain.entity.User;
+import com.odolog.app.user.domain.User;
+import com.odolog.app.vehicle.domain.Vehicle;
 import com.odolog.app.vehicle.dto.request.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.VehicleRegisterRequest;
 import com.odolog.app.vehicle.dto.request.VehicleUpdateRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,6 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;

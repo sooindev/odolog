@@ -1,6 +1,6 @@
 package com.odolog.app.fuel.dto.response;
 
-import com.odolog.app.fuel.domain.calculation.FuelAnomaly;
+import com.odolog.app.fuel.domain.FuelAnomaly;
 import com.odolog.app.fuel.domain.FuelRecord;
 
 import java.math.BigDecimal;

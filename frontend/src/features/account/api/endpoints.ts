@@ -1,7 +1,22 @@
 import { api } from '@/shared/api/client'
-import type { AccountExport, AccountRestoreResult } from '@/features/account/api/types'
+import type {
+  AccountExport,
+  AccountRestoreResult,
+  ChangePasswordRequest,
+  UpdateProfileRequest,
+} from '@/features/account/api/types'
+import type { UserResponse } from '@/features/auth/api/types'
 
-/** 계정 기록 전체에 걸친 엔드포인트. 백엔드 account 대응 */
+/** 계정 화면의 엔드포인트. 세션을 바꾸는 것(로그인·로그아웃·탈퇴)은 auth */
+
+export function updateProfile(request: UpdateProfileRequest) {
+  return api.patch<UserResponse>('/api/users/me', request)
+}
+
+// 204. 세션 유지
+export function changePassword(request: ChangePasswordRequest) {
+  return api.patch<void>('/api/users/me/password', request)
+}
 
 /** 기록 내보내기. 파일 생성은 화면 담당 */
 export function exportAccount() {

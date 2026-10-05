@@ -1,6 +1,6 @@
 package com.odolog.app.maintenance.dto.response;
 
-import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.ServiceType;
 
 import java.time.LocalDate;

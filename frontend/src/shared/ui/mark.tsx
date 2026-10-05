@@ -1,4 +1,4 @@
-import { cn } from 'cn'
+import { cn } from '@/shared/ui/cn'
 
 /**
  * 계기판 바늘 마크. 파비콘과 같은 도형

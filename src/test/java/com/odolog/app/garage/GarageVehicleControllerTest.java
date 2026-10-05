@@ -1,10 +1,8 @@
 package com.odolog.app.garage;
 
 import com.odolog.app.common.auth.SessionConst;
-import com.odolog.app.garage.service.VehicleListService;
-import com.odolog.app.garage.service.VehicleRemovalService;
-import com.odolog.app.vehicle.Vehicle;
-import com.odolog.app.vehicle.dto.VehicleResponse;
+import com.odolog.app.vehicle.domain.Vehicle;
+import com.odolog.app.vehicle.dto.response.VehicleResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

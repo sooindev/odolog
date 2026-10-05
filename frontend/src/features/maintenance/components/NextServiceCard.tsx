@@ -1,12 +1,13 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import type { I18nValue } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
-import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { queryKeys } from '@/shared/api/queryKeys'
 import { fromKm, toKm } from '@/shared/lib/units'
 import { Button } from '@/shared/ui/base/button'
 import { Field } from '@/shared/ui/form/field'
@@ -23,18 +24,16 @@ const SOON_KM = 1000
 
 /**
  * 종류별 다음 정비 시점. 요청 1번, 이력 있는 종류만
- * 재조회는 부모의 key 변경
+ * 정비·주유·주행거리 변경 시 캐시 무효화로 재조회
  */
 export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
   const i18n = useI18n()
   const { t } = i18n
-  const load = useCallback(() => fetchNextServices(vehicleId), [vehicleId])
-  const {
-    data: results,
-    loading,
-    error,
-    reload,
-  } = useAsyncData(load, t.maintenance.next.loadFailed)
+  const queryClient = useQueryClient()
+  const { data: results, isPending: loading, error } = useQuery({
+    queryKey: queryKeys.nextServices(vehicleId),
+    queryFn: () => fetchNextServices(vehicleId),
+  })
 
   // 주기 편집 중인 종류. 한 번에 하나
   const [editing, setEditing] = useState<ServiceType | null>(null)
@@ -55,15 +54,17 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
           </div>
         )}
 
-        {!loading && error !== null && <ErrorText message={error} />}
+        {!loading && error !== null && (
+          <ErrorText message={errorMessage(error, t, t.maintenance.next.loadFailed)} />
+        )}
 
-        {!loading && error === null && results !== null && results.length === 0 && (
+        {!loading && error === null && results !== undefined && results.length === 0 && (
           <p className="text-caption leading-relaxed text-muted-foreground">
             {t.maintenance.next.empty}
           </p>
         )}
 
-        {!loading && error === null && results !== null && results.length > 0 && (
+        {!loading && error === null && results !== undefined && results.length > 0 && (
           // divide-y: 항목 사이에만 선
           <ul className="divide-y divide-border">
             {results.map((result) => (
@@ -121,7 +122,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                       result={result}
                       onSaved={() => {
                         setEditing(null)
-                        reload()
+                        void queryClient.invalidateQueries({ queryKey: queryKeys.nextServices(vehicleId) })
                       }}
                       onCancel={() => setEditing(null)}
                     />

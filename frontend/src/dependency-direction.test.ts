@@ -12,6 +12,8 @@ const FEATURE_DEPENDENCIES: Record<string, string[]> = {
   vehicles: ['maintenance', 'fuel'],
   maintenance: [],
   fuel: [],
+  // 홈 요약. 정비 종류(ServiceType) 타입만
+  summary: ['maintenance'],
 }
 
 // ?raw 로 소스 읽기. node:fs 는 tsconfig 변경 필요

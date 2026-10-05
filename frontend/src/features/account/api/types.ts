@@ -1,4 +1,17 @@
-/** 백엔드 account DTO 대응(/v3/api-docs). 백엔드 변경 시 함께 수정 */
+/** 백엔드 account·user DTO 대응(/v3/api-docs). 백엔드 변경 시 함께 수정 */
+
+import type { Preferences } from '@/shared/lib/preferences'
+
+/** 보낸 필드만 변경 */
+export interface UpdateProfileRequest extends Preferences {
+  nickname?: string
+}
+
+/** 둘 다 필수 */
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
 
 /** 계정 기록 전체. 백업용이라 계산값(연비·단가) 없음 */
 export interface AccountExport {

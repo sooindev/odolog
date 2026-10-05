@@ -1,14 +1,14 @@
 package com.odolog.app.maintenance;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.odolog.app.common.auth.SessionConst;
 import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
-import com.odolog.app.common.auth.SessionConst;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
+import com.odolog.app.maintenance.domain.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.ServiceType;
-import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
 import com.odolog.app.maintenance.dto.request.MaintenanceRecordRegisterRequest;
 import com.odolog.app.maintenance.dto.response.NextServiceResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,12 +24,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -72,7 +72,6 @@ class MaintenanceRecordControllerTest {
                 .andExpect(jsonPath("$.totalPages").value(1))
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
-
 
     @Test
     @DisplayName("type 을 주면 그 종류만 조회한다 — 이력이 쌓이면 페이지를 넘겨 가며 찾게 된다")
@@ -137,8 +136,6 @@ class MaintenanceRecordControllerTest {
                         .content("{\"intervalKm\":10000,\"intervalMonths\":null}"))
                 .andExpect(status().isBadRequest());
     }
-
-
 
     @Test
     @DisplayName("존재하지 않는 차량에 정비 이력을 등록하려 하면 404")

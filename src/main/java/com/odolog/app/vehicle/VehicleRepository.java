@@ -1,5 +1,6 @@
 package com.odolog.app.vehicle;
 
+import com.odolog.app.vehicle.domain.Vehicle;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

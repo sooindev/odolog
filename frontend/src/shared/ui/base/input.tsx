@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
-import { cn } from "cn"
+import { cn } from "@/shared/ui/cn"
 
 import { controlClassName } from "@/shared/ui/form/control"
 

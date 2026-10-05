@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/shared/ui/cn"
 
 // 옅은 면 + 1px 괘선. 그림자 없음
 // 반복 목록은 카드 대신 괘선 행
@@ -41,8 +41,8 @@ function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {
     <h2
       data-slot="card-title"
       className={cn(
-        // 크기는 임의 값(--text-section 과 동일). cn 이 커스텀 토큰을 색으로 인식해 삭제
-        "font-heading text-[1.0625rem] leading-[1.35] font-semibold tracking-[-0.022em] text-strong",
+        // 크기·행간·굵기·자간은 text-section 토큰이 함께
+        "font-heading text-section text-strong",
         className
       )}
       {...props}

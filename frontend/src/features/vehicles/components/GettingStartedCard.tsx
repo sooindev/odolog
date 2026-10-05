@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 
 import { QuickServiceForm } from '@/features/maintenance/components/QuickServiceForm'
@@ -8,7 +9,7 @@ import type { VehicleResponse } from '@/features/vehicles/api/types'
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { useI18n } from '@/shared/i18n/I18nContext'
-import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { queryKeys } from '@/shared/api/queryKeys'
 
 /** 닫은 안내를 기억하는 키. 기기별 편의라 서버에 두지 않음 */
 const HIDDEN_KEY = 'odolog-getting-started-hidden:'
@@ -29,12 +30,9 @@ type StepKey = 'odometer' | 'services' | 'fuel' | 'efficiency'
  */
 export function GettingStartedCard({
   vehicle,
-  version,
   onServicesSaved,
 }: {
   vehicle: VehicleResponse
-  /** 정비·주유가 바뀔 때마다 증가. 재조회 신호 */
-  version: number
   onServicesSaved: () => void
 }) {
   const { t } = useI18n()
@@ -43,20 +41,17 @@ export function GettingStartedCard({
   // 빠른 정비가 일부 저장된 채 열려 있음. 안내 닫기로 폼이 사라져도 재조회
   const [unreported, setUnreported] = useState(false)
 
-  // 건수만 필요해 한 건씩. version 을 의존성에 넣어 재조회(재생성하면 카드가 깜빡임)
-  const load = useCallback(
-    () =>
+  // 건수만 필요해 한 건씩. 정비·주유가 바뀌면 캐시 무효화로 재조회(재조회 중에도 직전 값 유지라 깜빡이지 않음)
+  const { data } = useQuery({
+    queryKey: queryKeys.gettingStarted(vehicle.id),
+    queryFn: () =>
       Promise.all([fetchRecords(vehicle.id, 0, null, 1), fetchFuelRecords(vehicle.id, 0, 1)]).then(
         ([records, fuels]) => ({ services: records.totalElements, fuels: fuels.totalElements }),
       ),
-    // version 은 본문에서 안 쓰지만 재조회 신호라 의존성에 둠
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [vehicle.id, version],
-  )
-  const { data } = useAsyncData(load, '')
+  })
 
   // 불러오기 전·실패 시에는 그리지 않음. 안내가 틀린 상태로 보이는 것보다 안 보이는 편이 낫다
-  if (hidden || data === null) {
+  if (hidden || data === undefined) {
     return null
   }
 

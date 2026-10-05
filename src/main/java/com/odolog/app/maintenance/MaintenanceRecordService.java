@@ -1,27 +1,25 @@
 package com.odolog.app.maintenance;
 
+import com.odolog.app.common.dto.SortGuard;
 import com.odolog.app.common.exception.ErrorCode;
+import com.odolog.app.common.exception.type.ResourceNotFoundException;
+import com.odolog.app.common.validation.InputText;
+import com.odolog.app.maintenance.domain.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.NextService;
-import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
-import com.odolog.app.maintenance.domain.entity.ServiceInterval;
+import com.odolog.app.maintenance.domain.ServiceInterval;
 import com.odolog.app.maintenance.domain.ServiceType;
-import com.odolog.app.vehicle.Vehicle;
 import com.odolog.app.maintenance.dto.request.MaintenanceRecordRegisterRequest;
 import com.odolog.app.maintenance.dto.request.MaintenanceRecordUpdateRequest;
 import com.odolog.app.maintenance.dto.response.NextServiceResponse;
-import com.odolog.app.maintenance.repository.MaintenanceRecordRepository;
-import com.odolog.app.maintenance.repository.ServiceIntervalRepository;
-import com.odolog.app.common.dto.SortGuard;
-import com.odolog.app.common.exception.type.ResourceNotFoundException;
-import com.odolog.app.user.service.UserToday;
+import com.odolog.app.user.UserToday;
 import com.odolog.app.vehicle.VehicleService;
+import com.odolog.app.vehicle.domain.Vehicle;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Set;
 
 @Service
@@ -75,7 +73,7 @@ public class MaintenanceRecordService {
 
         // 통화는 기록 시점의 사용자 설정
         MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(),
-                blankToNull(request.description()),
+                InputText.optional(request.description()),
                 request.cost(), vehicle.getOwner().getCurrency(),
                 request.serviceOdometer(), request.serviceDate());
 
@@ -118,8 +116,6 @@ public class MaintenanceRecordService {
                 .toList();
     }
 
-
-
     @Transactional
     public MaintenanceRecord update(Long requesterId, String vehicleId, String recordId,
                                      MaintenanceRecordUpdateRequest request) {
@@ -131,7 +127,7 @@ public class MaintenanceRecordService {
             record.changeType(request.type());
         }
         if (request.description() != null) {
-            record.changeDescription(blankToNull(request.description()));
+            record.changeDescription(InputText.optional(request.description()));
         }
         // 비움이 값보다 우선
         if (Boolean.TRUE.equals(request.clearCost())) {
@@ -166,11 +162,6 @@ public class MaintenanceRecordService {
     public void deleteAllOf(Long vehicleId) {
         maintenanceRecordRepository.deleteByVehicleId(vehicleId);
         serviceIntervalRepository.deleteByVehicleId(vehicleId);
-    }
-
-    /** 빈 문자열은 null */
-    private String blankToNull(String value) {
-        return (value == null || value.isBlank()) ? null : value;
     }
 
     private MaintenanceRecord findRecordInVehicle(Long vehicleId, String recordId) {

@@ -2,16 +2,17 @@ package com.odolog.app.fuel;
 
 import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
-import com.odolog.app.fuel.domain.calculation.FuelAnomaly;
-import com.odolog.app.fuel.domain.calculation.FuelEfficiency;
+import com.odolog.app.common.validation.InputText;
+import com.odolog.app.fuel.domain.FuelAnomaly;
+import com.odolog.app.fuel.domain.FuelEfficiency;
 import com.odolog.app.fuel.domain.FuelRecord;
 import com.odolog.app.fuel.dto.request.FuelRecordRegisterRequest;
 import com.odolog.app.fuel.dto.request.FuelRecordUpdateRequest;
 import com.odolog.app.fuel.dto.response.FuelRecordResponse;
 import com.odolog.app.fuel.dto.response.FuelSummaryResponse;
-import com.odolog.app.vehicle.Vehicle;
-import com.odolog.app.user.service.UserToday;
+import com.odolog.app.user.UserToday;
 import com.odolog.app.vehicle.VehicleService;
+import com.odolog.app.vehicle.domain.Vehicle;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -21,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,7 +57,7 @@ public class FuelRecordService {
         FuelRecord record = fuelRecordRepository.save(new FuelRecord(
                 vehicle, request.fueledAt(), request.odometer(),
                 request.liters(), request.totalCost(), vehicle.getOwner().getCurrency(),
-                blankToNull(request.memo())));
+                InputText.optional(request.memo())));
 
         // 계기판 값이 더 크면 차량 주행거리도 갱신
         vehicle.liftOdometerTo(request.odometer());
@@ -94,7 +94,6 @@ public class FuelRecordService {
         return new PageImpl<>(responses, page.getPageable(), page.getTotalElements());
     }
 
-
     @Transactional
     public FuelRecordResponse update(Long requesterId, String vehicleId, String recordId,
                                      FuelRecordUpdateRequest request) {
@@ -118,7 +117,7 @@ public class FuelRecordService {
         } else if (request.totalCost() != null) {
             record.changeTotalCost(request.totalCost());
         }
-        if (request.memo() != null) record.changeMemo(blankToNull(request.memo()));
+        if (request.memo() != null) record.changeMemo(InputText.optional(request.memo()));
         Long id = record.getVehicle().getId();
         if (request.resetPoint() != null) {
             changeResetPoint(id, record, request.resetPoint());
@@ -203,13 +202,6 @@ public class FuelRecordService {
                         .map(point -> new FuelSummaryResponse.TrendPoint(
                                 point.fueledAt(), point.efficiency()))
                         .toList());
-    }
-
-
-
-    /** 빈 문자열은 null */
-    private String blankToNull(String value) {
-        return (value == null || value.isBlank()) ? null : value;
     }
 
     /** 그 차량의 평소 구간. 목록·등록·수정 공통 기준 */

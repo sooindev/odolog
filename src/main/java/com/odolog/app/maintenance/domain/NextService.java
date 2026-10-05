@@ -1,8 +1,5 @@
 package com.odolog.app.maintenance.domain;
 
-import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
-import com.odolog.app.maintenance.domain.entity.ServiceInterval;
-
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;

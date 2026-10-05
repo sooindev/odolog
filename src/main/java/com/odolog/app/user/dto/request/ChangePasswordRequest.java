@@ -1,0 +1,20 @@
+package com.odolog.app.user.dto.request;
+
+import com.odolog.app.common.validation.InputLimits;
+import com.odolog.app.common.validation.MaxBytes;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+/** 둘 다 필수. 새 비밀번호 제한은 가입과 동일 */
+public record ChangePasswordRequest(
+
+        @NotBlank
+        @Size(max = InputLimits.MAX_PASSWORD_LENGTH)
+        String currentPassword,
+
+        @NotBlank
+        @Size(min = 8)
+        @MaxBytes(value = 72, message = "비밀번호는 UTF-8 기준 72바이트를 넘을 수 없습니다 (한글은 글자당 3바이트)")
+        String newPassword
+) {
+}

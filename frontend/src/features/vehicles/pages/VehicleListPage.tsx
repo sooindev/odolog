@@ -8,6 +8,7 @@ import { Pagination } from '@/shared/ui/pagination'
 import { Page } from '@/shared/ui/layout/page'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
+import { errorMessage } from '@/shared/i18n/errorMessage'
 import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
 import { fetchVehicles } from '@/features/vehicles/api/endpoints'
@@ -18,7 +19,7 @@ export function VehicleListPage() {
 
   // page 변경 시 재조회
   const load = useCallback(() => fetchVehicles(page), [page])
-  const { data, loading, error } = useAsyncData(load, t.vehicles.list.loadFailed)
+  const { data, loading, error } = useAsyncData(load)
   usePageInRange(data, setPage)
 
   if (loading) {
@@ -30,7 +31,7 @@ export function VehicleListPage() {
   if (data === null || data.totalElements === 0) {
     return (
       <Page eyebrow="Garage" title={t.vehicles.list.title}>
-        {error !== null ? <ErrorText message={error} /> : <EmptyGarage />}
+        {error !== null ? <ErrorText message={errorMessage(error, t, t.vehicles.list.loadFailed)} /> : <EmptyGarage />}
       </Page>
     )
   }
@@ -50,7 +51,7 @@ export function VehicleListPage() {
     >
       {/* 목록과 페이지 이동 한 덩어리 */}
       <div className="flex flex-col gap-10">
-        {error !== null && <ErrorText message={error} />}
+        {error !== null && <ErrorText message={errorMessage(error, t, t.vehicles.list.loadFailed)} />}
         {/* 카드 대신 괘선 행. 번호판·주행거리 세로 정렬로 여러 대 비교 */}
         <ul className="border-t border-border">
           {data.items.map((vehicle) => (

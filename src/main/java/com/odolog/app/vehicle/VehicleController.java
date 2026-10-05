@@ -1,13 +1,14 @@
 package com.odolog.app.vehicle;
 
+import com.odolog.app.common.auth.LoginUser;
+import com.odolog.app.vehicle.domain.Vehicle;
 import com.odolog.app.vehicle.dto.request.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.VehicleRegisterRequest;
 import com.odolog.app.vehicle.dto.request.VehicleUpdateRequest;
-import com.odolog.app.vehicle.dto.VehicleResponse;
-import com.odolog.app.common.auth.LoginUser;
+import com.odolog.app.vehicle.dto.response.VehicleResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;

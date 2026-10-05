@@ -1,8 +1,9 @@
 package com.odolog.app.vehicle;
 
-import com.odolog.app.maintenance.repository.MaintenanceRecordRepository;
-import com.odolog.app.user.domain.entity.User;
-import com.odolog.app.user.repository.UserRepository;
+import com.odolog.app.maintenance.MaintenanceRecordRepository;
+import com.odolog.app.user.UserRepository;
+import com.odolog.app.user.domain.User;
+import com.odolog.app.vehicle.domain.Vehicle;
 import com.odolog.app.vehicle.dto.request.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.VehicleRegisterRequest;
 import org.junit.jupiter.api.AfterEach;

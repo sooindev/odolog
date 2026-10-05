@@ -1,27 +1,24 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
-import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { queryKeys } from '@/shared/api/queryKeys'
 import { fromKmPerLiter, lowerIsBetter } from '@/shared/lib/units'
 import { fetchFuelSummary, updateFuelRecord } from '@/features/fuel/api/endpoints'
 import type { FuelSummaryResponse } from '@/features/fuel/api/types'
 
-/** 평균 연비 카드. 부모가 key 를 바꿔 재생성 */
-export function FuelSummaryCard({
-  vehicleId,
-  onChanged,
-}: {
-  vehicleId: string
-  /** 기준점 변경 시 부모에 알림. 목록 구간 연비도 변경 */
-  onChanged: () => void
-}) {
+/** 평균 연비 카드. 주유 기록이 바뀌면 캐시 무효화로 재조회 */
+export function FuelSummaryCard({ vehicleId }: { vehicleId: string }) {
   const { t, f } = useI18n()
-  const load = useCallback(() => fetchFuelSummary(vehicleId), [vehicleId])
-  const { data, loading, error } = useAsyncData(load, t.fuel.summary.loadFailed)
+  const queryClient = useQueryClient()
+  const { data, isPending: loading, error } = useQuery({
+    queryKey: queryKeys.fuelSummary(vehicleId),
+    queryFn: () => fetchFuelSummary(vehicleId),
+  })
   const [actionError, setActionError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -31,10 +28,11 @@ export function FuelSummaryCard({
 
     try {
       await updateFuelRecord(vehicleId, recordId, { resetPoint })
-      onChanged()
+      // 기준점이 바뀌면 목록의 구간 연비도 바뀜. 요약·목록 함께
+      await queryClient.invalidateQueries({ queryKey: queryKeys.fuel(vehicleId) })
     } catch (caught) {
       setActionError(errorMessage(caught, t, t.fuel.summary.resetFailed))
-      // 성공 시 부모가 재생성, 실패 시에만 복구
+    } finally {
       setPending(false)
     }
   }
@@ -45,7 +43,7 @@ export function FuelSummaryCard({
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{t.fuel.summary.title}</CardTitle>
         {/* 기록이 없으면 초기화 버튼 없음 */}
-        {data !== null &&
+        {data !== undefined &&
           data.latestRecordId !== null &&
           (data.resetPointId === null ? (
             <Button
@@ -81,13 +79,14 @@ export function FuelSummaryCard({
           </div>
         )}
 
-        {!loading && (error !== null || data === null) && (
-          <ErrorText message={error ?? t.fuel.summary.loadFailed} />
+        {/* 재조회 실패는 직전 값 위에 한 줄 */}
+        {!loading && (error !== null || data === undefined) && (
+          <ErrorText message={errorMessage(error, t, t.fuel.summary.loadFailed)} />
         )}
 
         {actionError !== null && <ErrorText message={actionError} />}
 
-        {!loading && data !== null && (
+        {!loading && data !== undefined && (
           <>
             {data.averageEfficiency === null ? (
               <p className="text-caption leading-relaxed text-muted-foreground">

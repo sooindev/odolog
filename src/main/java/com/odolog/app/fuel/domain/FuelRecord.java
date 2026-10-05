@@ -1,8 +1,8 @@
 package com.odolog.app.fuel.domain;
 
-import com.odolog.app.common.domain.PublicId;
 import com.odolog.app.common.domain.BaseTimeEntity;
-import com.odolog.app.vehicle.Vehicle;
+import com.odolog.app.common.domain.PublicId;
+import com.odolog.app.vehicle.domain.Vehicle;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

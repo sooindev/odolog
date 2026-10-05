@@ -2,8 +2,9 @@ package com.odolog.app.vehicle;
 
 import com.odolog.app.common.exception.type.ConflictException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
-import com.odolog.app.user.domain.entity.User;
-import com.odolog.app.user.repository.UserRepository;
+import com.odolog.app.user.UserRepository;
+import com.odolog.app.user.domain.User;
+import com.odolog.app.vehicle.domain.Vehicle;
 import com.odolog.app.vehicle.dto.request.UpdateOdometerRequest;
 import com.odolog.app.vehicle.dto.request.VehicleRegisterRequest;
 import com.odolog.app.vehicle.dto.request.VehicleUpdateRequest;

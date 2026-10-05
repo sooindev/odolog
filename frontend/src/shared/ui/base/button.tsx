@@ -1,6 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+import { cn } from "@/shared/ui/cn"
 
 // 각진 사각형(반경 토큰 0). rounded-* 미사용
 // 호버·누름은 투명도만. 크기 변화 없음
@@ -18,12 +18,12 @@ const buttonVariants = cva(
         destructive: "text-destructive hover:bg-destructive/10",
         link: "px-0 text-strong underline-offset-4 hover:underline",
       },
-      // 크기는 임의 값. cva 는 클래스를 이어 붙이기만 해서 토큰을 쓰면 base 의 14px 이 우선 적용
+      // 결과가 cn 을 거쳐 size 의 글자 크기가 base 의 14px 을 대체
       size: {
         default: "h-11 px-6",
         xs: "h-7 px-3 text-xs",
-        sm: "h-8 px-3.5 text-[0.8125rem]",
-        lg: "h-13 px-8 text-[0.9375rem]",
+        sm: "h-8 px-3.5 text-caption",
+        lg: "h-13 px-8 text-body",
         icon: "size-10",
         "icon-xs": "size-7",
         "icon-sm": "size-8",

@@ -3,17 +3,15 @@ package com.odolog.app.maintenance;
 import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
-import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.MaintenanceRecord;
 import com.odolog.app.maintenance.domain.ServiceType;
 import com.odolog.app.maintenance.dto.request.MaintenanceRecordRegisterRequest;
 import com.odolog.app.maintenance.dto.request.MaintenanceRecordUpdateRequest;
 import com.odolog.app.maintenance.dto.response.NextServiceResponse;
-import com.odolog.app.maintenance.repository.MaintenanceRecordRepository;
-import com.odolog.app.maintenance.repository.ServiceIntervalRepository;
-import com.odolog.app.vehicle.Vehicle;
-import com.odolog.app.user.domain.entity.User;
-import com.odolog.app.user.service.UserToday;
+import com.odolog.app.user.UserToday;
+import com.odolog.app.user.domain.User;
 import com.odolog.app.vehicle.VehicleService;
+import com.odolog.app.vehicle.domain.Vehicle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,9 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -117,10 +115,6 @@ class MaintenanceRecordServiceTest {
         assertThat(saved.getType()).isEqualTo(ServiceType.ENGINE_OIL);
     }
 
-
-
-
-
     @Test
     @DisplayName("수정 요청에 보낸 필드만 반영된다")
     void updatePartialFields() {
@@ -162,8 +156,6 @@ class MaintenanceRecordServiceTest {
         ReflectionTestUtils.setField(record, "publicId", "R" + id);
         return record;
     }
-
-
 
     @Test
     @DisplayName("전체 조회는 이력이 있는 종류만, 종류별 최신 1건으로 돌려준다")

@@ -1,14 +1,14 @@
 package com.odolog.app.maintenance;
 
-import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
-import com.odolog.app.maintenance.domain.ServiceType;
-import com.odolog.app.maintenance.dto.request.ServiceIntervalRequest;
-import com.odolog.app.maintenance.dto.request.MaintenanceRecordRegisterRequest;
-import com.odolog.app.maintenance.dto.response.MaintenanceRecordResponse;
-import com.odolog.app.maintenance.dto.request.MaintenanceRecordUpdateRequest;
-import com.odolog.app.maintenance.dto.response.NextServiceResponse;
 import com.odolog.app.common.auth.LoginUser;
 import com.odolog.app.common.dto.response.PageResponse;
+import com.odolog.app.maintenance.domain.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.ServiceType;
+import com.odolog.app.maintenance.dto.request.MaintenanceRecordRegisterRequest;
+import com.odolog.app.maintenance.dto.request.MaintenanceRecordUpdateRequest;
+import com.odolog.app.maintenance.dto.request.ServiceIntervalRequest;
+import com.odolog.app.maintenance.dto.response.MaintenanceRecordResponse;
+import com.odolog.app.maintenance.dto.response.NextServiceResponse;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -22,8 +22,8 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;

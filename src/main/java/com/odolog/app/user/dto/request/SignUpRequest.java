@@ -1,9 +1,9 @@
 package com.odolog.app.user.dto.request;
 
-import com.odolog.app.common.validation.MaxBytes;
 import com.odolog.app.common.validation.InputLimits;
-import com.odolog.app.user.domain.type.Language;
-import com.odolog.app.user.domain.type.UnitSystem;
+import com.odolog.app.common.validation.MaxBytes;
+import com.odolog.app.user.domain.Language;
+import com.odolog.app.user.domain.UnitSystem;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

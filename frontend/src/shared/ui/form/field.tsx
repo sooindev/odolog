@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/ui/cn'
 
 import { Label } from '@/shared/ui/base/label'
 
@@ -24,7 +24,6 @@ export function Field({
     <div className={cn('flex flex-col gap-2', className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {/* cn() 밖이라 토큰 사용 가능 */}
       {hint !== undefined && <p className="text-caption text-muted-foreground">{hint}</p>}
     </div>
   )

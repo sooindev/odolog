@@ -4,19 +4,79 @@
 `CLAUDE.md` 에서 갈라져 나왔다 — 그쪽이 3,200줄이 되면서 절반이 이 기록이었고,
 지금 지켜야 할 규칙과 이미 끝난 일이 한 파일에 섞여 있으면 규칙을 찾기 어렵다.
 
-**문서 셋의 역할**
+**문서의 역할** (2026-10-05 에 다섯으로 나눴다)
 
-- `CLAUDE.md` — 지금 지켜야 할 것. 설계 원칙·디자인 시스템·현재 구조·체크리스트
+- `CLAUDE.md` — 지금 지켜야 할 것. 진행 방식·개발 환경·코드 설계 원칙·구조 지도·의존 방향
+- `docs/DESIGN.md` — 프론트엔드 디자인 시스템
+- `docs/QA.md` — 로드맵·눈 확인 체크리스트(Phase 6·7)·완료 판정 기준·백로그
 - `HISTORY.md`(이 파일) — 이미 끝난 것. 무엇을 왜 그렇게 정했는지의 근거
 - `README.md` — 남이 이 저장소를 봤을 때 필요한 것
 
-**이 파일이 말하는 이름은 전부 `CLAUDE.md` 의 것이다.** `규칙 6`, `디자인 시스템 16번`,
-`코드 설계 원칙 2번`, `Phase 6`, `체크리스트`, `백로그` 는 모두 그쪽을 가리킨다.
-"위 항목" 같은 말은 이 파일 안의 다른 기록을 뜻한다.
+**이 파일이 말하는 이름의 출처**: `규칙 6`·`코드 설계 원칙 2번` 은 `CLAUDE.md`, `디자인 시스템 16번` 은 `docs/DESIGN.md`,
+`Phase 6`·`6-B`·`B-12` 같은 항목 번호·`체크리스트`·`백로그` 는 `docs/QA.md` 다. 2026-10-05 이전 항목이 "CLAUDE.md 의 Phase 6"
+이나 "CLAUDE.md 구조 트리"라고 쓴 것은 당시 위치다. "위 항목" 같은 말은 이 파일 안의 다른 기록을 뜻한다.
 
-단계를 완료할 때마다 이 파일 맨 위에 항목을 더하고, `CLAUDE.md` 의 체크리스트에서 그 줄을 지운다.
+단계를 완료할 때마다 이 파일 맨 위에 항목을 더하고, `docs/QA.md` 의 체크리스트에서 그 줄을 지운다.
 
 ---
+
+- [x] 구조 정리 — 기능 폴더 틀 통일 · 차량 상세 조회 캐시 · cn 근본 수정 · 문서 다섯으로 (2026-10-05)
+      → **출발점은 구조 점검이었다.** 나온 것이 셋이다:
+        ① 10-03 의 "형제가 생겼을 때만 폴더" 기준 때문에 기능마다 깊이가 달라(`vehicle/` 는 평평, `user/` 는
+        `service/application/`·`domain/entity/`·`domain/type/` 까지) 같은 종류의 파일이 기능마다 다른 자리에 있었다 ·
+        ② 차량 상세가 재조회를 위해 버전 카운터 넷(`maintenanceVersion`·`fuelVersion`·`fuelListVersion`·`refreshVersion`)과
+        `key` 재생성으로 카드를 다시 만들어, 저장할 때마다 카드가 스켈레톤으로 돌아가고 연비 기준점을 바꾸면 주유 목록이 1쪽으로 튀었다 ·
+        ③ 같은 일을 하는 코드가 여러 벌이었다(공백 정리 `blankToNull` 세 벌, BCrypt 인코더 두 벌, 연비 구간 순회 두 벌)
+      → **백엔드 — 모든 기능이 같은 모양**(사용자 결정). `<feature>/domain/`·`dto/request/`·`dto/response/`, 리포지토리·서비스·
+        컨트롤러는 기능 폴더 바로 아래. 폴더에 파일이 하나뿐이어도 만든다 — **10-03 기준을 뒤집었다.** 폴더 수를 줄이는 것보다
+        어느 기능을 열어도 같은 자리에 같은 것이 있는 쪽이 낫고, 두 번째 파일이 생길 때마다 첫 파일을 옮기는 일도 없어진다.
+        프론트는 기준을 그대로 뒀다(이미 기능마다 모양이 같았다)
+      → **백엔드 그 밖**: `GarageSummary*` → `HomeSummary*`(홈 요약이지 차고 요약이 아니다. URL `/api/summary` 는 그대로) ·
+        `common/web/`(요청마다 도는 필터 둘), `common/validation/`(`InputText`·`CurrencyCode` 도 입력 판정) ·
+        `PasswordEncoderConfig` — BCrypt 빈 하나를 가입·로그인·재설정이 공유(`dummyHash` 가 같은 강도여야 한다, 규칙 15) ·
+        `InputText.optional()` 이 서비스마다 있던 `blankToNull` 세 벌을 대신(strip·빈 값 → null·짝 없는 서로게이트 → `?`).
+        **정비 설명과 주유 메모도 이제 앞뒤 공백을 지운다** ·
+        `UserToday.rejectFuture` 정적 판정을 가져오기가 재사용 · `AccountRestoreService.restore()` 를 단계별로 쪼개고 중복 열쇠를
+        `RestoreKeys` 로 · `fuel/domain/FuelSegment` 가 `FuelEfficiency`·`FuelAnomaly` 의 구간 순회를 한 벌로
+      → **`LoginService` 신설.** 로그인 순서(IP 한도 → 비밀번호 확인 → 세션 저장·`changeSessionId`·등록 → 재확인)가
+        `UserController` 에 있었다. 서비스로 옮기면서 **규칙 13 의 유일한 예외**가 됐다 — 클래스에 `@Transactional(readOnly = true)` 를
+        걸지 않는다. 재확인이 새 트랜잭션이어야 그 사이 커밋된 재설정·변경·탈퇴가 보인다(REPEATABLE READ 스냅숏)
+      → **`SchemaDriftChecker` 를 실행 코드에서 뺐다.** Flyway(10-03) 뒤로는 스키마를 바꾸는 길이 마이그레이션 하나라,
+        대조할 자리는 운영 기동 때의 경고가 아니라 마이그레이션 검증이다. 같은 검사(nullable·유니크 제약 양방향)를 테스트 도우미 `SchemaDrift` 로 옮겨
+        `FlywayMigrationTest` 가 마이그레이션한 스키마에 돌린다 — 어긋남 없음 1개 + 일부러 어긋낸 네 경우(NOT NULL·nullable·
+        유니크 없음·옛 유니크 남음). `SchemaDriftCheckerTest` 는 지웠다
+      → **프론트 — 차량 상세를 TanStack Query 로.** `shared/api/queryClient.ts`·`queryKeys.ts`. 키는 전부 `['vehicles', id, …]` 아래이고,
+        저장 뒤 무엇을 다시 읽을지는 `invalidateAfterMaintenance`·`invalidateAfterFuel` 한 곳이 정한다(기능끼리 import 하지 않으려고 shared).
+        버전 카운터 넷과 재조회용 `key` 를 없앴다. 수정 폼은 여전히 기록 id 로 key(다른 행 덮어쓰기 방지), `OdometerForm` 은
+        주행거리 값으로 key(값이 바뀌면 입력칸을 되돌린다). **눈에 보이는 변화**: 저장 뒤 연비·다음 정비·시작하기 카드가 옛 내용을 둔 채
+        다시 읽는다(스켈레톤은 처음 열 때만, B-65) · 연비 기준점을 찍거나 풀어도 주유 목록이 1쪽으로 튀지 않는다(B-76) ·
+        다시 들어온 차량은 캐시를 바로 보여 주고 새로 읽는다(B-23-1) · 정비 목록의 쪽·필터를 `VehicleDetailPage` 가 들고 있어
+        빠른 정비 저장이 열어 둔 수정 폼을 지우지 않고 1쪽·전체 종류로만 되돌린다(B-33-3-3)
+      → **캐시는 계정을 넘지 않아야 한다.** `AuthProvider` 가 로그인·로그아웃·탈퇴·401 마다 `queryClient.clear()`.
+        다른 계정이 앞 계정의 차량을 캐시로 보지 않는 것을 E2E 로 고정했다 — `clear()` 를 빼고 돌려 실패하는 것까지 확인했다
+      → **프론트 그 밖**: `useRecordList`(정비·주유 목록 카드의 폼 열림·동작 실패·삭제 중 행) · `OdometerHero`·`OdometerForm` 분리 ·
+        프로필 폼 셋(`ProfileForm`·`PasswordForm`·`RegionForm`)과 그 엔드포인트를 `auth` 에서 `account` 로(로그인 상태가 아니라 계정 설정이다) ·
+        `features/summary` 신설(홈 대시보드·차트·`fetchSummary`). `app/HomePage.tsx` 는 세 얼굴 갈림과 등록 권유만 남았다.
+        `FEATURE_DEPENDENCIES` 에 `summary → maintenance`(정비 종류 타입) · 홈·차량 목록은 `useAsyncData` 그대로(오류 객체를 돌려주고 렌더할 때 번역)
+      → **`cn` 을 뿌리에서 고쳤다.** 09-19 부터 "`cn()` 을 거치는 파일은 토큰 대신 임의 값" 으로 피해 다녔고 `cn-usage.test.ts` 가
+        그걸 지켰다. `shared/ui/cn.ts` 가 `createCn` 에 타입 스케일 토큰을 `font-size` 그룹으로 등록해, 이제 `cn('text-caption', 'text-strong')`
+        이 둘 다 남는다. 모든 `cn` import 가 이 파일을 쓰고 `components.json` 의 `aliases.utils` 도 가리킨다. `card`·`label`·`state`·`button`
+        이 다시 토큰을 쓴다(button base 의 `text-[0.875rem]` 은 기본 크기라 남김). 가드는 `shared/ui/cn.test.ts` 로 바뀌었다
+      → **화면을 그려 보는 테스트가 처음 생겼다** — `renderWithProviders` 로 `MaintenanceSection`·`FuelForm`. 전에는 폼 key 누락 같은
+        버그를 코드 점검과 6-B 체크리스트로만 잡았다
+      → **문서를 다섯으로.** `CLAUDE.md` 2,593줄 → 약 470줄. 디자인 시스템은 `docs/DESIGN.md`, Phase 6·7 체크리스트·완료 기준·백로그·로드맵은
+        `docs/QA.md`. 파일마다 한 줄씩 적던 구조 트리(약 1,100줄)는 폴더 단위 지도로 바꾸고 `DocumentationTreeTest` 를 지웠다 —
+        트리가 파일 이동마다 낡았고, 이번처럼 폴더를 크게 옮기면 트리 전체를 다시 써야 했다. 규칙의 경위는 이 파일로만.
+        README 1,117줄 → 약 480줄 — 진행 표와 남은 작업은 `docs/QA.md`·이 파일로, 09-13 결함 표는 이 파일의 09-13 항목으로 옮겼고,
+        2026-10-03 이전 DB 를 맞추는 SQL 은 한 절로 모았다. 트러블슈팅 여섯 건은 그대로 두고 그 뒤 바뀐 것(cn 근본 수정, 재생성 key 제거)만 덧붙였다
+      → **6-B 전에는 새 점검 라운드를 열지 않는다**(`CLAUDE.md` 진행 상황). 10-01~10-04 의 점검이 이어지는 동안 화면은 한 번도
+        사람 눈으로 보지 못했다. 새로 찾은 보안·동시성 문제는 백로그로
+      → **하지 않은 것**: 테스트 설정을 `application-test` 프로파일로 바꾸는 것 — 겹쳐 쓰면 운영 설정이 먼저 읽혀, 테스트 쪽에서 DB 주소
+        한 줄만 빠져도 create-drop 이 운영 DB 에 붙는다. 통째로 가리는 지금 구조와 `ConfigParityTest` 를 유지했다 ·
+        번들 분할 — 508kB 로 Vite 의 500kB 경고를 넘었지만 실패가 아니라 백로그로 · 홈·차량 목록의 TanStack Query 전환(백로그) ·
+        **6-B 눈 확인은 여전히 안 했다**
+      → 테스트 백엔드 364(그대로 — `SchemaDriftCheckerTest`·`DocumentationTreeTest` 를 지우고 `FlywayMigrationTest` 등이 늘었다),
+        프론트 82 → 96(파일 11 → 13), E2E 13 → 14. `tsc -b`·`oxlint`·`vite build` 통과
 
 - [x] 6차 점검 나머지 — 백엔드 14건 · 프론트 20여 건 (2026-10-04)
       → **로그인과 재설정이 겹치면 세션이 살아남았다.** 로그인은 옛 해시로 맞춰 본 뒤(60ms) 세션을 저장하는데, 그 사이
@@ -2017,7 +2077,19 @@
         라이트 블록은 그대로. **브라우저 눈 확인은 사용자 몫이다.**
 
 - [x] 전체 점검에서 찾은 결함 12건 수정 (2026-09-13)
-      → README 의 "남은 작업" 1~4번을 전부 비웠다. 항목별 표는 `README.md` 에 있고,
+      → README 의 "남은 작업" 1~4번을 전부 비웠다. 항목별 표(2026-10-05 에 README 에서 옮겨 왔다):
+        1-1 정비 등록에서 `cost`/`serviceOdometer` 를 빼면 `int` 라 0 이 채워져 201 → `@NotNull Integer`(09-30 에 선택 입력으로 뒤집힘) ·
+        1-2 주행거리 갱신에 `{}` 를 보내면 0 → 영문 모를 409 → `@NotNull Integer` ·
+        1-3 닉네임 `""` 로 수정 가능 → `@Size(min=1,max=30)` + `@Pattern` ·
+        1-4 `?sort=nonexistent` 가 500 → `PropertyReferenceException` 을 400 ·
+        2-1 정비 이력 마지막 페이지의 마지막 1건을 지우면 빈 페이지에 갇힘 → 한 장 물러남 ·
+        2-2 로그아웃 요청이 실패하면 아무 일도 안 일어남 → `finally` 로 상태 비움 ·
+        3-1 정비 이력 정렬에 동점 기준 없음 → `{"serviceDate", "id"}` ·
+        3-2 중복 검사와 저장 사이 경합이 500 → 유니크 위반일 때만 409 ·
+        4-1 최고 비용 동점이면 차트 라벨 둘 → 첫 칸만 ·
+        4-2 전화번호를 안 적어도 `""` 저장 → null(09-29 에 전화번호 수집 자체를 그만둠) ·
+        4-3 `type` 의 `@Column(length = 20)` 이 네이티브 enum 컬럼에서 무시됨 → 숫자 삭제 ·
+        4-4 안 쓰는 `@fontsource-variable/geist` → 제거.
         여기에는 **왜 그렇게 고쳤는지**만 남긴다.
       → **요청 DTO 에서 `int` 는 "안 보냄"을 표현하지 못한다.** 필드가 없으면 Jackson 이
         조용히 0 을 채우고 `@PositiveOrZero` 가 그 0 을 통과시킨다. 정비 이력 등록의

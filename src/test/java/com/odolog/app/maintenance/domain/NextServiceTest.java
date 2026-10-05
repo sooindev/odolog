@@ -1,9 +1,7 @@
 package com.odolog.app.maintenance.domain;
 
-import com.odolog.app.maintenance.domain.entity.MaintenanceRecord;
-import com.odolog.app.maintenance.domain.entity.ServiceInterval;
 import com.odolog.app.maintenance.dto.response.NextServiceResponse;
-import com.odolog.app.vehicle.Vehicle;
+import com.odolog.app.vehicle.domain.Vehicle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;

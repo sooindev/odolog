@@ -1,11 +1,9 @@
 import { api } from '@/shared/api/client'
 import type {
-  ChangePasswordRequest,
   PasswordResetConfirmRequest,
   PasswordResetRequest,
   LoginRequest,
   SignUpRequest,
-  UpdateProfileRequest,
   UserResponse,
   WithdrawRequest,
 } from '@/features/auth/api/types'
@@ -28,15 +26,6 @@ export function login(request: LoginRequest) {
 
 export function logout() {
   return api.post<void>('/api/users/logout')
-}
-
-export function updateProfile(request: UpdateProfileRequest) {
-  return api.patch<UserResponse>('/api/users/me', request)
-}
-
-// 204. 세션 유지
-export function changePassword(request: ChangePasswordRequest) {
-  return api.patch<void>('/api/users/me/password', request)
 }
 
 // 204. 서버가 세션까지 종료

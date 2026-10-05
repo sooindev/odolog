@@ -1,5 +1,5 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
-import { cn } from 'cn'
+import { cn } from '@/shared/ui/cn'
 
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { useTheme } from '@/shared/theme/ThemeContext'

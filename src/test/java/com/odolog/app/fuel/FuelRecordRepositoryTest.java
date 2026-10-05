@@ -2,8 +2,8 @@ package com.odolog.app.fuel;
 
 import com.odolog.app.common.config.JpaAuditingConfig;
 import com.odolog.app.fuel.domain.FuelRecord;
-import com.odolog.app.user.domain.entity.User;
-import com.odolog.app.vehicle.Vehicle;
+import com.odolog.app.user.domain.User;
+import com.odolog.app.vehicle.domain.Vehicle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

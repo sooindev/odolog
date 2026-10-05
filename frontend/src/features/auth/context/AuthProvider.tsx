@@ -1,5 +1,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { AuthContext } from '@/features/auth/context/AuthContext'
 import { setUnauthorizedHandler } from '@/shared/api/client'
@@ -20,6 +21,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   // 로그인·로그아웃·탈퇴가 먼저 끝났는지. 늦게 온 첫 /me 가 그 결과를 덮지 않게
   const sessionDecided = useRef(false)
+  // 계정이 바뀌는 모든 순간에 비움. 다른 계정의 차량·기록이 캐시로 보이지 않게
+  const queryClient = useQueryClient()
 
   // 앱 기동 시 /me 한 번으로 세션 복구
   useEffect(() => {
@@ -46,14 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 세션 만료 시 사용자 정보 비움 → ProtectedRoute 가 /login 으로
   useEffect(() => {
-    setUnauthorizedHandler(() => setUser(null))
-  }, [])
+    setUnauthorizedHandler(() => {
+      setUser(null)
+      queryClient.clear()
+    })
+  }, [queryClient])
 
   const login = useCallback(async (request: LoginRequest) => {
     const me = await requestLogin(request)
     sessionDecided.current = true
+    // 다른 계정으로 바꿔 로그인해도 앞 계정의 캐시가 남지 않게
+    queryClient.clear()
     setUser(me)
-  }, [])
+  }, [queryClient])
 
   // 실패해도 상태는 비움. 호출부의 이동이 막히지 않게
   const logout = useCallback(async () => {
@@ -63,9 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 서버 다운·네트워크 끊김도 로그아웃 처리
     } finally {
       sessionDecided.current = true
+      queryClient.clear()
       setUser(null)
     }
-  }, [])
+  }, [queryClient])
 
   // 탈퇴 실패는 그대로 전달. 지워진 것처럼 보이는 문제 방지
   // 이동과 로그인 상태 지우기를 같은 transition 으로. 라우터 이동은 transition 이라
@@ -77,7 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       leave()
       setUser(null)
     })
-  }, [])
+    queryClient.clear()
+  }, [queryClient])
 
   const value = useMemo(
     () => ({ user, loading, login, logout, withdraw, replaceUser: setUser }),

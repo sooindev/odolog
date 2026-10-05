@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FuelForm } from '@/features/fuel/components/FuelForm'
 import { Button } from '@/shared/ui/base/button'
@@ -7,74 +8,51 @@ import { Pagination } from '@/shared/ui/pagination'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
-import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
 import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
+import { useRecordList } from '@/shared/lib/hooks/useRecordList'
+import { invalidateAfterFuel, queryKeys } from '@/shared/api/queryKeys'
 import { deleteFuelRecord, fetchFuelRecords } from '@/features/fuel/api/endpoints'
 import type { FuelRecordResponse } from '@/features/fuel/api/types'
 
 interface Props {
   vehicleId: string
   currentOdometer: number
-  /** 기록 변경 시 부모에 알림. 연비 요약·차량 주행거리 재조회 */
+  /** 기록 변경 시 부모에 알림. 차량 주행거리 409 문구 정리 */
   onChanged: () => void
 }
 
 export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   const { t, f } = useI18n()
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(0)
-  const [editing, setEditing] = useState<'closed' | 'new' | FuelRecordResponse>('closed')
-  const [actionError, setActionError] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const load = useCallback(() => fetchFuelRecords(vehicleId, page), [vehicleId, page])
-  const { data, loading, error, reload } = useAsyncData(load, t.fuel.loadFailed)
-  usePageInRange(data, setPage)
+  // 페이지를 옮기는 동안 직전 목록 유지. 깜빡임 방지
+  const { data, isPending, error } = useQuery({
+    queryKey: queryKeys.fuelList(vehicleId, page),
+    queryFn: () => fetchFuelRecords(vehicleId, page),
+    placeholderData: keepPreviousData,
+  })
+  usePageInRange(data ?? null, setPage)
+
+  // 삭제 시 다음 기록 연비 상승 안내. 구간이 적으면 서버가 못 잡는 경우 대비
+  const list = useRecordList<FuelRecordResponse>({
+    setPage,
+    remove: (recordId) => deleteFuelRecord(vehicleId, recordId),
+    confirmMessage: t.fuel.deleteConfirm,
+    failedMessage: t.fuel.deleteFailed,
+    afterChange: () => {
+      onChanged()
+      return invalidateAfterFuel(queryClient, vehicleId)
+    },
+  })
+  const { editing, setEditing, deletingId } = list
 
   // 변수로 받아 타입 좁히기
-  const shownError = error ?? actionError
+  const shownError = error !== null ? errorMessage(error, t, t.fuel.loadFailed) : list.actionError
 
   // 전체의 첫 기록. 주행거리 내림차순이라 마지막 장의 마지막 행
   function isFirstRecord(index: number) {
-    return data !== null && !data.hasNext && index === data.items.length - 1
-  }
-
-  function refresh(created = false) {
-    // 새 기록은 주행거리가 커서 첫 장 위쪽. 지금 장에 머물면 저장 실패로 오해
-    if (created) {
-      setPage(0)
-    }
-    setEditing('closed')
-    setActionError(null)
-    reload()
-    onChanged()
-  }
-
-  async function handleDelete(recordId: string) {
-    // 삭제 시 다음 기록 연비 상승 안내. 구간이 적으면 서버가 못 잡는 경우 대비
-    if (!window.confirm(t.fuel.deleteConfirm)) {
-      return
-    }
-
-    setDeletingId(recordId)
-
-    try {
-      await deleteFuelRecord(vehicleId, recordId)
-
-      // 페이지의 마지막 한 건이면 한 장 뒤로. page 변경만으로 재조회
-      if (data !== null && data.items.length === 1 && page > 0) {
-        setEditing('closed')
-        setActionError(null)
-        setPage((current) => current - 1)
-        onChanged()
-      } else {
-        refresh()
-      }
-    } catch (caught) {
-      setActionError(errorMessage(caught, t, t.fuel.deleteFailed))
-    } finally {
-      // 먼저 끝난 삭제가 다른 행의 잠금을 풀지 않게
-      setDeletingId((current) => (current === recordId ? null : current))
-    }
+    return data !== undefined && !data.hasNext && index === data.items.length - 1
   }
 
   return (
@@ -100,7 +78,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                 vehicleId={vehicleId}
                 record={editing === 'new' ? null : editing}
                 defaultOdometer={currentOdometer}
-                onSaved={() => refresh(editing === 'new')}
+                onSaved={() => void list.saved(editing === 'new')}
                 onCancel={() => setEditing('closed')}
               />
             </div>
@@ -109,13 +87,13 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
 
         {shownError !== null && <ErrorText message={shownError} />}
 
-        {loading ? (
+        {isPending ? (
           <div className="flex flex-col gap-4">
             {[0, 1, 2].map((row) => (
               <Skeleton key={row} className="h-12" />
             ))}
           </div>
-        ) : data === null || data.items.length === 0 ? (
+        ) : data === undefined || data.items.length === 0 ? (
           <p className="text-caption text-muted-foreground">{t.fuel.empty}</p>
         ) : (
           <>
@@ -199,7 +177,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleDelete(record.id)}
+                        onClick={() => list.handleDelete(record.id)}
                         disabled={deletingId === record.id}
                       >
                         {deletingId === record.id ? t.common.deleting : t.common.delete}
@@ -215,11 +193,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
               totalPages={data.totalPages}
               hasNext={data.hasNext}
               // 페이지 이동 시 수정 폼·에러 초기화
-              onChange={(next) => {
-                setPage(next)
-                setEditing('closed')
-                setActionError(null)
-              }}
+              onChange={list.changePage}
             />
           </>
         )}

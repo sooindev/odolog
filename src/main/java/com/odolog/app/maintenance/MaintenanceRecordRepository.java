@@ -1,0 +1,37 @@
+package com.odolog.app.maintenance;
+
+import com.odolog.app.maintenance.domain.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.ServiceType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface MaintenanceRecordRepository extends JpaRepository<MaintenanceRecord, Long> {
+
+    Page<MaintenanceRecord> findByVehicleId(Long vehicleId, Pageable pageable);
+
+    /** 종류별 목록 */
+    Page<MaintenanceRecord> findByVehicleIdAndType(Long vehicleId, ServiceType type, Pageable pageable);
+
+    Optional<MaintenanceRecord> findByPublicIdAndVehicleId(String publicId, Long vehicleId);
+
+    /** 종류별 최신 1건용 전체 조회. 종류마다 조회 시 15쿼리 */
+    List<MaintenanceRecord> findByVehicleIdOrderByServiceDateDescIdDesc(Long vehicleId);
+
+    /** 한 사용자의 전체 정비 이력. 홈 요약 전용 */
+    List<MaintenanceRecord> findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(Long ownerId);
+
+    /**
+     * 차량 하나의 행을 DELETE 한 문장으로. 메서드 이름만 쓰면 전부 읽은 뒤 한 줄씩 지움
+     * 앞서 넣은 행이 먼저 반영되게 flush
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("delete from MaintenanceRecord r where r.vehicle.id = :vehicleId")
+    int deleteByVehicleId(@Param("vehicleId") Long vehicleId);
+}

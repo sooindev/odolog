@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { cn } from 'cn'
+import { cn } from '@/shared/ui/cn'
 
 import { controlClassName } from '@/shared/ui/form/control'
 
