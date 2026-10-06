@@ -80,6 +80,8 @@ export function VehicleDetailPage() {
     try {
       await deleteVehicle(id)
       navigate('/vehicles', { replace: true })
+      // 지운 차량의 캐시가 남지 않게
+      queryClient.removeQueries({ queryKey: queryKeys.vehicle(id) })
     } catch (caught) {
       setActionError(errorMessage(caught, t, t.vehicles.detail.deleteFailed))
       // 성공 시 화면 이탈, 실패 시에만 복구

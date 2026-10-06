@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 
 import { updateProfile } from '@/features/account/api/endpoints'
@@ -13,6 +14,7 @@ import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText, NoticeText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
+import { queryKeys } from '@/shared/api/queryKeys'
 import type { Language, UnitSystem } from '@/shared/lib/preferences'
 
 const LANGUAGES: Language[] = ['KO', 'EN']
@@ -26,6 +28,7 @@ function withCurrent(values: string[], current: string) {
 /** 언어·단위·통화·시간대. 저장하면 I18nProvider 가 새 값으로 화면 전체를 다시 그림 */
 export function RegionForm({ user }: { user: UserResponse }) {
   const { replaceUser } = useAuth()
+  const queryClient = useQueryClient()
   const { t, locale } = useI18n()
 
   const [language, setLanguage] = useState(user.language)
@@ -72,6 +75,8 @@ export function RegionForm({ user }: { user: UserResponse }) {
     setPending(true)
     try {
       replaceUser(await updateProfile(request))
+      // 통화·시간대가 바뀌면 연비 요약의 합계·지남 판정이 달라짐. 옛 캐시 버림
+      queryClient.removeQueries({ queryKey: queryKeys.allVehicles() })
       setSaved(true)
     } catch (caught) {
       setFailure({ caught })

@@ -20,8 +20,9 @@ npm run dev     # http://localhost:5173
 |---|---|
 | `npm run dev` | 개발 서버 |
 | `npm run build` | 타입 검사(`tsc -b`) 후 프로덕션 빌드 |
-| `npm run test` | vitest (96개) |
+| `npm run test` | vitest (97개) |
+| `npm run e2e` | 실제 브라우저 E2E (Playwright, 14개). 테스트용 백엔드(18080)와 화면(5174)을 직접 띄운다 |
 | `npm run lint` | oxlint |
 | `npm run preview` | 빌드 결과 미리보기. `/api` 를 8080 으로 넘겨주므로 백엔드가 떠 있어야 한다 |
 
-프로젝트 전체 구조와 설계 결정은 저장소 루트의 `README.md`와 `CLAUDE.md` 참고.
+프로젝트 전체 구조와 설계 결정은 저장소 루트의 `README.md`·`CLAUDE.md`, 디자인 시스템은 `docs/DESIGN.md` 참고.

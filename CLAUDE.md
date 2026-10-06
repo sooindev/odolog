@@ -69,13 +69,19 @@
 - DB: MariaDB, `localhost:3306`, 스키마 `odolog` (utf8mb4 / utf8mb4_unicode_ci). 테스트는 `odolog_test`
 - **스키마는 Flyway 가 만든다**(`src/main/resources/db/migration`). Hibernate 는 `ddl-auto: validate` 로
   엔티티와 맞는지 확인만 하고, 다르면 기동을 막는다.
-  **엔티티를 바꾸면 V4… 마이그레이션을 같이 더한다** — 안 더하면 `FlywayMigrationTest` 가 실패한다.
+  **엔티티를 바꾸면 V5… 마이그레이션을 같이 더한다** — 안 더하면 `FlywayMigrationTest` 가 실패한다.
   그 테스트는 nullable·유니크 제약까지 엔티티와 대조한다(`SchemaDrift` 도우미). Hibernate 검증은 그 둘을 보지 않는다.
-  운영 DB 는 첫 기동 때 V1 을 기준점으로 표시(`baseline-on-migrate`)하고 V2·V3 만 돌았다.
+  운영 DB 는 첫 기동 때 V1 을 기준점으로 표시(`baseline-on-migrate`)하고 V2 부터 돌았다.
+  **운영 스키마가 V1 과 같은지는 2026-10-06 에 한 번 대조했다**(임시 스키마에 V1~V3 를 돌려 컬럼·유니크·외래키 비교 — 일치).
+  런타임 대조기는 없으므로, 운영 DB 를 손으로 고쳤다면 같은 방법으로 다시 대조한다.
 - **Flyway 로 옮긴 이유는 `ddl-auto: update` 의 함정 셋이다** — 제약을 추가는 해도 지우지 않고(9/7 번호판 유니크),
   `@Enumerated` 의 네이티브 `enum(...)` 컬럼 타입을 바꾸지 않고(9/16), `CHECK (type in (…))` 값 목록을 갱신하지 않는다(9/29).
   셋 다 **테스트(create-drop)는 통과하고 운영만 안 바뀌는** 모양이었다. 경위와 손으로 고친 SQL 은 `HISTORY.md` 와
   README 의 "2026-10-03 이전 DB" 절에 있다. 같은 실수를 다른 도구로 되풀이하지 않게:
+  - **컬럼 단위 CHECK 는 `DROP CONSTRAINT` 로 안 지워진다.** ddl-auto 가 붙인 CHECK 는 컬럼 정의 안에 있어서 이름이
+    컬럼명과 같아 보여도 표 단위 제약이 아니다. `IF EXISTS` 는 못 찾아도 오류 없이 넘어가 **Flyway 는 성공으로 기록한다**
+    (V2 가 그랬고 V4 가 `MODIFY COLUMN` 으로 다시 정의해 지운다). 제약을 지우는 마이그레이션은 테스트에서 **실제 모양 그대로**
+    재현하고, 운영에 적용한 뒤 `information_schema.CHECK_CONSTRAINTS` 로 확인한다
   - 새 enum 컬럼은 `@Enumerated` 가 아니라 **`@Convert`(enum 안의 `Converter`)** 로 매핑한다(`User.language`·`unitSystem`)
   - 제약을 바꿨으면 실제 상태를 `SHOW CREATE TABLE` 로 확인한다(`SHOW INDEX` 는 복합 유니크가 FK 인덱스를 대신할 때 목록에서 사라진다):
 
@@ -283,7 +289,7 @@
 
     odolog/
     ├── build.gradle · settings.gradle · gradlew   의존성(springdoc 은 서드파티라 버전을 직접 명시)
-    ├── .github/workflows/ci.yml        커밋마다 백엔드·프론트·E2E. 백엔드 잡은 MariaDB 컨테이너를 띄운다 —
+    ├── .github/workflows/ci.yml        main 푸시와 PR 마다 백엔드·프론트·E2E. 백엔드 잡은 MariaDB 컨테이너를 띄운다 —
     │                                   H2 로 바꾸면 스키마가 운영과 달라져 검증이 거짓말을 한다
     ├── CLAUDE.md · README.md · HISTORY.md · LICENSE(MIT)
     ├── docs/                           DESIGN.md(디자인 시스템) · QA.md(체크리스트·로드맵·백로그)
@@ -345,8 +351,18 @@
   첫 조회가 사용자 행 잠금, 이미 있던 기록과만 비교(파일 안끼리는 비교하지 않음), 정비는 날짜 오름차순으로 넣는다
 - **재설정 메일**: 링크는 프런트 주소(`odolog.app.base-url`). 발송은 커밋 뒤 다른 스레드, SMTP 시간 제한 5초.
   실패 시 `odolog.mail.log-link-on-failure` 가 켜져 있으면 링크를 WARN 으로(로컬 true, 운영 false — 토큰이 로그에 남으면 안 된다)
-- **차량 행 잠금**: 정비·주유의 등록·수정·삭제, 주기 변경, 차량 삭제가 첫 조회로 `findOwnedVehicleForUpdate` 를 부른다.
-  안 잠그면 삭제 중에 들어온 기록 때문에 마지막 차량 DELETE 가 FK 로 500 이다
+- **차량 행 잠금**: 정비·주유의 등록·수정·삭제, 주기 변경, 차량 정보 수정·주행거리 갱신, 차량 삭제가 첫 조회로
+  `findOwnedVehicleForUpdate` 를 부른다. 안 잠그면 삭제 중에 들어온 기록 때문에 마지막 차량 DELETE 가 FK 로 500 이다.
+  **사용자 행 잠금**(`findByIdForUpdate`): 비밀번호 변경·탈퇴·가져오기의 첫 조회
+- **내보내기·가져오기**: 내보내기는 계산값(연비·단가)과 비밀번호 해시를 담지 않고 **차량별 주기는 담는다**(빠지면 복원한 차의
+  `지남` 이 기본 주기로 돌아간다). 가져오기는 **사용자 정보를 받지 않는다** — 내 계정에 기록을 더할 뿐이다.
+  탈퇴 비밀번호는 URL 이 아니라 본문에(URL 은 로그에 남는다)
+- `PasswordResetTokenRepository` 의 두 삭제는 **`@Modifying` DELETE 한 문장** — 메서드 이름 파생 삭제는 읽은 뒤 한 줄씩 지워
+  동시 요청이 같은 행을 지울 때 충돌한다
+- 이미 읽은 `User` 가 있으면 `UserToday.of(User)` — 같은 요청에서 사용자를 두 번 읽지 않게.
+  홈 요약·내보내기는 "오늘"·`exportedAt` 을 밖에서 받는다(테스트에서 고정하려고). 홈 요약은 차량 이름을 LAZY 프록시가 아니라
+  이미 읽은 목록에서 찾는다
+- 테스트 `application.yml` 에 `spring.mail.host` 가 있어야 한다 — 없으면 `JavaMailSender` 빈이 안 생겨 `@SpringBootTest` 가 못 뜬다
 
 ### 백엔드 — 리소스와 테스트
 
@@ -354,7 +370,8 @@
                                              SQL·bind 로깅(개발 전용 — 이메일·해시까지 찍는다), 메일·CORS·리미터 설정
     src/main/resources/application-prod.yml  SPRING_PROFILES_ACTIVE=prod 로 겹친다. 문서·SQL 로깅을 끄고 쿠키 secure.
                                              DB_USERNAME·DB_PASSWORD·APP_BASE_URL·CORS_ALLOWED_ORIGINS 는 기본값이 없어 빠지면 기동 실패
-    src/main/resources/db/migration/         V1 기준점 · V2 정비 종류 CHECK 삭제 · V3 세션 표. 다음은 V4
+    src/main/resources/db/migration/         V1 기준점 · V2 정비 종류 CHECK 삭제(표 단위 — 운영에선 효과 없음) · V3 세션 표 ·
+                                             V4 정비 종류 CHECK 삭제(컬럼 단위, 실제로 지움). 다음은 V5
     src/test/resources/application.yml       odolog_test, create-drop, Flyway 끔(세션 표만 V3 를 sql.init 으로), CSRF 끔
 
 **테스트 설정은 운영 `application.yml` 을 통째로 가린다** — 테스트가 운영 DB 에 붙을 길을 아예 없애려고 일부러 그랬다.
@@ -405,7 +422,10 @@
   **재조회를 위해 `key` 를 바꿔 컴포넌트를 다시 만들지 않는다** — 다시 만들면 로딩이 다시 뜨고 열어 둔 폼과 쪽이 사라진다.
   다시 읽는 동안 카드는 옛 내용을 보여 주고, 스켈레톤은 처음 열 때만이다.
 - **로그인·로그아웃·탈퇴·401 마다 `queryClient.clear()`** — 안 비우면 다른 계정으로 로그인했을 때 앞 계정의 차량이 캐시에서 보인다.
-  E2E(`core-flow.spec.ts`)가 지킨다(clear 를 빼면 실패하는 것을 확인했다)
+  E2E(`core-flow.spec.ts`)가 지킨다(clear 를 빼면 실패하는 것을 확인했다).
+  **화면 밖에서 차량 데이터가 바뀌는 곳은 캐시를 버린다**(`removeQueries`) — 가져오기·언어/단위/통화/시간대 저장은
+  `queryKeys.allVehicles()`, 차량 삭제는 그 차량. 무효화(`invalidate`)가 아니라 버리는 이유: 다시 열 때 옛 값이 먼저 보이고
+  주행거리가 옛 값에서 굴러 오른다
 - **`key` 는 "다른 것을 고치게 됐다"는 뜻일 때만 쓴다.** 수정 폼은 기록 id 로 key 를 준다 — 없으면 열린 폼의 입력이 다른 행에
   덮어써진다. `OdometerForm` 은 주행거리 값으로 key 를 준다 — 값이 바뀌면 입력칸을 새 값으로 되돌린다.
 - **정비 목록의 쪽·종류 필터는 `VehicleDetailPage` 가 들고 있다.** 빠른 정비로 목록 밖에서 기록이 생기면 1쪽·전체 종류로
@@ -413,6 +433,10 @@
 - 홈·차량 목록은 아직 `useAsyncData`(오류 객체를 돌려주고 렌더할 때 번역). 목록 두 카드의 공통 상태(폼 열림·동작 실패·삭제 중인 행)는
   `useRecordList`, 범위 밖 페이지 복귀는 `usePageInRange`
 - `date-input` 은 터치(`pointer: coarse`)면 드럼 휠, 아니면 네이티브 date. 둘 다 오늘에서 끊는다
+- 내보내기는 받은 JSON 을 **Blob 으로 만들어** 내려준다 — `<a href>` 로 바로 받으면 세션·CSRF 헤더가 빠진다
+- 가입 때의 지역 추정(`shared/lib/preferences`)은 태그에 **적힌** 지역으로만 — `maximize()` 는 `en` → `US` 라 영국 사용자도 달러로 시작한다
+- 빠른 정비(`QuickServiceForm`)는 저장한 줄을 바로 '모름' 으로 되돌린다 — 중간 실패 뒤 다시 저장해도 두 번 넣지 않게
+- `renderWithProviders`(`shared/lib`)는 테스트 전용 도우미다. 화면 코드에서 import 하지 않는다
 - shadcn 설정: `components.json` 의 `aliases.ui` 가 `@/shared/ui/base`, `aliases.utils` 가 `@/shared/ui/cn` 을 가리킨다 —
   안 바꾸면 다음 `shadcn add` 가 base/ 밖에 파일을 만들거나 기본 `cn` 을 쓴다. `tsconfig.json` 의 `paths` 도 shadcn CLI 가 읽는다
 - vitest 설정은 `vite.config.ts` 안에 둔다(별도 파일이면 `@` 별칭이 두 곳으로 갈린다)
@@ -420,7 +444,7 @@
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 
-테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 96개(파일 13개) — 순수 함수, 사전 누락,
+테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 97개(파일 14개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`FuelForm`.
 실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 14개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.
@@ -461,7 +485,7 @@
 ## 진행 상황
 
 코드는 끝났고 **남은 것은 브라우저 눈 확인이다** — `docs/QA.md` 의 Phase 6(6-B~6-E)과 Phase 7(7-H).
-운영 DB 는 Flyway 첫 기동 확인 하나가 남았다(같은 문서의 Phase 7 "운영 DB").
+운영 DB 는 V4 적용 확인 하나가 남았다(같은 문서의 Phase 7 "운영 DB"). V1~V3 와 `vehicles.version` 은 2026-10-06 에 확인했다.
 완료한 작업과 그 근거는 `HISTORY.md` 에 있다. 새 작업을 마치면 `HISTORY.md` 맨 위에 항목을 더하고,
 `docs/QA.md` 의 체크리스트에서 그 줄을 지운다. 화면에 무언가를 더하면 6-B 에 확인 줄을 같이 넣는다.
 

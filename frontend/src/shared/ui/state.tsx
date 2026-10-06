@@ -14,7 +14,7 @@ export function LoadingText({ className }: { className?: string }) {
   return (
     <div
       role="status"
-      className={cn('flex items-center gap-2.5 text-sm text-muted-foreground', className)}
+      className={cn('flex items-center gap-2.5 text-caption text-muted-foreground', className)}
     >
       <span className="size-1.5 animate-breathe bg-current" aria-hidden="true" />
       <span>{t.common.loading}</span>

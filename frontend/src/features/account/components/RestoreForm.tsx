@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { ChangeEvent } from 'react'
 
 import { ErrorText, NoticeText } from '@/shared/ui/state'
@@ -7,6 +8,7 @@ import { errorMessage } from '@/shared/i18n/errorMessage'
 import type { Messages } from '@/shared/i18n/messages/ko'
 import { restoreAccount } from '@/features/account/api/endpoints'
 import { MAX_BODY_BYTES } from '@/shared/lib/limits'
+import { queryKeys } from '@/shared/api/queryKeys'
 import type { AccountExport, AccountRestoreResult } from '@/features/account/api/types'
 
 /**
@@ -15,6 +17,7 @@ import type { AccountExport, AccountRestoreResult } from '@/features/account/api
  */
 export function RestoreForm() {
   const { t } = useI18n()
+  const queryClient = useQueryClient()
   const [result, setResult] = useState<AccountRestoreResult | null>(null)
   // 문구가 아니라 문구를 고르는 함수. 언어를 바꾸면 남은 안내도 새 언어로
   const [error, setError] = useState<((messages: Messages) => string) | null>(null)
@@ -47,6 +50,8 @@ export function RestoreForm() {
       }
 
       setResult(await restoreAccount(parsed.vehicles))
+      // 기록이 더해진 차량을 옛 캐시로 보이지 않게. 다시 열면 처음부터 읽음
+      queryClient.removeQueries({ queryKey: queryKeys.allVehicles() })
     } catch (caught) {
       setError(() => (messages: Messages) =>
         caught instanceof SyntaxError

@@ -524,6 +524,8 @@ Phase 1 의 보류 항목(`@EnableJpaAuditing`)은 2026-09-16 에 끝나 남은 
       아무것도 늘지 않는지. **새 계정**에 넣으면 차량·기록·주기가 그대로 생기고, 같은 날 같은 주행거리의
       서로 다른 기록(예: 같은 날 주유 두 번)도 **둘 다** 들어오는지(2026-10-03)
       → 10MB 를 넘는 파일을 고르면 보내기 전에 `보낸 내용이 너무 큽니다…` 인지. 오도로그 파일이 아니면 `…파일이 맞는지 확인해 주세요.`
+      → 차량 상세를 한 번 연 뒤 다른 차량 파일을 같은 번호판으로 가져오고 그 차량을 다시 연다 → **옛 값이 잠깐 보이지 않고**
+        로딩 뒤 새 기록이 보이는지, 주행거리가 옛 값에서 굴러 오르지 않는지(2026-10-06). 통화·시간대를 바꾼 뒤에도 같다
 - [ ] **B-111** '회원 탈퇴' 구역이 **접힌 채로** 시작하는지. 버튼이 빨갛게 **채워져 있지 않은지**
 - [ ] **B-112** 탈퇴에서 비밀번호를 **틀리게** → 401 이 폼 안에 뜨고 **로그인이 유지되는지**
 - [ ] **B-113** 탈퇴 성공 → `/` 로 이동하고 헤더가 로그아웃 상태인지. (2026-10-03 E2E 가 처음 돌자 `/login` 으로
@@ -722,11 +724,12 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 
 #### 운영 DB (IntelliJ 로 한 번 띄운 뒤)
 
-- [ ] **Flyway 첫 기동 확인**(2026-10-03) — 새 코드로 한 번 띄운 뒤 아래가 맞는지 본다.
-      `flyway_schema_history` 에 `1 << Flyway Baseline >>` · `2` · `3` 이 성공(1)으로, `service_intervals` 에 CHECK 가 없고,
-      `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 표가 생겼는지. 한 번 로그인하면 `SPRING_SESSION` 에 행이 생기는지
+- [ ] **V4 적용 확인**(2026-10-06) — 새 코드로 한 번 띄운 뒤 `flyway_schema_history` 에 `4` 가 성공(1)으로 있고
+      `service_intervals.type` 의 CHECK 가 **실제로** 없어졌는지. V2 도 성공으로 기록됐지만 아무것도 지우지 못했다 —
+      그래서 기록이 아니라 `CHECK_CONSTRAINTS` 를 본다(결과가 비어야 한다).
+      V1~V3 적용·세션 표·`vehicles.version`·스키마 일치는 2026-10-06 에 확인했다
 
-          /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "USE odolog; SELECT version, description, success FROM flyway_schema_history; SHOW CREATE TABLE service_intervals\G; SELECT COUNT(*) FROM SPRING_SESSION;"
+          /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults -e "SELECT version, success FROM odolog.flyway_schema_history; SELECT TABLE_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA='odolog';"
 
 #### 눈 확인 (7-H) — 6-B 와 같은 규칙: 적어만 두고 한 바퀴 뒤 모아서 고친다
 
@@ -813,7 +816,7 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 - [ ] 로그인 안 한 상태로 `/vehicles` 직접 접근 시 로그인 페이지로 이동 — B-107
 - [ ] 다른 계정으로 로그인했을 때 남의 차량이 안 보임 — B-108, B-109
 - [ ] 백엔드 테스트 전체 통과 — `./gradlew test` (364개)
-- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (96개, 파일 13개)
+- [ ] 프론트엔드 테스트 전체 통과 — `npm run test` (97개, 파일 14개)
 - [ ] 실제 브라우저 E2E 통과 — `npm run e2e` (14개)
 
 ---
@@ -823,6 +826,11 @@ Phase 6 은 "눈 확인 전에 코드를 더 쌓지 않는다" 를 전제로 한
 지금 당장 하지 않는다. 실제로 불편해지면 그때 꺼내 쓴다. **6-B 를 끝내기 전에 찾은 보안·동시성 문제도 여기에 적는다**(`CLAUDE.md` 진행 상황).
 
 - [ ] `ErrorResponse`에 `fieldErrors` 추가 — 어느 필드가 왜 틀렸는지 프론트가 알 수 있게
+- [ ] 차량 상세 라우트에 `key={vehicleId}` — 같은 화면에서 주소의 차량만 바뀌면 정비 목록 쪽·필터, 주행거리 409 문구,
+      동작 실패 문구가 다음 차량으로 넘어간다. 지금은 그렇게 옮겨 가는 경로가 없다(2026-10-06 점검)
+- [ ] `FlywayMigrationTest` 가 공유 테스트 스키마 `odolog_test` 를 `clean` 한다 — 다른 테스트 클래스의 캐시된 컨텍스트가
+      create-drop 으로 만든 표를 지운다. 지금은 V1+V3 가 같은 표를 다시 만들어 무해하지만, 마이그레이션이 엔티티와
+      조금이라도 달라지면 실행 순서에 따라 다른 테스트가 깨진다. 전용 스키마로 떼는 것이 해법(2026-10-06 점검)
 - [x] ~~홈 통계 요약 API~~ — **2026-09-17 완료** (`GET /api/summary`). 아래는 당시 배경.
       → 지금은 프론트가 차량 목록 1번 + 차량마다 정비 이력 1번씩 받아서 **직접 더한다.**
         건수는 `totalElements` 라 정확하지만 **합계는 받아 온 행만 더한 값**이라, 한 차량의

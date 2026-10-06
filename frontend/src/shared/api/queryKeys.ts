@@ -5,6 +5,8 @@ import type { QueryClient } from '@tanstack/react-query'
  * 기능 사이 import 없이 무효화하려고 shared 에 둠
  */
 export const queryKeys = {
+  /** 모든 차량의 캐시. 화면 밖에서 기록·설정이 바뀌었을 때 통째로 버림 */
+  allVehicles: () => ['vehicles'] as const,
   vehicle: (vehicleId: string) => ['vehicles', vehicleId] as const,
   vehicleDetail: (vehicleId: string) => ['vehicles', vehicleId, 'detail'] as const,
   maintenance: (vehicleId: string) => ['vehicles', vehicleId, 'maintenance'] as const,

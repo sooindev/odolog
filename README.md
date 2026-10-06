@@ -8,7 +8,7 @@ Spring Boot 3.5 + MariaDB 백엔드에 React 19 SPA 를 붙인 구성이고, 인
 **이미 타던 차**를 등록하는 경우를 기본으로 본다 — 현재 주행거리와 기억나는 정비 몇 가지만 적으면
 다음 정비 시점이 바로 뜨고, 이후 주유·정비를 적을 때마다 기록이 쌓인다.
 
-백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 460개(백엔드 364 · 프론트 96)와 실제 브라우저 E2E 14개가 통과한다.
+백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 461개(백엔드 364 · 프론트 97)와 실제 브라우저 E2E 14개가 통과한다.
 플랫폼은 웹 하나다(근거는 `HISTORY.md` 의 2026-09-16 항목). 개인 학습 프로젝트라
 **로컬에서 완전히 동작하는 것**까지가 범위이고 배포는 범위 밖이다 — 다만 "올린다면"은 운영 프로파일로 준비해 뒀다.
 
@@ -134,7 +134,7 @@ npm run dev     # http://localhost:5173
 
 ```
 ./gradlew test                  # 백엔드 364개
-cd frontend && npm run test     # 프론트 96개 (vitest)
+cd frontend && npm run test     # 프론트 97개 (vitest)
 cd frontend && npm run e2e      # 실제 브라우저 14개 (Playwright). 처음엔 npx playwright install chromium
 cd frontend && npm run lint     # oxlint
 cd frontend && npm run build    # tsc -b + vite build (번들 500kB 경고는 알려진 것)
@@ -178,6 +178,11 @@ DB 는 V1 과 다를 수 있고, 다르면 Hibernate 검증이 기동을 막는�
 옛 DB 는 해당하는 것만, **앱을 띄우기 전에** 실행한다(`ddl-auto` 가 지우지도 바꾸지도 않던 것들이다).
 
 ```
+# 번호판 유니크를 전역 → 소유자별로 (2026-09-07) — 옛 전역 유니크가 남아 있으면 더 엄격한 쪽이 이겨
+# 다른 계정끼리도 같은 번호판을 못 쓴다. 검증도 Flyway 도 잡지 못한다
+/opt/homebrew/opt/mariadb/bin/mariadb --no-defaults \
+  -e "USE odolog; ALTER TABLE vehicles DROP INDEX uk_vehicles_plate_number;"
+
 # 정비 종류 5 → 15개 (2026-09-16) — 네이티브 enum 컬럼을 varchar 로. 값은 보존된다
 /opt/homebrew/opt/mariadb/bin/mariadb --no-defaults \
   -e "USE odolog; ALTER TABLE maintenance_records MODIFY COLUMN type VARCHAR(30) NOT NULL;"

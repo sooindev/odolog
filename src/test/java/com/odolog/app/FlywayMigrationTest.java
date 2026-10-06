@@ -72,12 +72,14 @@ class FlywayMigrationTest {
         // 운영과 같은 상태 만들기: V1 의 표 + ddl-auto 가 붙였던 CHECK, 기록 표는 없음
         Flyway.configure().dataSource(dataSource).target("1").load().migrate();
         jdbc.execute("drop table flyway_schema_history");
-        jdbc.execute("alter table service_intervals add constraint `type` check (`type` in ('ENGINE_OIL','OTHER'))");
+        // ddl-auto 가 만든 모양 그대로 컬럼 단위. 이름 붙은 표 단위 CHECK 와 달리 DROP CONSTRAINT 로 안 지워짐
+        jdbc.execute("alter table service_intervals modify column `type` varchar(30) not null"
+                + " check (`type` in ('ENGINE_OIL','OTHER'))");
 
         MigrateResult result = Flyway.configure().dataSource(dataSource)
                 .baselineOnMigrate(true).baselineVersion("1").load().migrate();
 
-        assertThat(result.migrationsExecuted).isEqualTo(2);
+        assertThat(result.migrationsExecuted).isEqualTo(3);
         String ddl = jdbc.queryForObject("show create table service_intervals",
                 (rs, row) -> rs.getString(2));
         assertThat(ddl).doesNotContainIgnoringCase("check");
