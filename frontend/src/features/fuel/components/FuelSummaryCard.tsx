@@ -208,7 +208,8 @@ function EfficiencyTrend({
               tabIndex={0}
             >
               <div
-                className="w-full bg-fill transition-colors duration-200 ease-apple group-hover:bg-card-hover group-focus-visible:bg-card-hover"
+                // 홈 차트와 같은 막대 색. fill 은 입력칸 면이라 카드 위에서 안 보임
+                className="w-full bg-primary transition-opacity duration-200 ease-apple group-hover:opacity-80 group-focus-visible:opacity-80"
                 style={{ height: `${Math.max(((values[index] - floor) / span) * 100, 4)}%` }}
               />
               {/* 말풍선과 같은 값이 아래 표에도 */}

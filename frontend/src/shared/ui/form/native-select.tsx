@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react'
 import { cn } from '@/shared/ui/cn'
 
 import { controlClassName } from '@/shared/ui/form/control'
+import { useHintId } from '@/shared/ui/form/field-context'
 
 /**
  * 네이티브 select + 같은 톤 화살표. 모바일 OS 선택 UI 사용
@@ -21,10 +22,13 @@ export function NativeSelect({
   autoFocus?: boolean
   children: ReactNode
 }) {
+  const hintId = useHintId(id)
+
   return (
     <div className="relative">
       <select
         id={id}
+        aria-describedby={hintId}
         autoFocus={autoFocus}
         // appearance-none: OS 기본 화살표 제거 후 같은 톤 화살표
         className={cn(controlClassName, 'appearance-none pr-10')}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/shared/ui/cn'
 import { controlClassName } from '@/shared/ui/form/control'
+import { useHintId } from '@/shared/ui/form/field-context'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { todayString } from '@/shared/lib/format'
 import {
@@ -250,6 +251,7 @@ export function DateInput({
   ariaLabel?: string
 }) {
   const { timeZone } = useI18n()
+  const hintId = useHintId(id)
   // 초기값은 useState 초기화 함수에서. 첫 프레임 컴포넌트 교체 방지
   const [coarse, setCoarse] = useState(() => window.matchMedia('(pointer: coarse)').matches)
 
@@ -269,6 +271,7 @@ export function DateInput({
         type="date"
         required={required}
         aria-label={ariaLabel}
+        aria-describedby={hintId}
         // 오늘까지만(계정 시간대). 휠·서버와 같은 선
         max={todayString(timeZone)}
         className={controlClassName}

@@ -121,7 +121,7 @@ export function FuelForm({
         })
       } else {
         // 바뀐 필드만. 비움은 clear 플래그
-        await updateFuelRecord(vehicleId, record.id, {
+        const request = {
           fueledAt: fueledAt === record.fueledAt ? undefined : fueledAt,
           odometer: odometerKm === record.odometer ? undefined : odometerKm,
           liters: liters !== null && liters !== record.liters ? liters : undefined,
@@ -129,7 +129,15 @@ export function FuelForm({
           totalCost: costMinor !== null && costMinor !== record.totalCost ? costMinor : undefined,
           clearTotalCost: costMinor === null && record.totalCost !== null ? true : undefined,
           memo: memo === (record.memo ?? '') ? undefined : memo,
-        })
+        }
+
+        // 변경 없으면 요청 생략
+        if (Object.values(request).every((value) => value === undefined)) {
+          onCancel()
+          return
+        }
+
+        await updateFuelRecord(vehicleId, record.id, request)
       }
 
       onSaved()

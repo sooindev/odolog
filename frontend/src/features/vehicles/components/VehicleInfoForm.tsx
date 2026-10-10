@@ -74,7 +74,8 @@ export function VehicleInfoForm({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-muted-foreground">{label}</dt>
+      {/* shrink-0: 긴 값에 라벨이 눌려 세로로 쪼개지지 않게 */}
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
       {/* min-w-0 + truncate: 긴 모델명 대응 */}
       <dd className="min-w-0 truncate text-right text-strong">{value}</dd>
     </div>

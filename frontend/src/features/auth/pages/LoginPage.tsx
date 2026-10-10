@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 
@@ -27,7 +27,16 @@ export function LoginPage() {
   // notice 는 문장이 아니라 키. 언어는 이 화면이 정함
   const state = location.state as { from?: string; notice?: keyof typeof t.login.notices } | null
   const from = state?.from ?? '/vehicles'
-  const notice = state?.notice === undefined ? null : t.login.notices[state.notice]
+  // 첫 렌더의 안내만 붙잡아 둠. history.state 는 새로고침에도 남기 때문
+  const [noticeKey] = useState(state?.notice)
+  const notice = noticeKey === undefined ? null : t.login.notices[noticeKey]
+
+  useEffect(() => {
+    // 안내를 뺀 state 로 바꿔치기. from 은 남김
+    if (state?.notice !== undefined) {
+      navigate(location.pathname, { replace: true, state: state.from === undefined ? null : { from: state.from } })
+    }
+  }, [state, location.pathname, navigate])
 
   if (user !== null) {
     return <Navigate to={from} replace />

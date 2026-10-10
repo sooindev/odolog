@@ -440,7 +440,7 @@
 - shadcn 설정: `components.json` 의 `aliases.ui` 가 `@/shared/ui/base`, `aliases.utils` 가 `@/shared/ui/cn` 을 가리킨다 —
   안 바꾸면 다음 `shadcn add` 가 base/ 밖에 파일을 만들거나 기본 `cn` 을 쓴다. `tsconfig.json` 의 `paths` 도 shadcn CLI 가 읽는다
 - vitest 설정은 `vite.config.ts` 안에 둔다(별도 파일이면 `@` 별칭이 두 곳으로 갈린다)
-- 컴포넌트와 값을 한 파일에서 내보내면 핫 리로드가 깨진다 — 그래서 `AuthContext.ts`·`control.ts`·`niceMax.ts` 가 따로 있다
+- 컴포넌트와 값을 한 파일에서 내보내면 핫 리로드가 깨진다 — 그래서 `AuthContext.ts`·`control.ts`·`field-context.ts`·`niceMax.ts` 가 따로 있다
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 

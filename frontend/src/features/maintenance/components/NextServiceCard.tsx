@@ -91,7 +91,8 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                   )}
                 </span>
 
-                <span className="order-3 text-caption tabular-nums text-muted-foreground sm:order-none">
+                {/* 좁으면 아래 줄 전체 폭. 오른쪽 열 폭에 눌려 세 줄로 접히지 않게 */}
+                <span className="order-3 col-span-full text-caption tabular-nums text-muted-foreground sm:order-none sm:col-auto">
                   {describeLast(result, i18n)}
                 </span>
 

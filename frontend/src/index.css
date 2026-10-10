@@ -338,6 +338,9 @@
     @apply bg-background text-foreground;
     /* 화면용 자간 조정 */
     letter-spacing: -0.011em;
+    /* 한글은 어절 단위로 줄바꿈. 기본값은 음절마다 끊음. 칸보다 긴 한 덩어리만 예외로 끊음 */
+    word-break: keep-all;
+    overflow-wrap: break-word;
     margin: 0;
   }
 

@@ -116,6 +116,12 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         }
         if (serviceDate !== record.serviceDate) request.serviceDate = serviceDate
 
+        // 변경 없으면 요청 생략
+        if (Object.keys(request).length === 0) {
+          onCancel()
+          return
+        }
+
         await updateRecord(vehicleId, record.id, request)
       }
 
