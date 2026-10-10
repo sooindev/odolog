@@ -107,11 +107,11 @@ export function VehicleDetailPage() {
     >
       {/*
         왼쪽 현재 상태, 오른쪽 이력·다음 정비
-        minmax(0,1fr): 긴 메모의 격자 넘침 방지
+        minmax(0,1fr)·grid-cols-1: 긴 메모·모델명의 격자 넘침 방지
       */}
       {error !== null && <ErrorText message={errorMessage(error, t, t.vehicles.detail.loadFailed)} />}
 
-      <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
         {/* self-start: sticky 동작 조건 */}
         <div className="flex flex-col gap-8 lg:sticky lg:top-28 lg:self-start lg:gap-10">
           <OdometerHero odometer={vehicle.odometer} />
@@ -216,7 +216,7 @@ function VehicleDetailSkeleton() {
         </div>
       </div>
 
-      <div className="grid gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[21rem_minmax(0,1fr)] lg:gap-16">
         <div className="flex flex-col gap-8">
           <Skeleton className="h-13 w-48" />
           <Skeleton className="h-40" />

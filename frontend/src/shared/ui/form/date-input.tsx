@@ -48,12 +48,6 @@ function DateWheel({
   const shown = join(Math.min(parsed.year, thisYear), parsed.month, parsed.day, timeZone)
   const { year, month, day } = parse(shown, timeZone)
 
-  // 펼친 휠을 화면 안으로. block: 'nearest' 로 필요할 때만 이동
-  useEffect(() => {
-    if (!open) return
-    wheelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [open])
-
   // 칸 목록도 오늘까지만. 데스크톱의 max 와 같은 선
   // 기본 20년치, 현재 값이 더 오래됐으면 그 해까지 확장
   const firstYear = Math.min(thisYear - YEARS_BACK, year)
@@ -97,7 +91,16 @@ function DateWheel({
 
       {open && (
         // 펼침 연출. 닫을 때는 없음
-        <div className="form-open">
+        // 다 펼친 뒤 휠을 화면 안으로. 연 순간은 높이가 0 이라 이미 보인다고 판단함
+        // block: 'nearest' 로 필요할 때만 이동. 줄인 동작에서도 0.01ms 연출이라 끝 이벤트는 옴
+        <div
+          className="form-open"
+          onAnimationEnd={(event) => {
+            if (event.target === event.currentTarget) {
+              wheelRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+            }
+          }}
+        >
           <div>
             <div ref={wheelRef} className="relative mt-2 flex border border-border bg-fill">
               {/* 가운데 선택 띠. pointer-events 없음 */}

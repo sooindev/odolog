@@ -51,7 +51,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           onClick={(event) => setTheme(value, event.currentTarget)}
           className={cn(
             // z-10: 블록 위에서 클릭 수신
-            'relative z-10 grid place-items-center transition-colors duration-200 ease-apple focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            'relative z-10 grid place-items-center outline-none transition-colors duration-200 ease-apple focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             theme === value ? 'text-strong' : 'text-muted-foreground hover:text-strong',
           )}
           style={{ width: CELL, height: CELL }}

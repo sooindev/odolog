@@ -10,7 +10,7 @@ export function AuthLayout() {
   const { t } = useI18n()
 
   return (
-    <div className="grid items-center gap-12 lg:min-h-[32rem] lg:grid-cols-2 lg:gap-16">
+    <div className="grid grid-cols-1 items-center gap-12 lg:min-h-[32rem] lg:grid-cols-2 lg:gap-16">
       {/* 두 단 사이 세로 괘선 */}
       <div className="hidden flex-col gap-10 lg:flex lg:border-r lg:border-border lg:pr-16">
         <GaugeMark className="size-9 text-strong" />

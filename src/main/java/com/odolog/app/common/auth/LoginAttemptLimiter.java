@@ -109,7 +109,9 @@ public class LoginAttemptLimiter {
         purgeIfCrowded(now);
 
         if (lockedUntil[0] != null) {
-            long minutes = Math.max(1, Duration.between(now, lockedUntil[0]).toMinutes() + 1);
+            // 남은 시간을 분 단위로 올림. 막 잠긴 직후는 정확히 10분
+            long remainingMillis = Duration.between(now, lockedUntil[0]).toMillis();
+            long minutes = Math.max(1, (remainingMillis + 59_999) / 60_000);
             throw new TooManyRequestsException(code, reason + " " + minutes + "분 후 다시 시도해 주세요.", minutes);
         }
     }

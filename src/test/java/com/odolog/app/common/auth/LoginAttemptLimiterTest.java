@@ -92,6 +92,29 @@ class LoginAttemptLimiterTest {
     }
 
     @Test
+    @DisplayName("남은 분은 올림한다. 막 잠기면 10분, 9분 30초 뒤면 1분")
+    void roundsRemainingMinutesUp() {
+        MovableClock clock = new MovableClock();
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(clock);
+        attempt(limiter, "a@odolog.com", 10);
+
+        assertThatThrownBy(() -> attempt(limiter, "a@odolog.com"))
+                .isInstanceOfSatisfying(TooManyRequestsException.class,
+                        e -> assertThat(e.getRetryAfterMinutes()).isEqualTo(10))
+                .hasMessageContaining("10분 후");
+
+        clock.advance(Duration.ofSeconds(30));
+        assertThatThrownBy(() -> attempt(limiter, "a@odolog.com"))
+                .isInstanceOfSatisfying(TooManyRequestsException.class,
+                        e -> assertThat(e.getRetryAfterMinutes()).isEqualTo(10));
+
+        clock.advance(Duration.ofSeconds(9 * 60));
+        assertThatThrownBy(() -> attempt(limiter, "a@odolog.com"))
+                .isInstanceOfSatisfying(TooManyRequestsException.class,
+                        e -> assertThat(e.getRetryAfterMinutes()).isEqualTo(1));
+    }
+
+    @Test
     @DisplayName("잠긴 이유는 부르는 쪽이 넘긴 문장을 그대로 쓴다")
     void usesCallerSuppliedReason() {
         LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());

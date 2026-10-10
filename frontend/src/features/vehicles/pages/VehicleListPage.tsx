@@ -59,8 +59,8 @@ export function VehicleListPage() {
               <Link
                 to={`/vehicles/${vehicle.id}`}
                 // 행 전체가 판정 영역
-                // before: 호버 시 왼쪽 1px 세로 표식
-                className="group relative -mx-3 flex items-center gap-4 px-3 py-5 transition-colors duration-200 ease-apple sm:-mx-4 sm:gap-10 sm:px-4 sm:py-7 before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:origin-top before:scale-y-0 before:bg-strong before:transition-transform before:duration-300 before:ease-apple hover:bg-wash hover:before:scale-y-100 focus-visible:before:scale-y-100"
+                // before: 호버·포커스 때 왼쪽 1px 세로 표식. 포커스 외곽선 대신
+                className="group relative -mx-3 flex items-center outline-none gap-4 px-3 py-5 transition-colors duration-200 ease-apple sm:-mx-4 sm:gap-10 sm:px-4 sm:py-7 before:absolute before:top-0 before:bottom-0 before:left-0 before:w-px before:origin-top before:scale-y-0 before:bg-strong before:transition-transform before:duration-300 before:ease-apple hover:bg-wash hover:before:scale-y-100 focus-visible:before:scale-y-100"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <p className="truncate text-eyebrow text-muted-foreground uppercase">

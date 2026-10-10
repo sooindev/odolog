@@ -371,9 +371,13 @@
     @apply border-border;
   }
 
-  /* 포커스 링은 키보드 이동에만 */
+  /*
+    포커스 표시는 키보드 이동에만. 기본은 버튼 링과 같은 색·간격의 외곽선
+    자체 표시가 있는 요소(버튼·입력칸·차량 목록 행 등)만 outline-none 으로 끔
+  */
   :focus-visible {
-    outline: none;
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {

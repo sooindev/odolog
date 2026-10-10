@@ -8,7 +8,7 @@ Spring Boot 3.5 + MariaDB 백엔드에 React 19 SPA 를 붙인 구성이고, 인
 **이미 타던 차**를 등록하는 경우를 기본으로 본다 — 현재 주행거리와 기억나는 정비 몇 가지만 적으면
 다음 정비 시점이 바로 뜨고, 이후 주유·정비를 적을 때마다 기록이 쌓인다.
 
-백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 461개(백엔드 364 · 프론트 97)와 실제 브라우저 E2E 14개가 통과한다.
+백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 462개(백엔드 365 · 프론트 97)와 실제 브라우저 E2E 14개가 통과한다.
 플랫폼은 웹 하나다(근거는 `HISTORY.md` 의 2026-09-16 항목). 개인 학습 프로젝트라
 **로컬에서 완전히 동작하는 것**까지가 범위이고 배포는 범위 밖이다 — 다만 "올린다면"은 운영 프로파일로 준비해 뒀다.
 
@@ -133,7 +133,7 @@ npm run dev     # http://localhost:5173
 ### 4. 검사
 
 ```
-./gradlew test                  # 백엔드 364개
+./gradlew test                  # 백엔드 365개
 cd frontend && npm run test     # 프론트 97개 (vitest)
 cd frontend && npm run e2e      # 실제 브라우저 14개 (Playwright). 처음엔 npx playwright install chromium
 cd frontend && npm run lint     # oxlint

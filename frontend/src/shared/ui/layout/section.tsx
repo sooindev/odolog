@@ -14,7 +14,7 @@ export function Section({
   children: ReactNode
 }) {
   return (
-    <section className="grid gap-5 border-t border-border pt-8 sm:gap-6 sm:pt-10 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-16">
+    <section className="grid grid-cols-1 gap-5 border-t border-border pt-8 sm:gap-6 sm:pt-10 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-16">
       {/* 구역마다 위 괘선. 한글 제목이라 eyebrow 미사용 */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[0.875rem] font-semibold tracking-[-0.01em] text-strong">{title}</h2>

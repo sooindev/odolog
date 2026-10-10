@@ -90,16 +90,20 @@ export function RestoreForm() {
         </label>
       </div>
 
-      {/* 건너뛴 수까지 안내 */}
+      {/* 건너뛴 수까지 안내. 새로 넣은 것이 없으면 "0건을 넣었습니다" 대신 없다고 말함 */}
       {result !== null && (
         <NoticeText
           message={
-            t.profile.data.imported(
-              result.addedVehicles,
-              result.addedMaintenanceRecords + result.addedFuelRecords,
-            ) +
-            (result.mergedVehicles > 0 ? t.profile.data.merged(result.mergedVehicles) : '') +
-            (result.addedServiceIntervals > 0 ? t.profile.data.intervals(result.addedServiceIntervals) : '') +
+            (result.addedVehicles === 0 &&
+            result.addedMaintenanceRecords + result.addedFuelRecords === 0 &&
+            result.addedServiceIntervals === 0
+              ? t.profile.data.nothingNew
+              : t.profile.data.imported(
+                  result.addedVehicles,
+                  result.addedMaintenanceRecords + result.addedFuelRecords,
+                ) +
+                (result.mergedVehicles > 0 ? t.profile.data.merged(result.mergedVehicles) : '') +
+                (result.addedServiceIntervals > 0 ? t.profile.data.intervals(result.addedServiceIntervals) : '')) +
             (result.skippedRecords > 0 ? t.profile.data.skipped(result.skippedRecords) : '')
           }
         />

@@ -242,6 +242,7 @@ export const ko = {
       importFailed: '가져오기에 실패했습니다.',
       notOurFile: '오도로그에서 내려받은 JSON 파일이 맞는지 확인해 주세요.',
       imported: (vehicles: number, records: number) => `차량 ${vehicles}대와 기록 ${records}건을 넣었습니다.`,
+      nothingNew: '새로 넣을 기록이 없습니다.',
       merged: (n: number) => ` 이미 있던 차량 ${n}대에는 기록만 붙였습니다.`,
       intervals: (n: number) => ` 차량별 정비 주기 ${n}개도 되살렸습니다.`,
       skipped: (n: number) => ` 이미 같은 기록이 있어 ${n}건은 건너뛰었습니다.`,

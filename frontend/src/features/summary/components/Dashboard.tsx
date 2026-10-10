@@ -42,8 +42,8 @@ export function Dashboard({ data, nickname }: { data: HomeData; nickname: string
       {/* 히어로 숫자가 있는 차트라 전체 폭 */}
       <MonthlyCostChart monthly={data.monthly} currency={data.currency} />
 
-      {/* 두 카드 나란히 */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* 두 카드 나란히. grid-cols-1: 열 최소 0, 긴 한 줄 글자가 좁은 화면 폭을 밀지 않게 */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <TypeCostChart byType={data.byType} currency={data.currency} />
         <RecentActivities recent={data.recent} />
       </div>
@@ -214,7 +214,7 @@ export function DashboardSkeleton() {
       </div>
       <Skeleton className="h-28" />
       <Skeleton className="h-96" />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Skeleton className="h-72" />
         <Skeleton className="h-72" />
       </div>

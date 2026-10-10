@@ -244,6 +244,7 @@ export const en: Messages = {
       notOurFile: 'Please check that this is a JSON file downloaded from OdoLog.',
       imported: (vehicles: number, records: number) =>
         `Added ${vehicles} ${plural(vehicles, 'vehicle', 'vehicles')} and ${records} ${plural(records, 'record', 'records')}.`,
+      nothingNew: 'Nothing new to add.',
       merged: (n: number) => ` Attached records to ${n} existing ${plural(n, 'vehicle', 'vehicles')}.`,
       intervals: (n: number) => ` Restored ${n} custom service ${plural(n, 'interval', 'intervals')}.`,
       skipped: (n: number) => ` Skipped ${n} ${plural(n, 'record', 'records')} you already had.`,
