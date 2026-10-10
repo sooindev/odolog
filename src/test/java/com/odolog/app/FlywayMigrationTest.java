@@ -22,8 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * validate 가 안 보는 nullable·유니크 제약은 SchemaDrift 가 대조
  * 다른 테스트는 create-drop 이라 마이그레이션 파일이 틀려도 통과한다. 여기가 그 구멍을 막는다
  * 엔티티를 바꾸고 마이그레이션을 안 더하면 이 테스트가 기동 단계에서 실패
+ * 전용 스키마. clean 이 다른 테스트·띄워 둔 E2E 백엔드의 odolog_test 표를 지우지 않게
  */
 @SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:mariadb://localhost:3306/odolog_migration_test",
         "spring.flyway.enabled=true",
         "spring.flyway.clean-disabled=false",
         "spring.jpa.hibernate.ddl-auto=validate",
@@ -34,7 +36,7 @@ class FlywayMigrationTest {
     @TestConfiguration
     static class CleanFirst {
 
-        /** 매번 빈 스키마에서. 앞선 테스트가 남긴 create-drop 표와 섞이지 않게 */
+        /** 매번 빈 스키마에서. 앞선 실행이 남긴 표와 섞이지 않게 */
         @Bean
         FlywayMigrationStrategy cleanThenMigrate() {
             return flyway -> {

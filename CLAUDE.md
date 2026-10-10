@@ -66,7 +66,8 @@
 세팅은 끝났다. 매번 재확인하지 말 것. 단, **DB 접속이 실패하면 계정 문제부터 의심한다**
 (아래 "DB 접속 시 주의" 참고 — 한 번 크게 막혔던 지점이다).
 
-- DB: MariaDB, `localhost:3306`, 스키마 `odolog` (utf8mb4 / utf8mb4_unicode_ci). 테스트는 `odolog_test`
+- DB: MariaDB, `localhost:3306`, 스키마 `odolog` (utf8mb4 / utf8mb4_unicode_ci). 테스트는 `odolog_test`,
+  `FlywayMigrationTest` 만 `odolog_migration_test`(스키마를 통째로 `clean` 해서 따로 — 같은 계정 `odolog_test` 가 쓴다)
 - **스키마는 Flyway 가 만든다**(`src/main/resources/db/migration`). Hibernate 는 `ddl-auto: validate` 로
   엔티티와 맞는지 확인만 하고, 다르면 기동을 막는다.
   **엔티티를 바꾸면 V5… 마이그레이션을 같이 더한다** — 안 더하면 `FlywayMigrationTest` 가 실패한다.
@@ -100,6 +101,8 @@
       SPRING_DATASOURCE_USERNAME=odolog_test SPRING_DATASOURCE_PASSWORD=odolog_test ./gradlew bootRun
 
   (`odolog_test` 스키마는 테스트 실행 때마다 `create-drop`으로 초기화되므로 데이터가 남아도 무방하다.
+  다만 테스트를 돌린 뒤라면 남은 `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 를 먼저 지운다 — 비어 있지 않은 스키마는
+  `baseline-on-migrate` 가 V1 을 적용된 것으로 치고 V2 부터 돈다.
   JDBC 유닉스 소켓 접속(`localSocket=`)은 시도해 봤으나 동작하지 않으니 시간 낭비하지 말 것.)
 - E2E 용 백엔드는 `./gradlew bootTestRun`(테스트 설정, 18080). `npm run e2e` 가 알아서 띄운다
 
@@ -343,8 +346,8 @@
 - **CSRF 는 경로와 무관하게 모든 쓰기 요청을 본다** — 날 URI 로 `/api/` 를 판정하면 `/%61pi/…` 가 통과한다.
   테스트에서는 `odolog.csrf.enabled=false` 로 꺼 둔다(`@WebMvcTest` 가 Filter 빈을 같이 올린다). 필터는 `CsrfTokenFilterTest` 가 직접 본다
 - **시도 제한(`LoginAttemptLimiter`)은 인메모리**다. 재시작하면 잊고, 맵이 10만 개를 넘으면 잠기지 않은 키 중 가장 오래 쉰 것부터 버린다.
-  한도는 `odolog.rate-limit.max-attempts`(E2E 만 늘린다). E2E 백엔드는 이 값을 명령줄 인자로 박아 `--args` 로 못 바꾼다 —
-  운영 한도(10)로 잠금을 보려면 위 "개발 환경"의 테스트 계정 `bootRun` 을 쓴다
+  한도는 `odolog.rate-limit.max-attempts`(E2E 만 1000 으로 늘린다). 운영 한도로 잠금을 보려면
+  `./gradlew bootTestRun --args='--odolog.rate-limit.max-attempts=10'` — 같은 키를 넘기면 `TestOdoLogApplication` 이 기본값을 뺀다
 - **세션은 DB**(Spring Session JDBC, 표는 V3). 쿠키 이름 `JSESSIONID`, 14일 — `timeout` 과 `cookie.max-age` 를 **같이** 늘려야 한다
 - **가져오기(`AccountRestoreService`)는 조율 층 규칙의 예외**로 리포지토리에 직접 쓴다 — 기록 2만 건을 한 트랜잭션에 넣는
   일괄 작업이라 건마다 서비스를 거치면 같은 조회가 2만 번 돈다. 대신 등록과 같은 규칙(미래 날짜 금지 `UserToday.rejectFuture`,
@@ -386,7 +389,7 @@
 - **`@SpringBootTest` 여덟** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는
   진짜 서비스가 돌지 않는다. 트랜잭션·잠금·FK·데드락·마이그레이션은 이것들만 본다. 잠금 테스트들은 **잠금을 빼고 돌려
   실패하는 것까지 확인**하고 넣었다
-- 루트의 `FlywayMigrationTest`(빈 스키마·운영 경로 + `SchemaDrift` 로 nullable·유니크 대조와 일부러 어긋낸 네 경우) ·
+- 루트의 `FlywayMigrationTest`(전용 스키마 `odolog_migration_test` — 빈 스키마·운영 경로 + `SchemaDrift` 로 nullable·유니크 대조와 일부러 어긋낸 네 경우) ·
   `ConfigParityTest` · `DependencyDirectionTest` · `TestOdoLogApplication`(E2E 용 백엔드)
 
 ### 프론트엔드 — 폴더 지도 (`frontend/src/`)

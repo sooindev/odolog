@@ -14,7 +14,8 @@ import java.util.List;
 public class TestOdoLogApplication {
 
     public static void main(String[] args) {
-        List<String> all = new ArrayList<>(List.of(
+        // 기본값. --args 로 같은 키를 넘기면 그쪽이 이김(예: 운영 한도 잠금 확인 --odolog.rate-limit.max-attempts=10)
+        List<String> defaults = List.of(
                 "--server.port=18080",
                 // E2E 화면은 5174. 평소 개발 서버(5173)와 겹치지 않게
                 "--odolog.cors.allowed-origins=http://localhost:5174",
@@ -27,7 +28,16 @@ public class TestOdoLogApplication {
                 // 화면이 보내는 요청마다 SQL 이 찍히면 실패 로그를 읽기 어려움
                 "--logging.level.org.hibernate.SQL=info",
                 "--logging.level.org.hibernate.orm.jdbc.bind=info",
-                "--spring.jpa.show-sql=false"));
+                "--spring.jpa.show-sql=false");
+
+        List<String> all = new ArrayList<>();
+        for (String option : defaults) {
+            // 같은 키를 넘겼으면 기본값 생략. 둘 다 넣으면 스프링이 "1000,10" 으로 합쳐 읽음
+            String key = option.substring(0, option.indexOf('=') + 1);
+            if (Arrays.stream(args).noneMatch(arg -> arg.startsWith(key))) {
+                all.add(option);
+            }
+        }
         all.addAll(Arrays.asList(args));
 
         SpringApplication.from(OdoLogApplication::main).run(all.toArray(String[]::new));

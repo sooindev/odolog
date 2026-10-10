@@ -38,6 +38,12 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      # FlywayMigrationTest 전용 스키마. 서비스 env 로는 하나만 만들어짐
+      - run: >-
+          docker exec ${{ job.services.mariadb.id }} mariadb -uroot -proot -e
+          "CREATE DATABASE odolog_migration_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+          GRANT ALL PRIVILEGES ON odolog_migration_test.* TO 'odolog_test'@'%';"
+
       # cleanTest: 캐시 복원 시 test 가 up-to-date 로 건너뛰는 것 방지
       - run: ./gradlew cleanTest test
 

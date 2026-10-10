@@ -82,7 +82,8 @@ Java 17+ · Node 26(`frontend/.nvmrc`) · MariaDB 12 · IntelliJ IDEA(백엔드�
 
 ### 1. 스키마와 계정
 
-운영용 `odolog` 와 테스트용 `odolog_test` **둘 다** 필요하다. 테스트는 매 실행마다 표를 지우고 다시 만든다.
+운영용 `odolog` 와 테스트용 `odolog_test`·`odolog_migration_test` **셋 다** 필요하다. 테스트는 매 실행마다 표를 지우고 다시 만든다.
+`odolog_migration_test` 는 마이그레이션 테스트(`FlywayMigrationTest`) 전용이다 — 스키마를 통째로 비우므로 다른 테스트와 나눴다.
 
 ```sql
 CREATE DATABASE odolog DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -92,6 +93,9 @@ GRANT ALL PRIVILEGES ON odolog.* TO 'odolog'@'localhost';
 CREATE DATABASE odolog_test DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'odolog_test'@'localhost' IDENTIFIED BY 'odolog_test';
 GRANT ALL PRIVILEGES ON odolog_test.* TO 'odolog_test'@'localhost';
+
+CREATE DATABASE odolog_migration_test DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON odolog_migration_test.* TO 'odolog_test'@'localhost';
 
 FLUSH PRIVILEGES;
 ```
