@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -69,12 +69,14 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
           <ul className="divide-y divide-border">
             {results.map((result) => (
               // 넓은 화면 3열(종류 / 마지막 정비 / 다음 정비), 좁으면 2열
+              // 좁으면 양쪽 모두 줄바꿈. 다음 정비 문구는 가장 긴 덩어리 폭을 보장
               <li
                 key={result.type}
-                className="grid grid-cols-[1fr_auto] items-baseline gap-x-6 gap-y-1.5 py-5 first:pt-0 last:pb-0 sm:grid-cols-[8rem_minmax(0,1fr)_auto]"
+                className="grid grid-cols-[auto_minmax(min-content,1fr)] items-baseline gap-x-4 gap-y-1.5 py-5 first:pt-0 last:pb-0 md:grid-cols-[10rem_minmax(0,1fr)_auto] md:gap-x-6"
               >
-                <span className="flex min-w-0 items-baseline gap-2">
-                  <span className="truncate text-body font-medium tracking-[-0.015em] text-strong">
+                {/* 배지는 자리가 모자라면 이름 아래로 */}
+                <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-body font-medium tracking-[-0.015em] text-strong">
                     {t.serviceTypes[result.type]}
                   </span>
                   {/* 지남 표시. 빨강(실패) 대신 테두리 + strong */}
@@ -92,11 +94,12 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                 </span>
 
                 {/* 좁으면 아래 줄 전체 폭. 오른쪽 열 폭에 눌려 세 줄로 접히지 않게 */}
-                <span className="order-3 col-span-full text-caption tabular-nums text-muted-foreground sm:order-none sm:col-auto">
+                <span className="order-3 col-span-full text-caption tabular-nums text-muted-foreground md:order-none md:col-auto">
                   {describeLast(result, i18n)}
                 </span>
 
-                <span className="flex items-baseline justify-end gap-2 text-right">
+                {/* 주기 버튼은 자리가 모자라면 문구 아래로 */}
+                <span className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1 text-right">
                   <span
                     className={`text-caption tabular-nums ${
                       result.overdue ? 'font-medium text-strong' : 'text-foreground'
@@ -107,7 +110,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                   {/* 주기 편집 버튼 */}
                   <button
                     type="button"
-                    className="shrink-0 text-unit text-muted-foreground underline-offset-4 transition-opacity duration-200 ease-apple hover:opacity-70 hover:underline"
+                    className="shrink-0 whitespace-nowrap text-unit text-muted-foreground underline-offset-4 transition-opacity duration-200 ease-apple hover:opacity-70 hover:underline"
                     aria-expanded={editing === result.type}
                     onClick={() => setEditing(editing === result.type ? null : result.type)}
                   >
@@ -116,8 +119,8 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                 </span>
 
                 {editing === result.type && (
-                  // 편집 폼은 행 전체 폭
-                  <div className="col-span-full">
+                  // 편집 폼은 행 전체 폭. 좁으면 order-3 인 마지막 줄보다 아래
+                  <div className="order-4 col-span-full md:order-none">
                     <IntervalForm
                       vehicleId={vehicleId}
                       result={result}
@@ -252,15 +255,16 @@ function describeLast(result: NextServiceResponse, { t, f }: I18nValue) {
     return ''
   }
 
-  const parts = [f.date(result.lastServiceDate)]
+  // 날짜·거리 안에서는 줄바꿈하지 않게 줄바꿈 없는 공백
+  const parts = [f.date(result.lastServiceDate).replaceAll(' ', '\u00a0')]
   if (result.lastServiceOdometer !== null) {
-    parts.push(f.distance(result.lastServiceOdometer))
+    parts.push(f.distance(result.lastServiceOdometer).replaceAll(' ', '\u00a0'))
   }
 
   return t.maintenance.next.last(parts.join(' · '))
 }
 
-/** 다음 정비 시점. 주기 없음(OTHER) 또는 계산값 */
+/** 다음 정비 시점. 주기 없음(OTHER) 또는 계산값. 거리·날짜는 각각 한 덩어리로 줄바꿈 */
 function describeNext(result: NextServiceResponse, { t, f }: I18nValue) {
   const parts: string[] = []
   if (result.nextServiceOdometer !== null) {
@@ -274,5 +278,10 @@ function describeNext(result: NextServiceResponse, { t, f }: I18nValue) {
     return t.maintenance.next.noInterval
   }
 
-  return parts.join(t.maintenance.next.or)
+  return parts.map((part, index) => (
+    <Fragment key={part}>
+      {index > 0 && t.maintenance.next.or}
+      <span className="whitespace-nowrap">{part}</span>
+    </Fragment>
+  ))
 }

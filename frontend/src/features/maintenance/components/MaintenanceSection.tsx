@@ -84,13 +84,14 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-3">
         <CardTitle className="min-w-0">{t.maintenance.title}</CardTitle>
         {editing === 'closed' && (
-          <div className="flex items-center gap-2">
+          // max-w-full + select min-w-0: 좁으면 select 가 가장 긴 종류 이름 폭을 포기
+          <div className="flex max-w-full min-w-0 items-center gap-2">
             {/* 네이티브 select. 키보드·스크린리더 기본 지원 */}
             <select
               aria-label={t.maintenance.filterLabel}
               // cn 으로 충돌 클래스 정리(h-8·w-auto 우선)
               // md 부터 13px, 모바일은 16px(iOS 확대 방지)
-              className={cn(controlClassName, 'h-8 w-auto md:text-caption')}
+              className={cn(controlClassName, 'h-8 w-auto min-w-0 md:text-caption')}
               value={filter ?? ''}
               // 필터 변경 시 첫 페이지로
               onChange={(event) =>
