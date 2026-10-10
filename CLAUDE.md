@@ -343,7 +343,8 @@
 - **CSRF 는 경로와 무관하게 모든 쓰기 요청을 본다** — 날 URI 로 `/api/` 를 판정하면 `/%61pi/…` 가 통과한다.
   테스트에서는 `odolog.csrf.enabled=false` 로 꺼 둔다(`@WebMvcTest` 가 Filter 빈을 같이 올린다). 필터는 `CsrfTokenFilterTest` 가 직접 본다
 - **시도 제한(`LoginAttemptLimiter`)은 인메모리**다. 재시작하면 잊고, 맵이 10만 개를 넘으면 잠기지 않은 키 중 가장 오래 쉰 것부터 버린다.
-  한도는 `odolog.rate-limit.max-attempts`(E2E 만 늘린다)
+  한도는 `odolog.rate-limit.max-attempts`(E2E 만 늘린다). E2E 백엔드는 이 값을 명령줄 인자로 박아 `--args` 로 못 바꾼다 —
+  운영 한도(10)로 잠금을 보려면 위 "개발 환경"의 테스트 계정 `bootRun` 을 쓴다
 - **세션은 DB**(Spring Session JDBC, 표는 V3). 쿠키 이름 `JSESSIONID`, 14일 — `timeout` 과 `cookie.max-age` 를 **같이** 늘려야 한다
 - **가져오기(`AccountRestoreService`)는 조율 층 규칙의 예외**로 리포지토리에 직접 쓴다 — 기록 2만 건을 한 트랜잭션에 넣는
   일괄 작업이라 건마다 서비스를 거치면 같은 조회가 2만 번 돈다. 대신 등록과 같은 규칙(미래 날짜 금지 `UserToday.rejectFuture`,
@@ -485,7 +486,7 @@
 ## 진행 상황
 
 코드는 끝났고 브라우저 확인(6-B~6-E·7-H)도 2026-10-10 에 한 바퀴 돌았다. **남은 것은 실제 폰으로만 볼 넷**(C-17·C-19·C-21·D-4)과
-Windows 글꼴(H-14), 그리고 눈 확인 뒤에 정하기로 한 `docs/QA.md` 6-G 다.
+Windows 글꼴(H-14), 날짜 경계 시각에만 재현되는 H-9, 그리고 눈 확인 뒤에 정하기로 한 `docs/QA.md` 6-G 다.
 운영 DB 는 V1~V4 적용까지 확인을 마쳤다(2026-10-10).
 완료한 작업과 그 근거는 `HISTORY.md` 에 있다. 새 작업을 마치면 `HISTORY.md` 맨 위에 항목을 더하고,
 `docs/QA.md` 의 체크리스트에서 그 줄을 지운다. 화면에 무언가를 더하면 6-B 에 확인 줄을 같이 넣는다.
