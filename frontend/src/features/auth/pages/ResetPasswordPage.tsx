@@ -6,6 +6,7 @@ import { confirmPasswordReset } from '@/features/auth/api/endpoints'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
+import { ApiError } from '@/shared/api/client'
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent } from '@/shared/ui/base/card'
 import { Input } from '@/shared/ui/base/input'
@@ -25,6 +26,8 @@ export function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // 만료·사용된 링크. 폼을 다시 내도 소용없어 다시 받기로 안내
+  const [linkError, setLinkError] = useState<string | null>(null)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -46,19 +49,23 @@ export function ResetPasswordPage() {
       // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
       navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
     } catch (caught) {
-      setError(errorMessage(caught, t, t.resetPassword.failed))
+      if (caught instanceof ApiError && caught.code === 'RESET_LINK_INVALID') {
+        setLinkError(errorMessage(caught, t, t.resetPassword.invalidLink))
+      } else {
+        setError(errorMessage(caught, t, t.resetPassword.failed))
+      }
     } finally {
       setPending(false)
     }
   }
 
-  // 토큰 없이 직접 들어온 경우
-  if (token === null || token === '') {
+  // 토큰 없이 직접 들어왔거나, 보낸 뒤 만료·사용된 링크로 판명
+  if (token === null || token === '' || linkError !== null) {
     return (
       <Page title={t.resetPassword.title} description={t.resetPassword.noTokenDescription}>
         <Card>
           <CardContent className="flex flex-col gap-4">
-            <ErrorText message={t.resetPassword.invalidLink} />
+            <ErrorText message={linkError ?? t.resetPassword.invalidLink} />
             <p className="text-caption leading-relaxed text-muted-foreground">
               {t.resetPassword.invalidLinkDetail}
             </p>

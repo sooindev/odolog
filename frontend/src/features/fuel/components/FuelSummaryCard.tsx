@@ -131,16 +131,18 @@ export function FuelSummaryCard({ vehicleId }: { vehicleId: string }) {
               </p>
             )}
 
-            {/* gap-px 격자. 칸 사이 1px */}
-            <dl className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border sm:grid-cols-4">
-              <Stat label={t.fuel.summary.records} value={t.common.count(f.number(data.recordCount))} />
-              <Stat
-                label={t.fuel.summary.distance}
-                value={data.totalDistance === null ? '—' : f.distance(data.totalDistance)}
-              />
-              <Stat label={t.fuel.summary.volume} value={f.volume(data.totalLiters)} />
-              <Stat label={t.fuel.summary.cost} value={f.money(data.totalCost, data.currency)} />
-            </dl>
+            {/* gap-px 격자. 칸 사이 1px. 기록이 없으면 0 만 늘어선 칸이라 숨김 */}
+            {data.recordCount > 0 && (
+              <dl className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border sm:grid-cols-4">
+                <Stat label={t.fuel.summary.records} value={t.common.count(f.number(data.recordCount))} />
+                <Stat
+                  label={t.fuel.summary.distance}
+                  value={data.totalDistance === null ? '—' : f.distance(data.totalDistance)}
+                />
+                <Stat label={t.fuel.summary.volume} value={f.volume(data.totalLiters)} />
+                <Stat label={t.fuel.summary.cost} value={f.money(data.totalCost, data.currency)} />
+              </dl>
+            )}
 
             {/* 합계를 나눈 값이 평균과 달라 보이는 이유 */}
             {data.averageEfficiency !== null && (
