@@ -443,6 +443,7 @@ export const en: Messages = {
       intervalCustomized: 'Custom interval',
       last: (parts: string) => `Last ${parts}`,
       or: ' or ',
+      about: (distance: string) => `about ${distance}`,
       noInterval: 'No recommended interval',
       intervalDistance: (unit: string) => `Distance interval (${unit})`,
       intervalMonths: 'Time interval (months)',
@@ -516,6 +517,7 @@ export const en: Messages = {
       average: (value: string) => `avg ${value}`,
       axisNote: 'The axis starts near the lowest value, not zero. It shows change, not size.',
       lowerIsBetter: 'In these units, lower is better.',
+      totalsNote: 'The average uses only stretches that can be calculated. The totals above include every fill-up, even the first one and any without an amount.',
     },
   },
 

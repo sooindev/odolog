@@ -18,6 +18,8 @@ export interface TypeCost {
   type: ServiceType
   cost: number
   count: number
+  /** 금액을 적은 건수. 0 이면 cost 의 0 은 모름 */
+  pricedCount: number
 }
 
 export interface VehicleLine {

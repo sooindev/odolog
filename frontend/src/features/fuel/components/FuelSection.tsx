@@ -158,7 +158,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                     <div className="flex flex-col items-end gap-1 tabular-nums">
                       {/* 안 적은 값은 — */}
                       <span className="text-strong">
-                        {record.liters === null ? `— ${f.volumeUnit}` : f.volume(record.liters)}
+                        {record.liters === null ? '—' : f.volume(record.liters)}
                       </span>
                       <span className="text-caption text-muted-foreground">
                         {record.totalCost === null ? '—' : f.money(record.totalCost, record.currency)}

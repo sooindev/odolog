@@ -8,7 +8,7 @@ import { useI18n } from '@/shared/i18n/I18nContext'
 import type { I18nValue } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { queryKeys } from '@/shared/api/queryKeys'
-import { fromKm, toKm } from '@/shared/lib/units'
+import { KM_PER_MILE, fromKm, toKm } from '@/shared/lib/units'
 import { Button } from '@/shared/ui/base/button'
 import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
@@ -35,6 +35,12 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
     queryFn: () => fetchNextServices(vehicleId),
   })
 
+  // 1,000km 를 그대로 바꾸면 621 mi. 안내 문장이라 마일은 100 단위 어림
+  const soonDistance =
+    i18n.f.distanceUnit === 'mi'
+      ? t.maintenance.next.about(i18n.f.distance(Math.round(SOON_KM / KM_PER_MILE / 100) * 100 * KM_PER_MILE))
+      : i18n.f.distance(SOON_KM)
+
   // 주기 편집 중인 종류. 한 번에 하나
   const [editing, setEditing] = useState<ServiceType | null>(null)
 
@@ -43,7 +49,7 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
     <Card>
       <CardHeader>
         <CardTitle>{t.maintenance.next.title}</CardTitle>
-        <CardDescription>{t.maintenance.next.description(i18n.f.distance(SOON_KM))}</CardDescription>
+        <CardDescription>{t.maintenance.next.description(soonDistance)}</CardDescription>
       </CardHeader>
       <CardContent>
         {loading && (

@@ -441,6 +441,7 @@ export const ko = {
       intervalCustomized: '주기 변경됨',
       last: (parts: string) => `마지막 ${parts}`,
       or: ' 또는 ',
+      about: (distance: string) => `약 ${distance}`,
       noInterval: '권장 주기 없음',
       intervalDistance: (unit: string) => `주행거리 주기 (${unit})`,
       intervalMonths: '기간 주기 (개월)',
@@ -514,6 +515,7 @@ export const ko = {
       average: (value: string) => `평균 ${value}`,
       axisNote: '세로축은 0 부터가 아니라 최솟값 근처에서 시작합니다. 절대량이 아니라 변화를 보는 그림입니다.',
       lowerIsBetter: '이 단위는 숫자가 작을수록 연비가 좋습니다.',
+      totalsNote: '평균 연비는 계산할 수 있는 구간만으로 냅니다. 위 합계는 첫 기록과 주유량을 비운 기록까지 모두 더한 값입니다.',
     },
   },
 

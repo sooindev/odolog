@@ -129,7 +129,7 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                       </span>
                     )}
                   </p>
-                  <p className="truncate text-caption text-muted-foreground">
+                  <p className="text-caption text-muted-foreground">
                     {line.plateNumber} · {t.home.vehicles.maintenanceCount(line.maintenanceCount)}
                     {/* 평균 연비. 없으면 자리 자체를 비움 */}
                     {line.averageEfficiency !== null && ` · ${f.efficiency(line.averageEfficiency, 1)}`}

@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -190,6 +191,29 @@ class HomeSummaryServiceTest {
         assertThat(byType.get(1).type()).isEqualTo(ServiceType.ENGINE_OIL);
         assertThat(byType.get(1).cost()).isEqualTo(100000);
         assertThat(byType.get(1).count()).isEqualTo(2);
+        assertThat(byType.get(1).pricedCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("종류별 금액 건수는 금액을 적은 기록만 센다 — 0원과 모름을 가른다")
+    void byTypeCountsPricedRecords() {
+        Vehicle car = vehicle(10L, "12가3456", 50000);
+        MaintenanceRecord unpriced = new MaintenanceRecord(car, ServiceType.TIRE, null, null, "KRW", 10000,
+                LocalDate.of(2026, 9, 1));
+        ReflectionTestUtils.setField(unpriced, "id", 2L);
+        ReflectionTestUtils.setField(unpriced, "publicId", "R2");
+        given(List.of(car), List.of(
+                record(1L, car, ServiceType.ENGINE_OIL, 0, LocalDate.of(2026, 9, 2)),
+                unpriced),
+                List.of());
+
+        List<HomeSummaryResponse.TypeCost> byType = homeSummaryService.summarize(1L, TODAY, "KRW").byType();
+
+        // 둘 다 합계는 0. 엔진오일은 0원에 했고, 타이어는 금액을 모름
+        assertThat(byType).extracting(HomeSummaryResponse.TypeCost::type, HomeSummaryResponse.TypeCost::pricedCount)
+                .containsExactlyInAnyOrder(
+                        tuple(ServiceType.ENGINE_OIL, 1),
+                        tuple(ServiceType.TIRE, 0));
     }
 
     @Test

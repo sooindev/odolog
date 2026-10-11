@@ -42,7 +42,13 @@ public record HomeSummaryResponse(
     ) {
     }
 
-    public record TypeCost(ServiceType type, long cost, int count) {
+    public record TypeCost(
+            ServiceType type,
+            long cost,
+            int count,
+            /** 금액을 적은 건수. 0 이면 cost 의 0 은 모름 */
+            int pricedCount
+    ) {
     }
 
     public record VehicleLine(

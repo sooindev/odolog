@@ -237,7 +237,8 @@ export function TypeCostChart({ byType, currency }: { byType: TypeCost[]; curren
                     </span>
                   </span>
                   <span className="shrink-0 text-caption tabular-nums text-strong">
-                    {f.money(entry.cost, currency)}
+                    {/* 금액을 하나도 안 적었으면 0원이 아니라 모름 */}
+                    {entry.pricedCount === 0 ? '—' : f.money(entry.cost, currency)}
                   </span>
                 </div>
 

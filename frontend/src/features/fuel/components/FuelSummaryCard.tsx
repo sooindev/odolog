@@ -142,6 +142,11 @@ export function FuelSummaryCard({ vehicleId }: { vehicleId: string }) {
               <Stat label={t.fuel.summary.cost} value={f.money(data.totalCost, data.currency)} />
             </dl>
 
+            {/* 합계를 나눈 값이 평균과 달라 보이는 이유 */}
+            {data.averageEfficiency !== null && (
+              <p className="text-caption leading-relaxed text-muted-foreground">{t.fuel.summary.totalsNote}</p>
+            )}
+
             {/* 구간이 둘 미만이면 추이 숨김 */}
             {data.trend.length >= 2 && (
               <EfficiencyTrend trend={data.trend} averageEfficiency={data.averageEfficiency} />
@@ -245,7 +250,10 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5 bg-card px-4 py-3.5">
       <dt className="text-eyebrow text-faint">{label}</dt>
-      <dd className="truncate text-figure tabular-nums text-strong">{value}</dd>
+      {/* 폰의 두 칸에서 7자리 금액이 22px 로 안 들어감. 잘리면 틀린 숫자로 읽힘 */}
+      <dd className="text-section font-normal tabular-nums text-strong [overflow-wrap:anywhere] sm:text-figure">
+        {value}
+      </dd>
     </div>
   )
 }

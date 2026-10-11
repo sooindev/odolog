@@ -131,13 +131,17 @@ public class HomeSummaryService {
     private List<TypeCost> byType(List<MaintenanceRecord> records) {
         Map<ServiceType, long[]> sums = new EnumMap<>(ServiceType.class);
         for (MaintenanceRecord record : records) {
-            long[] entry = sums.computeIfAbsent(record.getType(), key -> new long[2]);
+            long[] entry = sums.computeIfAbsent(record.getType(), key -> new long[3]);
             entry[0] += record.costOrZero();
             entry[1]++;
+            if (record.getCost() != null) {
+                entry[2]++;
+            }
         }
 
         return sums.entrySet().stream()
-                .map(entry -> new TypeCost(entry.getKey(), entry.getValue()[0], (int) entry.getValue()[1]))
+                .map(entry -> new TypeCost(entry.getKey(), entry.getValue()[0],
+                        (int) entry.getValue()[1], (int) entry.getValue()[2]))
                 .sorted(Comparator.comparingLong(TypeCost::cost).reversed())
                 .toList();
     }
