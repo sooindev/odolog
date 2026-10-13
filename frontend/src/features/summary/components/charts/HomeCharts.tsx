@@ -210,7 +210,15 @@ function MonthColumn({
  * 정비 종류별 비용
  * 순서 없는 항목이라 색 구분 없음. 값·건수 직접 표기라 말풍선 없음
  */
-export function TypeCostChart({ byType, currency }: { byType: TypeCost[]; currency: string }) {
+export function TypeCostChart({
+  byType,
+  currency,
+  hasRecords,
+}: {
+  byType: TypeCost[]
+  currency: string
+  hasRecords: boolean
+}) {
   const { t, f } = useI18n()
   const max = Math.max(...byType.map((entry) => entry.cost), 1)
 
@@ -224,7 +232,10 @@ export function TypeCostChart({ byType, currency }: { byType: TypeCost[]; curren
 
       <CardContent>
         {byType.length === 0 ? (
-          <p className="py-4 text-caption text-muted-foreground">{t.home.byType.empty}</p>
+          // 기록은 있는데 비었으면 전부 다른 통화. 없다고 말하면 거짓
+          <p className="py-4 text-caption text-muted-foreground">
+            {hasRecords ? t.home.byType.otherCurrencyOnly(currency) : t.home.byType.empty}
+          </p>
         ) : (
           <ul className="flex flex-col gap-5">
             {byType.map((entry, index) => (

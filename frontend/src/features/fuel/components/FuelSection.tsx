@@ -93,7 +93,8 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
               <Skeleton key={row} className="h-12" />
             ))}
           </div>
-        ) : data === undefined || data.items.length === 0 ? (
+        ) : data === undefined ? null : data.items.length === 0 ? (
+          // data 없음은 조회 실패. 위 오류 문구만, "기록 없음"은 거짓
           <p className="text-caption text-muted-foreground">{t.fuel.empty}</p>
         ) : (
           <>

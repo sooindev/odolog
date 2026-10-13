@@ -567,6 +567,8 @@ export const en: Messages = {
       title: 'Cost by service type',
       description: 'All-time totals. Fuel isn’t included.',
       empty: 'No service records yet.',
+      otherCurrencyOnly: (currency: string) =>
+        `No service costs in ${currency}. Services logged in other currencies aren’t added here.`,
     },
   },
 

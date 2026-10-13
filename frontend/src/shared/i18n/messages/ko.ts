@@ -565,6 +565,8 @@ export const ko = {
       title: '정비 종류별 비용',
       description: '전체 기간 합계입니다. 유류비는 포함하지 않습니다.',
       empty: '아직 등록된 정비 이력이 없습니다.',
+      otherCurrencyOnly: (currency: string) =>
+        `통화가 ${currency} 인 정비 비용이 없습니다. 다른 통화로 적은 정비는 더하지 않습니다.`,
     },
   },
 

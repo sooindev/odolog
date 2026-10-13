@@ -66,8 +66,9 @@ export function VehicleListPage() {
                   <p className="truncate text-eyebrow text-muted-foreground uppercase">
                     {vehicle.plateNumber}
                   </p>
-                  <p className="flex min-w-0 items-baseline gap-2">
-                    <span className="truncate text-section text-strong">
+                  {/* flex-wrap: 좁으면 배지가 다음 줄로. 배지에 밀려 이름이 0 폭이 되지 않게 */}
+                  <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="min-w-0 max-w-full truncate text-section text-strong">
                       {vehicle.manufacturer} {vehicle.modelName}
                     </span>
                     {/* 지난 정비 표시. 빨강 대신 테두리(NextServiceCard 참고) */}

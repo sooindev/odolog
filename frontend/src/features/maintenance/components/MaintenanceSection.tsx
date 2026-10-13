@@ -142,8 +142,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
               <Skeleton key={row} className="h-12" />
             ))}
           </div>
-        ) : data === undefined || data.totalElements === 0 ? (
-          // 필터 결과가 비었을 때는 별도 문구
+        ) : data === undefined ? null : data.totalElements === 0 ? (
+          // data 없음은 조회 실패(위 오류 문구만). 필터 결과가 비었을 때는 별도 문구
           <p className="py-4 text-caption text-muted-foreground">
             {filter === null
               ? t.maintenance.empty

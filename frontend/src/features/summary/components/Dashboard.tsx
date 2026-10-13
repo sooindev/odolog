@@ -44,7 +44,11 @@ export function Dashboard({ data, nickname }: { data: HomeData; nickname: string
 
       {/* 두 카드 나란히. grid-cols-1: 열 최소 0, 긴 한 줄 글자가 좁은 화면 폭을 밀지 않게 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <TypeCostChart byType={data.byType} currency={data.currency} />
+        <TypeCostChart
+          byType={data.byType}
+          currency={data.currency}
+          hasRecords={data.vehicles.some((line) => line.maintenanceCount > 0)}
+        />
         <RecentActivities recent={data.recent} />
       </div>
 
@@ -113,8 +117,9 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                 className="flex items-center justify-between gap-4 transition-opacity duration-200 ease-apple hover:opacity-70"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <p className="flex min-w-0 items-baseline gap-2">
-                    <span className="truncate text-body text-strong">
+                  {/* flex-wrap: 좁으면 배지가 다음 줄로. 배지에 밀려 이름이 0 폭이 되지 않게 */}
+                  <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="min-w-0 max-w-full truncate text-body text-strong">
                       {line.manufacturer} {line.modelName}
                     </span>
                     {/* 지난 정비 표시. 빨강 대신 테두리(NextServiceCard 참고) */}
