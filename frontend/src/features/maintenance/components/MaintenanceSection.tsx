@@ -176,16 +176,21 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
                   )}
                 </div>
 
-                {/* 수치는 오른쪽 정렬 열 */}
-                <div className="shrink-0 sm:text-right">
-                  {/* 모르고 비운 값은 — (0 으로 보이면 적은 값처럼 읽힘) */}
-                  <p className="text-body tabular-nums text-strong">
-                    {record.serviceOdometer === null ? '—' : f.distance(record.serviceOdometer)}
-                  </p>
-                  <p className="text-caption tabular-nums text-muted-foreground">
-                    {record.cost === null ? '—' : f.money(record.cost, record.currency)}
-                  </p>
-                </div>
+                {/* 수치는 오른쪽 정렬 열. 모르고 비운 값은 줄째 생략 — 라벨 없는 — 는 무엇이 비었는지 말하지 못함 */}
+                {(record.serviceOdometer !== null || record.cost !== null) && (
+                  <div className="shrink-0 sm:text-right">
+                    {record.serviceOdometer !== null && (
+                      <p className="text-body tabular-nums text-strong">
+                        {f.distance(record.serviceOdometer)}
+                      </p>
+                    )}
+                    {record.cost !== null && (
+                      <p className="text-caption tabular-nums text-muted-foreground">
+                        {f.money(record.cost, record.currency)}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* 터치 기기에서는 항상 진하게 */}
                 <div className="ml-auto flex shrink-0 gap-0.5 opacity-70 transition-opacity duration-200 ease-apple group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100">

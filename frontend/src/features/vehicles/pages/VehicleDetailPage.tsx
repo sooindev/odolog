@@ -146,12 +146,13 @@ export function VehicleDetailPage() {
           <div className="flex flex-col gap-4 border-t border-border pt-8">
             {actionError !== null && <ErrorText message={actionError} />}
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* -ml-3.5: 버튼 안쪽 여백만큼 당겨 글자를 안내문 왼쪽 선에 맞춤 */}
+            <div className="flex flex-col items-start gap-2">
               <p className="text-caption text-muted-foreground">{t.vehicles.detail.deleteNote}</p>
               <Button
                 variant="destructive"
                 size="sm"
-                className="shrink-0"
+                className="-ml-3.5"
                 disabled={deleting}
                 onClick={handleDelete}
               >

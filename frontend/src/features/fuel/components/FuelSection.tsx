@@ -156,16 +156,18 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                     </div>
 
                     <div className="flex flex-col items-end gap-1 tabular-nums">
-                      {/* 안 적은 값은 — */}
-                      <span className="text-strong">
-                        {record.liters === null ? '—' : f.volume(record.liters)}
-                      </span>
-                      <span className="text-caption text-muted-foreground">
-                        {record.totalCost === null ? '—' : f.money(record.totalCost, record.currency)}
-                      </span>
+                      {/* 안 적은 값은 줄째 생략 — 라벨 없는 — 는 무엇이 비었는지 말하지 못함 */}
+                      {record.liters !== null && (
+                        <span className="text-strong">{f.volume(record.liters)}</span>
+                      )}
+                      {record.totalCost !== null && (
+                        <span className="text-caption text-muted-foreground">
+                          {f.money(record.totalCost, record.currency)}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex shrink-0 gap-1">
+                    <div className="ml-auto flex shrink-0 gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
