@@ -11,7 +11,10 @@ export interface AuthContextValue {
   user: UserResponse | null
   /** 최초 세션 복구 전에는 true */
   loading: boolean
+  /** 서버가 세션을 끊어(401) 로그아웃된 상태. 로그인 화면 안내용 */
+  sessionEnded: boolean
   login: (request: LoginRequest) => Promise<void>
+  /** 서버 세션을 못 끊었으면(네트워크 등) 던지고 로그인 상태 유지 */
   logout: () => Promise<void>
   /**
    * 탈퇴. 성공 시 로그인 상태 제거

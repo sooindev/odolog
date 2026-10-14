@@ -16,9 +16,14 @@ export function Header() {
   // 로그인·가입 화면에서는 로그인 버튼 숨김
   const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'
 
-  // logout() 은 실패해도 던지지 않아 navigate 항상 실행
+  // 서버 세션을 못 끊었으면 로그인 상태 그대로 두고 알림. 공용 PC 에서 로그아웃된 줄 알고 떠나지 않게
   async function handleLogout() {
-    await logout()
+    try {
+      await logout()
+    } catch {
+      window.alert(t.header.logoutFailed)
+      return
+    }
     navigate('/login', { replace: true })
   }
 

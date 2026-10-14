@@ -59,12 +59,13 @@ export interface FuelRecordResponse {
 
 export interface FuelSummaryResponse {
   recordCount: number
-  /** 사용자 통화 기록만의 합(최소 단위) */
-  totalCost: number
+  /** 사용자 통화 기록만의 합(최소 단위). 금액을 적은 기록이 없으면 null */
+  totalCost: number | null
   currency: string
   /** 통화가 달라 totalCost 에서 뺀 기록 수 */
   otherCurrencyRecordCount: number
-  totalLiters: number
+  /** 주유량을 적은 기록이 없으면 null */
+  totalLiters: number | null
   /** 2건 미만이면 null */
   totalDistance: number | null
   averageEfficiency: number | null

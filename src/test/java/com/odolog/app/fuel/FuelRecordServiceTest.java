@@ -295,6 +295,21 @@ class FuelRecordServiceTest {
     }
 
     @Test
+    @DisplayName("금액·주유량을 하나도 안 적었으면 합계는 0 이 아니라 null — 화면이 0원·0L 대신 — 로")
+    void summaryTotalsAreNullWhenNothingRecorded() {
+        Vehicle vehicle = vehicle(11000);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(
+                bare(1L, vehicle, 10000), bare(2L, vehicle, 10500)));
+
+        FuelSummaryResponse summary = fuelRecordService.summary(1L, "V10");
+
+        assertThat(summary.recordCount()).isEqualTo(2);
+        assertThat(summary.totalCost()).isNull();
+        assertThat(summary.totalLiters()).isNull();
+    }
+
+    @Test
     @DisplayName("기록이 빠진 것으로 보이는 구간은 목록 행에 표시된다")
     void listMarksMissingRecordSegment() {
         Vehicle vehicle = vehicle(12000);

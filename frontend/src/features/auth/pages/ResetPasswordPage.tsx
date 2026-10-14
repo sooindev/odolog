@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 
 import { confirmPasswordReset } from '@/features/auth/api/endpoints'
 import { useAuth } from '@/features/auth/context/AuthContext'
@@ -19,8 +19,18 @@ export function ResetPasswordPage() {
   const { t } = useI18n()
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { logout } = useAuth()
-  const token = params.get('token')
+  // 주소의 토큰은 읽자마자 history.state 로 옮김. 주소창에 남지 않고 새로고침에는 남게
+  const [token] = useState(
+    () => params.get('token') ?? (location.state as { token?: string } | null)?.token ?? null,
+  )
+
+  useEffect(() => {
+    if (params.has('token')) {
+      navigate(location.pathname, { replace: true, state: { token } })
+    }
+  }, [params, token, location.pathname, navigate])
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -45,7 +55,8 @@ export function ResetPasswordPage() {
       await confirmPasswordReset({ token: token ?? '', newPassword })
       // 서버는 그 계정의 세션만 끊음. 다른 계정으로 로그인한 브라우저도 확실히 로그아웃
       // 화면만 비우면 새로고침 시 그 세션으로 다시 로그인된 채 14일 유지
-      await logout()
+      // 그 로그아웃이 실패해도 재설정은 끝났으므로 로그인 화면으로
+      await logout().catch(() => {})
       // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
       navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
     } catch (caught) {

@@ -1,9 +1,11 @@
 package com.odolog.app.common.validation;
 
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class InputTextTest {
 
@@ -14,6 +16,18 @@ class InputTextTest {
         assertThat(InputText.optional("   ")).isNull();
         assertThat(InputText.optional("　")).isNull();
         assertThat(InputText.optional("  엔진오일 교체 ")).isEqualTo("엔진오일 교체");
+    }
+
+    @Test
+    @DisplayName("strip() 이 남기는 NBSP·폭 없는 공백·BOM 도 지운다 — 화면에 빈 칸으로 보이는 닉네임 방지")
+    void stripsInvisibleSpaces() {
+        assertThat(InputText.optional("\u00a0")).isNull();
+        assertThat(InputText.optional("\u200b\ufeff")).isNull();
+        assertThat(InputText.optional("\u202f메모\u2007")).isEqualTo("메모");
+        // 가운데 NBSP 는 글자 사이라 남김
+        assertThat(InputText.optional("a\u00a0b")).isEqualTo("a\u00a0b");
+        assertThatThrownBy(() -> InputText.required("\u00a0", "nickname"))
+                .isInstanceOf(InvalidRequestException.class);
     }
 
     @Test

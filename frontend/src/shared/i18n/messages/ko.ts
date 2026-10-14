@@ -45,6 +45,7 @@ export const ko = {
   header: {
     login: '로그인',
     logout: '로그아웃',
+    logoutFailed: '로그아웃하지 못했습니다. 연결을 확인하고 다시 눌러 주세요.',
   },
 
   footer: {
@@ -61,7 +62,7 @@ export const ko = {
   },
 
   errors: {
-    network: '서버에 연결하지 못했습니다. 네트워크와 백엔드 실행 상태를 확인해 주세요.',
+    network: '서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.',
     http: (status: number) => `요청에 실패했습니다 (HTTP ${status})`,
     /** code 별 문구. field·분이 필요한 것은 함수 */
     codes: {
@@ -155,6 +156,7 @@ export const ko = {
     notices: {
       signedUp: '가입했습니다. 로그인해 주세요.',
       passwordReset: '비밀번호를 바꿨습니다. 새 비밀번호로 로그인해 주세요.',
+      sessionEnded: '로그인이 끝났습니다. 다른 곳에서 비밀번호를 바꿨거나 오래 쓰지 않으면 이렇게 됩니다. 다시 로그인해 주세요.',
     },
   },
 
@@ -349,7 +351,7 @@ export const ko = {
       bigJump: (from: string, to: string) =>
         `${from} 에서 ${to} 로 크게 뜁니다.\n자리수를 확인해 주세요.\n\n이대로 저장할까요?`,
       decrease: (current: string) =>
-        `현재 기록된 ${current} 보다 낮습니다.\n계기판을 교체했거나 잘못 입력한 값을 고치는 경우에만 진행하세요.`,
+        `현재 기록된 ${current} 보다 낮습니다.\n잘못 입력한 값을 고치는 경우에만 진행하세요.\n계기판을 교체한 경우에는 기록이 주행거리 순으로 정렬돼 연비와 다음 정비가 맞지 않게 됩니다.`,
       conflict: (message: string, current: string) => `${message} (현재 ${current})`,
     },
     info: {
@@ -502,9 +504,9 @@ export const ko = {
         '아직 연비를 계산할 수 있는 구간이 없습니다. 주행거리가 늘고 주유량이 적힌 기록이 두 건 이어져야 계산됩니다.',
       sinceReset: '연비 초기화 이후 구간만 계산한 값입니다.',
       excluded: (n: number) =>
-        `계산할 수 없는 구간 ${n}곳을 평균에서 뺐습니다. 목록에서 \`확인 필요\` 가 붙은 기록의 주행거리나 주유량을 확인해 주세요.`,
+        `계산할 수 없는 구간 ${n}곳을 평균에서 뺐습니다. 목록에서 ‘확인 필요’가 붙은 기록의 주행거리나 주유량을 확인해 주세요.`,
       missing: (n: number) =>
-        `주유 기록이 빠진 것으로 보이는 구간 ${n}곳을 평균에서 뺐습니다. 목록에서 \`기록 빠짐?\` 이 붙은 구간의 기록을 채워 넣으면 다시 계산됩니다.`,
+        `주유 기록이 빠진 것으로 보이는 구간 ${n}곳을 평균에서 뺐습니다. 목록에서 ‘기록 빠짐?’이 붙은 구간의 기록을 채워 넣으면 다시 계산됩니다.`,
       otherCurrency: (n: number, currency: string) =>
         `통화가 ${currency} 가 아닌 기록 ${n}건은 총 유류비에서 뺐습니다.`,
       records: '기록',

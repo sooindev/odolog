@@ -159,19 +159,21 @@ public class FuelRecordService {
 
         // 건수·주유량은 전체 기준. 초기화 대상은 연비만
         // 비용은 사용자 통화만. 다른 통화는 더할 수 없어 건수만 공개
-        long totalCost = 0;
+        // 하나도 안 적었으면 null. 0 은 "0원·0L 을 넣었다"는 다른 사실
+        Long totalCost = null;
         int otherCurrency = 0;
-        BigDecimal totalLiters = BigDecimal.ZERO;
+        BigDecimal totalLiters = null;
         for (FuelRecord record : records) {
-            if (currency.equals(record.getCurrency())) {
-                totalCost += record.totalCostOrZero();
-            } else if (record.getTotalCost() != null) {
-                // 금액이 비어 있으면 뺀 것이 없어 세지 않음
-                otherCurrency++;
+            if (record.getTotalCost() != null) {
+                if (currency.equals(record.getCurrency())) {
+                    totalCost = (totalCost == null ? 0L : totalCost) + record.getTotalCost();
+                } else {
+                    // 금액이 비어 있으면 뺀 것이 없어 세지 않음
+                    otherCurrency++;
+                }
             }
-            // BigDecimal 합산이라 null 직접 제외
             if (record.getLiters() != null) {
-                totalLiters = totalLiters.add(record.getLiters());
+                totalLiters = totalLiters == null ? record.getLiters() : totalLiters.add(record.getLiters());
             }
         }
 

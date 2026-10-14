@@ -54,6 +54,15 @@ export function RegionForm({ user }: { user: UserResponse }) {
     [user.timeZone],
   )
 
+  // 고르기 시작하면 지난 저장 결과는 지운다. 지금 값의 이야기가 아니라서
+  function edited<T>(set: (next: T) => void) {
+    return (next: T) => {
+      set(next)
+      setNoChanges(false)
+      setSaved(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setNoChanges(false)
@@ -91,7 +100,7 @@ export function RegionForm({ user }: { user: UserResponse }) {
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label={t.profile.region.language} htmlFor="language">
-              <NativeSelect id="language" value={language} onChange={(next) => setLanguage(next as Language)}>
+              <NativeSelect id="language" value={language} onChange={edited((next: string) => setLanguage(next as Language))}>
                 {LANGUAGES.map((code) => (
                   <option key={code} value={code}>
                     {t.languages[code]}
@@ -104,7 +113,7 @@ export function RegionForm({ user }: { user: UserResponse }) {
               <NativeSelect
                 id="unit-system"
                 value={unitSystem}
-                onChange={(next) => setUnitSystem(next as UnitSystem)}
+                onChange={edited((next: string) => setUnitSystem(next as UnitSystem))}
               >
                 {UNIT_SYSTEMS.map((system) => (
                   <option key={system} value={system}>
@@ -116,7 +125,7 @@ export function RegionForm({ user }: { user: UserResponse }) {
 
             {/* 이미 적은 기록은 원래 통화 그대로. 바꾸기 전에 알게 */}
             <Field label={t.profile.region.currency} htmlFor="currency" hint={t.profile.region.currencyHint}>
-              <NativeSelect id="currency" value={currency} onChange={setCurrency}>
+              <NativeSelect id="currency" value={currency} onChange={edited(setCurrency)}>
                 {currencies.map(({ code, label }) => (
                   <option key={code} value={code}>
                     {label}
@@ -130,7 +139,7 @@ export function RegionForm({ user }: { user: UserResponse }) {
               htmlFor="time-zone"
               hint={t.profile.region.timeZoneHint(browserTimeZone)}
             >
-              <NativeSelect id="time-zone" value={timeZone} onChange={setTimeZone}>
+              <NativeSelect id="time-zone" value={timeZone} onChange={edited(setTimeZone)}>
                 {timeZones.map((zone) => (
                   <option key={zone} value={zone}>
                     {zone}

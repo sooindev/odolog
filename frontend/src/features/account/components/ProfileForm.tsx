@@ -63,7 +63,11 @@ export function ProfileForm({ user }: { user: UserResponse }) {
                 required
                 maxLength={30}
                 value={nickname}
-                onChange={(event) => setNickname(event.target.value)}
+                onChange={(event) => {
+                  setNickname(event.target.value)
+                  // 고치기 시작하면 지난 저장 결과는 지금 값의 이야기가 아님
+                  setMessage(null)
+                }}
               />
             </Field>
           </div>

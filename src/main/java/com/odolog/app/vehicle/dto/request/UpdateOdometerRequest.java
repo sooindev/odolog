@@ -14,7 +14,7 @@ public record UpdateOdometerRequest(
 
         /**
          * 감소 허용 여부. null 이면 false
-         * 계기판 교체·자리수 오타 정정용
+         * 자리수 오타 정정용. 계기판 교체는 기록이 주행거리순이라 연비·다음 정비가 맞지 않음
          */
         Boolean force
 ) {

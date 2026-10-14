@@ -62,7 +62,10 @@ export function PasswordForm() {
               required
               autoComplete="current-password"
               value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
+              onChange={(event) => {
+                  setCurrentPassword(event.target.value)
+                  setChanged(false)
+                }}
             />
           </Field>
 
@@ -77,7 +80,10 @@ export function PasswordForm() {
                 maxLength={72}
                 autoComplete="new-password"
                 value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
+                onChange={(event) => {
+                  setNewPassword(event.target.value)
+                  setChanged(false)
+                }}
               />
             </Field>
 
@@ -88,7 +94,10 @@ export function PasswordForm() {
                 required
                 autoComplete="new-password"
                 value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
+                onChange={(event) => {
+                  setConfirmPassword(event.target.value)
+                  setChanged(false)
+                }}
               />
             </Field>
           </div>

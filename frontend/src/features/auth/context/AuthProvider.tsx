@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { AuthContext } from '@/features/auth/context/AuthContext'
-import { setUnauthorizedHandler } from '@/shared/api/client'
+import { ApiError, setUnauthorizedHandler } from '@/shared/api/client'
 import {
   fetchMe,
   login as requestLogin,
@@ -19,6 +19,7 @@ import type {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionEnded, setSessionEnded] = useState(false)
   // 로그인·로그아웃·탈퇴가 먼저 끝났는지. 늦게 온 첫 /me 가 그 결과를 덮지 않게
   const sessionDecided = useRef(false)
   // 계정이 바뀌는 모든 순간에 비움. 다른 계정의 차량·기록이 캐시로 보이지 않게
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 세션 만료 시 사용자 정보 비움 → ProtectedRoute 가 /login 으로
   useEffect(() => {
     setUnauthorizedHandler(() => {
+      setSessionEnded(true)
       setUser(null)
       queryClient.clear()
     })
@@ -60,20 +62,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionDecided.current = true
     // 다른 계정으로 바꿔 로그인해도 앞 계정의 캐시가 남지 않게
     queryClient.clear()
+    setSessionEnded(false)
     setUser(me)
   }, [queryClient])
 
-  // 실패해도 상태는 비움. 호출부의 이동이 막히지 않게
+  // 서버 세션이 남았을 수 있으면(네트워크 등) 던지고 로그인 상태 유지. 화면만 비우면 새로고침 때 다시 로그인된 채
+  // 401 은 이미 끊긴 세션이라 성공으로 봄
   const logout = useCallback(async () => {
     try {
       await requestLogout()
-    } catch {
-      // 서버 다운·네트워크 끊김도 로그아웃 처리
-    } finally {
-      sessionDecided.current = true
-      queryClient.clear()
-      setUser(null)
+    } catch (caught) {
+      if (!(caught instanceof ApiError && caught.status === 401)) {
+        throw caught
+      }
     }
+    sessionDecided.current = true
+    queryClient.clear()
+    setSessionEnded(false)
+    setUser(null)
   }, [queryClient])
 
   // 탈퇴 실패는 그대로 전달. 지워진 것처럼 보이는 문제 방지
@@ -84,14 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionDecided.current = true
     startTransition(() => {
       leave()
+      setSessionEnded(false)
       setUser(null)
     })
     queryClient.clear()
   }, [queryClient])
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, withdraw, replaceUser: setUser }),
-    [user, loading, login, logout, withdraw],
+    () => ({ user, loading, sessionEnded, login, logout, withdraw, replaceUser: setUser }),
+    [user, loading, sessionEnded, login, logout, withdraw],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

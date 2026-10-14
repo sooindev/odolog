@@ -49,6 +49,7 @@ export const en: Messages = {
   header: {
     login: 'Log in',
     logout: 'Log out',
+    logoutFailed: 'Couldn’t log out. Check your connection and try again.',
   },
 
   footer: {
@@ -157,6 +158,7 @@ export const en: Messages = {
     notices: {
       signedUp: 'Your account is ready. Please log in.',
       passwordReset: 'Password changed. Log in with your new password.',
+      sessionEnded: 'You’ve been logged out — your password was changed elsewhere, or the session expired. Please log in again.',
     },
   },
 
@@ -352,7 +354,7 @@ export const en: Messages = {
       bigJump: (from: string, to: string) =>
         `That’s a big jump from ${from} to ${to}.\nPlease check the digits.\n\nSave anyway?`,
       decrease: (current: string) =>
-        `That’s lower than the recorded ${current}.\nOnly continue if the odometer was replaced or you’re fixing a typo.`,
+        `That’s lower than the recorded ${current}.\nOnly continue if you’re fixing a typo.\nIf the odometer was replaced, fuel economy and next service won’t add up — records are ordered by odometer.`,
       conflict: (message: string, current: string) => `${message} (currently ${current})`,
     },
     info: {

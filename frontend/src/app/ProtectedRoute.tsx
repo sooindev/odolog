@@ -5,7 +5,7 @@ import { useAuth } from '@/features/auth/context/AuthContext'
 
 /** 로그인 사용자만 통과. 아니면 /login */
 export function ProtectedRoute() {
-  const { user, loading } = useAuth()
+  const { user, loading, sessionEnded } = useAuth()
   const location = useLocation()
 
   // 세션 복구 전 판단 금지. 로그인 화면 깜빡임 방지
@@ -16,9 +16,11 @@ export function ProtectedRoute() {
   if (user === null) {
     // replace: 뒤로가기 반복 방지
     // state.from: 로그인 후 복귀용. 쿼리·해시까지 보존
+    // 서버가 세션을 끊었으면 이유 안내. 말없이 로그인 화면이면 버그로 보임
     const from = `${location.pathname}${location.search}${location.hash}`
+    const notice = sessionEnded ? 'sessionEnded' : undefined
 
-    return <Navigate to="/login" replace state={{ from }} />
+    return <Navigate to="/login" replace state={{ from, notice }} />
   }
 
   return <Outlet />

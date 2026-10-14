@@ -182,12 +182,12 @@ function RecentActivities({ recent }: { recent: HomeData['recent'] }) {
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="text-body text-strong">
                     {item.type === null ? t.home.recent.fuel : t.serviceTypes[item.type]}
+                    {/* 주유는 넣은 양. 차량 이름 줄에 두면 긴 이름의 말줄임에 같이 잘림 */}
+                    {item.liters !== null && (
+                      <span className="text-caption tabular-nums text-muted-foreground"> · {f.volume(item.liters)}</span>
+                    )}
                   </p>
-                  <p className="truncate text-caption text-muted-foreground">
-                    {item.vehicleName}
-                    {/* 주유는 넣은 양 표시 */}
-                    {item.liters !== null && ` · ${f.volume(item.liters)}`}
-                  </p>
+                  <p className="truncate text-caption text-muted-foreground">{item.vehicleName}</p>
                 </div>
 
                 <div className="shrink-0 text-right">

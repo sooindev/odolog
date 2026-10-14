@@ -60,17 +60,21 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
           </div>
         )}
 
+        {/* 다시 읽다 실패하면 옛 목록 위에 한 줄. 목록과 열어 둔 주기 폼은 그대로 */}
         {!loading && error !== null && (
-          <ErrorText message={errorMessage(error, t, t.maintenance.next.loadFailed)} />
+          <ErrorText
+            className={results === undefined ? undefined : 'mb-5'}
+            message={errorMessage(error, t, t.maintenance.next.loadFailed)}
+          />
         )}
 
-        {!loading && error === null && results !== undefined && results.length === 0 && (
+        {!loading && results !== undefined && results.length === 0 && (
           <p className="text-caption leading-relaxed text-muted-foreground">
             {t.maintenance.next.empty}
           </p>
         )}
 
-        {!loading && error === null && results !== undefined && results.length > 0 && (
+        {!loading && results !== undefined && results.length > 0 && (
           // divide-y: 항목 사이에만 선
           <ul className="divide-y divide-border">
             {results.map((result) => (

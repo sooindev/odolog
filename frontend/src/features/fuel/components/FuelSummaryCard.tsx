@@ -139,8 +139,12 @@ export function FuelSummaryCard({ vehicleId }: { vehicleId: string }) {
                   label={t.fuel.summary.distance}
                   value={data.totalDistance === null ? '—' : f.distance(data.totalDistance)}
                 />
-                <Stat label={t.fuel.summary.volume} value={f.volume(data.totalLiters)} />
-                <Stat label={t.fuel.summary.cost} value={f.money(data.totalCost, data.currency)} />
+                {/* 하나도 안 적었으면 —. 0 은 0원·0L 을 넣었다는 뜻으로 읽힘 */}
+                <Stat label={t.fuel.summary.volume} value={data.totalLiters === null ? '—' : f.volume(data.totalLiters)} />
+                <Stat
+                  label={t.fuel.summary.cost}
+                  value={data.totalCost === null ? '—' : f.money(data.totalCost, data.currency)}
+                />
               </dl>
             )}
 

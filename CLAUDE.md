@@ -220,7 +220,8 @@
       그대로 두면 "없음" 이 두 모양이 되고 **내보낸 JSON 에도 그 차이가 그대로 나간다.**
     - 필수 입력(번호판·제조사·모델명·닉네임)은 `InputText.required` — 지운 뒤 비면 400.
       `@NotBlank`(trim 기준)와 `\S` 는 전각 공백을 글자로 보고 통과시키므로 서비스에서 한 번 더 본다.
-    - `trim()` 이 아니라 `strip()` — 전각 공백(U+3000)까지 지운다.
+    - `trim()` 이 아니라 `InputText.strip` — 전각 공백(U+3000)과 `strip()` 이 남기는 NBSP·폭 없는 공백·BOM 까지 지운다
+      (NBSP 닉네임이 헤더에서 빈 칸으로 보였다).
     - 자르는 자리는 서비스다 — DTO 접근자에서 자르면 부분 수정에서 "안 보냄"과 "지움"이 같아진다.
     - **"같은 번호판인가"는 DB 가 판단한다.** DB(unicode_ci)는 뒤 공백·대소문자·전각 숫자·악센트까지 같게 보는데,
       자바로 그 정렬 규칙을 흉내 내면 언젠가 갈린다. 차량 수정은 `existsBy…AndIdNot`(자기 자신 제외),
@@ -389,7 +390,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 373개):
+테스트 종류 (`./gradlew test`, 375개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 여덟** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는
@@ -456,7 +457,7 @@
 
 테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 99개(파일 15개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
-실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 15개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
+실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 17개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.
 
 ### 의존 방향

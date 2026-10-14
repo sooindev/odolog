@@ -12,14 +12,30 @@ public final class InputText {
     private InputText() {
     }
 
-    /** strip() 사용. 전각 공백(U+3000)까지 제거 */
+    /** 앞뒤 공백 제거. strip() 이 남기는 NBSP(U+00A0·U+2007·U+202F)·폭 없는 공백(U+200B)·BOM(U+FEFF)까지 */
     public static String strip(String value) {
-        return value == null ? null : value.strip();
+        if (value == null) {
+            return null;
+        }
+        int start = 0;
+        int end = value.length();
+        while (start < end && isBlank(value.charAt(start))) {
+            start++;
+        }
+        while (end > start && isBlank(value.charAt(end - 1))) {
+            end--;
+        }
+        return value.substring(start, end);
+    }
+
+    /** 화면에 아무것도 안 보이는 글자. isSpaceChar 가 NBSP·전각 공백을, isWhitespace 가 탭·줄바꿈을 맡음 */
+    private static boolean isBlank(char c) {
+        return Character.isWhitespace(c) || Character.isSpaceChar(c) || c == '\u200B' || c == '\uFEFF';
     }
 
     /**
      * 필수 입력용 strip. 지운 뒤 비면 400
-     * @NotBlank(trim 기준)·\S 는 전각 공백을 글자로 보고 통과시킴. 그대로 두면 빈 문자열 저장
+     * @NotBlank(trim 기준)·\S 는 전각 공백·NBSP 를 글자로 보고 통과시킴. 그대로 두면 빈 문자열 저장
      */
     public static String required(String value, String field) {
         String stripped = strip(value);

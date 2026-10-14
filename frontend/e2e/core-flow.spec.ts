@@ -76,6 +76,42 @@ test('로그아웃하면 보호된 화면은 로그인으로, 다시 로그인�
   await expect(page).toHaveURL(/\/vehicles$/)
 })
 
+test('로그아웃 요청이 실패하면 알리고 로그인 상태를 그대로 둔다 — 서버 세션이 남아 있어서', async ({ page }) => {
+  await signUp(page, uniqueEmail('logout-fail'))
+  await page.route('**/api/users/logout', (route) => route.abort())
+  const alerted = page.waitForEvent('dialog')
+  await page.getByRole('button', { name: '로그아웃' }).click()
+  expect((await alerted).message()).toContain('로그아웃하지 못했습니다')
+
+  await expect(page).toHaveURL(/\/vehicles$/)
+  await expect(page.getByRole('button', { name: '로그아웃' })).toBeVisible()
+})
+
+test('다른 기기에서 비밀번호를 바꾸면 이 기기는 이유와 함께 로그인 화면으로', async ({ page, browser }) => {
+  const email = uniqueEmail('session-ended')
+  await signUp(page, email)
+
+  const other = await guard.open(browser)
+  await other.goto('/login')
+  await other.locator('#email').fill(email)
+  await other.locator('#password').fill(PASSWORD)
+  await other.getByRole('button', { name: '로그인', exact: true }).last().click()
+  await expect(other).toHaveURL(/\/vehicles$/)
+  await other.goto('/me')
+  await other.locator('#current-password').fill(PASSWORD)
+  await other.locator('#new-password').fill('newpassword1234')
+  await other.locator('#confirm-password').fill('newpassword1234')
+  await other.getByRole('button', { name: '비밀번호 변경' }).click()
+  await expect(other.getByText('비밀번호를 변경했습니다.')).toBeVisible()
+
+  // 이 기기의 다음 요청이 401. 새로 불러오면 첫 /me 가 비로그인으로 보므로 화면 안에서 이동
+  await page.getByRole('button', { name: 'e2e' }).click()
+  await page.locator('#nickname').fill('바뀐닉네임')
+  await page.getByRole('button', { name: '저장', exact: true }).first().click()
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByText('로그인이 끝났습니다.', { exact: false })).toBeVisible()
+})
+
 test('새로고침해도 로그인이 유지된다 — 세션은 DB 에 있다', async ({ page }) => {
   await signUp(page, uniqueEmail('reload'))
   await page.reload()
