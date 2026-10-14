@@ -44,6 +44,20 @@ class ConfigParityTest {
         }
     }
 
+    @Test
+    @DisplayName("프로파일 없이 떠도 운영에 안전하다 — 개발 편의(SQL·바인딩 로그, 문서, 재설정 링크 로그)는 dev 에만")
+    void baseConfigIsSafeWithoutProfile() throws IOException {
+        Map<String, Object> main = load(Path.of("src/main/resources/application.yml"));
+
+        assertThat(lookup(main, "logging.level.org.hibernate.orm.jdbc.bind")).isNotEqualTo("trace");
+        assertThat(lookup(main, "logging.level.org.hibernate.SQL")).isNotEqualTo("debug");
+        assertThat(lookup(main, "spring.jpa.show-sql")).isNotEqualTo(true);
+        assertThat(lookup(main, "springdoc.api-docs.enabled")).isEqualTo(false);
+        assertThat(lookup(main, "springdoc.swagger-ui.enabled")).isEqualTo(false);
+        assertThat(lookup(main, "odolog.mail.log-link-on-failure")).isEqualTo(false);
+        assertThat(lookup(main, "server.servlet.session.cookie.secure")).isEqualTo("${SESSION_COOKIE_SECURE:true}");
+    }
+
     private Map<String, Object> load(Path path) throws IOException {
         try (InputStream in = Files.newInputStream(path)) {
             return new Yaml().load(in);

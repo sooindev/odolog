@@ -1,0 +1,33 @@
+# 개발 전용 덮어쓰기. SPRING_PROFILES_ACTIVE=dev 로 적용(IntelliJ 실행 구성)
+# 기본 application.yml 은 운영에 안전한 값. 프로파일을 빠뜨려도 개발 설정으로 뜨지 않게 여기에만 둠
+
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# 로컬은 http. secure 쿠키는 http 에서 안 실릴 수 있음
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+odolog:
+  # 메일 설정이 없는 로컬에서 재설정 흐름 확인용. 발송 실패 시 링크를 로그에
+  mail:
+    log-link-on-failure: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+# SQL 로그. bind: trace 는 이메일·해시까지 출력
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace

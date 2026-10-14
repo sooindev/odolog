@@ -20,6 +20,19 @@
 
 ---
 
+- [x] 프로파일을 빠뜨리면 개발 설정으로 뜨던 것 — 기본을 안전한 값으로, 개발 편의는 `dev` 프로파일로 (2026-10-14, 백로그 "배포 전")
+      → 증상: 개발 편의(bind trace 로그 — 이메일·해시, 재설정 링크 로그, Swagger, 쿠키 secure 끔)가 기본 `application.yml` 에 있고
+        `prod` 가 그것을 끄는 구조였다. 운영 환경변수는 다 넣고 `SPRING_PROFILES_ACTIVE` 만 빠뜨리면 정상 기동해 그대로 켜진 채 돈다
+      → 기본 `application.yml` 을 운영에 안전한 값으로(로그·문서·링크 로그 끔, 쿠키 secure 기본 켬), 켜는 쪽을
+        `application-dev.yml` 로. `prod` 에서 이제 겹치는 값(로그·문서·링크 로그 끄기)은 지웠다 — 두 곳에 있으면 한쪽만 고친다
+      → 대안: 프로파일이 없으면 기동을 막는 검사. 빠뜨린 사람에게 바로 알려 주지만, 막는 코드를 테스트·E2E·bootTestRun 마다
+        피해 가게 만들어야 한다. 기본값을 안전하게 두면 빠뜨렸을 때의 결과가 "불편함"(Swagger 404)이라 검사가 필요 없다
+      → IntelliJ 실행 구성에 `SPRING_PROFILES_ACTIVE=dev` 를 더해야 한다(사용자가 직접)
+      → 이름이 `local` 이 아닌 이유: `.gitignore` 가 `application-local.yml` 을 비밀번호 두는 자리로 이미 무시한다. 그 규칙을 풀면
+        나중에 거기 적은 비밀번호가 커밋된다. 커밋되는 개발 설정은 비밀이 없는 `dev` 로 두고 `local` 자리는 그대로 남겼다
+      → 확인: `ConfigParityTest.baseConfigIsSafeWithoutProfile`(고치기 전 실패). 테스트 DB 로 실제로 띄워 비교 —
+        프로파일 없음: `/v3/api-docs` 404, `XSRF-TOKEN` Secure, SQL·bind 로그 0줄 / `dev`: 200, Secure 아님, 로그 찍힘
+
 - [x] 2026-10-14 전체 점검의 남은 항목을 백로그로 옮김 (2026-10-14)
       → 파일 단위 점검(`docs/REVIEW-2026-10-14.md`)에서 데이터 손실·권한 우회는 없었다. 실제 버그·로그 누락·잠금 창과
         이름만 있던 테스트 3건은 같은 날 고쳤고(아래 항목들), 나머지는 `docs/QA.md` 백로그에 묶음별로 옮겼다

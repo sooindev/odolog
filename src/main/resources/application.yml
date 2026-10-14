@@ -30,11 +30,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
     open-in-view: false
     properties:
       hibernate:
-        format_sql: true
         default_batch_fetch_size: 100
 
   # 비밀번호 재설정 메일. 자격증명은 환경변수로만
@@ -56,7 +54,7 @@ spring:
           writetimeout: 5000
 
 # 세션 쿠키 속성 명시. 브라우저 기본값에 기대지 않음
-# secure 는 로컬(http) 기본 false, 배포 시 SESSION_COOKIE_SECURE=true
+# secure 기본 true. 로컬(http)은 dev 프로파일이 끔
 server:
   servlet:
     session:
@@ -67,7 +65,7 @@ server:
         name: JSESSIONID
         http-only: true
         same-site: lax
-        secure: ${SESSION_COOKIE_SECURE:false}
+        secure: ${SESSION_COOKIE_SECURE:true}
         # 쿠키 max-age 도 14일. 세션 쿠키면 브라우저 종료 시 만료
         max-age: 14d
 
@@ -78,21 +76,24 @@ odolog:
   # 재설정 링크의 프런트 주소
   app:
     base-url: ${APP_BASE_URL:http://localhost:5173}
-  # 메일 설정이 없는 로컬에서 재설정 흐름을 확인하려고 발송 실패 시 링크를 로그에. 운영은 끔
+  # 발송 실패 시 링크를 로그에 남기지 않음. 토큰이 로그에 남으면 로그를 보는 사람이 남의 비밀번호를 바꿈
   mail:
-    log-link-on-failure: true
+    log-link-on-failure: false
 
-# Swagger UI 의 CSRF 헤더 전송. 운영에서는 문서 비활성(application-prod.yml)
+# API 문서 기본 끔. 인증 없이 엔드포인트 구조 노출 방지. dev 프로파일이 켬
+# Swagger UI 의 CSRF 헤더 전송은 켜질 때 대비
 springdoc:
+  api-docs:
+    enabled: false
   swagger-ui:
+    enabled: false
     csrf:
       enabled: true
       cookie-name: XSRF-TOKEN
       header-name: X-XSRF-TOKEN
 
-# 개발 전용 SQL 로그. bind: trace 는 이메일·해시까지 출력
-# 운영은 application-prod.yml 이 끔
+# SQL·바인딩 로그 끔. 개인정보·해시 노출 방지. dev 프로파일이 켬
 logging:
   level:
-    org.hibernate.SQL: debug
-    org.hibernate.orm.jdbc.bind: trace
+    org.hibernate.SQL: info
+    org.hibernate.orm.jdbc.bind: info

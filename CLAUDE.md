@@ -92,12 +92,14 @@
   비밀번호는 어떤 파일에도 적지 않는다 — IntelliJ 실행 구성의 환경변수 `DB_USERNAME` / `DB_PASSWORD` 에만 있다.
   `application.yml` 에는 `${DB_USERNAME:root}` / `${DB_PASSWORD:}` 형태로만 존재한다.
 - 드라이버: `org.mariadb.jdbc:mariadb-java-client`, URL은 `jdbc:mariadb://`
-- 실행: **IntelliJ IDEA**에서 `OdoLogApplication` 을 직접 실행한다.
+- 실행: **IntelliJ IDEA**에서 `OdoLogApplication` 을 직접 실행한다. 실행 구성의 환경변수에 **`SPRING_PROFILES_ACTIVE=dev`**.
+  기본 `application.yml` 은 운영에 안전한 값이라(로그·문서 끔, 쿠키 secure) 개발 편의는 `dev` 프로파일이 켠다 —
+  프로파일을 빠뜨려도 개발 설정으로 뜨지 않게. Swagger 가 404 면 이 값이 빠진 것이다.
   Gradle 래퍼(`./gradlew`)는 프로젝트에 있으므로 빌드 확인은 터미널에서도 가능하다.
 - API 문서: 앱 실행 후 `http://localhost:8080/swagger-ui.html` (스펙 JSON은 `/v3/api-docs`).
 - 터미널에서 앱을 띄워 확인해야 할 때는 테스트 계정을 쓴다 (운영 계정 비밀번호는 IntelliJ에만 있음):
 
-      SPRING_DATASOURCE_URL='jdbc:mariadb://localhost:3306/odolog_test' \
+      SPRING_PROFILES_ACTIVE=dev SPRING_DATASOURCE_URL='jdbc:mariadb://localhost:3306/odolog_test' \
       SPRING_DATASOURCE_USERNAME=odolog_test SPRING_DATASOURCE_PASSWORD=odolog_test ./gradlew bootRun
 
   (`odolog_test` 스키마는 테스트 실행 때마다 `create-drop`으로 초기화되므로 데이터가 남아도 무방하다.
@@ -356,7 +358,7 @@
   주행거리 올리기, 통화 판정, `InputText.optional`)을 그 안에서 다시 적용한다. **등록 규칙을 바꾸면 여기도 같이 본다.**
   첫 조회가 사용자 행 잠금, 이미 있던 기록과만 비교(파일 안끼리는 비교하지 않음), 정비는 날짜 오름차순으로 넣는다
 - **재설정 메일**: 링크는 프런트 주소(`odolog.app.base-url`). 발송은 커밋 뒤 다른 스레드, SMTP 시간 제한 5초.
-  실패 시 `odolog.mail.log-link-on-failure` 가 켜져 있으면 링크를 WARN 으로(로컬 true, 운영 false — 토큰이 로그에 남으면 안 된다)
+  실패 시 `odolog.mail.log-link-on-failure` 가 켜져 있으면 링크를 WARN 으로(`dev` 프로파일만 true — 토큰이 로그에 남으면 안 된다)
 - **차량 행 잠금**: 정비·주유의 등록·수정·삭제, 주기 변경, 차량 정보 수정·주행거리 갱신, 차량 삭제가 첫 조회로
   `findOwnedVehicleForUpdate` 를 부른다. 안 잠그면 삭제 중에 들어온 기록 때문에 마지막 차량 DELETE 가 FK 로 500 이다.
   **사용자 행 잠금**(`findByIdForUpdate`): 비밀번호 변경·탈퇴·가져오기의 첫 조회
@@ -372,9 +374,11 @@
 
 ### 백엔드 — 리소스와 테스트
 
-    src/main/resources/application.yml       개발 설정. ddl-auto=validate, open-in-view=false, 세션 14일·immediate,
-                                             SQL·bind 로깅(개발 전용 — 이메일·해시까지 찍는다), 메일·CORS·리미터 설정
-    src/main/resources/application-prod.yml  SPRING_PROFILES_ACTIVE=prod 로 겹친다. 문서·SQL 로깅을 끄고 쿠키 secure.
+    src/main/resources/application.yml       기본 설정 — 프로파일 없이 떠도 운영에 안전한 값. ddl-auto=validate, open-in-view=false,
+                                             세션 14일·immediate, 쿠키 secure, 문서·SQL 로그·재설정 링크 로그 끔(ConfigParityTest 가 지킨다)
+    src/main/resources/application-dev.yml   SPRING_PROFILES_ACTIVE=dev(IntelliJ). SQL·bind 로깅(이메일·해시까지 찍는다)·문서·
+                                             재설정 링크 로그 켬, 쿠키 secure 끔(http)
+    src/main/resources/application-prod.yml  SPRING_PROFILES_ACTIVE=prod. 쿠키 secure 를 환경변수와 무관하게 켬.
                                              DB_USERNAME·DB_PASSWORD·APP_BASE_URL·CORS_ALLOWED_ORIGINS 는 기본값이 없어 빠지면 기동 실패
     src/main/resources/db/migration/         V1 기준점 · V2 정비 종류 CHECK 삭제(표 단위 — 운영에선 효과 없음) · V3 세션 표 ·
                                              V4 정비 종류 CHECK 삭제(컬럼 단위, 실제로 지움). 다음은 V5
@@ -385,7 +389,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 372개):
+테스트 종류 (`./gradlew test`, 373개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 여덟** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는

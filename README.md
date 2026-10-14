@@ -8,7 +8,7 @@ Spring Boot 3.5 + MariaDB 백엔드에 React 19 SPA 를 붙인 구성이고, 인
 **이미 타던 차**를 등록하는 경우를 기본으로 본다 — 현재 주행거리와 기억나는 정비 몇 가지만 적으면
 다음 정비 시점이 바로 뜨고, 이후 주유·정비를 적을 때마다 기록이 쌓인다.
 
-백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 471개(백엔드 372 · 프론트 99)와 실제 브라우저 E2E 14개가 통과한다.
+백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 472개(백엔드 373 · 프론트 99)와 실제 브라우저 E2E 14개가 통과한다.
 플랫폼은 웹 하나다(근거는 `HISTORY.md` 의 2026-09-16 항목). 개인 학습 프로젝트라
 **로컬에서 완전히 동작하는 것**까지가 범위이고 배포는 범위 밖이다 — 다만 "올린다면"은 운영 프로파일로 준비해 뒀다.
 
@@ -109,11 +109,13 @@ FLUSH PRIVILEGES;
 IntelliJ 에서 `OdoLogApplication` 을 실행한다. 실행 구성의 Environment variables 에 접속 정보를 넣는다.
 
 ```
+SPRING_PROFILES_ACTIVE=dev
 DB_USERNAME=odolog
 DB_PASSWORD=<1단계에서 정한 비밀번호>
 ```
 
 `application.yml` 에는 `${DB_USERNAME:root}` 형태만 있다 — 파일에 적으면 지워도 커밋 히스토리에 남는다.
+`dev` 는 SQL 로그·Swagger·재설정 링크 로그를 켜고 쿠키 `secure` 를 끈다(http). 빠뜨리면 Swagger 가 404 다.
 `Started OdoLogApplication` 이 찍히면 <http://localhost:8080/swagger-ui.html> 에서 API 를 쏴 볼 수 있다(CSRF 토큰도 알아서 싣는다).
 
 터미널에서 띄워야 한다면 테스트 계정을 쓴다(운영 계정 비밀번호는 IntelliJ 안에만 있다):
@@ -137,7 +139,7 @@ npm run dev     # http://localhost:5173
 ### 4. 검사
 
 ```
-./gradlew test                  # 백엔드 372개
+./gradlew test                  # 백엔드 373개
 cd frontend && npm run test     # 프론트 99개 (vitest)
 cd frontend && npm run e2e      # 실제 브라우저 14개 (Playwright). 처음엔 npx playwright install chromium
 cd frontend && npm run lint     # oxlint
@@ -159,19 +161,21 @@ MAIL_PASSWORD=<앱 비밀번호>      # Gmail 이면 2단계 인증 후 발급
 
 안 넣어도 앱은 뜬다. 발송만 실패하고 로그에 `ERROR` 로 남는다 — 실패를 올려보내면 가입된 주소에서만 500 이 나서
 가입 여부를 알려 주게 된다. 로컬에서는 보내지 못한 링크가 `WARN [개발용] 보내지 못한 재설정 링크: …` 로 찍혀
-메일 없이도 흐름을 끝까지 볼 수 있다(운영 프로파일은 끈다). SMTP 연결·읽기·쓰기에는 5초 제한이 있다.
+메일 없이도 흐름을 끝까지 볼 수 있다(`dev` 프로파일에서만). SMTP 연결·읽기·쓰기에는 5초 제한이 있다.
 
-### 선택 — 운영 프로파일
+### 프로파일 — dev · 기본 · prod
 
-`SPRING_PROFILES_ACTIVE=prod` 하나가 `application-prod.yml` 을 겹쳐 읽게 한다.
+설정은 세 겹이다. **기본 `application.yml` 이 운영에 안전한 값**이라, 프로파일을 빠뜨려도 개발 설정으로 뜨지 않는다.
 
-| 바뀌는 것 | 이유 |
-|---|---|
-| Swagger 문서 끔 | 인증이 없고 GET 이라 CSRF 대상도 아니어서 관문이 하나도 없다 |
-| SQL·bind 로깅 끔 | 개발 설정이 이메일·닉네임·BCrypt 해시까지 평문으로 찍는다 |
-| 세션 쿠키 `secure` | 세션 쿠키와 CSRF 쿠키가 같은 스위치를 읽는다 |
-| 재설정 링크 로그 끔 | 토큰이 로그에 남으면 로그를 보는 사람이 남의 비밀번호를 바꾼다 |
-| `DB_USERNAME`·`DB_PASSWORD`·`APP_BASE_URL`·`CORS_ALLOWED_ORIGINS` 기본값 없음 | 빠뜨리면 조용히 뜨지 않고 기동이 실패한다 |
+| 기본(프로파일 없음)·운영에서 꺼진 것 | 이유 | 켜는 곳 |
+|---|---|---|
+| Swagger 문서 | 인증이 없고 GET 이라 CSRF 대상도 아니어서 관문이 하나도 없다 | `dev` |
+| SQL·bind 로깅 | 이메일·닉네임·BCrypt 해시까지 평문으로 찍힌다 | `dev` |
+| 재설정 링크 로그 | 토큰이 로그에 남으면 로그를 보는 사람이 남의 비밀번호를 바꾼다 | `dev` |
+| (반대로 켜진 것) 쿠키 `secure` | 세션 쿠키와 CSRF 쿠키가 같은 스위치를 읽는다 | `dev` 가 끈다(http) |
+
+`SPRING_PROFILES_ACTIVE=prod` 는 그 위에 쿠키 `secure` 를 환경변수와 무관하게 켜고,
+`DB_USERNAME`·`DB_PASSWORD`·`APP_BASE_URL`·`CORS_ALLOWED_ORIGINS` 의 기본값을 없앤다 — 빠뜨리면 조용히 뜨지 않고 기동이 실패한다.
 
 주석으로 "배포할 때 끄세요"라고 적는 것과의 차이는 — 주석은 사람이 기억해야 하고, 프로파일은 환경변수가 대신 기억한다.
 
