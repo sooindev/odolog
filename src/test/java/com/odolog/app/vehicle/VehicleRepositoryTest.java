@@ -149,11 +149,16 @@ class VehicleRepositoryTest {
     @DisplayName("같은 번호판인지는 DB 정렬 규칙이 판단한다 — 전각 숫자도 같은 번호판, 자기 자신은 빼고")
     void plateEqualityFollowsCollation() {
         Vehicle mine = new Vehicle(owner, "12가3456", "현대", "아반떼", 2020);
+        Vehicle other = new Vehicle(owner, "34나5678", "기아", "K5", 2021);
         em.persist(mine);
+        em.persist(other);
         em.flush();
         em.clear();
 
-        // 자바 equalsIgnoreCase 로는 다르다고 보던 값
+        // 자바 equalsIgnoreCase 로는 다르다고 보던 값. 다른 차를 고치면 mine 과 겹침
+        assertThat(vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(owner.getId(), "１２가3456", other.getId()))
+                .isTrue();
+        // mine 자신을 고치면 자기 자신은 빼고 판정
         assertThat(vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(owner.getId(), "１２가3456", mine.getId()))
                 .isFalse();
         assertThat(vehicleRepository.findLockedByOwnerIdAndPlateNumber(owner.getId(), "１２가3456")).isPresent();
