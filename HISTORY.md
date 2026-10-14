@@ -20,6 +20,14 @@
 
 ---
 
+- [x] 아무것도 증명하지 못하던 차량 테스트 4개 고침 (2026-10-14, 전체 점검 4장)
+      → `VehicleControllerTest` 의 "번호판 없음·연식 없음·연식 범위 밖 → 400" 셋은 JSON 에 필수인 `odometer` 가 빠져 있어,
+        검사 대상 필드와 무관하게 늘 400 이었다. `"odometer": 0` 을 넣고 `$.field` 로 어느 칸 때문인지까지 단언한다
+      → `VehicleServiceTest` 의 "번호판 그대로면 중복 검사를 안 한다" 는 `never()` 대상이 `existsByOwnerIdAndPlateNumber`(등록용)였다.
+        수정이 실제로 부르는 `...AndIdNot` 으로 바꿨다
+      → 확인: 서비스의 `!plateNumber.equals(...)` 가드와 DTO 의 `@NotBlank`·연식 `@NotNull @Min @Max` 를 잠시 지우고 돌려 이 네 개만
+        실패하는 것을 보고 되돌렸다. 전에는 같은 조작에도 전부 통과했다
+
 - [x] 스프링이 처리한 500 이 로그 없이 나가던 것 고침 (2026-10-14, 전체 점검 3번)
       → 증상: `HttpMessageNotWritableException`(응답 직렬화 실패)·`MissingPathVariableException` 등은 부모
         `ResponseEntityExceptionHandler` 가 직접 500 으로 처리해 `handleUnexpected`(log.error)에 닿지 않는다.

@@ -63,42 +63,45 @@ class VehicleControllerTest {
     @DisplayName("번호판을 안 보내면 400")
     void registerInvalidRequest() throws Exception {
         String invalidJson = """
-                {"plateNumber": "", "manufacturer": "현대", "modelName": "아반떼", "modelYear": 2023}
+                {"plateNumber": "", "manufacturer": "현대", "modelName": "아반떼", "modelYear": 2023, "odometer": 0}
                 """;
 
         mockMvc.perform(post("/api/vehicles")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value("plateNumber"));
     }
 
     @Test
     @DisplayName("연식을 안 보내면 400")
     void registerWithoutModelYear() throws Exception {
         String noModelYear = """
-                {"plateNumber": "12가3456", "manufacturer": "현대", "modelName": "아반떼"}
+                {"plateNumber": "12가3456", "manufacturer": "현대", "modelName": "아반떼", "odometer": 0}
                 """;
 
         mockMvc.perform(post("/api/vehicles")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(noModelYear))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value("modelYear"));
     }
 
     @Test
     @DisplayName("연식이 범위를 벗어나면 400")
     void registerWithModelYearOutOfRange() throws Exception {
         String outOfRange = """
-                {"plateNumber": "12가3456", "manufacturer": "현대", "modelName": "아반떼", "modelYear": 999999}
+                {"plateNumber": "12가3456", "manufacturer": "현대", "modelName": "아반떼", "modelYear": 999999, "odometer": 0}
                 """;
 
         mockMvc.perform(post("/api/vehicles")
                         .session(loginSessionOf(1L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(outOfRange))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value("modelYear"));
     }
 
     @Test

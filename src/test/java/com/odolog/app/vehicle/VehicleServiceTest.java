@@ -183,7 +183,7 @@ class VehicleServiceTest {
         // 같은 번호판 전송. 자기 자신 중복 판정 방지
         vehicleService.update(1L, "V10", new VehicleUpdateRequest("12가3456", "기아", null, null));
 
-        verify(vehicleRepository, never()).existsByOwnerIdAndPlateNumber(any(), any());
+        verify(vehicleRepository, never()).existsByOwnerIdAndPlateNumberAndIdNot(any(), any(), any());
         assertThat(vehicle.getManufacturer()).isEqualTo("기아");
     }
 
