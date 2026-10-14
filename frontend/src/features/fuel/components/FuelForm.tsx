@@ -44,7 +44,7 @@ export function FuelForm({
   const currency = record?.currency ?? userCurrency
 
   // 입력칸은 화면 단위(마일·갤런·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로
-  const initialOdometerKm = record?.odometer ?? defaultOdometer
+  const [initialOdometerKm] = useState(record?.odometer ?? defaultOdometer)
   const [initial] = useState(() => ({
     odometer: String(Math.round(fromKm(unitSystem, initialOdometerKm))),
     volume: record?.liters == null ? '' : String(Math.round(fromLiters(unitSystem, record.liters) * 100) / 100),
