@@ -345,6 +345,8 @@ H-14 는 Windows 가 있어야 한다(글꼴 목록에 `Segoe UI`·`Malgun Gothi
 - [ ] `ErrorResponse`에 `fieldErrors` 추가 — 어느 필드가 왜 틀렸는지 프론트가 알 수 있게
 - [ ] 차량 상세 라우트에 `key={vehicleId}` — 같은 화면에서 주소의 차량만 바뀌면 정비 목록 쪽·필터, 주행거리 409 문구,
       동작 실패 문구가 다음 차량으로 넘어간다. 지금은 그렇게 옮겨 가는 경로가 없다(2026-10-06 점검)
+      → 2026-10-14 점검: `App.tsx` 의 `<div key={location.pathname}>` 가 이미 주소가 바뀔 때 트리를 다시 만든다.
+        다만 페이드 연출용 key 에 기대는 것이라, 그 key 를 지우면 이 문제가 다시 생긴다
 - [x] ~~`FlywayMigrationTest` 가 공유 테스트 스키마 `odolog_test` 를 `clean` 한다~~ — **2026-10-10 완료.** 전용 스키마 `odolog_migration_test` 로 뗐다(로컬은 README 의 SQL, CI 는 서비스 컨테이너에 `docker exec`)
 - [x] ~~`TestOdoLogApplication` 의 시도 한도를 덮어쓸 수 있게~~ — **2026-10-10 완료.** `--args` 로 같은 키를 넘기면 기본값을 뺀다
 - [ ] 이메일 중복 확인 API (`GET /api/users/exists?email=`) — 회원가입 폼 실시간 피드백용
@@ -363,8 +365,8 @@ H-14 는 Windows 가 있어야 한다(글꼴 목록에 `Segoe UI`·`Malgun Gothi
       **가득 채우지 않은 주유가 섞이면 그 구간만 실제보다 높게 나온다**(거리는 그대로인데
       리터가 적어서). 기록에 "가득 채웠는가" 플래그를 두면 가득→가득 구간으로 정확히 낼 수 있다.
       → 지금은 `FuelAnomaly` 가 **평소 구간과 견줘 이상한 구간을 평균에서 빼는 것**으로 대신하고 있다
-        (거리·연비가 둘 다 중앙값의 1.8배를 넘을 때). 다만 만탱크가 아닌 주유는 그 구간을
-        **낮게** 만들어 방향이 반대라, 이 장치로는 안 잡힌다.
+        (거리·연비가 둘 다 중앙값의 1.8배를 넘을 때). 덜 채운 주유는 그 구간을 높게, **다음** 구간을 낮게 만든다.
+        이 장치로 안 잡히는 까닭은 방향이 아니라 거리다 — 덜 채워도 달린 거리는 평소와 비슷해 "둘 다 넘음"에 걸리지 않는다
 - [x] ~~로그인 실패 응답 시간이 계정 존재 여부에 따라 다르다~~ — **2026-09-26 완료.**
       없는 이메일도 BCrypt 를 한 번 돌린다(규칙 15).
 - [x] ~~배포한다면 먼저 따질 것 셋~~ — **2026-09-21 완료.** CSRF(double submit 쿠키),
@@ -373,8 +375,66 @@ H-14 는 Windows 가 있어야 한다(글꼴 목록에 `Segoe UI`·`Malgun Gothi
 - [ ] 시도 잠금 기록을 메모리 밖으로 — 재시작하면 잠금이 풀리고, 서버를 두 대 띄우면 대마다 따로 센다(배포할 때)
 - [ ] 이메일 단위 표적 잠금 — 남의 주소로 10번 틀리면 그 사람의 로그인을 10분 잠글 수 있다. 10-04 에 IP 단위 한도를
       더했지만 이메일 키는 그대로다. 없애면 한 계정에 대한 분산 대입을 못 막아 맞바꿀 것을 정해야 한다
+      → 재설정도 같다(2026-10-14 점검): 남의 주소로 재설정을 10번 요청하면 그 사람도 10분 동안 재설정 메일을 못 받는다.
+        로그인이 잠겼을 때 빠져나갈 길이 재설정이라 둘을 같이 따진다
 - [ ] 번들 나누기 — 2026-10-05 에 508kB 로 Vite 의 500kB 경고를 넘었다(실패는 아니다). 라우트 단위 지연 로딩이 후보
 - [ ] 홈·차량 목록도 TanStack Query 로 — 지금은 차량 상세만. 옮기면 `useAsyncData` 를 지울 수 있다
+
+### 2026-10-14 전체 점검에서 남은 것
+
+근거와 재현은 `docs/REVIEW-2026-10-14.md` 에 있다(그날 시점 그대로 둔 기록). 고친 다섯 건은 `HISTORY.md` 에.
+
+**배포 전에 할 것**
+- [ ] prod 프로파일을 빠뜨려도 개발 설정으로 뜬다 — bind 로그(이메일·해시)·재설정 링크 로그·swagger 가 켜진 채.
+      개발 전용 값을 `local` 프로파일로 옮겨 기본을 안전한 쪽으로 두거나, 프로파일이 없으면 기동을 막는다
+- [ ] CI 의 `odolog_test` 스키마 정렬 규칙이 운영(`unicode_ci`)과 다를 가능성 — 번호판 전각·이메일 악센트 테스트가 다른 규칙으로 돈다.
+      컨테이너 준비 단계에서 `ALTER DATABASE … COLLATE utf8mb4_unicode_ci`(e2e 잡도)
+- [ ] 통화 소수 자리를 브라우저 ICU 에서 읽는다(`money.ts`) — V8 은 IDR·HUF 를 0자리로 보는데 ISO·JDK 는 2자리.
+      ISO 4217 고정 표로 `toMinor`·`fromMinor`·`inputStep` 을 통일하고, `RegionForm` 의 통화 목록도 서버가 받는 목록과 맞춘다
+- [ ] 프록시 뒤 배포 — `forward-headers-strategy` 없이는 HSTS 가 안 나간다. CSRF double submit 은 화면과 API 가 같은 호스트일 때만 동작한다
+- [ ] 로그아웃 요청이 실패해도 화면만 로그아웃되고 서버 세션은 14일 남는다(`AuthProvider.logout`) — 공용 PC 에서 의미가 있다
+
+**동작·데이터**
+- [ ] 가져오기가 연식을 필수로 받는데 DB·내보내기는 null 허용 — 연식 없는 차가 있으면 자기 백업을 통째로 못 넣는다.
+      2026-10-14 운영 DB 해당 0대. 고칠 때 내보내기 → 가져오기 왕복 테스트를 같이
+- [ ] BCrypt 를 트랜잭션 안에서 돌려 커넥션(풀 10)을 쥔다 — 틀린 로그인 10개가 동시에 오면 다른 API 가 기다린다.
+      비밀번호 변경은 사용자 행 잠금까지 쥔 채 세 번. `PasswordResetService.request` 도 readOnly 트랜잭션을 탄다
+- [ ] 커밋 뒤 세션 끊기(`afterCommit`)가 실패하면 이미 바뀐 비밀번호에 500 — 다시 시도하면 "만료된 링크"
+- [ ] `correctOdometer` 주석은 "계기판 교체용"인데 다음 정비 km 는 옛 계기판 기준 그대로 — 주석을 오타 전용으로 좁힐지, 기준점을 둘지
+- [ ] `FuelSection` 빈 상태가 `items.length === 0` — 범위 밖 쪽을 고치는 동안 "기록 없음"이 잠깐 뜬다(정비는 `totalElements`)
+- [ ] `NextServiceCard` 재조회 실패 시 목록과 열어 둔 주기 폼이 사라진다(`FuelSummaryCard` 는 옛 값 위에 한 줄)
+- [ ] 빠른 정비 일부 저장 뒤 시작하기 카드가 다시 읽히면 폼이 사라지고 정비 목록이 안 갱신된다(추정)
+- [ ] 주유 요약의 "총 유류비 0원"·"주유량 0 L" — 하나도 안 적었을 때도 0 으로 보인다(홈은 `pricedCount` 로 — 처리)
+- [ ] 차량 수정의 `@Pattern(".*\\S.*")` 이 줄바꿈과 안 맞아 등록은 되는 값이 수정에선 400
+- [ ] NBSP·폭 없는 공백만 넣은 닉네임·번호판이 통과한다(`InputText.required`)
+- [ ] 공개 id 가 DB(`unicode_ci`)에서 대소문자를 구분하지 않는다 — 대소문자만 바꾼 주소가 같은 자원을 연다
+- [ ] 로그인이 세션 id 교체보다 사용자 id 저장을 먼저 한다 — 순서만 바꾸면 된다
+- [ ] 가져오기가 새 차량에 기준점을 개수 검사 없이 복원한다(옛 백업은 여럿일 수 있음)
+- [ ] 만료 재설정 토큰 정리 DELETE 에 `expires_at` 인덱스가 없다(추정: 다른 발급과 데드락)
+- [ ] `@LoginUser` 리졸버가 `Long` 일 때만 동작 — 다른 타입으로 쓰면 쿼리 파라미터로 채워진다(지금은 전부 `Long`)
+- [ ] `GlobalExceptionHandler.handleExceptionInternal` — 이미 시작된 응답 확인이 빠졌고, 413 이 `BAD_REQUEST` 코드로 나간다
+
+**화면·접근성·문구**
+- [ ] `FuelSummaryCard` 통계 라벨 `text-eyebrow text-faint` — DESIGN 2·6번
+- [ ] 행마다 같은 이름의 수정·삭제·주기 버튼, 빠른 정비 주행거리 칸 다섯 개가 같은 `aria-label`, 드럼 휠 날짜가 이름에 안 실림
+- [ ] 숫자를 받는 사전 문구가 `${n}` 그대로(쉼표 없음), 쪽 번호도 `f.number` 를 안 거친다
+- [ ] `limits.ts` 에 이메일 100·닉네임 30·비밀번호 72바이트가 없어 화면에 숫자로 박혀 있다. 주기 상한 50만·120 도 세 곳에 숫자로
+- [ ] localStorage 가 막힌 환경에서 테마 표시와 실제 테마가 갈린다
+- [ ] `ko.ts` `errors.network` 의 "백엔드 실행 상태" — 개발 중 문구
+
+**테스트가 없는 곳**
+- [ ] 주기 변경 `changeInterval` 세 분기, `ServiceIntervalRepository`
+- [ ] 다른 기기 세션 끊기를 실제 `SessionRepositoryFilter` 로(지금은 색인을 손으로 옮긴다). 로그아웃 테스트 0건
+- [ ] 내보내기 → 가져오기 왕복, `/restore` 컨트롤러, 내보내기의 주기·기준점 매핑
+- [ ] 홈 요약 차량 두 대 이상·지남/곧·다른 통화 주유, 차량 목록 지남/곧 수, 주유 수정의 clear 우선
+- [ ] `SchemaDrift` 가 컬럼 길이·FK 를 안 본다. `FlywayMigrationTest` 새 DB 단언이 `>= 3`. `ConfigParityTest` 에 `default_batch_fetch_size` 없음
+
+**주석·문서 정정**(코드 동작과 무관, 한 번에 모아서)
+- [ ] 낡은 주석 — `VehicleRepository`·`MaintenanceRecordRepository`·`NextService` 의 "~전용", "곧(1,000km 또는 1개월)" 에 1/5 상한 빠짐,
+      `@Version`·`@JdbcTypeCode`·`GlobalExceptionHandler` 로그 문구의 ddl-auto 근거, `AccountExportService` "쿼리 4번"(실제 5),
+      `HomeSummaryResponse.MonthlyCost.count`, `InputLimits.MAX_PASSWORD_LENGTH`, Referrer-Policy·`PasswordResetMailer` from 주석
+- [ ] `PasswordResetMailer` 의 언어 `switch` 에 default 가 없다 — switch 식으로 바꾸면 컴파일러가 잡는다
+- [ ] `User` 동시 수정 보호가 MariaDB `innodb_snapshot_isolation=1` 에 기댄다는 사실이 `CLAUDE.md` 에 없다
 
 **PWA 는 여기 없다** — 할지 말지를 눈 확인 뒤에 정하기로 해서 **6-G** 에 뒀다.
 
