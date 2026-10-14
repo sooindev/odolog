@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router'
+import { useEffect } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router'
 
 import { AuthLayout } from '@/app/layout/AuthLayout'
 import { Footer } from '@/app/layout/Footer'
@@ -17,6 +18,14 @@ import { VehicleNewPage } from '@/features/vehicles/pages/VehicleNewPage'
 
 function App() {
   const location = useLocation()
+  const navigationType = useNavigationType()
+
+  // 새 화면은 맨 위에서. 뒤로·앞으로(POP)는 브라우저가 기억한 위치 그대로
+  useEffect(() => {
+    if (navigationType !== 'POP') {
+      window.scrollTo(0, 0)
+    }
+  }, [location.pathname, navigationType])
 
   return (
     // dvh: 모바일 주소창 변화 반영

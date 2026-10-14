@@ -456,7 +456,7 @@
 
 테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 99개(파일 15개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
-실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 14개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
+실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 15개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.
 
 ### 의존 방향

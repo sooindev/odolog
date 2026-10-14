@@ -101,6 +101,21 @@ test('홈 대시보드의 최근 활동을 누르면 그 차량으로 간다', a
   await expect(page).toHaveURL(vehicleUrl)
 })
 
+test('화면 아래쪽에서 다른 화면으로 가면 새 화면은 맨 위에서 열린다', async ({ page }) => {
+  await signUp(page, uniqueEmail('scroll'))
+  const vehicleUrl = await registerVehicle(page, '55가5555', 10000)
+
+  await page.goto('/')
+  const byVehicle = card(page, '차량별')
+  await byVehicle.scrollIntoViewIfNeeded()
+  expect(await page.evaluate('window.scrollY')).toBeGreaterThan(0)
+
+  await byVehicle.getByRole('link').first().click()
+  await expect(page).toHaveURL(vehicleUrl)
+  await expect(page.getByText('Odometer', { exact: true })).toBeVisible()
+  expect(await page.evaluate('window.scrollY')).toBe(0)
+})
+
 test('내보낸 파일을 새 계정에 가져오면 차량과 기록이 그대로 생긴다', async ({ page, browser }) => {
   await signUp(page, uniqueEmail('export'))
   await registerVehicle(page, '55가5555', 20000)
