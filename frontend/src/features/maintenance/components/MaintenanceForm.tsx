@@ -45,7 +45,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
 
   // 입력칸은 화면 단위(마일·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로 전송
   // 비용·주행거리는 모르면 빈칸(null). 등록은 주행거리만 차량 값으로 미리 채움
-  const initialOdometerKm = record === null ? defaultOdometer : record.serviceOdometer
+  const [initialOdometerKm] = useState(record === null ? defaultOdometer : record.serviceOdometer)
   const [initialOdometer] = useState(
     initialOdometerKm === null ? '' : String(Math.round(fromKm(unitSystem, initialOdometerKm))),
   )

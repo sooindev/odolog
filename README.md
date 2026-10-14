@@ -138,7 +138,7 @@ npm run dev     # http://localhost:5173
 
 ```
 ./gradlew test                  # 백엔드 365개
-cd frontend && npm run test     # 프론트 97개 (vitest)
+cd frontend && npm run test     # 프론트 99개 (vitest)
 cd frontend && npm run e2e      # 실제 브라우저 14개 (Playwright). 처음엔 npx playwright install chromium
 cd frontend && npm run lint     # oxlint
 cd frontend && npm run build    # tsc -b + vite build (번들 500kB 경고는 알려진 것)
