@@ -25,7 +25,7 @@ public class LoginAttemptLimiter {
 
     /** 창 안에서 허용하는 시도 횟수 기본값. E2E 처럼 한 곳에서 계정을 많이 만드는 환경만 설정으로 늘림 */
     static final int DEFAULT_MAX_ATTEMPTS = 10;
-    /** 시도 카운터 유지 시간 */
+    /** 집계 창. 창의 첫 시도부터 계산. 마지막 시도 기준이면 창보다 짧은 간격의 정상 시도가 끝없이 누적 */
     private static final Duration WINDOW = Duration.ofMinutes(10);
     /** 잠금 유지 시간 */
     private static final Duration LOCK = Duration.ofMinutes(10);
@@ -88,11 +88,12 @@ public class LoginAttemptLimiter {
                 return attempt;
             }
 
-            // 마지막 시도가 오래됐거나 잠금이 끝났으면 처음부터 집계
-            if (attempt.lockedUntil != null
-                    || (attempt.lastAttempt != null && Duration.between(attempt.lastAttempt, now).compareTo(WINDOW) > 0)) {
+            // 창이 끝났거나 잠금이 끝났으면 지금부터 새 창
+            if (attempt.windowStart == null || attempt.lockedUntil != null
+                    || Duration.between(attempt.windowStart, now).compareTo(WINDOW) > 0) {
                 attempt.attempts = 0;
                 attempt.lockedUntil = null;
+                attempt.windowStart = now;
             }
 
             attempt.attempts += 1;
@@ -170,6 +171,7 @@ public class LoginAttemptLimiter {
 
     private static final class Attempt {
         private int attempts;
+        private Instant windowStart;
         private Instant lastAttempt;
         private Instant lockedUntil;
     }

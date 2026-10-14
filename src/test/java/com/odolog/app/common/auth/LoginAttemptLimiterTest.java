@@ -172,6 +172,35 @@ class LoginAttemptLimiterTest {
     }
 
     @Test
+    @DisplayName("창은 첫 시도부터 10분이다 — 창보다 짧은 간격으로 드문드문 이어진 시도는 쌓이지 않는다")
+    void windowStartsAtFirstAttempt() {
+        MovableClock clock = new MovableClock();
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(clock);
+
+        // 마지막 시도 기준이면 9분 간격은 영영 초기화되지 않아 11번째에 잠김
+        for (int i = 0; i < 20; i++) {
+            assertThatCode(() -> attempt(limiter, "a@odolog.com")).doesNotThrowAnyException();
+            clock.advance(Duration.ofMinutes(9));
+        }
+    }
+
+    @Test
+    @DisplayName("같은 창 안에서 한도를 넘으면 시도 간격과 무관하게 잠근다")
+    void locksWithinOneWindow() {
+        MovableClock clock = new MovableClock();
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(clock);
+
+        // 10번을 9분에 나눠 보내고 11번째도 창(10분) 안
+        for (int i = 0; i < 10; i++) {
+            attempt(limiter, "a@odolog.com");
+            clock.advance(Duration.ofSeconds(54));
+        }
+
+        assertThatThrownBy(() -> attempt(limiter, "a@odolog.com"))
+                .isInstanceOf(TooManyRequestsException.class);
+    }
+
+    @Test
     @DisplayName("성공하면 기록을 지운다")
     void successClearsAttempts() {
         LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());
