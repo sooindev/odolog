@@ -5,14 +5,22 @@ import jakarta.persistence.PersistenceException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotWritableException;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.context.request.ServletWebRequest;
 
 import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(OutputCaptureExtension.class)
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
@@ -62,5 +70,17 @@ class GlobalExceptionHandlerTest {
                 new DataIntegrityViolationException("x", unique("uk_something_else")));
 
         assertThat(response.getBody().code()).isEqualTo(ErrorCode.DUPLICATE_VALUE);
+    }
+
+    @Test
+    @DisplayName("부모 처리기가 500 으로 처리한 예외도 로그에 남긴다 — 응답 직렬화 실패")
+    void parentHandled500IsLogged(CapturedOutput output) throws Exception {
+        ResponseEntity<Object> response = handler.handleException(
+                new HttpMessageNotWritableException("응답을 JSON 으로 못 씀"),
+                new ServletWebRequest(new MockHttpServletRequest(), new MockHttpServletResponse()));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(500);
+        assertThat(((ErrorResponse) response.getBody()).code()).isEqualTo(ErrorCode.SERVER_ERROR);
+        assertThat(output).contains("응답을 JSON 으로 못 씀");
     }
 }

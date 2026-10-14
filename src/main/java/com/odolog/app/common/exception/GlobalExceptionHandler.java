@@ -171,10 +171,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         first.map(error -> error.getField()).orElse(null)));
     }
 
-    /** 부모가 처리한 4xx 의 본문도 ErrorResponse 로. ProblemDetail 에는 message 없음 */
+    /**
+     * 부모가 처리한 예외의 본문도 ErrorResponse 로. ProblemDetail 에는 message 없음
+     * 부모의 500(응답 직렬화 실패 등)은 handleUnexpected 를 거치지 않아 여기서 로그
+     */
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception e, Object body, HttpHeaders headers,
                                                              HttpStatusCode statusCode, WebRequest request) {
+        if (statusCode.is5xxServerError()) {
+            log.error("스프링이 처리한 서버 오류", e);
+        }
+
         ErrorResponse error = switch (statusCode.value()) {
             case 404 -> ErrorResponse.of(ErrorCode.NOT_FOUND, "요청한 주소를 찾을 수 없습니다.");
             case 405 -> ErrorResponse.of(ErrorCode.METHOD_NOT_ALLOWED, "허용되지 않는 요청 방식입니다.");

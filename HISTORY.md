@@ -20,6 +20,17 @@
 
 ---
 
+- [x] 스프링이 처리한 500 이 로그 없이 나가던 것 고침 (2026-10-14, 전체 점검 3번)
+      → 증상: `HttpMessageNotWritableException`(응답 직렬화 실패)·`MissingPathVariableException` 등은 부모
+        `ResponseEntityExceptionHandler` 가 직접 500 으로 처리해 `handleUnexpected`(log.error)에 닿지 않는다.
+        본문을 바꾸려고 덮어쓴 `handleExceptionInternal` 에도 로그가 없었고 Boot 의 `log-resolved-exception` 기본값도 false 라,
+        화면은 500 을 받는데 서버 로그는 비어 있었다(규칙 11 "500 은 로그에 남긴다"와 어긋남)
+      → `handleExceptionInternal` 에서 5xx 일 때만 `log.error`. 4xx 는 사용자 입력 문제라 남기지 않는다
+      → 대안으로 부모의 `handleHttpMessageNotWritable` 등을 하나씩 덮어쓰는 방법은, 스프링이 500 으로 처리하는 예외가 늘 때마다
+        빠질 수 있어 버렸다. 모든 부모 처리가 지나는 한 곳에서 상태 코드로 거른다
+      → 테스트는 `OutputCaptureExtension` 으로 로그 출력을 붙잡아 본다. 고치기 전에는 상태·본문은 맞고 로그만 비어 실패했다.
+        README 의 테스트 수(365·97)가 낡아 있던 것도 같이 맞췄다
+
 - [x] 정비·주유 폼이 보이는 값과 다른 주행거리를 저장하던 것 고침 (2026-10-14, 전체 점검 `docs/REVIEW-2026-10-14.md` 1번)
       → 증상: 등록 폼을 연 채 다른 카드에서 주유·주행거리 갱신을 저장하면, 칸에는 45,000 이 그대로인데 저장하면 45,500 이 나갔다.
         `past` 안내와 주유의 "주행거리 그대로" 경고도 같이 비켜 갔다
