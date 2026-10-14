@@ -8,7 +8,7 @@ Spring Boot 3.5 + MariaDB 백엔드에 React 19 SPA 를 붙인 구성이고, 인
 **이미 타던 차**를 등록하는 경우를 기본으로 본다 — 현재 주행거리와 기억나는 정비 몇 가지만 적으면
 다음 정비 시점이 바로 뜨고, 이후 주유·정비를 적을 때마다 기록이 쌓인다.
 
-백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 468개(백엔드 369 · 프론트 99)와 실제 브라우저 E2E 14개가 통과한다.
+백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 471개(백엔드 372 · 프론트 99)와 실제 브라우저 E2E 14개가 통과한다.
 플랫폼은 웹 하나다(근거는 `HISTORY.md` 의 2026-09-16 항목). 개인 학습 프로젝트라
 **로컬에서 완전히 동작하는 것**까지가 범위이고 배포는 범위 밖이다 — 다만 "올린다면"은 운영 프로파일로 준비해 뒀다.
 
@@ -137,7 +137,7 @@ npm run dev     # http://localhost:5173
 ### 4. 검사
 
 ```
-./gradlew test                  # 백엔드 369개
+./gradlew test                  # 백엔드 372개
 cd frontend && npm run test     # 프론트 99개 (vitest)
 cd frontend && npm run e2e      # 실제 브라우저 14개 (Playwright). 처음엔 npx playwright install chromium
 cd frontend && npm run lint     # oxlint
@@ -316,7 +316,7 @@ Spring Security 를 안 쓰므로 아래가 전부 직접 만든 것이다. 근�
 | 세션 | 사용자 id 만 담고 로그인 때 `changeSessionId()`(고정 공격 방어). `HttpOnly`·`SameSite=Lax`·운영에서 `secure`, 14일. **DB 에 보관**(Spring Session JDBC) — 재시작해도 유지 |
 | 세션 끊기 | 비밀번호 변경은 지금 세션만 남기고 나머지를, 재설정·탈퇴는 전부 끊는다. 로그인은 세션 저장 뒤 비밀번호가 그대로인지 다시 본다(그 사이 재설정이 끝난 경우) |
 | CSRF | double submit 쿠키 — `XSRF-TOKEN` 쿠키와 `X-XSRF-TOKEN` 헤더 비교. **경로와 무관하게** 모든 쓰기 요청. 세션 보관 방식을 안 쓴 이유: 비로그인 방문자에게도 세션이 생긴다. 한계: 하위 도메인이 장악되면 쿠키를 심을 수 있다 |
-| 시도 제한 | 10분 안 10회 초과 시 10분 잠금. 키는 용도 접두사 + 대상: `login:`이메일 · `login-ip:`IP(한도 5배) · `password-reset:`이메일 · `password-reset-ip:`IP · `signup:`IP · `password-check:`사용자 id. 시도는 비교 **전에** 센다. IPv6 는 앞 64비트. `X-Forwarded-For` 는 읽지 않는다 |
+| 시도 제한 | 10분 안 10회 초과 시 10분 잠금. 키는 용도 접두사 + 대상: `login:`이메일 · `login-ip:`IP(한도 5배, 성공한 로그인은 빼고 셈) · `password-reset:`이메일 · `password-reset-ip:`IP · `signup:`IP · `password-check:`사용자 id. 시도는 비교 **전에** 센다. IPv6 는 앞 64비트. `X-Forwarded-For` 는 읽지 않는다 |
 | 사용자 열거 | 로그인 실패 문구 통일, 없는 계정도 BCrypt 한 번(응답 시간 맞춤)·횟수 집계. 재설정은 늘 204, 토큰·메일은 다른 스레드(대기 200개 상한). 남의 차량은 404(문구까지 같게). **회원가입만 409 로 알려 주고** 대신 IP 로 속도를 막는다. 이메일은 출력 가능한 ASCII 만 |
 | 재설정 토큰 | 256비트 난수를 메일로, DB 에는 SHA-256 해시. 30분·1회용, 재발급·비밀번호 변경 시 삭제. 성공해도 자동 로그인하지 않는다 |
 | 본문 크기 | 10MB(`RequestSizeLimitFilter`) — 검증 애노테이션은 Jackson 이 다 읽은 뒤에야 돌아서 그 앞에서 끊는다 |

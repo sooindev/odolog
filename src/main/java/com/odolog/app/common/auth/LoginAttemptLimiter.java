@@ -117,6 +117,19 @@ public class LoginAttemptLimiter {
         }
     }
 
+    /**
+     * 통과한 시도 하나만 되돌림. 여럿이 쓰는 키(IP)에서 성공한 로그인이 한도를 깎지 않게
+     * 기록을 통째로 지우면 계정 하나로 성공을 끼워 넣어 실패 집계를 계속 비울 수 있음. 잠금은 유지
+     */
+    public void refund(String key) {
+        attempts.computeIfPresent(key(key), (ignored, attempt) -> {
+            if (attempt.lockedUntil == null && attempt.attempts > 0) {
+                attempt.attempts -= 1;
+            }
+            return attempt;
+        });
+    }
+
     /** 성공 시 기록 삭제. 옛 실패로 인한 잠금 방지 */
     public void recordSuccess(String key) {
         attempts.remove(key(key));

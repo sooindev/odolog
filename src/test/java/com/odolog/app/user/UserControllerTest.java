@@ -149,6 +149,8 @@ class UserControllerTest {
         assertThat(session.getAttribute(SessionConst.LOGIN_USER_ID)).isEqualTo(1L);
         // 비밀번호 변경 시 종료 대상 목록에 등록
         verify(sessionRegistry).register(eq(1L), same(session));
+        // 성공한 로그인은 IP 한도를 깎지 않음
+        verify(attemptLimiter).refund("login-ip:127.0.0.1");
     }
 
     @Test
@@ -167,6 +169,7 @@ class UserControllerTest {
                 .andReturn();
 
         assertThat(result.getRequest().getSession(false)).isNull();
+        verify(attemptLimiter, never()).refund(any());
     }
 
     @Test
@@ -185,6 +188,8 @@ class UserControllerTest {
                 .andExpect(status().isUnauthorized());
 
         verify(attemptLimiter).acquireShared(eq("login-ip:203.0.113.7"), eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
+        // 실패는 IP 집계에 남김
+        verify(attemptLimiter, never()).refund(any());
     }
 
     @Test

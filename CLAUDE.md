@@ -242,7 +242,9 @@
       헤더 한 줄로 제한을 빠져나가게 만들 뿐이다. IPv6 는 **앞 64비트로 묶어** 센다(`ClientIp`).
     - **리미터 키에는 반드시 용도 접두사를 붙인다.** 접두사가 없던 로그인 키에 `password-check:1` 을 넣어
       남의 비밀번호 변경·탈퇴를 잠글 수 있었다. 지금은 `login:`·`login-ip:`·`password-reset:`·`password-reset-ip:`·
-      `signup:`·`password-check:` 여섯이다. 로그인 IP 키는 여러 사람이 한 IP 를 쓰므로 한도가 다섯 배(`acquireShared`).
+      `signup:`·`password-check:` 여섯이다. 로그인 IP 키는 여러 사람이 한 IP 를 쓰므로 한도가 다섯 배(`acquireShared`)이고,
+      **성공한 로그인은 그 한 번만 되돌린다**(`refund`). `recordSuccess` 로 통째로 지우면 계정 하나로 성공을 끼워 실패 집계를 비운다.
+      창은 **첫 시도부터 10분**(고정 창)이다.
       잠겼을 때의 문구는 부르는 쪽이 넘긴다(안 그러면 가입 화면에 "로그인 시도가 너무 많습니다"가 뜬다).
     - **로그인은 세션을 저장한 뒤 비밀번호가 그대로인지 다시 본다**(`LoginService`, 규칙 13 의 예외). 맞춰 보는 60ms 사이에
       재설정·변경·탈퇴가 끝나면 그쪽의 세션 끊기를 이미 지나친 세션이 14일 남는다. 그래서 세션은 `flush-mode: immediate`.
@@ -383,7 +385,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 369개):
+테스트 종류 (`./gradlew test`, 372개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 여덟** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는

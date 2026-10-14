@@ -201,6 +201,49 @@ class LoginAttemptLimiterTest {
     }
 
     @Test
+    @DisplayName("되돌린 시도는 한도에 세지 않는다 — 같은 IP 의 성공한 로그인이 쌓여 잠기지 않음")
+    void refundedAttemptsDoNotCount() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());
+
+        for (int i = 0; i < 100; i++) {
+            limiter.acquireShared("login-ip:1.2.3.4", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON);
+            limiter.refund("login-ip:1.2.3.4");
+        }
+
+        assertThatCode(() -> limiter.acquireShared("login-ip:1.2.3.4", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("되돌리기는 자기 시도 하나만 — 사이에 끼운 성공이 앞선 실패 집계를 지우지 않는다")
+    void refundKeepsOtherFailures() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());
+
+        attempt(limiter, "login-ip:1.2.3.4", 5);
+        for (int i = 0; i < 10; i++) {
+            attempt(limiter, "login-ip:1.2.3.4");
+            limiter.refund("login-ip:1.2.3.4");
+        }
+        attempt(limiter, "login-ip:1.2.3.4", 5);
+
+        // 실패만 11번째
+        assertThatThrownBy(() -> attempt(limiter, "login-ip:1.2.3.4"))
+                .isInstanceOf(TooManyRequestsException.class);
+    }
+
+    @Test
+    @DisplayName("되돌려도 이미 걸린 잠금은 풀리지 않는다")
+    void refundDoesNotLift() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());
+        attempt(limiter, "a@odolog.com", 10);
+        assertThatThrownBy(() -> attempt(limiter, "a@odolog.com")).isInstanceOf(TooManyRequestsException.class);
+
+        limiter.refund("a@odolog.com");
+
+        assertThatThrownBy(() -> attempt(limiter, "a@odolog.com")).isInstanceOf(TooManyRequestsException.class);
+    }
+
+    @Test
     @DisplayName("성공하면 기록을 지운다")
     void successClearsAttempts() {
         LoginAttemptLimiter limiter = new LoginAttemptLimiter(new MovableClock());

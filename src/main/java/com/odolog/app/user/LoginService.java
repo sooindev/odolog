@@ -34,8 +34,8 @@ public class LoginService {
 
     public User login(LoginRequest request, HttpServletRequest httpRequest) {
         // IP 단위도 집계. 이메일 키만으로는 계정을 바꿔 가며 비밀번호를 뿌리는 시도를 못 막음
-        attemptLimiter.acquireShared(LOGIN_IP_KEY_PREFIX + ClientIp.of(httpRequest),
-                ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
+        String ipKey = LOGIN_IP_KEY_PREFIX + ClientIp.of(httpRequest);
+        attemptLimiter.acquireShared(ipKey, ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
 
         User user = userService.login(request);
 
@@ -51,6 +51,8 @@ public class LoginService {
             throw new AuthenticationFailedException(ErrorCode.LOGIN_FAILED, "이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
+        // 성공은 IP 한도에서 제외. 공유 IP 가 정상 로그인만으로 잠기지 않게
+        attemptLimiter.refund(ipKey);
         return user;
     }
 }
