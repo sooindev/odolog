@@ -94,6 +94,22 @@ export function VehicleDetailPage() {
     setOdometerConflict(null)
   }
 
+  // 되돌릴 수 없는 동작은 괘선 아래 맨 끝. 채우지 않은 빨간 버튼
+  // 한 열로 쌓이면 왼쪽 열 끝이 기록 카드들 위라, 그때는 페이지 맨 아래에 둠(둘 중 하나만 보임)
+  const deleteSection = (
+    <div className="flex flex-col gap-4 border-t border-border pt-8">
+      {actionError !== null && <ErrorText message={actionError} />}
+
+      {/* -ml-3.5: 버튼 안쪽 여백만큼 당겨 글자를 안내문 왼쪽 선에 맞춤 */}
+      <div className="flex flex-col items-start gap-2">
+        <p className="text-caption text-muted-foreground">{t.vehicles.detail.deleteNote}</p>
+        <Button variant="destructive" size="sm" className="-ml-3.5" disabled={deleting} onClick={handleDelete}>
+          {deleting ? t.common.deleting : t.vehicles.detail.delete}
+        </Button>
+      </div>
+    </div>
+  )
+
   return (
     // 머리말은 Page 담당
     <Page
@@ -142,24 +158,8 @@ export function VehicleDetailPage() {
           {/* 응답으로 바로 교체. 재조회 불필요 */}
           <VehicleInfoForm vehicle={vehicle} onUpdated={replaceVehicle} />
 
-          {/* 되돌릴 수 없는 동작은 괘선 아래 맨 끝. 채우지 않은 빨간 버튼 */}
-          <div className="flex flex-col gap-4 border-t border-border pt-8">
-            {actionError !== null && <ErrorText message={actionError} />}
-
-            {/* -ml-3.5: 버튼 안쪽 여백만큼 당겨 글자를 안내문 왼쪽 선에 맞춤 */}
-            <div className="flex flex-col items-start gap-2">
-              <p className="text-caption text-muted-foreground">{t.vehicles.detail.deleteNote}</p>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="-ml-3.5"
-                disabled={deleting}
-                onClick={handleDelete}
-              >
-                {deleting ? t.common.deleting : t.vehicles.detail.delete}
-              </Button>
-            </div>
-          </div>
+          {/* 넓은 화면은 왼쪽 열 끝 */}
+          <div className="hidden lg:block">{deleteSection}</div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-10">
@@ -199,6 +199,9 @@ export function VehicleDetailPage() {
               onChanged={clearOdometerConflict}
             />
           </div>
+
+          {/* 좁은 화면은 페이지 맨 아래 */}
+          <div className="lg:hidden">{deleteSection}</div>
         </div>
       </div>
     </Page>

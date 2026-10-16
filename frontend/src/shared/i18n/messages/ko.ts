@@ -411,6 +411,7 @@ export const ko = {
       date: '정비 날짜',
       odometer: (unit: string) => `정비 시 주행거리 (${unit})`,
       odometerEmpty: '비우면 다음 정비 시점을 날짜로만 계산합니다.',
+      odometerClearedForPast: '오늘 주행거리를 지웠습니다. 그날 계기판 숫자를 알면 적고, 모르면 비워 두세요(다음 정비를 날짜로만 계산).',
       cost: (currency: string) => `비용 (${currency})`,
       costEmpty: '모르면 비워 두세요. 비용 합계에서만 빠집니다.',
       memo: '메모',
@@ -469,6 +470,7 @@ export const ko = {
     baseline: '기준 기록',
     fromNext: '· 다음 주유부터 계산',
     suspicious: '확인 필요',
+    dateBeforePrevious: '주행거리는 아래 기록보다 큰데 날짜가 더 이릅니다. 날짜나 주행거리를 확인해 주세요.',
     missing: '기록 빠짐?',
     form: {
       date: '주유 날짜',
@@ -539,6 +541,7 @@ export const ko = {
       title: '차량별',
       maintenanceCount: (n: number) => `정비 ${n}건`,
       noService: '정비 이력 없음',
+      lastService: (date: string) => `마지막 정비 ${date}`,
     },
     recent: {
       title: '최근 활동',

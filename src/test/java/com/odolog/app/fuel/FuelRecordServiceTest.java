@@ -338,6 +338,29 @@ class FuelRecordServiceTest {
     }
 
     @Test
+    @DisplayName("주행거리는 더 큰데 날짜가 직전 기록보다 이르면 그 행에 표시한다")
+    void listMarksDateBeforePrevious() {
+        Vehicle vehicle = vehicle(51500);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+
+        FuelRecord older = record(1L, vehicle, 51000, "40.00", 70000);
+        older.changeFueledAt(LocalDate.of(2026, 10, 1));
+        // 51,500km 인데 8/1. 주행거리순으로는 뒤, 날짜로는 앞
+        FuelRecord reversed = record(2L, vehicle, 51500, "40.00", 70000);
+        reversed.changeFueledAt(LocalDate.of(2026, 8, 1));
+
+        Pageable pageable = PageRequest.of(0, 2);
+        when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(reversed, older), pageable, 2));
+
+        Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, "V10", pageable);
+
+        assertThat(page.getContent().get(0).dateBeforePrevious()).isTrue();
+        // 직전이 없는 첫 기록은 비교 대상 없음
+        assertThat(page.getContent().get(1).dateBeforePrevious()).isFalse();
+    }
+
+    @Test
     @DisplayName("기록이 빠진 것으로 보이는 구간은 목록 행에 표시된다")
     void listMarksMissingRecordSegment() {
         Vehicle vehicle = vehicle(12000);

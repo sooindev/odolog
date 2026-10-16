@@ -84,14 +84,14 @@ export function WithdrawCard() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* min-w-0: 버튼 밀림 방지 */}
-            <p className="min-w-0 text-caption text-muted-foreground">{t.profile.withdraw.note}</p>
+          // 차량 삭제와 같은 모양. 늘 세로로 쌓고 -ml-3.5 로 버튼 안쪽 여백만큼 당겨 안내문 왼쪽 선에 맞춤
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-caption text-muted-foreground">{t.profile.withdraw.note}</p>
             {/* 채우지 않은 빨간 버튼 */}
             <Button
               variant="destructive"
               size="sm"
-              className="shrink-0"
+              className="-ml-3.5"
               onClick={() => setOpen(true)}
             >
               {t.profile.withdraw.open}

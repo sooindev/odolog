@@ -81,7 +81,7 @@ public class AccountRestoreService {
 
     /** 차량 하나. 같은 번호판이면 찾은 차에, 없으면 새로 만들어 기록·주기 추가 */
     private void restoreVehicle(Long userId, User owner, AccountRestoreRequest.VehicleData data, Tally tally) {
-        String plateNumber = InputText.required(data.plateNumber(), "plateNumber");
+        String plateNumber = InputText.plateNumber(data.plateNumber(), "plateNumber");
         // 같은 차인지는 DB 정렬 규칙으로. 파일 안에서 앞서 만든 차도 찾음(IDENTITY 라 저장 즉시 INSERT)
         Vehicle vehicle = vehicleRepository.findLockedByOwnerIdAndPlateNumber(userId, plateNumber).orElse(null);
         boolean created = vehicle == null;

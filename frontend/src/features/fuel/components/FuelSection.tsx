@@ -161,6 +161,10 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         {f.date(record.fueledAt)} · {f.distance(record.odometer)}
                         {record.distance !== null && ` · +${f.distance(record.distance)}`}
                       </span>
+                      {/* 주행거리순 목록에서 날짜가 거꾸로. 어느 쪽이 틀렸는지는 사용자만 앎 */}
+                      {record.dateBeforePrevious && (
+                        <span className="text-caption text-destructive">{t.fuel.dateBeforePrevious}</span>
+                      )}
                       {record.memo !== null && record.memo !== '' && (
                         <span className="truncate text-caption text-muted-foreground">
                           {record.memo}

@@ -31,6 +31,18 @@ class InputTextTest {
     }
 
     @Test
+    @DisplayName("번호판은 가운데 공백까지 지운다 — '33나 3333' 이 '33나3333' 과 다른 차로 들어가지 않게")
+    void plateNumberRemovesInnerSpaces() {
+        assertThat(InputText.plateNumber(" 33나 3333 ", "plateNumber")).isEqualTo("33나3333");
+        assertThat(InputText.plateNumber("AB12 CDE", "plateNumber")).isEqualTo("AB12CDE");
+        assertThat(InputText.plateNumber("33나　3333", "plateNumber")).isEqualTo("33나3333");
+        // 부분 수정에서 안 보낸 번호판은 그대로 null
+        assertThat(InputText.plateNumber(null, "plateNumber")).isNull();
+        assertThatThrownBy(() -> InputText.plateNumber("  ", "plateNumber"))
+                .isInstanceOf(InvalidRequestException.class);
+    }
+
+    @Test
     @DisplayName("짝 없는 서로게이트만 '?' 로 바꾸고 짝이 맞는 이모지는 그대로 둔다")
     void optionalReplacesUnpairedSurrogates() {
         assertThat(InputText.optional("a\uD83Db")).isEqualTo("a?b");

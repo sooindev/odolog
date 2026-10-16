@@ -146,7 +146,9 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                     {f.distance(line.odometer)}
                   </p>
                   <p className="text-caption tabular-nums text-muted-foreground">
-                    {line.lastServiceDate === null ? t.home.vehicles.noService : f.date(line.lastServiceDate)}
+                    {line.lastServiceDate === null
+                      ? t.home.vehicles.noService
+                      : t.home.vehicles.lastService(f.date(line.lastServiceDate))}
                   </p>
                 </div>
               </Link>

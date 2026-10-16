@@ -29,6 +29,7 @@ function record(id: string, odometer: number, memo: string): FuelRecordResponse 
     efficiency: 16.67,
     efficiencySuspicious: false,
     missingRecordSuspected: false,
+    dateBeforePrevious: false,
   }
 }
 

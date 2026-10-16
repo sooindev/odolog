@@ -47,6 +47,25 @@ public final class InputText {
     }
 
     /**
+     * 번호판용 required. 가운데 공백까지 지움
+     * DB 는 가운데 공백을 다른 글자로 봐서 '33나 3333' 과 '33나3333' 이 다른 차로 들어감
+     */
+    public static String plateNumber(String value, String field) {
+        String stripped = required(value, field);
+        if (stripped == null) {
+            return null;
+        }
+        StringBuilder text = new StringBuilder(stripped.length());
+        for (int i = 0; i < stripped.length(); i++) {
+            char c = stripped.charAt(i);
+            if (!isBlank(c)) {
+                text.append(c);
+            }
+        }
+        return text.toString();
+    }
+
+    /**
      * 선택 입력용 strip. 비면 null(빈 문자열 저장 금지)
      * 짝 없는 서로게이트는 DB 가 저장하는 모양('?')으로. 비교 열쇠와 저장값을 같게
      */

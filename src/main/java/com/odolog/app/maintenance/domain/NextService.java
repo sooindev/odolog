@@ -64,7 +64,11 @@ public record NextService(
         }
 
         // 지난 것 → 곧 → 나머지. 이 목록은 "뭘 해야 하나" 를 보는 자리
-        results.sort(Comparator.comparing(NextService::overdue).thenComparing(NextService::dueSoon).reversed());
+        // 지남·곧 안에서는 급한 순. 나머지는 선언 순서 그대로
+        Comparator<NextService> byGroup =
+                Comparator.comparing(NextService::overdue).thenComparing(NextService::dueSoon).reversed();
+        results.sort(byGroup.thenComparingDouble(next ->
+                next.overdue() || next.dueSoon() ? next.remainingShare(currentOdometer, today) : 0));
 
         return results;
     }
@@ -127,6 +131,21 @@ public record NextService(
         return new NextService(type, record.getServiceOdometer(), nextOdometer,
                 record.getServiceDate(), nextDate, overdue, dueSoon,
                 intervalKm, intervalMonths, override != null, customKm, customMonths);
+    }
+
+    /** 주기 중 남은 몫. 지났으면 음수, 작을수록 급함. km·날짜 중 급한 쪽 */
+    private double remainingShare(int currentOdometer, LocalDate today) {
+        double share = Double.MAX_VALUE;
+        if (nextOdometer != null && intervalKm != null && intervalKm > 0) {
+            share = (double) (nextOdometer - currentOdometer) / intervalKm;
+        }
+        if (nextDate != null) {
+            long total = ChronoUnit.DAYS.between(lastDate, nextDate);
+            if (total > 0) {
+                share = Math.min(share, (double) ChronoUnit.DAYS.between(today, nextDate) / total);
+            }
+        }
+        return share;
     }
 
     /** 곧이 켜지는 주행거리. 다음 시점 SOON_KM 전, 단 주기의 4/5 지점보다 이르지 않게 */

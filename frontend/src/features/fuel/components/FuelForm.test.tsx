@@ -27,6 +27,7 @@ const RECORD: FuelRecordResponse = {
   efficiency: 15.4,
   efficiencySuspicious: false,
   missingRecordSuspected: false,
+  dateBeforePrevious: false,
 }
 
 /** 실제로 실린 필드만. undefined 는 JSON 에서 빠짐 */

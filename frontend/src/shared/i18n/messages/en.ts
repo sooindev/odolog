@@ -414,6 +414,7 @@ export const en: Messages = {
       date: 'Service date',
       odometer: (unit: string) => `Odometer at service (${unit})`,
       odometerEmpty: 'Leave it blank and the next service is worked out from the date only.',
+      odometerClearedForPast: 'Cleared today’s reading. Enter the odometer from that day if you know it, or leave it empty (next service by date only).',
       cost: (currency: string) => `Cost (${currency})`,
       costEmpty: 'Leave it blank if you don’t know. It’s only left out of cost totals.',
       memo: 'Note',
@@ -471,6 +472,7 @@ export const en: Messages = {
     baseline: 'Baseline',
     fromNext: '· calculated from the next fill-up',
     suspicious: 'Check this',
+    dateBeforePrevious: 'Higher odometer than the fill-up below but an earlier date. Check the date or odometer.',
     missing: 'Missing fill-up?',
     form: {
       date: 'Fill-up date',
@@ -541,6 +543,7 @@ export const en: Messages = {
       title: 'By vehicle',
       maintenanceCount: (n: number) => `${n} ${plural(n, 'service', 'services')}`,
       noService: 'No services yet',
+      lastService: (date: string) => `Last service ${date}`,
     },
     recent: {
       title: 'Recent activity',

@@ -30,7 +30,7 @@ public class VehicleService {
 
     @Transactional
     public Vehicle register(Long ownerId, VehicleRegisterRequest request) {
-        String plateNumber = InputText.required(request.plateNumber(), "plateNumber");
+        String plateNumber = InputText.plateNumber(request.plateNumber(), "plateNumber");
         if (vehicleRepository.existsByOwnerIdAndPlateNumber(ownerId, plateNumber)) {
             throw new ConflictException(ErrorCode.PLATE_DUPLICATE, "이미 등록하신 차량 번호입니다: " + plateNumber);
         }
@@ -53,7 +53,7 @@ public class VehicleService {
         Vehicle vehicle = findOwnedVehicleForUpdate(requesterId, vehicleId);
 
         // 번호판 먼저 처리. 다른 필드 변경 후 exists 전 자동 flush 로 자기 중복 판정 방지
-        String plateNumber = InputText.required(request.plateNumber(), "plateNumber");
+        String plateNumber = InputText.plateNumber(request.plateNumber(), "plateNumber");
         if (plateNumber != null && !plateNumber.equals(vehicle.getPlateNumber())) {
             // 같은 번호판인지는 DB 가 판단. 자바 비교는 전각 숫자·악센트에서 DB 와 갈려 자기 자신과 409
             if (vehicleRepository.existsByOwnerIdAndPlateNumberAndIdNot(requesterId, plateNumber, vehicle.getId())) {

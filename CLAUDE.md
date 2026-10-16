@@ -219,6 +219,7 @@
       짝 없는 서로게이트는 `?` 로(DB 가 그렇게 저장해서, 안 바꾸면 비교 열쇠가 어긋난다).
       그대로 두면 "없음" 이 두 모양이 되고 **내보낸 JSON 에도 그 차이가 그대로 나간다.**
     - 필수 입력(번호판·제조사·모델명·닉네임)은 `InputText.required` — 지운 뒤 비면 400.
+      번호판만 `InputText.plateNumber` — 가운데 공백까지 지운다(DB 는 가운데 공백을 글자로 봐서 같은 차가 둘로 들어간다).
       `@NotBlank`(trim 기준)와 `\S` 는 전각 공백을 글자로 보고 통과시키므로 서비스에서 한 번 더 본다.
     - `trim()` 이 아니라 `InputText.strip` — 전각 공백(U+3000)과 `strip()` 이 남기는 NBSP·폭 없는 공백·BOM 까지 지운다
       (NBSP 닉네임이 헤더에서 빈 칸으로 보였다).
@@ -390,7 +391,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 378개):
+테스트 종류 (`./gradlew test`, 381개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 여덟** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는

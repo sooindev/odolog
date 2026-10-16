@@ -108,6 +108,22 @@ class NextServiceTest {
     }
 
     @Test
+    @DisplayName("지난 것끼리는 더 많이 지난 것이 먼저 온다 — 선언 순서가 아니다")
+    void moreOverdueComesFirst() {
+        List<MaintenanceRecord> records = List.of(
+                // 미션오일 60,000km·48개월 → 2025. 5. 1. 지남(주기의 약 1/3 넘김)
+                record(ServiceType.TRANSMISSION_FLUID, 30000, LocalDate.of(2021, 5, 1), 1L),
+                // 휠 얼라인먼트 20,000km·12개월 → 2023. 1. 10. 지남(주기의 세 배 넘김)
+                record(ServiceType.WHEEL_ALIGNMENT, 40000, LocalDate.of(2022, 1, 10), 2L));
+
+        List<NextService> results = compute(records, 89150);
+
+        assertThat(results).allMatch(NextService::overdue);
+        assertThat(results).extracting(NextService::type)
+                .containsExactly(ServiceType.WHEEL_ALIGNMENT, ServiceType.TRANSMISSION_FLUID);
+    }
+
+    @Test
     @DisplayName("같은 종류가 여럿이면 최신 하나만 본다")
     void latestPerType() {
         List<MaintenanceRecord> records = List.of(

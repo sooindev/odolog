@@ -33,7 +33,10 @@ public record FuelRecordResponse(
         boolean efficiencySuspicious,
 
         /** 주유 기록 누락 의심 구간. 평균에서도 제외된 구간 */
-        boolean missingRecordSuspected
+        boolean missingRecordSuspected,
+
+        /** 주행거리는 더 큰데 날짜가 직전 기록보다 이름. 둘 중 하나가 잘못 적힌 것 */
+        boolean dateBeforePrevious
 ) {
 
     /**
@@ -73,7 +76,8 @@ public record FuelRecordResponse(
                 // 불가능한 값 표시 우선. 한 행에 표시 하나
                 !FuelAnomaly.isImpossible(efficiency)
                         && distance != null
-                        && baseline.suspectsMissingRecord(distance, efficiency)
+                        && baseline.suspectsMissingRecord(distance, efficiency),
+                previous != null && record.getFueledAt().isBefore(previous.getFueledAt())
         );
     }
 

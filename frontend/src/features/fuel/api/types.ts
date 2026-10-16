@@ -55,6 +55,8 @@ export interface FuelRecordResponse {
   efficiencySuspicious: boolean
   /** 주유 기록 누락 의심 구간. 평균에서도 제외 */
   missingRecordSuspected: boolean
+  /** 주행거리는 더 큰데 날짜가 직전 기록보다 이름 */
+  dateBeforePrevious: boolean
 }
 
 export interface FuelSummaryResponse {

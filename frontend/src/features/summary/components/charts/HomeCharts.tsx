@@ -64,11 +64,11 @@ export function MonthlyCostChart({ monthly, currency }: { monthly: MonthlyCost[]
           {/* 가로축은 차트 칸 안쪽. 밖이면 축만 잘림 */}
           <div className="ml-10 flex gap-0.5 sm:ml-[3.25rem] sm:gap-1">
             {monthly.map((entry, index) => (
-              // 좁은 화면은 홀수 칸 라벨만. 막대는 12개 유지
+              // 좁은 화면은 한 칸 걸러 라벨. 이번 달(맨 끝)부터 세어 늘 보이게. 막대는 12개 유지
               <span
                 key={entry.month}
                 className={`flex-1 text-center text-axis tabular-nums text-muted-foreground ${
-                  index % 2 === 1 ? 'invisible sm:visible' : ''
+                  (monthly.length - 1 - index) % 2 === 1 ? 'invisible sm:visible' : ''
                 }`}
               >
                 {Number(entry.month.slice(5))}

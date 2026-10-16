@@ -60,6 +60,23 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   const [serviceDate, setServiceDate] = useState(record?.serviceDate ?? todayString(timeZone))
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // 날짜를 바꿔 미리 채운 주행거리를 비웠는지. 오늘로 돌아오면 되살림
+  const [odometerAutoCleared, setOdometerAutoCleared] = useState(false)
+
+  /** 등록에서 미리 채운 주행거리는 오늘 값. 다른 날짜면 그때 값을 모르므로 손대지 않은 칸만 비움 */
+  function changeServiceDate(next: string) {
+    setServiceDate(next)
+    if (record !== null) return
+
+    const today = todayString(timeZone)
+    if (next !== today && serviceOdometer === initialOdometer) {
+      setServiceOdometer('')
+      setOdometerAutoCleared(true)
+    } else if (next === today && odometerAutoCleared && serviceOdometer === '') {
+      setServiceOdometer(initialOdometer)
+      setOdometerAutoCleared(false)
+    }
+  }
 
   // 판정·전송은 km. 손대지 않았으면 원래 km 그대로(마일 왕복 오차 차단). 빈칸은 null(Number('') 는 0)
   const odometerKm =
@@ -159,7 +176,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
 
         <Field label={t.maintenance.form.date} htmlFor="serviceDate">
           {/* YYYY-MM-DD 문자열. 터치면 드럼 휠, 아니면 네이티브 date */}
-          <DateInput id="serviceDate" required value={serviceDate} onChange={setServiceDate} />
+          <DateInput id="serviceDate" required value={serviceDate} onChange={changeServiceDate} />
         </Field>
       </div>
 
@@ -170,7 +187,9 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
           // 비었을 때 안내 우선. 다음 정비 계산의 재료
           hint={
             serviceOdometer === ''
-              ? t.maintenance.form.odometerEmpty
+              ? odometerAutoCleared
+                ? t.maintenance.form.odometerClearedForPast
+                : t.maintenance.form.odometerEmpty
               : past
                 ? t.odometerHints.past(f.distance(baseOdometer))
                 : undefined
@@ -183,7 +202,10 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
             max={Math.floor(fromKm(unitSystem, MAX_ODOMETER))}
             className="tabular-nums"
             value={serviceOdometer}
-            onChange={(event) => setServiceOdometer(event.target.value)}
+            onChange={(event) => {
+              setServiceOdometer(event.target.value)
+              setOdometerAutoCleared(false)
+            }}
           />
         </Field>
 
