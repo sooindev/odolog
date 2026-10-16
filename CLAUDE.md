@@ -54,12 +54,12 @@
 ### 프론트엔드 (`frontend/`)
 - Node 26 (Homebrew, `.nvmrc`) / React 19 / Vite 8 / TypeScript 6
 - Tailwind CSS v4 (`@tailwindcss/vite` 플러그인) + shadcn/ui (Base UI)
-- **TanStack Query**(`@tanstack/react-query`) — 차량 상세 화면의 조회 캐시. 나머지 화면은 `useAsyncData`
+- **TanStack Query**(`@tanstack/react-query`) — 모든 조회. 홈·차량 목록은 여러 차량을 합친 화면이라 떠나면 바로 버린다(`gcTime: 0`)
 - 테스트: vitest + Testing Library(jsdom), 실제 브라우저 E2E 는 Playwright
 - 린터는 ESLint가 아니라 **oxlint** (Vite 템플릿 기본값, Rust 기반)
 - 개발 서버 `http://localhost:5173` — 백엔드 CORS 허용 주소(`odolog.cors.allowed-origins`)와 짝이다
 - 저장소 루트의 `frontend/`. 백엔드(Gradle)와 완전히 분리되어 있고 서로 빌드에 관여하지 않는다
-- 번들이 500kB 를 넘어 `vite build` 가 경고를 낸다(2026-10-05, 508kB). 실패가 아니라 경고이고 아직 나누지 않았다
+- 화면은 라우트 단위로 나눠 받는다(`App.tsx` 의 `lazy`). 소개·홈·로그인만 첫 번들에 있다 — 한 덩어리면 500kB 를 넘는다
 
 ## 개발 환경
 
@@ -75,6 +75,9 @@
   운영 DB 는 첫 기동 때 V1 을 기준점으로 표시(`baseline-on-migrate`)하고 V2 부터 돌았다.
   **운영 스키마가 V1 과 같은지는 2026-10-06 에 한 번 대조했다**(임시 스키마에 V1~V3 를 돌려 컬럼·유니크·외래키 비교 — 일치).
   런타임 대조기는 없으므로, 운영 DB 를 손으로 고쳤다면 같은 방법으로 다시 대조한다.
+- **`User` 의 동시 수정 보호는 MariaDB `innodb_snapshot_isolation=1`(11.8 부터 기본) 에 기댄다.** `User` 에 `@Version` 이 없는데도
+  프로필 저장이 동시에 바뀐 비밀번호를 되돌리지 않는 것은, 잠그지 않은 스냅숏으로 읽은 행을 다른 트랜잭션이 바꿨으면 쓰기가 실패하기
+  때문이다(`UserConcurrentUpdateTest`). 이 설정을 끄거나 다른 DB 로 옮기면 `@Version` 을 먼저 더한다
 - **Flyway 로 옮긴 이유는 `ddl-auto: update` 의 함정 셋이다** — 제약을 추가는 해도 지우지 않고(9/7 번호판 유니크),
   `@Enumerated` 의 네이티브 `enum(...)` 컬럼 타입을 바꾸지 않고(9/16), `CHECK (type in (…))` 값 목록을 갱신하지 않는다(9/29).
   셋 다 **테스트(create-drop)는 통과하고 운영만 안 바뀌는** 모양이었다. 경위와 손으로 고친 SQL 은 `HISTORY.md` 와
@@ -198,9 +201,11 @@
 13. **서비스는 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드에만 `@Transactional`.**
     메서드 쪽이 클래스 쪽을 덮어쓴다. 새 메서드를 깜빡했을 때 기본이 안전한 쪽(읽기 전용)이라
     쓰기가 실패해서 바로 드러난다. 반대로 하면 아무 일도 안 일어나 영영 모른다.
-    **예외는 하나 — `user/LoginService` 는 트랜잭션을 걸지 않는다**(2026-10-05). 로그인은 세션을 저장한 **뒤**
+    **예외는 BCrypt 를 도는 경로다.** `user/LoginService` 는 트랜잭션을 걸지 않는다 — 로그인은 세션을 저장한 **뒤**
     비밀번호가 그대로인지 다시 보는데, 그 재확인이 **새 트랜잭션**이어야 그 사이 커밋된 재설정·변경·탈퇴가 보인다
-    (REPEATABLE READ 는 첫 조회 때 스냅숏을 잡는다). 클래스에 읽기 전용을 걸면 재확인이 같은 스냅숏을 다시 읽는다.
+    (REPEATABLE READ 는 첫 조회 때 스냅숏을 잡는다). `UserService.login`·`changePassword`·`PasswordResetService.request` 는
+    `Propagation.NOT_SUPPORTED` — BCrypt(수십 ms) 동안 커넥션(풀 10)·사용자 행 잠금을 쥐지 않게. 비밀번호 변경은 BCrypt 를
+    먼저 하고 `TransactionTemplate` 으로 잠근 뒤 **맞춰 본 해시가 그대로인지만** 본다(재설정 확정도 새 해시를 잠그기 전에 만든다).
     **잠금이 필요한 경로는 첫 조회를 잠금 조회로 한다**(`findOwnedVehicleForUpdate`·`findByIdForUpdate`·`findLockedBy…`).
     기록 쓰기와 차량 삭제, 동시 가져오기, 같은 주소의 재설정 발급이 그렇다. 첫 조회여야 기다린 뒤에 앞선 쪽의 결과가 보인다.
     잠금 순서는 **사용자 행 → 차량·토큰 행**으로 맞춘다(반대면 데드락).
@@ -220,6 +225,9 @@
       그대로 두면 "없음" 이 두 모양이 되고 **내보낸 JSON 에도 그 차이가 그대로 나간다.**
     - 필수 입력(번호판·제조사·모델명·닉네임)은 `InputText.required` — 지운 뒤 비면 400.
       번호판만 `InputText.plateNumber` — 가운데 공백까지 지운다(DB 는 가운데 공백을 글자로 봐서 같은 차가 둘로 들어간다).
+    - 닉네임·번호판·제조사·모델명은 **한 줄**(`InputLimits.SINGLE_LINE_TEXT`) — 제어·서식 문자와 줄 구분자를 거부한다.
+      `\P{Cntrl}` 은 ASCII 제어 문자만 뜻해 글자 방향 뒤집기(U+202E)가 통과했다. 합성 이모지의 ZWJ 는 허용
+    - 기록 날짜는 **1900-01-01 ~ 사용자의 오늘**(`UserToday.rejectOutOfRange`). 하한이 없으면 `-0001` 이 깨져 저장되고 연도 오타가 영영 '지남'
       `@NotBlank`(trim 기준)와 `\S` 는 전각 공백을 글자로 보고 통과시키므로 서비스에서 한 번 더 본다.
     - `trim()` 이 아니라 `InputText.strip` — 전각 공백(U+3000)과 `strip()` 이 남기는 NBSP·폭 없는 공백·BOM 까지 지운다
       (NBSP 닉네임이 헤더에서 빈 칸으로 보였다).
@@ -247,6 +255,9 @@
     - **리미터 키에는 반드시 용도 접두사를 붙인다.** 접두사가 없던 로그인 키에 `password-check:1` 을 넣어
       남의 비밀번호 변경·탈퇴를 잠글 수 있었다. 지금은 `login:`·`login-ip:`·`password-reset:`·`password-reset-ip:`·
       `signup:`·`password-check:` 여섯이다. 로그인 IP 키는 여러 사람이 한 IP 를 쓰므로 한도가 다섯 배(`acquireShared`)이고,
+      **이메일 키는 IP 와의 짝(`login:이메일|IP`)으로 10번, 계정 전체는 다섯 배**다 — 남의 주소로 한 곳에서 틀려도 잠기는 건
+      그 짝뿐이고, 계정 전체를 잠그려면 다섯 곳 이상이 필요하다. 재설정 요청도 같다. 재설정을 마치면 짝 키까지 지운다(`forgetWithPairs`).
+      대가로 같은 주소로 가는 재설정 메일 상한이 10통에서 IP 여럿이면 50통이 됐다.
       **성공한 로그인은 그 한 번만 되돌린다**(`refund`). `recordSuccess` 로 통째로 지우면 계정 하나로 성공을 끼워 실패 집계를 비운다.
       창은 **첫 시도부터 10분**(고정 창)이다.
       잠겼을 때의 문구는 부르는 쪽이 넘긴다(안 그러면 가입 화면에 "로그인 시도가 너무 많습니다"가 뜬다).
@@ -259,7 +270,10 @@
     화면은 `code` 로 자기 언어의 문구를 고른다. `message` 는 로그·개발자용 한국어 원문이라
     **화면에 그대로 내보내지 않는다**(영어 사용자에게 한국어가 뜬다).
     코드를 더하면 세 곳을 같이 고친다: 백엔드 `ErrorCode`, 프론트 `shared/api/types.ts` 의 `ERROR_CODES`, 사전 두 벌의
-    `errors.codes` — 마지막은 `errorMessage.test.ts` 가 빠진 것을 잡는다.
+    `errors.codes` — 앞의 둘은 `ErrorCodeSyncTest`, 마지막은 `errorMessage.test.ts` 가 빠진 것을 잡는다.
+    여러 칸이 틀리면 `field` 는 **요청 레코드의 칸 순서로 첫 칸**이다(검증기는 순서 없는 집합을 줘서 그냥 고르면 실행마다 달라진다).
+    **숫자 칸은 소수·문자열을 받지 않는다**(`spring.jackson` 의 `accept-float-as-int`·`allow-coercion-of-scalars` 끔) —
+    기본값이면 `0.5` 가 0원으로 저장돼 규칙 8 이 깨진다. 화면의 단위 변환은 전부 반올림해서 보낸다.
 17. **화면에 문구를 직접 적지 않는다.** 문구는 `shared/i18n/messages/{ko,en}.ts` 에만 있고
     화면은 `useI18n().t` 로 읽는다. 숫자·금액·날짜·거리·연비는 **반드시 `f`** 로 — `toLocaleString()`·
     `toFixed()` 로 직접 적으면 그 자리만 한국어 표기·km 로 남는다.
@@ -274,7 +288,7 @@
     `createdAt` 같은 기록 시각에만 남는다. 바꾸면 저장된 시각의 뜻이 9시간 밀리므로 따로 떼어 결정한다.
 18. **계산 결과는 저장하지 않고 읽을 때 계산한다**(연비·단가·구간 거리·다음 정비·지남/곧). 앞 기록이 바뀌면
     뒤 기록의 값이 따라 바뀌기 때문이다. 같은 계산을 두 화면이 쓰면 **한 곳에 둔다** — `fuel/domain/FuelEfficiency`·
-    `FuelAnomaly`(둘 다 `FuelSegment` 의 구간 순회를 쓴다), `maintenance/domain/NextService` 를 차량 상세·목록·홈이 공유한다.
+    `FuelAnomaly`(둘 다 `FuelSegment` 의 구간 순회를 쓴다 — 구간은 **가득 주유 → 가득 주유**, 사이의 덜 채운 양과 같은 주행거리로 나눠 넣은 양을 합친다. 목록 행도 같은 구간을 `byClosingRecord` 로 받는다), `maintenance/domain/NextService` 를 차량 상세·목록·홈이 공유한다.
     두 벌이면 한 화면은 지났다 하고 다른 화면은 아무 말도 안 한다. 판정을 화면이 아니라 서버가 하는 이유도 같다.
 19. **목록 정렬은 화이트리스트다**(`common/dto/SortGuard`). Spring Data 는 `?sort=owner.password` 처럼 연관을
     타고 들어가는 정렬을 그대로 받는다. 통과하면 같은 방향의 `id` 를 보조 키로 붙인다(동점 페이지 겹침 방지).
@@ -356,7 +370,7 @@
   `./gradlew bootTestRun --args='--odolog.rate-limit.max-attempts=10'` — 같은 키를 넘기면 `TestOdoLogApplication` 이 기본값을 뺀다
 - **세션은 DB**(Spring Session JDBC, 표는 V3). 쿠키 이름 `JSESSIONID`, 14일 — `timeout` 과 `cookie.max-age` 를 **같이** 늘려야 한다
 - **가져오기(`AccountRestoreService`)는 조율 층 규칙의 예외**로 리포지토리에 직접 쓴다 — 기록 2만 건을 한 트랜잭션에 넣는
-  일괄 작업이라 건마다 서비스를 거치면 같은 조회가 2만 번 돈다. 대신 등록과 같은 규칙(미래 날짜 금지 `UserToday.rejectFuture`,
+  일괄 작업이라 건마다 서비스를 거치면 같은 조회가 2만 번 돈다. 대신 등록과 같은 규칙(날짜 범위 `UserToday.rejectOutOfRange`,
   주행거리 올리기, 통화 판정, `InputText.optional`)을 그 안에서 다시 적용한다. **등록 규칙을 바꾸면 여기도 같이 본다.**
   첫 조회가 사용자 행 잠금, 이미 있던 기록과만 비교(파일 안끼리는 비교하지 않음), 정비는 날짜 오름차순으로 넣는다
 - **재설정 메일**: 링크는 프런트 주소(`odolog.app.base-url`). 발송은 커밋 뒤 다른 스레드, SMTP 시간 제한 5초.
@@ -383,7 +397,8 @@
     src/main/resources/application-prod.yml  SPRING_PROFILES_ACTIVE=prod. 쿠키 secure 를 환경변수와 무관하게 켬.
                                              DB_USERNAME·DB_PASSWORD·APP_BASE_URL·CORS_ALLOWED_ORIGINS 는 기본값이 없어 빠지면 기동 실패
     src/main/resources/db/migration/         V1 기준점 · V2 정비 종류 CHECK 삭제(표 단위 — 운영에선 효과 없음) · V3 세션 표 ·
-                                             V4 정비 종류 CHECK 삭제(컬럼 단위, 실제로 지움). 다음은 V5
+                                             V4 정비 종류 CHECK 삭제(컬럼 단위, 실제로 지움) · V5 공개 id 대소문자 구분
+                                             (utf8mb4_bin)·만료 토큰 인덱스 · V6 주유 가득 여부(full_tank). 다음은 V7
     src/test/resources/application.yml       odolog_test, create-drop, Flyway 끔(세션 표만 V3 를 sql.init 으로), CSRF 끔
 
 **테스트 설정은 운영 `application.yml` 을 통째로 가린다** — 테스트가 운영 DB 에 붙을 길을 아예 없애려고 일부러 그랬다.
@@ -391,7 +406,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 381개):
+테스트 종류 (`./gradlew test`, 426개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 여덟** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는
@@ -442,8 +457,12 @@
   덮어써진다. `OdometerForm` 은 주행거리 값으로 key 를 준다 — 값이 바뀌면 입력칸을 새 값으로 되돌린다.
 - **정비 목록의 쪽·종류 필터는 `VehicleDetailPage` 가 들고 있다.** 빠른 정비로 목록 밖에서 기록이 생기면 1쪽·전체 종류로
   되돌리되 열어 둔 수정 폼은 남긴다
-- 홈·차량 목록은 아직 `useAsyncData`(오류 객체를 돌려주고 렌더할 때 번역). 목록 두 카드의 공통 상태(폼 열림·동작 실패·삭제 중인 행)는
-  `useRecordList`, 범위 밖 페이지 복귀는 `usePageInRange`
+- 홈·차량 목록도 TanStack Query(`queryKeys.summary`·`vehicleList`, `gcTime: 0` — 다른 화면에서 바뀐 기록이 옛 숫자로 먼저 보이지 않게).
+  목록 두 카드의 공통 상태(폼 열림·동작 실패·삭제 중인 행)는 `useRecordList`, 범위 밖 페이지 복귀는 `usePageInRange`.
+  `useRecordList` 는 지운 행의 수정 폼만 닫는다 — 작성 중인 새 기록 폼은 삭제·쪽 넘김에도 남는다
+- 차량 상세는 `VehicleDetailByKey`(`App.tsx`)가 주소의 차량 id 로 key 를 준다 — 페이드용 key 에 기대지 않는다
+- 문장 속 개수는 `f.count(n)` 으로 넘긴다(`{ n, text }`). 사전은 `text` 를 찍고 영어는 `n` 으로 단·복수를 고른다 — 숫자를 그대로 넣으면 쉼표가 빠진다
+- 통화 소수 자리는 `money.ts` 의 ISO 4217 표다. 브라우저 ICU 에 묻지 않는다(크롬은 IDR·HUF 를 0 으로 봐 같은 저장값이 100배로 갈렸다)
 - `date-input` 은 터치(`pointer: coarse`)면 드럼 휠, 아니면 네이티브 date. 둘 다 오늘에서 끊는다
 - 내보내기는 받은 JSON 을 **Blob 으로 만들어** 내려준다 — `<a href>` 로 바로 받으면 세션·CSRF 헤더가 빠진다
 - 가입 때의 지역 추정(`shared/lib/preferences`)은 태그에 **적힌** 지역으로만 — `maximize()` 는 `en` → `US` 라 영국 사용자도 달러로 시작한다
@@ -456,9 +475,9 @@
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 
-테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 101개(파일 15개) — 순수 함수, 사전 누락,
+테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 104개(파일 16개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
-실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 17개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
+실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 19개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.
 
 ### 의존 방향
@@ -497,8 +516,11 @@
 ## 진행 상황
 
 코드는 끝났고 브라우저 확인(6-B~6-E·7-H)도 2026-10-10 에 한 바퀴 돌았다. **남은 것은 실제 폰으로만 볼 넷**(C-17·C-19·C-21·D-4)과
-Windows 글꼴(H-14), 날짜 경계 시각에만 재현되는 H-9, 그리고 눈 확인 뒤에 정하기로 한 `docs/QA.md` 6-G 다.
+Windows 글꼴(H-14), 2026-10-16 에 고친 화면을 사람 눈으로 보는 6-B 다섯 줄이다. H-9 와 6-G 는 2026-10-16 에 끝냈다.
+배포 준비(PWA·프록시·CI 정렬 규칙·시도 잠금 저장소)는 프로젝트를 완성한 뒤에 따로 한다(사용자 결정).
 운영 DB 는 V1~V4 적용까지 확인을 마쳤다(2026-10-10).
+**V5·V6 은 다음 IntelliJ 기동 때 운영 DB 에 적용된다** — 적용 뒤 `SHOW CREATE TABLE vehicles`(public_id 의 `utf8mb4_bin`)와
+`fuel_records`(full_tank) 로 확인한다.
 완료한 작업과 그 근거는 `HISTORY.md` 에 있다. 새 작업을 마치면 `HISTORY.md` 맨 위에 항목을 더하고,
 `docs/QA.md` 의 체크리스트에서 그 줄을 지운다. 화면에 무언가를 더하면 6-B 에 확인 줄을 같이 넣는다.
 

@@ -18,6 +18,7 @@ import {
   fetchNextServices,
 } from '@/features/maintenance/api/endpoints'
 import type { NextServiceResponse, ServiceType } from '@/features/maintenance/api/types'
+import { MAX_INTERVAL_KM, MAX_INTERVAL_MONTHS } from '@/shared/lib/limits'
 
 /** '곧' 의 거리 기준(km). 백엔드 NextService.SOON_KM 과 같은 값 */
 const SOON_KM = 1000
@@ -123,6 +124,10 @@ export function NextServiceCard({ vehicleId }: { vehicleId: string }) {
                     className="shrink-0 whitespace-nowrap text-unit text-muted-foreground underline-offset-4 transition-opacity duration-200 ease-apple hover:opacity-70 hover:underline"
                     aria-expanded={editing === result.type}
                     onClick={() => setEditing(editing === result.type ? null : result.type)}
+                    // 종류마다 같은 글자라 이름에 종류를 붙임
+                    aria-label={`${t.serviceTypes[result.type]} ${
+                      result.customized ? t.maintenance.next.intervalCustomized : t.maintenance.next.interval
+                    }`}
                   >
                     {result.customized ? t.maintenance.next.intervalCustomized : t.maintenance.next.interval}
                   </button>
@@ -211,7 +216,7 @@ function IntervalForm({
                 type="number"
                 autoFocus
                 min={1}
-                max={Math.floor(fromKm(unitSystem, 500_000))}
+                max={Math.floor(fromKm(unitSystem, MAX_INTERVAL_KM))}
                 placeholder={result.defaultIntervalKm === null ? t.common.none : shown(result.defaultIntervalKm)}
                 className="tabular-nums"
                 value={km}
@@ -228,7 +233,7 @@ function IntervalForm({
                 id={`interval-months-${result.type}`}
                 type="number"
                 min={1}
-                max={120}
+                max={MAX_INTERVAL_MONTHS}
                 placeholder={
                   result.defaultIntervalMonths === null ? t.common.none : String(result.defaultIntervalMonths)
                 }

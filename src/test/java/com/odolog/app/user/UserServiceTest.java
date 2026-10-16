@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.Optional;
 
@@ -44,12 +45,16 @@ class UserServiceTest {
     @Mock
     private LoginAttemptLimiter loginAttemptLimiter;
 
+    /** 콜백을 그냥 실행하는 가짜. 트랜잭션 자체는 *TransactionTest 들이 봄 */
+    @Mock
+    private PlatformTransactionManager transactionManager;
+
     private UserService userService;
 
     @BeforeEach
     void setUp() {
         userService = new UserService(userRepository, passwordResetTokenRepository, loginAttemptLimiter,
-                new BCryptPasswordEncoder());
+                new BCryptPasswordEncoder(), transactionManager);
     }
 
     @Test
@@ -58,11 +63,12 @@ class UserServiceTest {
         User user = new User("me@odolog.com", new BCryptPasswordEncoder().encode("password1234"),
                 "나");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(userRepository.findLockedById(1L)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.changePassword(1L,
                 new ChangePasswordRequest("password1234", "password1234")))
                 .isInstanceOf(InvalidRequestException.class);
+        // 거절은 잠그기 전에
+        verify(userRepository, never()).findLockedById(any());
     }
 
     @Test
@@ -70,11 +76,13 @@ class UserServiceTest {
     void loginUsesItsOwnLimiterKey() {
         when(userRepository.findByEmail("password-check:1")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.login(new LoginRequest("password-check:1", "x")))
+        assertThatThrownBy(() -> userService.login(new LoginRequest("password-check:1", "x"), "127.0.0.1"))
                 .isInstanceOf(AuthenticationFailedException.class);
 
         // 비밀번호 확인 키(password-check:1)와 겹치지 않음
-        verify(loginAttemptLimiter).acquire(eq("login:password-check:1"), eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
+        // 이메일 + IP 짝 키와 계정 전체 키 둘 다 login: 접두사
+        verify(loginAttemptLimiter).acquire(eq("login:password-check:1|127.0.0.1"), eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
+        verify(loginAttemptLimiter).acquireShared(eq("login:password-check:1"), eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
         verify(loginAttemptLimiter, never()).acquire(eq("password-check:1"), any(), any());
     }
 
@@ -138,7 +146,7 @@ class UserServiceTest {
         User user = new User("test@odolog.com", encoded, "닉네임");
         when(userRepository.findByEmail("test@odolog.com")).thenReturn(Optional.of(user));
 
-        User result = userService.login(new LoginRequest("test@odolog.com", "password1234"));
+        User result = userService.login(new LoginRequest("test@odolog.com", "password1234"), "127.0.0.1");
 
         assertThat(result).isEqualTo(user);
     }
@@ -148,7 +156,7 @@ class UserServiceTest {
     void loginEmailNotFound() {
         when(userRepository.findByEmail("nobody@odolog.com")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.login(new LoginRequest("nobody@odolog.com", "password1234")))
+        assertThatThrownBy(() -> userService.login(new LoginRequest("nobody@odolog.com", "password1234"), "127.0.0.1"))
                 .isInstanceOf(AuthenticationFailedException.class);
     }
 
@@ -159,7 +167,7 @@ class UserServiceTest {
         User user = new User("test@odolog.com", encoded, "닉네임");
         when(userRepository.findByEmail("test@odolog.com")).thenReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> userService.login(new LoginRequest("test@odolog.com", "wrongpassword")))
+        assertThatThrownBy(() -> userService.login(new LoginRequest("test@odolog.com", "wrongpassword"), "127.0.0.1"))
                 .isInstanceOf(AuthenticationFailedException.class);
     }
 
@@ -215,7 +223,6 @@ class UserServiceTest {
         String original = encoder.encode("oldpassword");
         User user = new User("test@odolog.com", original, "닉네임");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(userRepository.findLockedById(1L)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.changePassword(1L,
                 new ChangePasswordRequest("wrongpassword", "newpassword1234")))
@@ -225,6 +232,23 @@ class UserServiceTest {
         // 시도는 사용자 단위로 집계, 틀렸으니 지우지 않음
         verify(loginAttemptLimiter).acquire(eq("password-check:1"), eq(ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS), any());
         verify(loginAttemptLimiter, never()).recordSuccess("password-check:1");
+    }
+
+    @Test
+    @DisplayName("맞춰 보는 사이 비밀번호가 바뀌었으면 잠근 뒤 401 — 재설정이 막 끝난 비밀번호를 옛 비밀번호로 덮어쓰지 않게")
+    void changePasswordRejectsWhenChangedMeanwhile() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        User seen = new User("test@odolog.com", encoder.encode("oldpassword"), "닉네임");
+        // 잠근 뒤 읽은 행은 이미 재설정된 비밀번호
+        User locked = new User("test@odolog.com", encoder.encode("resetpassword"), "닉네임");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(seen));
+        when(userRepository.findLockedById(1L)).thenReturn(Optional.of(locked));
+
+        assertThatThrownBy(() -> userService.changePassword(1L,
+                new ChangePasswordRequest("oldpassword", "newpassword1234")))
+                .isInstanceOf(AuthenticationFailedException.class);
+        assertThat(encoder.matches("resetpassword", locked.getPassword())).isTrue();
+        verify(passwordResetTokenRepository, never()).deleteByUserId(any());
     }
 
     @Test
@@ -271,12 +295,33 @@ class UserServiceTest {
         for (int i = 0; i < 5; i++) {
             long start = System.nanoTime();
             try {
-                userService.login(new LoginRequest(email, "wrongpassword"));
+                userService.login(new LoginRequest(email, "wrongpassword"), "127.0.0.1");
             } catch (AuthenticationFailedException expected) {
                 // 둘 다 실패가 정상. 시간만 측정
             }
             fastest = Math.min(fastest, System.nanoTime() - start);
         }
         return fastest;
+    }
+
+    @Test
+    @DisplayName("남의 주소로 한 곳에서 열 번 틀려도 그 사람은 다른 곳에서 로그인된다 — 잠기는 건 그 IP 의 짝뿐")
+    void failuresFromOneIpDoNotLockTheAccountElsewhere() {
+        LoginAttemptLimiter realLimiter = new LoginAttemptLimiter(10);
+        UserService service = new UserService(userRepository, passwordResetTokenRepository, realLimiter,
+                new BCryptPasswordEncoder(4), transactionManager);
+        User victim = new User("victim@odolog.com", new BCryptPasswordEncoder(4).encode("password1234"), "피해자");
+        when(userRepository.findByEmail("victim@odolog.com")).thenReturn(Optional.of(victim));
+
+        for (int i = 0; i < 10; i++) {
+            assertThatThrownBy(() -> service.login(new LoginRequest("victim@odolog.com", "wrong"), "10.0.0.66"))
+                    .isInstanceOf(AuthenticationFailedException.class);
+        }
+        // 공격한 곳은 잠김
+        assertThatThrownBy(() -> service.login(new LoginRequest("victim@odolog.com", "password1234"), "10.0.0.66"))
+                .isInstanceOf(TooManyRequestsException.class);
+
+        // 본인은 다른 곳에서 그대로
+        assertThat(service.login(new LoginRequest("victim@odolog.com", "password1234"), "192.168.0.7")).isSameAs(victim);
     }
 }

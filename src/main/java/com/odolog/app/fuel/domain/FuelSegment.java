@@ -8,11 +8,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 직전 기록 → 이번 기록 구간. 평균 연비·추이·평소 구간 기준이 같은 규칙으로 순회
- * i 번째 주유량 = i-1 → i 구간 연료. 첫 기록의 주유량은 어느 구간에도 안 들어감
- * 같은 주행거리에 이어 넣은 주유는 그 묶음의 첫 기록 구간에 더함
+ * 직전 가득 주유 → 이번 가득 주유 구간. 평균 연비·추이·평소 구간·목록 행이 같은 규칙으로 순회
+ * 구간 연료 = 그 사이 덜 채운 주유량 + 이번 주유량(같은 주행거리로 이어 넣은 양 포함)
+ * 첫 기록·기준점의 주유량은 어느 구간에도 안 들어감. 시작이 덜 채운 주유면 그 구간은 낼 수 없음
  *
- * @param to         구간이 끝나는 기록
+ * @param to         구간이 끝나는 기록(가득 주유)
  * @param distance   구간 거리(km), 양수
  * @param liters     구간 연료(L), 양수
  * @param efficiency km/L, 소수 2자리
@@ -20,52 +20,67 @@ import java.util.Map;
 public record FuelSegment(FuelRecord to, int distance, BigDecimal liters, BigDecimal efficiency) {
 
     /**
-     * 연비를 계산할 수 있는 구간만. 거리 0 이하·주유량 없음 제외, 기준점은 직전과 연결 끊김
+     * 연비를 계산할 수 있는 구간만. 거리 0 이하·주유량을 모름·시작이 덜 채운 주유면 제외
+     * 기준점은 직전과 연결을 끊고 거기서 새로 셈
      *
      * @param records 주행거리 오름차순 정렬된 한 차량의 주유 기록
      */
     static List<FuelSegment> between(List<FuelRecord> records) {
         List<FuelSegment> segments = new ArrayList<>();
 
+        // 구간의 시작 기록과, 그 뒤 아직 구간에 넣지 않은 덜 채운 주유량(하나라도 모르면 null)
+        int start = 0;
+        BigDecimal partial = BigDecimal.ZERO;
+
         for (int i = 1; i < records.size(); i++) {
-            FuelRecord to = records.get(i);
-            if (to.isResetPoint()) {
+            FuelRecord record = records.get(i);
+
+            if (record.isResetPoint()) {
+                start = i;
+                partial = BigDecimal.ZERO;
+                continue;
+            }
+            if (!record.isFullTank()) {
+                partial = partial == null || record.getLiters() == null ? null : partial.add(record.getLiters());
                 continue;
             }
 
-            int distance = to.getOdometer() - records.get(i - 1).getOdometer();
+            FuelRecord from = records.get(start);
+            int distance = record.getOdometer() - from.getOdometer();
             if (distance <= 0) {
+                // 같은 주행거리로 이어 넣은 주유. 앞 구간을 닫을 때 litersAt 이 이미 셈
                 continue;
             }
 
-            BigDecimal used = litersAt(records, i);
-            if (used == null || used.compareTo(BigDecimal.ZERO) <= 0) {
-                continue;
+            BigDecimal closing = litersAt(records, i);
+            BigDecimal used = partial == null || closing == null ? null : partial.add(closing);
+            // 시작이 가득이어야 그 사이 넣은 양이 곧 쓴 양
+            if (from.isFullTank() && used != null && used.compareTo(BigDecimal.ZERO) > 0) {
+                segments.add(new FuelSegment(record, distance, used, divide(distance, used)));
             }
 
-            segments.add(new FuelSegment(to, distance, used, divide(distance, used)));
+            // 같은 주행거리로 이어 넣은 기록까지 넘김. 그 양은 방금 구간에 들어감
+            int last = i;
+            while (last + 1 < records.size()
+                    && records.get(last + 1).getOdometer() == record.getOdometer()
+                    && !records.get(last + 1).isResetPoint()) {
+                last++;
+            }
+            start = last;
+            i = last;
+            partial = BigDecimal.ZERO;
         }
 
         return segments;
     }
 
-    /**
-     * 뒤이어 같은 주행거리에 넣은 기록이 있는 기록의 id → 묶음 주유량 합(하나라도 비면 null)
-     * 묶음이 아니면 키가 없음. 목록 행이 구간 계산과 같은 양으로 나누게
-     *
-     * @param records 주행거리 오름차순 정렬된 한 차량의 주유 기록
-     */
-    public static Map<Long, BigDecimal> splitFills(List<FuelRecord> records) {
-        Map<Long, BigDecimal> totals = new HashMap<>();
-
-        for (int i = 0; i + 1 < records.size(); i++) {
-            FuelRecord next = records.get(i + 1);
-            if (next.getOdometer() == records.get(i).getOdometer() && !next.isResetPoint()) {
-                totals.put(records.get(i).getId(), litersAt(records, i));
-            }
+    /** 구간을 닫는 기록의 id → 구간. 목록 행이 평균과 같은 구간으로 연비를 보이게 */
+    public static Map<Long, FuelSegment> byClosingRecord(List<FuelRecord> records) {
+        Map<Long, FuelSegment> segments = new HashMap<>();
+        for (FuelSegment segment : between(records)) {
+            segments.put(segment.to().getId(), segment);
         }
-
-        return totals;
+        return segments;
     }
 
     /**

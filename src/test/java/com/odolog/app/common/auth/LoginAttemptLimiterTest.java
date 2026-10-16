@@ -11,7 +11,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Map;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -345,5 +344,23 @@ class LoginAttemptLimiterTest {
 
         Map<?, ?> map = (Map<?, ?>) ReflectionTestUtils.getField(limiter, "attempts");
         assertThat(map.size()).isLessThanOrEqualTo(LoginAttemptLimiter.HARD_LIMIT);
+    }
+
+    @Test
+    @DisplayName("재설정을 마치면 그 계정 키와 모든 IP 짝 키를 지우고, 접두사만 같은 다른 계정은 남긴다")
+    void forgetWithPairsClearsAccountAndPairsOnly() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(Clock.systemUTC(), 1);
+        String account = "login:a@b.com";
+        limiter.acquire(LoginAttemptLimiter.pair(account, "1.1.1.1"), ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "잠김");
+        limiter.acquire(LoginAttemptLimiter.pair("login:a@b.com.x", "1.1.1.1"), ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "잠김");
+
+        limiter.forgetWithPairs(account);
+
+        // 지워진 짝은 다시 한 번 통과
+        assertThatCode(() -> limiter.acquire(LoginAttemptLimiter.pair(account, "1.1.1.1"),
+                ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "잠김")).doesNotThrowAnyException();
+        // 다른 계정의 짝은 남아 두 번째에서 잠김
+        assertThatThrownBy(() -> limiter.acquire(LoginAttemptLimiter.pair("login:a@b.com.x", "1.1.1.1"),
+                ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "잠김")).isInstanceOf(TooManyRequestsException.class);
     }
 }

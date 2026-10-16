@@ -12,6 +12,21 @@ export const MAX_AMOUNT = 100_000_000
 /** 비밀번호 상한(UTF-8 바이트). BCrypt 한계 */
 export const MAX_PASSWORD_BYTES = 72
 
+/** 글자 수 상한. 백엔드 DTO 의 @Size 와 같은 값 */
+export const MAX_EMAIL_LENGTH = 100
+export const MAX_NICKNAME_LENGTH = 30
+export const MAX_PLATE_LENGTH = 20
+export const MAX_MANUFACTURER_LENGTH = 50
+export const MAX_MODEL_NAME_LENGTH = 100
+export const MAX_MEMO_LENGTH = 255
+
+/** 차량별 정비 주기 상한. 백엔드 InputLimits.MAX_INTERVAL_KM·MAX_INTERVAL_MONTHS */
+export const MAX_INTERVAL_KM = 500_000
+export const MAX_INTERVAL_MONTHS = 120
+
+/** 기록 날짜 하한. 백엔드 InputLimits.MIN_RECORD_DATE */
+export const MIN_RECORD_DATE = '1900-01-01'
+
 /** 요청 본문 상한(바이트). 백엔드 InputLimits.MAX_BODY_BYTES 와 같은 값. 넘으면 보내기 전에 안내 */
 export const MAX_BODY_BYTES = 10 * 1024 * 1024
 

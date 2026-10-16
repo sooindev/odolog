@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
@@ -59,7 +60,8 @@ class FlywayMigrationTest {
 
         Integer applied = jdbc.queryForObject(
                 "select count(*) from flyway_schema_history where success = 1", Integer.class);
-        assertThat(applied).isGreaterThanOrEqualTo(3);
+        // 파일 수와 정확히 같게. "3 이상" 이면 새 파일이 조용히 건너뛰어져도 통과
+        assertThat(applied).isEqualTo(migrationFileCount());
         // 세션 표도 마이그레이션이 만듦
         assertThat(jdbc.queryForObject("select count(*) from SPRING_SESSION", Integer.class)).isZero();
     }
@@ -81,14 +83,71 @@ class FlywayMigrationTest {
         MigrateResult result = Flyway.configure().dataSource(dataSource)
                 .baselineOnMigrate(true).baselineVersion("1").load().migrate();
 
-        assertThat(result.migrationsExecuted).isEqualTo(3);
+        // V1 은 기준점으로 표시만, 나머지 전부 실행
+        assertThat(result.migrationsExecuted).isEqualTo(migrationFileCount() - 1);
         String ddl = jdbc.queryForObject("show create table service_intervals",
                 (rs, row) -> rs.getString(2));
         assertThat(ddl).doesNotContainIgnoringCase("check");
     }
 
+    private static int migrationFileCount() {
+        try {
+            return new PathMatchingResourcePatternResolver().getResources("classpath:db/migration/V*__*.sql").length;
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     @Test
-    @DisplayName("마이그레이션한 스키마의 nullable·유니크 제약이 엔티티와 같다")
+    @DisplayName("공개 id 는 대소문자를 구분한다 — 대소문자만 바꾼 주소가 같은 차량을 열지 않게")
+    void publicIdIsCaseSensitive() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        for (String table : List.of("vehicles", "maintenance_records", "fuel_records")) {
+            String collation = jdbc.queryForObject("select COLLATION_NAME from information_schema.COLUMNS"
+                    + " where TABLE_SCHEMA = database() and TABLE_NAME = ? and COLUMN_NAME = 'public_id'",
+                    String.class, table);
+            assertThat(collation).as(table).isEqualTo("utf8mb4_bin");
+        }
+    }
+
+    @Test
+    @DisplayName("공개 id 의 정렬 규칙·외래키·이름 붙은 인덱스가 어긋나면 잡는다")
+    void detectsCollationForeignKeyAndIndexDrift() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("ALTER TABLE fuel_records MODIFY COLUMN public_id VARCHAR(12) COLLATE utf8mb4_unicode_ci NOT NULL");
+        jdbc.execute("ALTER TABLE password_reset_tokens DROP INDEX idx_password_reset_tokens_expires_at");
+        jdbc.execute("ALTER TABLE fuel_records DROP FOREIGN KEY fk_fuel_records_vehicle");
+
+        try {
+            assertThat(SchemaDrift.find(entityManagerFactory, dataSource))
+                    .anySatisfy(drift -> assertThat(drift).contains("fuel_records.public_id").contains("utf8mb4_bin"))
+                    .anySatisfy(drift -> assertThat(drift).contains("idx_password_reset_tokens_expires_at"))
+                    .anySatisfy(drift -> assertThat(drift).contains("fk_fuel_records_vehicle"));
+        } finally {
+            jdbc.execute("ALTER TABLE fuel_records ADD CONSTRAINT fk_fuel_records_vehicle"
+                    + " FOREIGN KEY (vehicle_id) REFERENCES vehicles (id)");
+            jdbc.execute("CREATE INDEX idx_password_reset_tokens_expires_at ON password_reset_tokens (expires_at)");
+            jdbc.execute("ALTER TABLE fuel_records MODIFY COLUMN public_id"
+                    + " VARCHAR(12) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL");
+        }
+    }
+
+    @Test
+    @DisplayName("문자열 길이가 엔티티와 다르면 잡는다")
+    void detectsLengthDrift() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("ALTER TABLE vehicles MODIFY COLUMN plate_number VARCHAR(10) NOT NULL");
+
+        try {
+            assertThat(SchemaDrift.find(entityManagerFactory, dataSource))
+                    .anySatisfy(drift -> assertThat(drift).contains("vehicles.plate_number").contains("길이"));
+        } finally {
+            jdbc.execute("ALTER TABLE vehicles MODIFY COLUMN plate_number VARCHAR(20) NOT NULL");
+        }
+    }
+
+    @Test
+    @DisplayName("마이그레이션한 스키마의 nullable·유니크·길이·정렬 규칙·외래키·인덱스가 엔티티와 같다")
     void migratedSchemaMatchesNullabilityAndUniqueConstraints() throws Exception {
         assertThat(SchemaDrift.find(entityManagerFactory, dataSource)).isEmpty();
     }

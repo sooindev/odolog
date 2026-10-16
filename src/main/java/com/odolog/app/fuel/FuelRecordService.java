@@ -24,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
@@ -53,13 +55,16 @@ public class FuelRecordService {
                                        FuelRecordRegisterRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId);
         Long id = vehicle.getId();
-        userToday.rejectFuture(requesterId, request.fueledAt(), "fueledAt");
+        userToday.rejectOutOfRange(requesterId, request.fueledAt(), "fueledAt");
 
         // 통화는 기록 시점의 사용자 설정
         FuelRecord record = fuelRecordRepository.save(new FuelRecord(
                 vehicle, request.fueledAt(), request.odometer(),
                 request.liters(), request.totalCost(), vehicle.getOwner().getCurrency(),
                 InputText.optional(request.memo())));
+
+        // 덜 채웠다고 밝힌 경우만. 안 보내면 가득
+        record.changeFullTank(!Boolean.FALSE.equals(request.fullTank()));
 
         // 계기판 값이 더 크면 차량 주행거리도 갱신
         vehicle.liftOdometerTo(request.odometer());
@@ -100,7 +105,7 @@ public class FuelRecordService {
     public FuelRecordResponse update(Long requesterId, String vehicleId, String recordId,
                                      FuelRecordUpdateRequest request) {
         FuelRecord record = findRecordInVehicle(requesterId, vehicleId, recordId);
-        userToday.rejectFuture(requesterId, request.fueledAt(), "fueledAt");
+        userToday.rejectOutOfRange(requesterId, request.fueledAt(), "fueledAt");
 
         if (request.fueledAt() != null) record.changeFueledAt(request.fueledAt());
         if (request.odometer() != null) {
@@ -120,6 +125,7 @@ public class FuelRecordService {
             record.changeTotalCost(request.totalCost());
         }
         if (request.memo() != null) record.changeMemo(InputText.optional(request.memo()));
+        if (request.fullTank() != null) record.changeFullTank(request.fullTank());
         Long id = record.getVehicle().getId();
         if (request.resetPoint() != null) {
             changeResetPoint(id, record, request.resetPoint());
@@ -131,8 +137,12 @@ public class FuelRecordService {
     /**
      * 기준점은 차량당 하나. 설정·해제 모두 다른 기준점을 지움
      * 남겨 두면 최신 것을 해제하거나 지웠을 때 옛 기준점이 말없이 되살아남
+     * 기준점이 아닌 기록의 해제는 할 일 없음. 다른 기준점까지 지우면 연비가 말없이 전체 이력 기준으로 돌아감
      */
     private void changeResetPoint(Long vehicleId, FuelRecord target, boolean resetPoint) {
+        if (!resetPoint && !target.isResetPoint()) {
+            return;
+        }
         for (FuelRecord other : fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId)) {
             if (other != target && other.isResetPoint()) {
                 other.changeResetPoint(false);
@@ -211,21 +221,33 @@ public class FuelRecordService {
     /** 이력 전체를 한 번 읽어 행 계산 기준을 만듦. 목록·등록·수정 공통 */
     private Rows rowsOf(Long vehicleId) {
         List<FuelRecord> all = fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId);
-        return new Rows(FuelAnomaly.baselineOf(all), FuelSegment.splitFills(all));
+
+        // 최근 기준점보다 앞선 기록. 평균 밖이라 "기록 빠짐?(평균에서 뺐다)" 을 붙이지 않음
+        Set<Long> beforeResetPoint = new HashSet<>();
+        for (int i = all.size() - 1; i >= 0; i--) {
+            if (all.get(i).isResetPoint()) {
+                for (int j = 0; j < i; j++) {
+                    beforeResetPoint.add(all.get(j).getId());
+                }
+                break;
+            }
+        }
+
+        return new Rows(FuelAnomaly.baselineOf(all), FuelSegment.byClosingRecord(all), beforeResetPoint);
     }
 
     /**
-     * 행 계산의 이력 전체 기준. 평소 구간과 같은 주행거리로 나눠 넣은 묶음
-     * 페이지만 보고 정하면 묶음이 쪽 경계에 걸릴 때 행마다 판정이 달라짐
+     * 행 계산의 이력 전체 기준. 평소 구간·기록마다 닫는 연비 구간·기준점 앞 기록
+     * 페이지만 보고 정하면 덜 채운 주유·나눠 넣은 주유가 쪽 경계에 걸릴 때 행마다 판정이 달라짐
      */
-    private record Rows(FuelAnomaly.Baseline baseline, Map<Long, BigDecimal> splitFills) {
+    private record Rows(FuelAnomaly.Baseline baseline, Map<Long, FuelSegment> segments,
+                        Set<Long> beforeResetPoint) {
 
         FuelRecordResponse of(FuelRecord record, FuelRecord previous) {
-            // 묶음이면 합(모르면 null), 아니면 자기 주유량
-            BigDecimal liters = splitFills.containsKey(record.getId())
-                    ? splitFills.get(record.getId())
-                    : record.getLiters();
-            return FuelRecordResponse.of(record, previous, liters, baseline);
+            // 기준점 앞은 누락 판정 안 함. "확인 필요"(불가능한 값)는 입력 오류라 그대로
+            FuelAnomaly.Baseline rowBaseline = beforeResetPoint.contains(record.getId())
+                    ? FuelAnomaly.Baseline.NONE : baseline;
+            return FuelRecordResponse.of(record, previous, segments.get(record.getId()), rowBaseline);
         }
     }
 

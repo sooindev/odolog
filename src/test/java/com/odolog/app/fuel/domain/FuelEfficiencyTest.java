@@ -26,6 +26,14 @@ class FuelEfficiencyTest {
         return new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer, null, 80000, "KRW", null);
     }
 
+    /** 가득 채우지 않은 주유 */
+    private FuelRecord partial(int odometer, String liters) {
+        FuelRecord record = new FuelRecord(vehicle, LocalDate.of(2026, 9, 1), odometer,
+                liters == null ? null : new BigDecimal(liters), 80000, "KRW", null);
+        record.changeFullTank(false);
+        return record;
+    }
+
     private List<FuelRecord> ascending(FuelRecord... records) {
         return new ArrayList<>(List.of(records));
     }
@@ -202,5 +210,48 @@ class FuelEfficiencyTest {
                 resetPoint));
 
         assertThat(result.average()).isNull();
+    }
+
+    @Test
+    @DisplayName("덜 채운 주유는 다음 가득 주유의 구간에 합쳐 한 구간으로 계산한다")
+    void partialFillMergesIntoNextFullSegment() {
+        // 가득 → 300km 뒤 10L 만 → 300km 뒤 가득 30L. 따로 나누면 30.00 과 10.00 두 점
+        List<FuelRecord> records = ascending(
+                record(10000, "40.00"),
+                partial(10300, "10.00"),
+                record(10600, "30.00"));
+
+        FuelEfficiency result = FuelEfficiency.of(records);
+        assertThat(result.distance()).isEqualTo(600);
+        assertThat(result.average()).isEqualByComparingTo("15.00");
+        assertThat(FuelEfficiency.trend(records, 12)).singleElement()
+                .extracting(FuelEfficiency.Point::efficiency).satisfies(value -> assertThat(value).isEqualByComparingTo("15.00"));
+    }
+
+    @Test
+    @DisplayName("시작이 덜 채운 주유면 다음 가득까지의 구간은 낼 수 없다 — 그때 탱크에 얼마 있었는지 모른다")
+    void segmentStartingFromPartialFillIsSkipped() {
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                partial(10000, "20.00"),
+                record(10500, "30.00"),
+                record(11000, "25.00")));
+
+        // 10,500 → 11,000 하나만
+        assertThat(result.distance()).isEqualTo(500);
+        assertThat(result.average()).isEqualByComparingTo("20.00");
+    }
+
+    @Test
+    @DisplayName("사이의 덜 채운 주유량을 모르면 그 구간은 계산하지 않는다")
+    void unknownPartialLitersSkipsSegment() {
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                record(10000, "40.00"),
+                partial(10300, null),
+                record(10600, "30.00"),
+                record(11000, "20.00")));
+
+        // 10,600 → 11,000 하나만
+        assertThat(result.distance()).isEqualTo(400);
+        assertThat(result.average()).isEqualByComparingTo("20.00");
     }
 }

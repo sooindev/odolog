@@ -8,6 +8,7 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -21,7 +22,9 @@ import java.time.LocalDateTime;
         name = "password_reset_tokens",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_password_reset_tokens_token_hash",
-                columnNames = "token_hash"))
+                columnNames = "token_hash"),
+        // 만료 토큰 정리 DELETE 용(V5)
+        indexes = @Index(name = "idx_password_reset_tokens_expires_at", columnList = "expires_at"))
 public class PasswordResetToken extends BaseTimeEntity {
 
     @Id

@@ -47,7 +47,9 @@ export function VehicleDetailPage() {
   const [deleting, setDeleting] = useState(false)
 
   // 응답으로 받은 차량으로 캐시 교체. 재조회 불필요
+  // 먼저 출발한 재조회(기록 저장 뒤 무효화)가 늦게 도착해 새 값을 옛 값으로 덮지 않게 취소 후 교체
   function replaceVehicle(updated: VehicleResponse) {
+    void queryClient.cancelQueries({ queryKey: queryKeys.vehicleDetail(id), exact: true })
     queryClient.setQueryData(queryKeys.vehicleDetail(id), updated)
   }
 

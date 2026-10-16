@@ -24,9 +24,9 @@ import java.util.List;
  */
 public record AccountRestoreRequest(
 
-        @NotNull
-        @Size(max = 50, message = "한 번에 차량 50대까지 가져올 수 있습니다")
         // 원소 null 은 400. 없으면 서비스에서 NPE 로 500
+        // 개수 상한은 서비스(IMPORT_TOO_LARGE). @Size 면 화면이 이유를 말하지 못하는 VALIDATION_FAILED
+        @NotNull
         List<@NotNull @Valid VehicleData> vehicles
 ) {
 
@@ -34,12 +34,13 @@ public record AccountRestoreRequest(
             @NotBlank @Size(max = 20) String plateNumber,
             @NotBlank @Size(max = 50) String manufacturer,
             @NotBlank @Size(max = 100) String modelName,
-            @NotNull @Min(1900) @Max(2100) Integer modelYear,
+            // 내보내기·DB 는 연식 없음(null)을 허용. 필수로 받으면 자기 백업을 못 넣음
+            @Min(1900) @Max(2100) Integer modelYear,
             // int 면 빠진 값이 조용히 0. 등록과 같이 필수
             @NotNull @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer odometer,
 
-            @NotNull @Size(max = 5000) List<@NotNull @Valid MaintenanceData> maintenanceRecords,
-            @NotNull @Size(max = 5000) List<@NotNull @Valid FuelData> fuelRecords,
+            @NotNull List<@NotNull @Valid MaintenanceData> maintenanceRecords,
+            @NotNull List<@NotNull @Valid FuelData> fuelRecords,
 
             /** 차량별 권장 주기. 옛 파일에는 없을 수 있어 null 허용 */
             @Size(max = 30) List<@NotNull @Valid IntervalData> serviceIntervals
@@ -53,8 +54,8 @@ public record AccountRestoreRequest(
 
     public record IntervalData(
             @NotNull ServiceType type,
-            @Positive @Max(500_000) Integer intervalKm,
-            @Positive @Max(120) Integer intervalMonths
+            @Positive @Max(InputLimits.MAX_INTERVAL_KM) Integer intervalKm,
+            @Positive @Max(InputLimits.MAX_INTERVAL_MONTHS) Integer intervalMonths
     ) {
     }
 
@@ -76,7 +77,14 @@ public record AccountRestoreRequest(
             @PositiveOrZero @Max(InputLimits.MAX_AMOUNT) Integer totalCost,
             @Size(max = 3) String currency,
             @Size(max = 255) String memo,
-            boolean resetPoint
+            boolean resetPoint,
+            /** 옛 파일에는 없음. 없으면 가득 */
+            Boolean fullTank
     ) {
+
+        public FuelData(LocalDate fueledAt, Integer odometer, BigDecimal liters, Integer totalCost,
+                        String currency, String memo, boolean resetPoint) {
+            this(fueledAt, odometer, liters, totalCost, currency, memo, resetPoint, null);
+        }
     }
 }

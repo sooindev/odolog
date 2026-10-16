@@ -199,6 +199,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
                     variant="ghost"
                     disabled={deletingId === record.id}
                     onClick={() => setEditing(record)}
+                    aria-label={t.common.editOf(`${t.serviceTypes[record.type]} ${f.date(record.serviceDate)}`)}
                   >
                     {t.common.edit}
                   </Button>
@@ -207,6 +208,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
                     variant="ghost"
                     disabled={deletingId === record.id}
                     onClick={() => list.handleDelete(record.id)}
+                    aria-label={t.common.deleteOf(`${t.serviceTypes[record.type]} ${f.date(record.serviceDate)}`)}
                   >
                     {deletingId === record.id ? t.common.deleting : t.common.delete}
                   </Button>

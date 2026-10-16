@@ -13,7 +13,7 @@ import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 
 export function LoginPage() {
-  const { user, login } = useAuth()
+  const { user, login, acknowledgeSessionEnded } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
@@ -25,18 +25,33 @@ export function LoginPage() {
 
   // 이전 화면이 남긴 목적지(from)·안내(notice). 이번 이동에만 존재
   // notice 는 문장이 아니라 키. 언어는 이 화면이 정함
-  const state = location.state as { from?: string; notice?: keyof typeof t.login.notices } | null
-  const from = state?.from ?? '/vehicles'
+  const state = location.state as {
+    from?: string
+    notice?: keyof typeof t.login.notices
+    /** from 이 누구의 주소였는지(세션이 끊긴 계정의 이메일) */
+    owner?: string
+  } | null
+  // 다른 계정으로 로그인하면 앞 계정의 차량 주소는 404. 그때는 목록으로
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
+  const otherAccount =
+    state?.owner !== undefined &&
+    submittedEmail !== null &&
+    submittedEmail.trim().toLowerCase() !== state.owner.toLowerCase()
+  const from = otherAccount ? '/vehicles' : (state?.from ?? '/vehicles')
   // 첫 렌더의 안내만 붙잡아 둠. history.state 는 새로고침에도 남기 때문
   const [noticeKey] = useState(state?.notice)
   const notice = noticeKey === undefined ? null : t.login.notices[noticeKey]
 
   useEffect(() => {
-    // 안내를 뺀 state 로 바꿔치기. from 은 남김
+    // 안내를 뺀 state 로 바꿔치기. from·owner 는 남김
     if (state?.notice !== undefined) {
-      navigate(location.pathname, { replace: true, state: state.from === undefined ? null : { from: state.from } })
+      if (state.notice === 'sessionEnded') acknowledgeSessionEnded()
+      navigate(location.pathname, {
+        replace: true,
+        state: state.from === undefined ? null : { from: state.from, owner: state.owner },
+      })
     }
-  }, [state, location.pathname, navigate])
+  }, [state, location.pathname, navigate, acknowledgeSessionEnded])
 
   if (user !== null) {
     return <Navigate to={from} replace />
@@ -49,8 +64,10 @@ export function LoginPage() {
     setPending(true)
 
     try {
+      setSubmittedEmail(email)
       await login({ email, password })
-      navigate(from, { replace: true })
+      const sameAccount = state?.owner === undefined || email.trim().toLowerCase() === state.owner.toLowerCase()
+      navigate(sameAccount ? (state?.from ?? '/vehicles') : '/vehicles', { replace: true })
     } catch (caught) {
       // 401 사유는 서버가 통일
       setError(errorMessage(caught, t, t.login.failed))

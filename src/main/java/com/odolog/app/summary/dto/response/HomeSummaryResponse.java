@@ -37,7 +37,7 @@ public record HomeSummaryResponse(
             long cost,
             long maintenanceCost,
             long fuelCost,
-            /** 금액이 합산된 건수 */
+            /** 사용자 통화 기록 건수. 금액을 안 적은 기록도 셈(금액 합계에는 0) */
             int count
     ) {
     }

@@ -1,5 +1,6 @@
 package com.odolog.app.maintenance.dto.request;
 
+import com.odolog.app.common.validation.InputLimits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
 
@@ -11,12 +12,12 @@ public record ServiceIntervalRequest(
 
         /** 주행거리 주기(km). null 이면 기본값 */
         @Positive
-        @Max(500_000)
+        @Max(InputLimits.MAX_INTERVAL_KM)
         Integer intervalKm,
 
         /** 기간 주기(개월). null 이면 기본값, 상한 10년 */
         @Positive
-        @Max(120)
+        @Max(InputLimits.MAX_INTERVAL_MONTHS)
         Integer intervalMonths
 ) {
 }

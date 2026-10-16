@@ -69,7 +69,7 @@ public class MaintenanceRecordService {
     @Transactional
     public MaintenanceRecord register(Long requesterId, String vehicleId, MaintenanceRecordRegisterRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId);
-        userToday.rejectFuture(requesterId, request.serviceDate(), "serviceDate");
+        userToday.rejectOutOfRange(requesterId, request.serviceDate(), "serviceDate");
 
         // 통화는 기록 시점의 사용자 설정
         MaintenanceRecord record = new MaintenanceRecord(vehicle, request.type(),
@@ -121,7 +121,7 @@ public class MaintenanceRecordService {
                                      MaintenanceRecordUpdateRequest request) {
         Vehicle vehicle = vehicleService.findOwnedVehicleForUpdate(requesterId, vehicleId);
         MaintenanceRecord record = findRecordInVehicle(vehicle.getId(), recordId);
-        userToday.rejectFuture(requesterId, request.serviceDate(), "serviceDate");
+        userToday.rejectOutOfRange(requesterId, request.serviceDate(), "serviceDate");
 
         if (request.type() != null) {
             record.changeType(request.type());

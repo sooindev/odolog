@@ -42,6 +42,14 @@ public record FuelRecordUpdateRequest(
         String memo,
 
         /** 연비 기준점 표시/해제. null 이면 유지 */
-        Boolean resetPoint
+        Boolean resetPoint,
+        /** 가득 채웠는지. null 이면 유지 */
+        Boolean fullTank
 ) {
+
+    /** 가득 여부는 그대로 */
+    public FuelRecordUpdateRequest(LocalDate fueledAt, Integer odometer, BigDecimal liters, Integer totalCost,
+                                   Boolean clearLiters, Boolean clearTotalCost, String memo, Boolean resetPoint) {
+        this(fueledAt, odometer, liters, totalCost, clearLiters, clearTotalCost, memo, resetPoint, null);
+    }
 }

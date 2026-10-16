@@ -44,8 +44,11 @@ public class LoginAttemptLimiter {
     private final Clock clock;
     private final int maxAttempts;
 
-    /** 공유 키의 한도 배수. 같은 공유기 뒤의 가족·사무실이 함께 걸리지 않을 만큼 */
+    /** 공유 키의 한도 배수. 같은 공유기 뒤의 가족·사무실이 함께 걸리지 않을 만큼. 계정 전체 키도 같은 배수 */
     static final int SHARED_FACTOR = 5;
+
+    /** 짝 키 구분자. 이메일은 출력 가능한 ASCII 지만 | 가 든 주소도 그 뒤가 IP 형식이 아니라 겹치지 않음 */
+    private static final String PAIR = "|";
     private volatile Instant lastPurge = Instant.EPOCH;
 
     @Autowired
@@ -133,6 +136,20 @@ public class LoginAttemptLimiter {
     /** 성공 시 기록 삭제. 옛 실패로 인한 잠금 방지 */
     public void recordSuccess(String key) {
         attempts.remove(key(key));
+    }
+
+    /**
+     * 그 키와 그 키에 IP 를 붙인 짝 키(key|ip) 전부 삭제. 재설정을 마친 계정의 잠금을 어느 IP 에서든 풂
+     * 같은 접두사의 다른 키(a@b.com 과 a@b.com.x)는 남김
+     */
+    public void forgetWithPairs(String key) {
+        String normalized = key(key);
+        attempts.keySet().removeIf(candidate -> candidate.equals(normalized) || candidate.startsWith(normalized + PAIR));
+    }
+
+    /** 계정 키와 IP 를 묶은 짝 키. 한 곳의 시도가 남의 계정 전체를 잠그지 못하게 짝 단위로 셈 */
+    public static String pair(String accountKey, String clientIp) {
+        return accountKey + PAIR + clientIp;
     }
 
     /**

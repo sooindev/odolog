@@ -38,7 +38,8 @@ public class Vehicle extends BaseTimeEntity {
     private Long id;
 
     /** URL·API 용 공개 id(규칙 9-1) */
-    @Column(name = "public_id", nullable = false, updatable = false, length = PublicId.LENGTH)
+    @Column(name = "public_id", nullable = false, updatable = false, length = PublicId.LENGTH,
+            columnDefinition = PublicId.COLUMN_DEFINITION)
     private String publicId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -66,7 +67,7 @@ public class Vehicle extends BaseTimeEntity {
 
     /**
      * 낙관적 잠금. 행 전체를 다시 쓰므로 동시 수정 시 늦게 커밋한 쪽이 올라간 주행거리를 되돌림
-     * 기존 행은 0 으로 채움(ddl-auto 가 컬럼 추가 시 사용)
+     * 기본값 0 은 스키마(V1)와 맞춤
      */
     @Version
     @ColumnDefault("0")

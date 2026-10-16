@@ -20,6 +20,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [sessionEnded, setSessionEnded] = useState(false)
+  // 끊긴 세션의 이메일. 다른 계정으로 다시 로그인하면 앞 계정의 주소로 돌아가지 않게
+  const [endedEmail, setEndedEmail] = useState<string | null>(null)
+  // 401 처리기가 끊기기 직전의 사용자를 알도록
+  const userRef = useRef<UserResponse | null>(null)
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
   // 로그인·로그아웃·탈퇴가 먼저 끝났는지. 늦게 온 첫 /me 가 그 결과를 덮지 않게
   const sessionDecided = useRef(false)
   // 계정이 바뀌는 모든 순간에 비움. 다른 계정의 차량·기록이 캐시로 보이지 않게
@@ -51,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 세션 만료 시 사용자 정보 비움 → ProtectedRoute 가 /login 으로
   useEffect(() => {
     setUnauthorizedHandler(() => {
+      setEndedEmail(userRef.current?.email ?? null)
       setSessionEnded(true)
       setUser(null)
       queryClient.clear()
@@ -63,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 다른 계정으로 바꿔 로그인해도 앞 계정의 캐시가 남지 않게
     queryClient.clear()
     setSessionEnded(false)
+    setEndedEmail(null)
     setUser(me)
   }, [queryClient])
 
@@ -79,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionDecided.current = true
     queryClient.clear()
     setSessionEnded(false)
+    setEndedEmail(null)
     setUser(null)
   }, [queryClient])
 
@@ -91,14 +101,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     startTransition(() => {
       leave()
       setSessionEnded(false)
+      setEndedEmail(null)
       setUser(null)
     })
     queryClient.clear()
   }, [queryClient])
 
+  // 로그인 화면이 안내를 한 번 보여 준 뒤. 안 끄면 로그인 없이 나갔다 와도 끊김 안내가 다시 뜸
+  const acknowledgeSessionEnded = useCallback(() => {
+    setSessionEnded(false)
+  }, [])
+
   const value = useMemo(
-    () => ({ user, loading, sessionEnded, login, logout, withdraw, replaceUser: setUser }),
-    [user, loading, sessionEnded, login, logout, withdraw],
+    () => ({
+      user,
+      loading,
+      sessionEnded,
+      endedEmail,
+      login,
+      logout,
+      withdraw,
+      acknowledgeSessionEnded,
+      replaceUser: setUser,
+    }),
+    [user, loading, sessionEnded, endedEmail, login, logout, withdraw, acknowledgeSessionEnded],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

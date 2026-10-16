@@ -7,6 +7,8 @@ export interface FuelRecordRegisterRequest {
   liters: number | null
   totalCost: number | null
   memo?: string
+  /** 가득 채웠는지. 안 보내면 가득 */
+  fullTank?: boolean
 }
 
 /**
@@ -25,6 +27,8 @@ export interface FuelRecordUpdateRequest {
   memo?: string
   /** 연비 기준점 표시/해제. 안 보내면 유지 */
   resetPoint?: boolean
+  /** 가득 채웠는지. 안 보내면 유지 */
+  fullTank?: boolean
 }
 
 export interface FuelRecordResponse {
@@ -41,6 +45,8 @@ export interface FuelRecordResponse {
   memo: string | null
   /** 연비 기준점 여부. 이 기록의 구간 연비는 null */
   resetPoint: boolean
+  /** 가득 채웠는지. 덜 채웠으면 연비는 다음 가득 주유에서 합쳐 계산 */
+  fullTank: boolean
 
   /** 리터당 단가(통화의 최소 단위). 주유량·금액 중 하나라도 없으면 null */
   pricePerLiter: number | null

@@ -11,7 +11,7 @@ import { ErrorText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { todayString } from '@/shared/lib/format'
-import { MAX_ODOMETER } from '@/shared/lib/limits'
+import { MAX_MEMO_LENGTH, MAX_ODOMETER } from '@/shared/lib/limits'
 import { fromMinor, inputStep, maxMajor, toMinor } from '@/shared/lib/money'
 import { looksBigJump, looksPast } from '@/shared/lib/odometer'
 import { fromKm, fromLiters, toKm, toLiters } from '@/shared/lib/units'
@@ -56,6 +56,8 @@ export function FuelForm({
   const [volume, setVolume] = useState(initial.volume)
   const [totalCost, setTotalCost] = useState(initial.cost)
   const [memo, setMemo] = useState(record?.memo ?? '')
+  // 대부분은 가득. 덜 채웠을 때만 끔
+  const [fullTank, setFullTank] = useState(record?.fullTank ?? true)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -118,6 +120,7 @@ export function FuelForm({
           liters,
           totalCost: costMinor,
           memo: memo === '' ? undefined : memo,
+          fullTank,
         })
       } else {
         // 바뀐 필드만. 비움은 clear 플래그
@@ -129,6 +132,7 @@ export function FuelForm({
           totalCost: costMinor !== null && costMinor !== record.totalCost ? costMinor : undefined,
           clearTotalCost: costMinor === null && record.totalCost !== null ? true : undefined,
           memo: memo === (record.memo ?? '') ? undefined : memo,
+          fullTank: fullTank === record.fullTank ? undefined : fullTank,
         }
 
         // 변경 없으면 요청 생략
@@ -228,11 +232,29 @@ export function FuelForm({
         </Field>
       </div>
 
+      {/* 덜 채운 주유는 다음 가득 주유의 구간에 합쳐 계산. 끄면 이 구간을 따로 나누지 않음 */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="fuel-full-tank" className="flex w-fit cursor-pointer items-center gap-2 text-body text-foreground">
+          <input
+            id="fuel-full-tank"
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={fullTank}
+            aria-describedby="fuel-full-tank-hint"
+            onChange={(event) => setFullTank(event.target.checked)}
+          />
+          {t.fuel.form.fullTank}
+        </label>
+        <p id="fuel-full-tank-hint" className="text-caption text-muted-foreground">
+          {fullTank ? t.fuel.form.fullTankHint : t.fuel.form.partialHint}
+        </p>
+      </div>
+
       <Field label={t.fuel.form.memo} htmlFor="fuel-memo" hint={t.common.optional}>
         <Textarea
           id="fuel-memo"
           rows={2}
-          maxLength={255}
+          maxLength={MAX_MEMO_LENGTH}
           placeholder={t.fuel.form.memoPlaceholder}
           value={memo}
           onChange={(event) => setMemo(event.target.value)}

@@ -37,6 +37,14 @@ public record FuelRecordRegisterRequest(
         Integer totalCost,
 
         @Size(max = 255)
-        String memo
+        String memo,
+        /** 가득 채웠는지. 안 보내면 가득(지금까지의 기록과 같은 뜻) */
+        Boolean fullTank
 ) {
+
+    /** 가득 채움으로 */
+    public FuelRecordRegisterRequest(LocalDate fueledAt, Integer odometer, BigDecimal liters, Integer totalCost,
+                                     String memo) {
+        this(fueledAt, odometer, liters, totalCost, memo, null);
+    }
 }

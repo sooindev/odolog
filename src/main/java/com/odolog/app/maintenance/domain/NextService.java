@@ -12,7 +12,7 @@ import java.util.Map;
  * 다음 정비 시점과 지남 판정. 차량 상세·홈 요약 공용
  *
  * @param overdue    주행거리·날짜 중 하나라도 지남
- * @param dueSoon    아직 안 지났지만 곧(1,000km 또는 1개월 안). 지난 것에는 붙지 않음
+ * @param dueSoon    아직 안 지났지만 곧(1,000km 또는 1개월 안, 단 주기의 마지막 1/5 을 넘지 않음). 지난 것에는 붙지 않음
  * @param intervalKm 실제 적용 주기. 차량별 설정 우선, 없으면 ServiceType 기본값
  * @param customized 기본값 덮어씀 여부
  * @param customIntervalKm     차량별로 직접 정한 km 주기. 기본값을 쓰면 null

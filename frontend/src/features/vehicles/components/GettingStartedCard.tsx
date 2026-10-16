@@ -138,6 +138,8 @@ export function GettingStartedCard({
           {order.map((key, index) => {
             const step = t.vehicles.gettingStarted.steps[key]
             const isCurrent = key === current
+            // 빠른 정비를 연 채 일부가 저장돼 다시 읽히면 이 단계가 끝난 것으로 바뀜. 폼·실패 문구가 사라지지 않게 열린 동안은 펼침
+            const expanded = isCurrent || (key === 'services' && quickOpen)
 
             return (
               <li key={key} className="flex gap-4 py-4 first:pt-0 last:pb-0">
@@ -157,7 +159,7 @@ export function GettingStartedCard({
                     {done[key] && <span className="sr-only"> · {t.vehicles.gettingStarted.done}</span>}
                   </p>
 
-                  {isCurrent && (
+                  {expanded && (
                     <>
                       <p className="text-caption leading-relaxed text-muted-foreground">{step.body}</p>
                       <div>{action(key)}</div>

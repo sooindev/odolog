@@ -14,6 +14,7 @@ import {
   todayParts,
 } from '@/shared/ui/form/date-parts'
 import type { DatePart } from '@/shared/ui/form/date-parts'
+import { MIN_RECORD_DATE } from '@/shared/lib/limits'
 
 /** 한 칸 높이(px). 스크롤 위치 ↔ 인덱스 변환 기준 */
 const ITEM_HEIGHT = 40
@@ -32,11 +33,13 @@ function DateWheel({
   value,
   onChange,
   ariaLabel,
+  hintId,
 }: {
   id: string
   value: string
   onChange: (value: string) => void
   ariaLabel?: string
+  hintId?: string
 }) {
   const { t, f, locale, timeZone } = useI18n()
   const [open, setOpen] = useState(false)
@@ -80,10 +83,14 @@ function DateWheel({
         type="button"
         aria-expanded={open}
         aria-label={ariaLabel === undefined ? undefined : `${ariaLabel}, ${f.date(shown)}`}
+        // label 로 이름을 받으면 그 이름이 버튼 글자(날짜)를 가림. 날짜와 도움말은 설명으로 읽힘
+        aria-describedby={[`${id}-value`, hintId].filter(Boolean).join(' ')}
         className={cn(controlClassName, 'flex items-center justify-between text-left')}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="tabular-nums">{f.date(shown)}</span>
+        <span id={`${id}-value`} className="tabular-nums">
+          {f.date(shown)}
+        </span>
         <span className="text-caption text-muted-foreground">
           {open ? t.dateWheel.done : t.dateWheel.change}
         </span>
@@ -275,7 +282,8 @@ export function DateInput({
         required={required}
         aria-label={ariaLabel}
         aria-describedby={hintId}
-        // 오늘까지만(계정 시간대). 휠·서버와 같은 선
+        // 오늘까지만(계정 시간대). 휠·서버와 같은 선. 아래는 서버 하한(1900년)
+        min={MIN_RECORD_DATE}
         max={todayString(timeZone)}
         className={controlClassName}
         value={value}
@@ -284,5 +292,5 @@ export function DateInput({
     )
   }
 
-  return <DateWheel id={id} value={value} onChange={onChange} ariaLabel={ariaLabel} />
+  return <DateWheel id={id} value={value} onChange={onChange} ariaLabel={ariaLabel} hintId={hintId} />
 }

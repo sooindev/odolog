@@ -3,10 +3,12 @@ package com.odolog.app.account;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.odolog.app.account.dto.request.WithdrawRequest;
 import com.odolog.app.account.dto.response.AccountExportResponse;
+import com.odolog.app.account.dto.response.AccountRestoreResponse;
 import com.odolog.app.common.auth.LoginSessionRegistry;
 import com.odolog.app.common.auth.SessionConst;
 import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.AuthenticationFailedException;
+import com.odolog.app.common.exception.type.InvalidRequestException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -113,7 +116,7 @@ class AccountControllerTest {
         session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
 
         AccountExportResponse response = new AccountExportResponse(
-                java.time.LocalDateTime.of(2026, 9, 21, 12, 0),
+                java.time.OffsetDateTime.of(2026, 9, 21, 12, 0, 0, 0, java.time.ZoneOffset.ofHours(9)),
                 new AccountExportResponse.UserData("me@odolog.com", "닉네임", null),
                 java.util.List.of());
         when(accountExportService.export(eq(1L), any())).thenReturn(response);
@@ -121,6 +124,8 @@ class AccountControllerTest {
         mockMvc.perform(get("/api/users/me/export").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.email").value("me@odolog.com"))
+                // 오프셋까지. 없으면 파일 안의 시각끼리 비교할 수 없음
+                .andExpect(jsonPath("$.exportedAt").value("2026-09-21T12:00:00+09:00"))
                 .andExpect(jsonPath("$.vehicles").isArray());
     }
 
@@ -129,5 +134,50 @@ class AccountControllerTest {
     void exportRequiresLogin() throws Exception {
         mockMvc.perform(get("/api/users/me/export"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("가져오기는 로그인한 사용자 id 로 서비스에 넘기고 결과 여섯 수를 돌려준다")
+    void restoreSuccess() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+        when(accountRestoreService.restore(eq(1L), any()))
+                .thenReturn(new AccountRestoreResponse(1, 2, 3, 0, 4, 1));
+
+        mockMvc.perform(post("/api/users/me/restore")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"vehicles":[{"plateNumber":"12가3456","manufacturer":"기아","modelName":"카니발",
+                                 "modelYear":null,"odometer":30000,"maintenanceRecords":[],"fuelRecords":[]}]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.addedVehicles").value(1))
+                .andExpect(jsonPath("$.skippedRecords").value(4));
+    }
+
+    @Test
+    @DisplayName("로그인하지 않으면 가져오기는 401")
+    void restoreRequiresLogin() throws Exception {
+        mockMvc.perform(post("/api/users/me/restore")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"vehicles\":[]}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("상한을 넘은 파일은 400 IMPORT_TOO_LARGE — 화면이 이유를 말할 수 있게")
+    void restoreTooLarge() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+        when(accountRestoreService.restore(eq(1L), any()))
+                .thenThrow(new InvalidRequestException(ErrorCode.IMPORT_TOO_LARGE, "차량 50대까지"));
+
+        mockMvc.perform(post("/api/users/me/restore")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"vehicles\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMPORT_TOO_LARGE"));
     }
 }

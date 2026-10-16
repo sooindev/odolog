@@ -17,7 +17,7 @@ public record NextServiceResponse(
         LocalDate lastServiceDate,
         LocalDate nextServiceDate,
         boolean overdue,
-        /** 아직 안 지났지만 곧(1,000km 또는 1개월 안). 판정은 서버 */
+        /** 아직 안 지났지만 곧(1,000km 또는 1개월 안, 주기의 마지막 1/5 까지). 판정은 서버 */
         boolean dueSoon,
         /** 실제 적용 주기. 차량별 설정 우선 */
         Integer intervalKm,

@@ -10,6 +10,9 @@ public final class PublicId {
 
     public static final int LENGTH = 12;
 
+    /** 대소문자 구분. 알파벳에 대소문자가 섞여 있어 unicode_ci 면 다른 id 가 같게 보임(V5) */
+    public static final String COLUMN_DEFINITION = "varchar(12) character set utf8mb4 collate utf8mb4_bin";
+
     private static final char[] ALPHABET =
             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
 

@@ -37,11 +37,13 @@ public class LoginService {
         String ipKey = LOGIN_IP_KEY_PREFIX + ClientIp.of(httpRequest);
         attemptLimiter.acquireShared(ipKey, ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
 
-        User user = userService.login(request);
+        User user = userService.login(request, ClientIp.of(httpRequest));
 
+        // id 를 먼저 바꾸고 사용자 id 를 저장. 반대면 로그인 전 세션 id(고정 공격으로 심어 둔 것일 수 있음)에
+        // 사용자 id 가 먼저 기록됨(세션 저장이 immediate)
         HttpSession session = httpRequest.getSession();
-        session.setAttribute(SessionConst.LOGIN_USER_ID, user.getId());
         httpRequest.changeSessionId();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, user.getId());
         // 비밀번호 변경 시 다른 기기 세션 종료용 등록
         sessionRegistry.register(user.getId(), session);
 

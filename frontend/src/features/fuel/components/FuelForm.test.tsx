@@ -22,6 +22,7 @@ const RECORD: FuelRecordResponse = {
   currency: 'KRW',
   memo: '처음 메모',
   resetPoint: false,
+  fullTank: true,
   pricePerLiter: 1695,
   distance: 500,
   efficiency: 15.4,

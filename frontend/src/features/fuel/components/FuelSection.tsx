@@ -103,8 +103,9 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
               <Skeleton key={row} className="h-12" />
             ))}
           </div>
-        ) : data === undefined ? null : data.items.length === 0 ? (
+        ) : data === undefined ? null : data.totalElements === 0 ? (
           // data 없음은 조회 실패. 위 오류 문구만, "기록 없음"은 거짓
+          // 개수는 전체로. 쪽만 비면(범위 밖 쪽을 고치는 중) 기록이 없는 게 아님
           <p className="text-caption text-muted-foreground">{t.fuel.empty}</p>
         ) : (
           <>
@@ -117,9 +118,14 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                       <div className="flex items-baseline gap-2">
                         {/* 연비를 맨 앞에 */}
                         {record.efficiency === null ? (
-                          // 연비가 없는 이유별 문구. 주유량 없음 / 기준점·첫 기록 / 직전과 같은 주행거리
+                          // 연비가 없는 이유별 문구. 덜 채움 / 주유량 없음 / 기준점·첫 기록 / 앞이 덜 채움 / 직전과 같은 주행거리
                           <span className="text-caption text-muted-foreground">
-                            {record.distance !== null && record.liters === null ? (
+                            {!record.fullTank ? (
+                              <>
+                                {t.fuel.partial}
+                                <span className="ml-1 text-muted-foreground">{t.fuel.partialMerged}</span>
+                              </>
+                            ) : record.distance !== null && record.liters === null ? (
                               <>
                                 {t.fuel.noLiters}
                                 <span className="ml-1 text-muted-foreground">{t.fuel.noEfficiency}</span>
@@ -129,6 +135,12 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                                 {record.resetPoint ? t.fuel.resetPoint : t.fuel.baseline}
                                 {/* 읽어야 하는 문구라 faint 미사용 */}
                                 <span className="ml-1 text-muted-foreground">{t.fuel.fromNext}</span>
+                              </>
+                            ) : record.distance !== null ? (
+                              // 거리·주유량은 있는데 연비가 없음 = 앞 구간이 덜 채운 주유에서 시작했거나 그 양을 모름
+                              <>
+                                {t.fuel.afterPartial}
+                                <span className="ml-1 text-muted-foreground">{t.fuel.noEfficiency}</span>
                               </>
                             ) : (
                               // 직전 기록과 주행거리가 같아 구간 없음
@@ -190,6 +202,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         variant="ghost"
                         onClick={() => setEditing(record)}
                         disabled={deletingId === record.id}
+                        aria-label={t.common.editOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
                       >
                         {t.common.edit}
                       </Button>
@@ -198,6 +211,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         variant="ghost"
                         onClick={() => list.handleDelete(record.id)}
                         disabled={deletingId === record.id}
+                        aria-label={t.common.deleteOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
                       >
                         {deletingId === record.id ? t.common.deleting : t.common.delete}
                       </Button>

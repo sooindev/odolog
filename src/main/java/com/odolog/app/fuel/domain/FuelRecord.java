@@ -31,7 +31,8 @@ public class FuelRecord extends BaseTimeEntity {
     private Long id;
 
     /** URL·API 용 공개 id(규칙 9-1) */
-    @Column(name = "public_id", nullable = false, updatable = false, length = PublicId.LENGTH)
+    @Column(name = "public_id", nullable = false, updatable = false, length = PublicId.LENGTH,
+            columnDefinition = PublicId.COLUMN_DEFINITION)
     private String publicId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -79,6 +80,14 @@ public class FuelRecord extends BaseTimeEntity {
     @Column(name = "reset_point", nullable = false)
     private boolean resetPoint;
 
+    /**
+     * 가득 채웠는지. 덜 채운 주유의 양은 다음 가득 주유의 구간에 더해 연비 계산(V6)
+     * 기본 true. 지금까지의 기록과 칸을 안 보낸 요청은 가득으로 봄
+     */
+    @ColumnDefault("true")
+    @Column(name = "full_tank", nullable = false)
+    private boolean fullTank = true;
+
     protected FuelRecord() {
     }
 
@@ -116,6 +125,10 @@ public class FuelRecord extends BaseTimeEntity {
 
     public void changeResetPoint(boolean resetPoint) {
         this.resetPoint = resetPoint;
+    }
+
+    public void changeFullTank(boolean fullTank) {
+        this.fullTank = fullTank;
     }
 
     public String getPublicId() {
@@ -160,6 +173,10 @@ public class FuelRecord extends BaseTimeEntity {
 
     public String getMemo() {
         return memo;
+    }
+
+    public boolean isFullTank() {
+        return fullTank;
     }
 
     public boolean isResetPoint() {

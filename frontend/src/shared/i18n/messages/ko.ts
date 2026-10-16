@@ -1,3 +1,5 @@
+/** 문장 속 개수(f.count). text 는 지역 표기, n 은 단·복수용 */
+type Count = { n: number; text: string }
 // 화면 문구 한국어판. 영어판(en.ts)은 이 모양을 그대로 따라야 컴파일됨
 // 끼워 넣는 값은 함수 인자. 숫자·금액·단위 표기는 호출하는 쪽이 f 로 만들어 넘김
 
@@ -15,6 +17,9 @@ export const ko = {
     edit: '수정',
     delete: '삭제',
     deleting: '삭제 중…',
+    /** 행마다 같은 버튼을 화면 낭독기가 구분하게. 보이는 글자(수정·삭제)를 이름에 포함 */
+    editOf: (what: string) => `${what} 수정`,
+    deleteOf: (what: string) => `${what} 삭제`,
     register: '등록',
     registering: '등록 중…',
     loading: '불러오는 중…',
@@ -32,7 +37,7 @@ export const ko = {
     emailPlaceholder: 'you@example.com',
     /** 숫자 뒤 '건'. 이미 라벨이 기록임을 말하는 자리 */
     count: (n: string) => `${n}건`,
-    records: (n: number) => `${n}건`,
+    records: (c: Count) => `${c.text}건`,
   },
 
   theme: {
@@ -74,6 +79,7 @@ export const ko = {
       UNSUPPORTED_TIME_ZONE: '지원하지 않는 시간대입니다.',
       UNSUPPORTED_CURRENCY: '지원하지 않는 통화입니다.',
       SAME_PASSWORD: '새 비밀번호가 현재 비밀번호와 같습니다.',
+      IMPORT_TOO_LARGE: '파일이 너무 큽니다. 한 번에 차량 50대, 차량당 정비·주유 각 5,000건, 모두 합쳐 기록 20,000건까지 가져올 수 있습니다.',
       BAD_REQUEST: '잘못된 요청입니다.',
       LOGIN_REQUIRED: '로그인이 필요합니다.',
       LOGIN_FAILED: '이메일 또는 비밀번호가 올바르지 않습니다.',
@@ -243,11 +249,11 @@ export const ko = {
       importing: '가져오는 중…',
       importFailed: '가져오기에 실패했습니다.',
       notOurFile: '오도로그에서 내려받은 JSON 파일이 맞는지 확인해 주세요.',
-      imported: (vehicles: number, records: number) => `차량 ${vehicles}대와 기록 ${records}건을 넣었습니다.`,
+      imported: (vehicles: Count, records: Count) => `차량 ${vehicles.text}대와 기록 ${records.text}건을 넣었습니다.`,
       nothingNew: '새로 넣을 기록이 없습니다.',
-      merged: (n: number) => ` 이미 있던 차량 ${n}대에는 기록만 붙였습니다.`,
-      intervals: (n: number) => ` 차량별 정비 주기 ${n}개도 되살렸습니다.`,
-      skipped: (n: number) => ` 이미 같은 기록이 있어 ${n}건은 건너뛰었습니다.`,
+      merged: (c: Count) => ` 이미 있던 차량 ${c.text}대에는 새 차를 만들지 않고 그 차에 더했습니다.`,
+      intervals: (c: Count) => ` 차량별 정비 주기 ${c.text}개도 되살렸습니다.`,
+      skipped: (c: Count) => ` 이미 같은 기록이 있어 ${c.text}건은 건너뛰었습니다.`,
     },
     withdraw: {
       title: '회원 탈퇴',
@@ -277,11 +283,11 @@ export const ko = {
     myVehicles: '내 차량',
     modelYear: (year: number) => `${year}년식`,
     unknownYear: '연식 미상',
-    overdue: (n: number) => `정비 ${n}건 지남`,
-    dueSoon: (n: number) => `정비 ${n}건 곧`,
+    overdue: (c: Count) => `정비 ${c.text}건 지남`,
+    dueSoon: (c: Count) => `정비 ${c.text}건 곧`,
     list: {
       title: '내 차량',
-      count: (n: number) => `${n}대를 관리 중입니다.`,
+      count: (c: Count) => `${c.text}대를 관리 중입니다.`,
       register: '차량 등록',
       loadFailed: '차량 목록을 불러오지 못했습니다.',
       emptyTitle: '아직 등록된 차량이 없습니다',
@@ -466,6 +472,9 @@ export const ko = {
     noEfficiency: '· 연비 계산 안 됨',
     resetPoint: '연비 기준점',
     sameOdometer: '직전 기록과 같은 주행거리',
+    partial: '가득 채우지 않음',
+    partialMerged: '· 다음 가득 주유의 연비에 합산',
+    afterPartial: '앞 주유를 가득 채웠는지 몰라',
     mergedIntoPrevious: '· 주유량은 직전 기록 연비에 합산',
     baseline: '기준 기록',
     fromNext: '· 다음 주유부터 계산',
@@ -482,6 +491,9 @@ export const ko = {
       cost: (currency: string) => `결제 금액 (${currency})`,
       costEmpty: '비우면 유류비 합계에서 빠집니다.',
       pricePer: (price: string, unit: string) => `${unit}당 약 ${price}`,
+      fullTank: '가득 채움',
+      fullTankHint: '가득 채운 주유 사이로 연비를 냅니다. 덜 채웠으면 끄세요.',
+      partialHint: '이번 양은 다음 가득 주유의 연비에 합쳐 계산합니다.',
       memo: '메모',
       memoPlaceholder: '주유소 이름 등',
       failed: '저장에 실패했습니다.',
@@ -506,12 +518,12 @@ export const ko = {
       noSegment:
         '아직 연비를 계산할 수 있는 구간이 없습니다. 주행거리가 늘고 주유량이 적힌 기록이 두 건 이어져야 계산됩니다.',
       sinceReset: '연비 초기화 이후 구간만 계산한 값입니다.',
-      excluded: (n: number) =>
-        `계산할 수 없는 구간 ${n}곳을 평균에서 뺐습니다. 목록에서 ‘확인 필요’가 붙은 기록의 주행거리나 주유량을 확인해 주세요.`,
-      missing: (n: number) =>
-        `주유 기록이 빠진 것으로 보이는 구간 ${n}곳을 평균에서 뺐습니다. 목록에서 ‘기록 빠짐?’이 붙은 구간의 기록을 채워 넣으면 다시 계산됩니다.`,
-      otherCurrency: (n: number, currency: string) =>
-        `통화가 ${currency} 가 아닌 기록 ${n}건은 총 유류비에서 뺐습니다.`,
+      excluded: (c: Count) =>
+        `계산할 수 없는 구간 ${c.text}곳을 평균에서 뺐습니다. 목록에서 ‘확인 필요’가 붙은 기록의 주행거리나 주유량을 확인해 주세요.`,
+      missing: (c: Count) =>
+        `주유 기록이 빠진 것으로 보이는 구간 ${c.text}곳을 평균에서 뺐습니다. 목록에서 ‘기록 빠짐?’이 붙은 구간의 기록을 채워 넣으면 다시 계산됩니다.`,
+      otherCurrency: (c: Count, currency: string) =>
+        `통화가 ${currency} 가 아닌 기록 ${c.text}건은 총 유류비에서 뺐습니다.`,
       records: '기록',
       distance: '주행',
       volume: '주유량',
@@ -535,11 +547,11 @@ export const ko = {
       records: '건',
       breakdown: (maintenance: string, fuel: string) => `정비 ${maintenance} · 주유 ${fuel}`,
     },
-    otherCurrency: (n: number, currency: string) =>
-      `통화가 ${currency} 가 아닌 기록 ${n}건은 금액 합계와 차트에서 뺐습니다.`,
+    otherCurrency: (c: Count, currency: string) =>
+      `통화가 ${currency} 가 아닌 기록 ${c.text}건은 금액 합계와 차트에서 뺐습니다.`,
     vehicles: {
       title: '차량별',
-      maintenanceCount: (n: number) => `정비 ${n}건`,
+      maintenanceCount: (c: Count) => `정비 ${c.text}건`,
       noService: '정비 이력 없음',
       lastService: (date: string) => `마지막 정비 ${date}`,
     },

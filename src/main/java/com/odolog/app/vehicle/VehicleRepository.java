@@ -14,7 +14,7 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
     Page<Vehicle> findByOwnerId(Long ownerId, Pageable pageable);
 
-    // 탈퇴 전용 전체 조회. 페이지 분할 시 첫 장만 삭제되는 문제
+    // 한 사용자의 전체 차량. 내보내기·홈 요약용. 페이지로 나누면 첫 장만 담김
     List<Vehicle> findAllByOwnerId(Long ownerId);
 
     /** URL 의 공개 id 로 조회 */

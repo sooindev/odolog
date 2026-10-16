@@ -15,8 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,7 +22,7 @@ import java.util.stream.Collectors;
 /**
  * 계정 기록 전체 내보내기. 탈퇴의 반대편
  * 읽기만 하므로 서비스 대신 리포지토리 주입. 소유자 id 조회라 남의 데이터 없음
- * 쿼리 4번. 차량별 조회 시 차량 수만큼 증가
+ * 쿼리 5번(사용자·차량·정비·주유·주기). 차량별로 조회하면 차량 수만큼 증가
  */
 @Service
 @Transactional(readOnly = true)
@@ -48,10 +46,9 @@ public class AccountExportService {
         this.fuelRecordRepository = fuelRecordRepository;
     }
 
-    /** exportedAt 은 밖에서 주입. 테스트 고정용. 파일에는 사용자 시간대의 시각으로 */
+    /** exportedAt 은 밖에서 주입. 테스트 고정용. 파일의 시각은 전부 사용자 시간대 + 오프셋 */
     public AccountExportResponse export(Long userId, Instant exportedAt) {
         User user = userService.findById(userId);
-        LocalDateTime localExportedAt = LocalDateTime.ofInstant(exportedAt, ZoneId.of(user.getTimeZone()));
         List<Vehicle> vehicles = vehicleRepository.findAllByOwnerId(userId);
 
         Map<Long, List<MaintenanceRecord>> maintenanceByVehicle =
@@ -66,7 +63,7 @@ public class AccountExportService {
                 serviceIntervalRepository.findByVehicle_Owner_Id(userId).stream()
                         .collect(Collectors.groupingBy(interval -> interval.getVehicle().getId()));
 
-        return AccountExportResponse.of(localExportedAt, user, vehicles,
+        return AccountExportResponse.of(exportedAt, user, vehicles,
                 maintenanceByVehicle, fuelByVehicle, intervalsByVehicle);
     }
 }

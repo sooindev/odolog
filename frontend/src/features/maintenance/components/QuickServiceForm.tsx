@@ -187,7 +187,7 @@ export function QuickServiceForm({
                     type="number"
                     min={0}
                     max={Math.floor(fromKm(unitSystem, MAX_ODOMETER))}
-                    aria-label={t.maintenance.quick.odometer(f.distanceUnit)}
+                    aria-label={`${t.serviceTypes[type]} ${t.maintenance.quick.odometer(f.distanceUnit)}`}
                     placeholder={t.maintenance.quick.odometer(f.distanceUnit)}
                     className="tabular-nums"
                     value={row.odometer}

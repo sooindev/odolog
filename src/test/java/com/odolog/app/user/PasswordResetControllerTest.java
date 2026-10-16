@@ -75,7 +75,7 @@ class PasswordResetControllerTest {
     void requestIsRateLimited() throws Exception {
         // 메일 폭주 방지. 로그인 리미터 공용
         doThrow(new TooManyRequestsException(ErrorCode.TOO_MANY_RESET_REQUESTS, "로그인 시도가 너무 많습니다. 10분 후 다시 시도해 주세요.", 10))
-                .when(passwordResetService).request(anyString());
+                .when(passwordResetService).request(anyString(), anyString());
 
         request(new PasswordResetRequest("me@odolog.com"), false)
                 .andExpect(status().isTooManyRequests());
@@ -121,6 +121,6 @@ class PasswordResetControllerTest {
 
         request(new PasswordResetRequest("someone@odolog.com"), false)
                 .andExpect(status().isTooManyRequests());
-        verify(passwordResetService, never()).request(anyString());
+        verify(passwordResetService, never()).request(anyString(), anyString());
     }
 }

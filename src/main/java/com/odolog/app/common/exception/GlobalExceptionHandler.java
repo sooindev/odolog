@@ -18,13 +18,19 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.lang.reflect.RecordComponent;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -71,10 +77,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         "다른 곳에서 먼저 바뀌었습니다. 새로고침 후 다시 시도해 주세요."));
     }
 
-    /**
-     * 중복 검사와 저장 사이에 끼어든 요청 대비. 최종 방어선은 유니크 제약
-     * UNIQUE 위반만 409. 그 밖의 제약 위반은 서버 문제라 500 + ErrorResponse(규칙 11)
-     */
     /** 이름 붙은 유니크 제약(규칙 6) → 서비스의 중복 검사가 던지는 것과 같은 코드 */
     private static final Map<String, ErrorResponse> UNIQUE_CONSTRAINT_ERRORS = Map.of(
             "uk_users_email", ErrorResponse.of(ErrorCode.EMAIL_DUPLICATE, "이미 가입된 이메일입니다."),
@@ -83,6 +85,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final ErrorResponse DUPLICATE_VALUE = ErrorResponse.of(ErrorCode.DUPLICATE_VALUE,
             "이미 등록된 값입니다. 새로고침 후 다시 시도해 주세요.");
 
+    /**
+     * 중복 검사와 저장 사이에 끼어든 요청 대비. 최종 방어선은 유니크 제약
+     * UNIQUE 위반만 409. 그 밖의 제약 위반은 서버 문제라 500 + ErrorResponse(규칙 11)
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
         ConstraintViolationException cause = constraintViolationIn(e);
@@ -92,8 +98,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                     .body(UNIQUE_CONSTRAINT_ERRORS.getOrDefault(cause.getConstraintName(), DUPLICATE_VALUE));
         }
 
-        log.error("데이터 제약 위반. 엔티티와 실제 스키마가 어긋났을 수 있다 "
-                + "(ddl-auto 는 제약을 추가만 하고 지우지 않는다)", e);
+        log.error("데이터 제약 위반. 엔티티와 실제 스키마가 어긋났을 수 있다(마이그레이션 누락·손으로 고친 DB)", e);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(ErrorCode.SAVE_FAILED, "저장하지 못했습니다. 서버 로그를 확인해 주세요."));
@@ -161,7 +166,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                                                   HttpHeaders headers, HttpStatusCode status,
                                                                   WebRequest request) {
         // 첫 오류만. 기본 문구는 JVM 로케일을 따라 화면은 code·field 로 번역
-        var first = e.getBindingResult().getFieldErrors().stream().findFirst();
+        // 검증기는 오류를 순서 없는 집합으로 줌. 요청 레코드의 칸 순서로 골라 실행마다 같은 칸이 나가게
+        List<String> order = fieldOrderOf(e.getBindingResult().getTarget());
+        var first = e.getBindingResult().getFieldErrors().stream()
+                .min(Comparator.comparingInt((FieldError error) -> {
+                    int index = order.indexOf(rootField(error.getField()));
+                    return index < 0 ? Integer.MAX_VALUE : index;
+                }).thenComparing(FieldError::getField));
         String message = first
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .orElse("잘못된 요청입니다.");
@@ -178,12 +189,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception e, Object body, HttpHeaders headers,
                                                              HttpStatusCode statusCode, WebRequest request) {
+        // 이미 보내기 시작한 응답은 본문을 바꿀 수 없음. 부모 구현과 같이 기록만
+        if (request instanceof ServletWebRequest servletRequest
+                && servletRequest.getResponse() != null && servletRequest.getResponse().isCommitted()) {
+            log.warn("응답이 이미 시작돼 오류 본문을 쓰지 못함: {}", e.toString());
+            return null;
+        }
+
         if (statusCode.is5xxServerError()) {
             log.error("스프링이 처리한 서버 오류", e);
         }
 
         ErrorResponse error = switch (statusCode.value()) {
             case 404 -> ErrorResponse.of(ErrorCode.NOT_FOUND, "요청한 주소를 찾을 수 없습니다.");
+            case 413 -> ErrorResponse.of(ErrorCode.PAYLOAD_TOO_LARGE, "요청 본문이 너무 큽니다.");
             case 405 -> ErrorResponse.of(ErrorCode.METHOD_NOT_ALLOWED, "허용되지 않는 요청 방식입니다.");
             case 415 -> ErrorResponse.of(ErrorCode.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 요청 형식입니다.");
             default -> statusCode.is4xxClientError()
@@ -204,6 +223,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(ErrorCode.SERVER_ERROR,
                         "서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+    }
+
+    /** 요청 레코드의 칸 이름을 선언 순서대로. 레코드가 아니면 빈 목록(이름순으로 고름) */
+    private static List<String> fieldOrderOf(Object target) {
+        if (target == null || !target.getClass().isRecord()) {
+            return List.of();
+        }
+        return Arrays.stream(target.getClass().getRecordComponents()).map(RecordComponent::getName).toList();
+    }
+
+    /** vehicles[0].plateNumber → vehicles. 중첩 칸은 바깥 칸의 순서를 따름 */
+    private static String rootField(String field) {
+        int cut = field.length();
+        for (char separator : new char[]{'.', '['}) {
+            int index = field.indexOf(separator);
+            if (index >= 0) {
+                cut = Math.min(cut, index);
+            }
+        }
+        return field.substring(0, cut);
     }
 
     /** 원인 사슬에서 제약 위반 찾기. 커밋 시점 위반은 한 겹 더 감싸여 올라옴 */

@@ -7,6 +7,10 @@ describe('통화의 최소 단위', () => {
     expect(fractionDigits('KRW')).toBe(0)
     expect(fractionDigits('USD')).toBe(2)
     expect(fractionDigits('JPY')).toBe(0)
+    // 브라우저 ICU 와 상관없이 ISO 4217. 크롬은 IDR·HUF 를 0 으로 봐서 같은 저장값이 100배로 갈렸다
+    expect(fractionDigits('IDR')).toBe(2)
+    expect(fractionDigits('HUF')).toBe(2)
+    expect(fractionDigits('KWD')).toBe(3)
   })
 
   it('입력한 주 단위를 최소 단위 정수로', () => {

@@ -176,4 +176,19 @@ class VehicleRepositoryTest {
                 .extracting(cause -> ((ConstraintViolationException) cause).getConstraintName())
                 .isEqualTo("uk_vehicles_user_plate_number");
     }
+
+    @Test
+    @DisplayName("공개 id 는 대소문자를 구분해 찾는다 — 대소문자만 바꾼 주소로는 열리지 않는다")
+    void publicIdLookupIsCaseSensitive() {
+        Vehicle saved = vehicleRepository.save(new Vehicle(owner, "12가3456", "현대", "아반떼", 2020));
+        em.flush();
+        // updatable = false 라 엔티티로는 못 바꿈. 대소문자가 섞인 값으로 고정
+        em.getEntityManager().createNativeQuery("update vehicles set public_id = 'AbCdEfGhIjKl' where id = ?")
+                .setParameter(1, saved.getId())
+                .executeUpdate();
+        em.clear();
+
+        assertThat(vehicleRepository.findByPublicId("AbCdEfGhIjKl")).isPresent();
+        assertThat(vehicleRepository.findByPublicId("abcdefghijkl")).isEmpty();
+    }
 }

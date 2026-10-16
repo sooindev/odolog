@@ -4,6 +4,7 @@ import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.common.exception.type.ResourceNotFoundException;
 import com.odolog.app.maintenance.domain.MaintenanceRecord;
+import com.odolog.app.maintenance.domain.ServiceInterval;
 import com.odolog.app.maintenance.domain.ServiceType;
 import com.odolog.app.maintenance.dto.request.MaintenanceRecordRegisterRequest;
 import com.odolog.app.maintenance.dto.request.MaintenanceRecordUpdateRequest;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -72,7 +74,7 @@ class MaintenanceRecordServiceTest {
         LocalDate tomorrow = LocalDate.of(2026, 9, 30);
         when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(createVehicle(10L));
         doThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "serviceDate: 오늘 이후 날짜는 입력할 수 없습니다."))
-                .when(userToday).rejectFuture(1L, tomorrow, "serviceDate");
+                .when(userToday).rejectOutOfRange(1L, tomorrow, "serviceDate");
 
         assertThatThrownBy(() -> maintenanceRecordService.register(1L, "V10",
                 new MaintenanceRecordRegisterRequest(ServiceType.ENGINE_OIL, null, 50000, 40000, tomorrow)))
@@ -347,5 +349,50 @@ class MaintenanceRecordServiceTest {
 
         assertThat(existing.getCost()).isNull();
         assertThat(existing.getServiceOdometer()).isNull();
+    }
+
+    @Test
+    @DisplayName("주기 변경: 설정이 없던 종류에 값을 보내면 새로 만든다")
+    void changeIntervalCreatesWhenAbsent() {
+        Vehicle vehicle = createVehicle(10L);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(serviceIntervalRepository.findByVehicleIdAndType(10L, ServiceType.ENGINE_OIL)).thenReturn(Optional.empty());
+
+        maintenanceRecordService.changeInterval(1L, "V10", ServiceType.ENGINE_OIL, 10000, null);
+
+        ArgumentCaptor<ServiceInterval> saved = ArgumentCaptor.forClass(ServiceInterval.class);
+        verify(serviceIntervalRepository).save(saved.capture());
+        assertThat(saved.getValue().getIntervalKm()).isEqualTo(10000);
+        assertThat(saved.getValue().getIntervalMonths()).isNull();
+    }
+
+    @Test
+    @DisplayName("주기 변경: 설정이 없던 종류에 둘 다 비워 보내면 아무것도 만들지 않는다")
+    void changeIntervalIgnoresEmptyWhenAbsent() {
+        Vehicle vehicle = createVehicle(10L);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(serviceIntervalRepository.findByVehicleIdAndType(10L, ServiceType.ENGINE_OIL)).thenReturn(Optional.empty());
+
+        maintenanceRecordService.changeInterval(1L, "V10", ServiceType.ENGINE_OIL, null, null);
+
+        verify(serviceIntervalRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("주기 변경: 있던 설정은 바꾸고, 둘 다 비우면 지워 기본값으로 돌아간다")
+    void changeIntervalUpdatesOrDeletesExisting() {
+        Vehicle vehicle = createVehicle(10L);
+        ServiceInterval existing = new ServiceInterval(vehicle, ServiceType.ENGINE_OIL, 10000, 12);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(serviceIntervalRepository.findByVehicleIdAndType(10L, ServiceType.ENGINE_OIL)).thenReturn(Optional.of(existing));
+
+        maintenanceRecordService.changeInterval(1L, "V10", ServiceType.ENGINE_OIL, 8000, null);
+        assertThat(existing.getIntervalKm()).isEqualTo(8000);
+        assertThat(existing.getIntervalMonths()).isNull();
+        verify(serviceIntervalRepository, never()).delete(any());
+
+        maintenanceRecordService.changeInterval(1L, "V10", ServiceType.ENGINE_OIL, null, null);
+        verify(serviceIntervalRepository).delete(existing);
+        verify(serviceIntervalRepository, never()).save(any());
     }
 }

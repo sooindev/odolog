@@ -2,6 +2,9 @@
 
 import type { Messages } from '@/shared/i18n/messages/ko'
 
+/** 문장 속 개수(f.count). text 는 지역 표기, n 은 단·복수용 */
+type Count = { n: number; text: string }
+
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
 // 문장 첫머리에 오는 칸 이름('the email')의 첫 글자
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
@@ -20,6 +23,8 @@ export const en: Messages = {
     edit: 'Edit',
     delete: 'Delete',
     deleting: 'Deleting…',
+    editOf: (what: string) => `Edit ${what}`,
+    deleteOf: (what: string) => `Delete ${what}`,
     register: 'Add',
     registering: 'Adding…',
     loading: 'Loading…',
@@ -36,7 +41,7 @@ export const en: Messages = {
     nickname: 'Name',
     emailPlaceholder: 'you@example.com',
     count: (n: string) => n,
-    records: (n: number) => `${n} ${plural(n, 'record', 'records')}`,
+    records: (c: Count) => `${c.text} ${plural(c.n, 'record', 'records')}`,
   },
 
   theme: {
@@ -77,6 +82,7 @@ export const en: Messages = {
       UNSUPPORTED_TIME_ZONE: 'That time zone isn’t supported.',
       UNSUPPORTED_CURRENCY: 'That currency isn’t supported.',
       SAME_PASSWORD: 'Your new password is the same as the current one.',
+      IMPORT_TOO_LARGE: 'That file is too large. One import can hold up to 50 vehicles, 5,000 service and 5,000 fuel records per vehicle, and 20,000 records in total.',
       BAD_REQUEST: 'Something about that request wasn’t right.',
       LOGIN_REQUIRED: 'Please log in.',
       LOGIN_FAILED: 'Wrong email or password.',
@@ -244,12 +250,12 @@ export const en: Messages = {
       importing: 'Importing…',
       importFailed: 'Couldn’t import that file.',
       notOurFile: 'Please check that this is a JSON file downloaded from OdoLog.',
-      imported: (vehicles: number, records: number) =>
-        `Added ${vehicles} ${plural(vehicles, 'vehicle', 'vehicles')} and ${records} ${plural(records, 'record', 'records')}.`,
+      imported: (vehicles: Count, records: Count) =>
+        `Added ${vehicles.text} ${plural(vehicles.n, 'vehicle', 'vehicles')} and ${records.text} ${plural(records.n, 'record', 'records')}.`,
       nothingNew: 'Nothing new to add.',
-      merged: (n: number) => ` Attached records to ${n} existing ${plural(n, 'vehicle', 'vehicles')}.`,
-      intervals: (n: number) => ` Restored ${n} custom service ${plural(n, 'interval', 'intervals')}.`,
-      skipped: (n: number) => ` Skipped ${n} ${plural(n, 'record', 'records')} you already had.`,
+      merged: (c: Count) => ` Added to ${c.text} existing ${plural(c.n, 'vehicle', 'vehicles')} instead of creating new ones.`,
+      intervals: (c: Count) => ` Restored ${c.text} custom service ${plural(c.n, 'interval', 'intervals')}.`,
+      skipped: (c: Count) => ` Skipped ${c.text} ${plural(c.n, 'record', 'records')} you already had.`,
     },
     withdraw: {
       title: 'Delete account',
@@ -279,11 +285,11 @@ export const en: Messages = {
     myVehicles: 'My vehicles',
     modelYear: (year: number) => `${year}`,
     unknownYear: 'Year unknown',
-    overdue: (n: number) => `${n} ${plural(n, 'service', 'services')} overdue`,
-    dueSoon: (n: number) => `${n} due soon`,
+    overdue: (c: Count) => `${c.text} ${plural(c.n, 'service', 'services')} overdue`,
+    dueSoon: (c: Count) => `${c.text} due soon`,
     list: {
       title: 'My vehicles',
-      count: (n: number) => `Tracking ${n} ${plural(n, 'vehicle', 'vehicles')}.`,
+      count: (c: Count) => `Tracking ${c.text} ${plural(c.n, 'vehicle', 'vehicles')}.`,
       register: 'Add vehicle',
       loadFailed: 'Couldn’t load your vehicles.',
       emptyTitle: 'No vehicles yet',
@@ -468,6 +474,9 @@ export const en: Messages = {
     noEfficiency: '· no economy',
     resetPoint: 'Reset point',
     sameOdometer: 'Same odometer as the previous fill-up',
+    partial: 'Not a full tank',
+    partialMerged: '· counted in the next full fill-up',
+    afterPartial: 'Previous fill-up wasn’t full',
     mergedIntoPrevious: '· fuel counted in its economy',
     baseline: 'Baseline',
     fromNext: '· calculated from the next fill-up',
@@ -484,6 +493,9 @@ export const en: Messages = {
       cost: (currency: string) => `Amount paid (${currency})`,
       costEmpty: 'Leave blank and it won’t count toward fuel spending.',
       pricePer: (price: string, unit: string) => `About ${price} per ${unit}`,
+      fullTank: 'Full tank',
+      fullTankHint: 'Fuel economy runs between full fill-ups. Untick this if you didn’t fill up.',
+      partialHint: 'This amount is added to the next full fill-up’s economy.',
       memo: 'Note',
       memoPlaceholder: 'Station name, etc.',
       failed: 'Couldn’t save.',
@@ -508,12 +520,12 @@ export const en: Messages = {
       noSegment:
         'No stretch to calculate yet. It takes two fill-ups in a row with a higher odometer and a fuel amount.',
       sinceReset: 'Only counts stretches since the reset.',
-      excluded: (n: number) =>
-        `Left out ${n} ${plural(n, 'stretch', 'stretches')} that can’t be right. Check the odometer or fuel amount on records marked “Check this”.`,
-      missing: (n: number) =>
-        `Left out ${n} ${plural(n, 'stretch', 'stretches')} that look like a missing fill-up. Add the missing record to include ${plural(n, 'it', 'them')} again.`,
-      otherCurrency: (n: number, currency: string) =>
-        `${n} ${plural(n, 'record', 'records')} not in ${currency} ${plural(n, 'is', 'are')} left out of total spending.`,
+      excluded: (c: Count) =>
+        `Left out ${c.text} ${plural(c.n, 'stretch', 'stretches')} that can’t be right. Check the odometer or fuel amount on records marked “Check this”.`,
+      missing: (c: Count) =>
+        `Left out ${c.text} ${plural(c.n, 'stretch', 'stretches')} that look like a missing fill-up. Add the missing record to include ${plural(c.n, 'it', 'them')} again.`,
+      otherCurrency: (c: Count, currency: string) =>
+        `${c.text} ${plural(c.n, 'record', 'records')} not in ${currency} ${plural(c.n, 'is', 'are')} left out of total spending.`,
       records: 'Records',
       distance: 'Distance',
       volume: 'Fuel',
@@ -537,11 +549,11 @@ export const en: Messages = {
       records: '',
       breakdown: (maintenance: string, fuel: string) => `Service ${maintenance} · Fuel ${fuel}`,
     },
-    otherCurrency: (n: number, currency: string) =>
-      `${n} ${plural(n, 'record', 'records')} not in ${currency} ${plural(n, 'is', 'are')} left out of totals and charts.`,
+    otherCurrency: (c: Count, currency: string) =>
+      `${c.text} ${plural(c.n, 'record', 'records')} not in ${currency} ${plural(c.n, 'is', 'are')} left out of totals and charts.`,
     vehicles: {
       title: 'By vehicle',
-      maintenanceCount: (n: number) => `${n} ${plural(n, 'service', 'services')}`,
+      maintenanceCount: (c: Count) => `${c.text} ${plural(c.n, 'service', 'services')}`,
       noService: 'No services yet',
       lastService: (date: string) => `Last service ${date}`,
     },

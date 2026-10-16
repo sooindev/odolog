@@ -11,7 +11,7 @@ import { Section } from '@/shared/ui/layout/section'
 import { ErrorText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
-import { MAX_ODOMETER } from '@/shared/lib/limits'
+import { MAX_MANUFACTURER_LENGTH, MAX_MODEL_NAME_LENGTH, MAX_ODOMETER, MAX_PLATE_LENGTH } from '@/shared/lib/limits'
 import { fromKm, toKm } from '@/shared/lib/units'
 import { registerVehicle } from '@/features/vehicles/api/endpoints'
 
@@ -68,7 +68,7 @@ export function VehicleNewPage() {
                 <Input
                   id="plateNumber"
                   required
-                  maxLength={20}
+                  maxLength={MAX_PLATE_LENGTH}
                   placeholder={t.vehicles.form.platePlaceholder}
                   value={plateNumber}
                   onChange={(event) => setPlateNumber(event.target.value)}
@@ -81,7 +81,7 @@ export function VehicleNewPage() {
                   <Input
                     id="manufacturer"
                     required
-                    maxLength={50}
+                    maxLength={MAX_MANUFACTURER_LENGTH}
                     placeholder={t.vehicles.form.manufacturerPlaceholder}
                     value={manufacturer}
                     onChange={(event) => setManufacturer(event.target.value)}
@@ -92,7 +92,7 @@ export function VehicleNewPage() {
                   <Input
                     id="modelName"
                     required
-                    maxLength={100}
+                    maxLength={MAX_MODEL_NAME_LENGTH}
                     placeholder={t.vehicles.form.modelPlaceholder}
                     value={modelName}
                     onChange={(event) => setModelName(event.target.value)}

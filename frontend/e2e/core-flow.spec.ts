@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Browser } from '@playwright/test'
 
 import { PASSWORD, errorGuard, registerVehicle, signUp, uniqueEmail } from './helpers.ts'
 
@@ -110,6 +110,63 @@ test('다른 기기에서 비밀번호를 바꾸면 이 기기는 이유와 함�
   await page.getByRole('button', { name: '저장', exact: true }).first().click()
   await expect(page).toHaveURL(/\/login$/)
   await expect(page.getByText('로그인이 끝났습니다.', { exact: false })).toBeVisible()
+})
+
+/** 다른 기기에서 비밀번호를 바꿔 page 의 세션을 끊음 */
+async function changePasswordElsewhere(browser: Browser, email: string) {
+  const device = await guard.open(browser)
+  await device.goto('/login')
+  await device.locator('#email').fill(email)
+  await device.locator('#password').fill(PASSWORD)
+  await device.getByRole('button', { name: '로그인', exact: true }).last().click()
+  await expect(device).toHaveURL(/\/vehicles$/)
+  await device.goto('/me')
+  await device.locator('#current-password').fill(PASSWORD)
+  await device.locator('#new-password').fill('newpassword1234')
+  await device.locator('#confirm-password').fill('newpassword1234')
+  await device.getByRole('button', { name: '비밀번호 변경' }).click()
+  await expect(device.getByText('비밀번호를 변경했습니다.')).toBeVisible()
+}
+
+test('세션이 끊긴 차량 화면에서 다른 계정으로 로그인하면 앞 계정의 차량 주소가 아니라 목록으로', async ({ page, browser }) => {
+  const otherEmail = uniqueEmail('session-other')
+  const second = await guard.open(browser)
+  await signUp(second, otherEmail)
+
+  const email = uniqueEmail('session-owner')
+  await signUp(page, email)
+  const vehicleUrl = await registerVehicle(page, '78라1234', 1000)
+  await changePasswordElsewhere(browser, email)
+
+  // 차량 상세에서 다음 요청이 401
+  expect(page.url()).toBe(vehicleUrl)
+  await page.locator('#odometer').fill('1500')
+  await page.getByRole('button', { name: '갱신', exact: true }).click()
+  await expect(page).toHaveURL(/\/login$/)
+
+  await page.locator('#email').fill(otherEmail)
+  await page.locator('#password').fill(PASSWORD)
+  await page.getByRole('button', { name: '로그인', exact: true }).last().click()
+  // 앞 계정의 차량 주소면 "찾을 수 없음"
+  await expect(page).toHaveURL(/\/vehicles$/)
+})
+
+test('세션 끊김 안내는 한 번만 — 로그인하지 않고 나갔다가 보호된 화면으로 가면 다시 뜨지 않는다', async ({ page, browser }) => {
+  const email = uniqueEmail('session-once')
+  await signUp(page, email)
+  await changePasswordElsewhere(browser, email)
+
+  await page.getByRole('button', { name: 'e2e' }).click()
+  await page.locator('#nickname').fill('바뀐닉네임')
+  await page.getByRole('button', { name: '저장', exact: true }).first().click()
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByText('로그인이 끝났습니다.', { exact: false })).toBeVisible()
+
+  // 새로고침 없이 앱 안에서 이동(새로고침하면 상태가 원래 지워짐)
+  await page.getByRole('link', { name: '오도로그' }).first().click()
+  await page.evaluate("window.history.pushState({}, '', '/vehicles'); window.dispatchEvent(new PopStateEvent('popstate'))")
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByText('로그인이 끝났습니다.', { exact: false })).toHaveCount(0)
 })
 
 test('새로고침해도 로그인이 유지된다 — 세션은 DB 에 있다', async ({ page }) => {

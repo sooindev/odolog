@@ -39,8 +39,12 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class AccountRestoreService {
 
+    /** 한 파일의 차량 수 상한 */
+    static final int MAX_VEHICLES = 50;
+    /** 차량 하나의 정비·주유 각각의 상한 */
+    static final int MAX_RECORDS_PER_KIND = 5_000;
     /** 파일 하나의 기록 총량 상한. 차량별 상한만으로는 50대 × 1만 건이 한 트랜잭션 */
-    private static final int MAX_TOTAL_RECORDS = 20_000;
+    static final int MAX_TOTAL_RECORDS = 20_000;
 
     private final UserService userService;
     private final VehicleRepository vehicleRepository;
@@ -68,7 +72,7 @@ public class AccountRestoreService {
         // 가장 먼저 잠금. 같은 파일을 동시에 두 번 넣어도 두 번째는 첫 번째가 넣은 기록을 보고 건너뜀
         User owner = userService.findByIdForUpdate(userId);
         rejectOversized(request);
-        rejectFutureDates(userToday.of(owner), request);
+        rejectOutOfRangeDates(userToday.of(owner), request);
 
         Tally tally = new Tally();
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
@@ -92,15 +96,19 @@ public class AccountRestoreService {
                     InputText.required(data.modelName(), "modelName"),
                     data.modelYear()));
             tally.addedVehicles++;
-        } else {
-            tally.mergedVehicles++;
         }
 
         // 이번에 실제로 넣은 기록 중 가장 큰 주행거리. 있던 차량은 이것만 따라 올림
+        int addedBefore = tally.addedMaintenance + tally.addedFuel + tally.addedIntervals;
         int addedHighest = Math.max(
                 restoreMaintenance(vehicle, data.maintenanceRecords(), tally),
                 restoreFuel(vehicle, created, data.fuelRecords(), tally));
         restoreIntervals(vehicle, data.serviceIntervals(), tally);
+
+        // 있던 차량은 실제로 무언가 붙였을 때만 셈. 전부 건너뛴 차까지 세면 "기록만 붙였습니다" 가 거짓
+        if (!created && tally.addedMaintenance + tally.addedFuel + tally.addedIntervals > addedBefore) {
+            tally.mergedVehicles++;
+        }
 
         // 기록 추가 후 한 번만. 등록과 같은 규칙(올리기만)
         // 있던 차량은 파일의 차량 값·건너뛴 기록을 보지 않음. 옛 파일이 손으로 낮춘 주행거리를 되살림
@@ -145,6 +153,15 @@ public class AccountRestoreService {
             existing.add(RestoreKeys.of(record));
         }
 
+        // 기준점은 차량당 하나. 옛 파일에 여럿이면 주행거리가 가장 큰(최근) 것만. 요약도 최근 것을 씀
+        AccountRestoreRequest.FuelData latestResetPoint = null;
+        for (AccountRestoreRequest.FuelData record : records) {
+            if (record.resetPoint()
+                    && (latestResetPoint == null || record.odometer() >= latestResetPoint.odometer())) {
+                latestResetPoint = record;
+            }
+        }
+
         int highest = 0;
         for (AccountRestoreRequest.FuelData record : records) {
             String currency = currencyOf(record.currency());
@@ -156,7 +173,8 @@ public class AccountRestoreService {
             // 기준점은 생성자에 없어 별도 지정. 새 차량만, 있던 차량은 지금의 연비 기준 유지
             FuelRecord fuel = new FuelRecord(vehicle, record.fueledAt(), record.odometer(),
                     record.liters(), record.totalCost(), currency, InputText.optional(record.memo()));
-            fuel.changeResetPoint(created && record.resetPoint());
+            fuel.changeResetPoint(created && record == latestResetPoint);
+            fuel.changeFullTank(!Boolean.FALSE.equals(record.fullTank()));
 
             fuelRecordRepository.save(fuel);
             tally.addedFuel++;
@@ -188,25 +206,36 @@ public class AccountRestoreService {
         }
     }
 
+    /** 상한 셋을 한 코드로. 화면이 어떤 상한인지 문구로 밝힘 */
     private void rejectOversized(AccountRestoreRequest request) {
+        if (request.vehicles().size() > MAX_VEHICLES) {
+            throw tooLarge("차량 " + MAX_VEHICLES + "대까지 가져올 수 있습니다: " + request.vehicles().size());
+        }
         int total = 0;
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
+            if (data.maintenanceRecords().size() > MAX_RECORDS_PER_KIND
+                    || data.fuelRecords().size() > MAX_RECORDS_PER_KIND) {
+                throw tooLarge("차량 하나에 정비·주유 각 " + MAX_RECORDS_PER_KIND + "건까지 가져올 수 있습니다");
+            }
             total += data.maintenanceRecords().size() + data.fuelRecords().size();
         }
         if (total > MAX_TOTAL_RECORDS) {
-            throw new InvalidRequestException(ErrorCode.BAD_REQUEST,
-                    "한 파일에 기록 " + MAX_TOTAL_RECORDS + "건까지 가져올 수 있습니다: " + total);
+            throw tooLarge("한 파일에 기록 " + MAX_TOTAL_RECORDS + "건까지 가져올 수 있습니다: " + total);
         }
     }
 
-    /** 저장 전에 전부 검사. 하나라도 미래면 아무것도 안 들어감. 오늘은 한 번만 계산 */
-    private void rejectFutureDates(LocalDate today, AccountRestoreRequest request) {
+    private static InvalidRequestException tooLarge(String message) {
+        return new InvalidRequestException(ErrorCode.IMPORT_TOO_LARGE, message);
+    }
+
+    /** 저장 전에 전부 검사. 하나라도 범위 밖(미래·1900년 이전)이면 아무것도 안 들어감. 오늘은 한 번만 계산 */
+    private void rejectOutOfRangeDates(LocalDate today, AccountRestoreRequest request) {
         for (AccountRestoreRequest.VehicleData data : request.vehicles()) {
             for (AccountRestoreRequest.MaintenanceData record : data.maintenanceRecords()) {
-                UserToday.rejectFuture(today, record.serviceDate(), "maintenanceRecords.serviceDate");
+                UserToday.rejectOutOfRange(today, record.serviceDate(), "maintenanceRecords.serviceDate");
             }
             for (AccountRestoreRequest.FuelData record : data.fuelRecords()) {
-                UserToday.rejectFuture(today, record.fueledAt(), "fuelRecords.fueledAt");
+                UserToday.rejectOutOfRange(today, record.fueledAt(), "fuelRecords.fueledAt");
             }
         }
     }

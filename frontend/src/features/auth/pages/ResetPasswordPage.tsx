@@ -13,7 +13,7 @@ import { Input } from '@/shared/ui/base/input'
 import { ErrorText } from '@/shared/ui/state'
 import { Field } from '@/shared/ui/form/field'
 import { FormActions, Page } from '@/shared/ui/layout/page'
-import { passwordHint } from '@/shared/lib/limits'
+import { MAX_PASSWORD_BYTES, passwordHint } from '@/shared/lib/limits'
 
 export function ResetPasswordPage() {
   const { t } = useI18n()
@@ -102,7 +102,7 @@ export function ResetPasswordPage() {
               autoFocus
               minLength={8}
               // 글자 수 상한은 대략적인 천장. 실제 판정은 hint 와 서버 @MaxBytes
-              maxLength={72}
+              maxLength={MAX_PASSWORD_BYTES}
               autoComplete="new-password"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}

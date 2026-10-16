@@ -11,7 +11,7 @@ import { FormActions, Page } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
-import { passwordHint } from '@/shared/lib/limits'
+import { MAX_EMAIL_LENGTH, MAX_NICKNAME_LENGTH, MAX_PASSWORD_BYTES, passwordHint } from '@/shared/lib/limits'
 import { signUp } from '@/features/auth/api/endpoints'
 
 export function SignUpPage() {
@@ -62,7 +62,7 @@ export function SignUpPage() {
                   id="email"
                   type="email"
                   required
-                  maxLength={100}
+                  maxLength={MAX_EMAIL_LENGTH}
                   autoComplete="email"
                   placeholder={t.common.emailPlaceholder}
                   value={email}
@@ -78,7 +78,7 @@ export function SignUpPage() {
                   required
                   minLength={8}
                   // 글자 수 상한은 대략적인 천장. 실제 판정은 hint 와 서버 @MaxBytes
-                  maxLength={72}
+                  maxLength={MAX_PASSWORD_BYTES}
                   autoComplete="new-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -89,7 +89,7 @@ export function SignUpPage() {
                 <Input
                   id="nickname"
                   required
-                  maxLength={30}
+                  maxLength={MAX_NICKNAME_LENGTH}
                   autoComplete="nickname"
                   value={nickname}
                   onChange={(event) => setNickname(event.target.value)}

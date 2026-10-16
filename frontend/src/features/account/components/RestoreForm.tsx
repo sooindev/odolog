@@ -16,7 +16,7 @@ import type { AccountExport, AccountRestoreResult } from '@/features/account/api
  * 브라우저에서 읽어 JSON 전송. multipart 미사용
  */
 export function RestoreForm() {
-  const { t } = useI18n()
+  const { t, f } = useI18n()
   const queryClient = useQueryClient()
   const [result, setResult] = useState<AccountRestoreResult | null>(null)
   // 문구가 아니라 문구를 고르는 함수. 언어를 바꾸면 남은 안내도 새 언어로
@@ -99,12 +99,12 @@ export function RestoreForm() {
             result.addedServiceIntervals === 0
               ? t.profile.data.nothingNew
               : t.profile.data.imported(
-                  result.addedVehicles,
-                  result.addedMaintenanceRecords + result.addedFuelRecords,
+                  f.count(result.addedVehicles),
+                  f.count(result.addedMaintenanceRecords + result.addedFuelRecords),
                 ) +
-                (result.mergedVehicles > 0 ? t.profile.data.merged(result.mergedVehicles) : '') +
-                (result.addedServiceIntervals > 0 ? t.profile.data.intervals(result.addedServiceIntervals) : '')) +
-            (result.skippedRecords > 0 ? t.profile.data.skipped(result.skippedRecords) : '')
+                (result.mergedVehicles > 0 ? t.profile.data.merged(f.count(result.mergedVehicles)) : '') +
+                (result.addedServiceIntervals > 0 ? t.profile.data.intervals(f.count(result.addedServiceIntervals)) : '')) +
+            (result.skippedRecords > 0 ? t.profile.data.skipped(f.count(result.skippedRecords)) : '')
           }
         />
       )}

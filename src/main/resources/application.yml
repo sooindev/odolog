@@ -27,6 +27,14 @@ spring:
       pageable:
         max-page-size: 100
 
+  # 숫자 칸에 소수·문자열을 넣으면 400. 기본값은 1234.56 을 1234 로, 0.5 를 0 으로 말없이 바꿔
+  # "모르는 값은 null" 규칙이 깨짐(0.5 → 0원)
+  jackson:
+    deserialization:
+      accept-float-as-int: false
+    mapper:
+      allow-coercion-of-scalars: false
+
   jpa:
     hibernate:
       ddl-auto: validate

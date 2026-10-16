@@ -11,6 +11,7 @@ import { Input } from '@/shared/ui/base/input'
 import { ErrorText, NoticeText } from '@/shared/ui/state'
 import { Field } from '@/shared/ui/form/field'
 import { FormActions, Page } from '@/shared/ui/layout/page'
+import { MAX_EMAIL_LENGTH } from '@/shared/lib/limits'
 
 export function ForgotPasswordPage() {
   const { t } = useI18n()
@@ -56,7 +57,7 @@ export function ForgotPasswordPage() {
                     type="email"
                     required
                     autoFocus
-                    maxLength={100}
+                    maxLength={MAX_EMAIL_LENGTH}
                     autoComplete="email"
                     placeholder={t.common.emailPlaceholder}
                     value={email}

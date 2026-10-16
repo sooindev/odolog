@@ -2,6 +2,7 @@ package com.odolog.app.account;
 
 import com.odolog.app.account.dto.request.AccountRestoreRequest;
 import com.odolog.app.account.dto.response.AccountRestoreResponse;
+import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
 import com.odolog.app.fuel.FuelRecordRepository;
 import com.odolog.app.fuel.domain.FuelRecord;
@@ -205,7 +206,8 @@ class AccountRestoreServiceTest {
                         List.of(fuelData(LocalDate.of(2026, 5, 2), 30100))))));
 
         assertThat(result.addedVehicles()).isZero();
-        assertThat(result.mergedVehicles()).isEqualTo(1);
+        // 붙인 것이 없으면 "기록을 더한 차량" 으로 세지 않음
+        assertThat(result.mergedVehicles()).isZero();
         assertThat(result.skippedRecords()).isEqualTo(2);
         verify(maintenanceRecordRepository, never()).save(any());
         verify(fuelRecordRepository, never()).save(any());
@@ -374,6 +376,72 @@ class AccountRestoreServiceTest {
         ArgumentCaptor<FuelRecord> saved = ArgumentCaptor.forClass(FuelRecord.class);
         verify(fuelRecordRepository).save(saved.capture());
         assertThat(saved.getValue().isResetPoint()).isFalse();
+    }
+
+    @Test
+    @DisplayName("기록을 하나라도 붙인 있던 차량만 '더한 차량' 으로 센다")
+    void countsMergedOnlyWhenSomethingAdded() {
+        Vehicle vehicle = existing("12가1212", 10L);
+        when(userService.findByIdForUpdate(1L)).thenReturn(owner);
+        when(vehicleRepository.findLockedByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.of(vehicle));
+        when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L)).thenReturn(List.of());
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of());
+
+        AccountRestoreResponse result = accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(
+                vehicleData("12가1212", List.of(oilData(LocalDate.of(2026, 5, 1), 30000)), List.of()))));
+
+        assertThat(result.mergedVehicles()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("연식 없는 차도 가져온다 — 내보내기·DB 가 허용하는 값이라 자기 백업을 못 넣으면 안 된다")
+    void restoresVehicleWithoutModelYear() {
+        emptyAccount();
+
+        accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(
+                new AccountRestoreRequest.VehicleData("12가1212", "기아", "카니발", null, 30000,
+                        List.of(), List.of(), List.of()))));
+
+        ArgumentCaptor<Vehicle> saved = ArgumentCaptor.forClass(Vehicle.class);
+        verify(vehicleRepository).save(saved.capture());
+        assertThat(saved.getValue().getModelYear()).isNull();
+    }
+
+    @Test
+    @DisplayName("옛 파일에 기준점이 여럿이면 가장 최근(주행거리가 큰) 것 하나만 기준점으로 넣는다")
+    void restoresOnlyLatestResetPoint() {
+        emptyAccount();
+
+        accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(vehicleData("12가1212",
+                List.of(), List.of(
+                        resetPointData(LocalDate.of(2026, 5, 2), 30100),
+                        resetPointData(LocalDate.of(2026, 6, 2), 30600))))));
+
+        ArgumentCaptor<FuelRecord> saved = ArgumentCaptor.forClass(FuelRecord.class);
+        verify(fuelRecordRepository, times(2)).save(saved.capture());
+        assertThat(saved.getAllValues()).filteredOn(FuelRecord::isResetPoint)
+                .singleElement()
+                .extracting(FuelRecord::getOdometer).isEqualTo(30600);
+    }
+
+    @Test
+    @DisplayName("차량이 50대를 넘거나 차량 하나의 기록이 5,000건을 넘으면 IMPORT_TOO_LARGE — 화면이 상한을 말할 수 있게")
+    void rejectsTooManyVehiclesOrRecordsWithCode() {
+        when(userService.findByIdForUpdate(1L)).thenReturn(owner);
+        List<AccountRestoreRequest.VehicleData> tooMany = IntStream.range(0, 51)
+                .mapToObj(i -> vehicleData("12가" + (1000 + i), List.of(), List.of()))
+                .toList();
+        List<AccountRestoreRequest.FuelData> fuels = IntStream.range(0, 5001)
+                .mapToObj(i -> fuelData(LocalDate.of(2026, 5, 1), 30000 + i))
+                .toList();
+
+        assertThatThrownBy(() -> accountRestoreService.restore(1L, new AccountRestoreRequest(tooMany)))
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting("code").isEqualTo(ErrorCode.IMPORT_TOO_LARGE);
+        assertThatThrownBy(() -> accountRestoreService.restore(1L,
+                new AccountRestoreRequest(List.of(vehicleData("12가1212", List.of(), fuels)))))
+                .extracting("code").isEqualTo(ErrorCode.IMPORT_TOO_LARGE);
+        verify(vehicleRepository, never()).save(any());
     }
 
     @Test

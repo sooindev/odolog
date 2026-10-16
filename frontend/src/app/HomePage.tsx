@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
@@ -10,7 +11,7 @@ import { Page } from '@/shared/ui/layout/page'
 import { ErrorText, LoadingText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
-import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { queryKeys } from '@/shared/api/queryKeys'
 
 /**
  * '/' 의 세 얼굴: 비로그인 → 소개, 0대 → 등록 권유, 1대 이상 → 통계
@@ -33,10 +34,10 @@ export function HomePage() {
 
 function SignedInHome({ nickname }: { nickname: string }) {
   const { t } = useI18n()
-  // 모듈 최상단 함수라 useCallback 불필요
-  const { data, loading, error } = useAsyncData(fetchSummary)
+  // 떠나면 버림. 다시 올 때마다 새로 읽어 다른 화면에서 바뀐 기록이 옛 숫자로 먼저 보이지 않게
+  const { data, isPending, error } = useQuery({ queryKey: queryKeys.summary(), queryFn: fetchSummary, gcTime: 0 })
 
-  if (loading) {
+  if (isPending) {
     return <DashboardSkeleton />
   }
 
@@ -49,7 +50,7 @@ function SignedInHome({ nickname }: { nickname: string }) {
     )
   }
 
-  if (data === null || data.vehicleCount === 0) {
+  if (data === undefined || data.vehicleCount === 0) {
     return <EmptyGarage />
   }
 

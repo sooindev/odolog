@@ -29,11 +29,14 @@ class ConfigParityTest {
             "server.servlet.session.cookie.max-age",
             "spring.data.web.pageable.max-page-size",
             "spring.jpa.open-in-view",
+            "spring.jpa.properties.hibernate.default_batch_fetch_size",
+            "spring.jackson.deserialization.accept-float-as-int",
+            "spring.jackson.mapper.allow-coercion-of-scalars",
             "spring.session.jdbc.initialize-schema",
             "spring.session.jdbc.flush-mode");
 
     @Test
-    @DisplayName("운영과 테스트 설정이 세션·쿠키·페이지 상한에서 같다")
+    @DisplayName("운영과 테스트 설정이 세션·쿠키·페이지 상한·JSON 변환 규칙에서 같다")
     void sharedKeysMatch() throws IOException {
         Map<String, Object> main = load(Path.of("src/main/resources/application.yml"));
         Map<String, Object> test = load(Path.of("src/test/resources/application.yml"));

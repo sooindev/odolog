@@ -130,7 +130,7 @@ class UserControllerTest {
     void loginSuccessStoresSessionAndRotatesId() throws Exception {
         User user = new User("test@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(user, "id", 1L);
-        when(userService.login(any())).thenReturn(user);
+        when(userService.login(any(), any())).thenReturn(user);
         when(userService.isPasswordCurrent(1L, "encoded")).thenReturn(true);
 
         LoginRequest request = new LoginRequest("test@odolog.com", "password1234");
@@ -158,7 +158,7 @@ class UserControllerTest {
     void loginDiscardsSessionWhenPasswordChangedMeanwhile() throws Exception {
         User user = new User("test@odolog.com", "encoded", "닉네임");
         ReflectionTestUtils.setField(user, "id", 1L);
-        when(userService.login(any())).thenReturn(user);
+        when(userService.login(any(), any())).thenReturn(user);
         // 재설정·탈퇴가 그 사이 커밋됨
         when(userService.isPasswordCurrent(1L, "encoded")).thenReturn(false);
 
@@ -175,7 +175,7 @@ class UserControllerTest {
     @Test
     @DisplayName("로그인은 IP 단위로도 센다")
     void loginCountsPerIp() throws Exception {
-        when(userService.login(any()))
+        when(userService.login(any(), any()))
                 .thenThrow(new AuthenticationFailedException(ErrorCode.LOGIN_FAILED, "이메일 또는 비밀번호가 올바르지 않습니다."));
 
         mockMvc.perform(post("/api/users/login")
@@ -195,7 +195,7 @@ class UserControllerTest {
     @Test
     @DisplayName("로그인 실패(이메일/비밀번호 불일치)면 401")
     void loginFailure() throws Exception {
-        when(userService.login(any()))
+        when(userService.login(any(), any()))
                 .thenThrow(new AuthenticationFailedException(ErrorCode.LOGIN_FAILED, "이메일 또는 비밀번호가 올바르지 않습니다."));
 
         LoginRequest request = new LoginRequest("test@odolog.com", "wrongpassword");
@@ -217,7 +217,7 @@ class UserControllerTest {
                     .andExpect(status().isBadRequest());
         }
 
-        verify(userService, never()).login(any());
+        verify(userService, never()).login(any(), any());
     }
 
     @Test
@@ -397,5 +397,19 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("글자 방향을 뒤집는 문자·줄 구분자가 든 닉네임은 400 — ASCII 밖의 제어 문자도")
+    void signUpRejectsUnicodeControlNickname() throws Exception {
+        for (String nickname : new String[]{"ab\u202Ecd", "ab\u2028cd", "ab\u0085cd"}) {
+            SignUpRequest request = new SignUpRequest("test@odolog.com", "password1234", nickname, null, null, null, null);
+
+            mockMvc.perform(post("/api/users")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+        }
+        verify(userService, never()).signUp(any());
     }
 }

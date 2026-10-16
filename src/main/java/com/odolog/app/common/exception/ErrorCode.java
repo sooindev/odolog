@@ -15,6 +15,7 @@ public enum ErrorCode {
     UNSUPPORTED_TIME_ZONE,
     UNSUPPORTED_CURRENCY,
     SAME_PASSWORD,
+    IMPORT_TOO_LARGE,
     BAD_REQUEST,
 
     // 401

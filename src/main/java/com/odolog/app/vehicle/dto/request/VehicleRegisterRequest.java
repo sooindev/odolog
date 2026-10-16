@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
@@ -12,14 +13,17 @@ public record VehicleRegisterRequest(
 
         @NotBlank
         @Size(max = 20)
+        @Pattern(regexp = InputLimits.SINGLE_LINE_TEXT, message = "줄바꿈·제어 문자는 쓸 수 없습니다")
         String plateNumber,
 
         @NotBlank
         @Size(max = 50)
+        @Pattern(regexp = InputLimits.SINGLE_LINE_TEXT, message = "줄바꿈·제어 문자는 쓸 수 없습니다")
         String manufacturer,
 
         @NotBlank
         @Size(max = 100)
+        @Pattern(regexp = InputLimits.SINGLE_LINE_TEXT, message = "줄바꿈·제어 문자는 쓸 수 없습니다")
         String modelName,
 
         // 연식 범위. 화면과 같은 제한

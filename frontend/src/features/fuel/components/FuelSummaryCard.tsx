@@ -113,21 +113,21 @@ export function FuelSummaryCard({ vehicleId }: { vehicleId: string }) {
             {/* 불가능한 구간을 뺀 개수 공개. 목록의 확인 필요와 연결 */}
             {data.excludedSegmentCount > 0 && (
               <p className="text-caption leading-relaxed text-muted-foreground">
-                {t.fuel.summary.excluded(data.excludedSegmentCount)}
+                {t.fuel.summary.excluded(f.count(data.excludedSegmentCount))}
               </p>
             )}
 
             {/* 기록 누락 구간을 뺀 개수 공개. 목록 숫자와 평균의 불일치 설명 */}
             {data.longSegmentCount > 0 && (
               <p className="text-caption leading-relaxed text-muted-foreground">
-                {t.fuel.summary.missing(data.longSegmentCount)}
+                {t.fuel.summary.missing(f.count(data.longSegmentCount))}
               </p>
             )}
 
             {/* 통화가 다른 기록은 더할 수 없어 뺌. 말없이 빼지 않음 */}
             {data.otherCurrencyRecordCount > 0 && (
               <p className="text-caption leading-relaxed text-muted-foreground">
-                {t.fuel.summary.otherCurrency(data.otherCurrencyRecordCount, data.currency)}
+                {t.fuel.summary.otherCurrency(f.count(data.otherCurrencyRecordCount), data.currency)}
               </p>
             )}
 
@@ -255,7 +255,7 @@ function EfficiencyTrend({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5 bg-card px-4 py-3.5">
-      <dt className="text-eyebrow text-faint">{label}</dt>
+      <dt className="text-unit text-muted-foreground">{label}</dt>
       {/* 폰의 두 칸에서 7자리 금액이 22px 로 안 들어감. 잘리면 틀린 숫자로 읽힘 */}
       <dd className="text-section font-normal tabular-nums text-strong [overflow-wrap:anywhere] sm:text-figure">
         {value}

@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -88,7 +89,7 @@ class FuelRecordServiceTest {
         LocalDate tomorrow = LocalDate.of(2026, 9, 30);
         when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle(0));
         doThrow(new InvalidRequestException(ErrorCode.FUTURE_DATE, "fueledAt: 오늘 이후 날짜는 입력할 수 없습니다."))
-                .when(userToday).rejectFuture(1L, tomorrow, "fueledAt");
+                .when(userToday).rejectOutOfRange(1L, tomorrow, "fueledAt");
 
         assertThatThrownBy(() -> fuelRecordService.register(1L, "V10",
                 new FuelRecordRegisterRequest(tomorrow, 10000, new BigDecimal("30.00"), 60000, null)))
@@ -119,11 +120,18 @@ class FuelRecordServiceTest {
     @DisplayName("연비는 직전 주유 이후 달린 거리를 이번 주유량으로 나눈 값이다")
     void efficiencyFromPrevious() {
         Vehicle vehicle = vehicle(10000);
+        FuelRecord previous = record(1L, vehicle, 10000, "30.00", 60000);
+        FuelRecord[] saved = new FuelRecord[1];
         when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
-        when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
-        when(fuelRecordRepository.findPrevious(
-                eq(10L), anyInt(), any()))
-                .thenReturn(Optional.of(record(1L, vehicle, 10000, "30.00", 60000)));
+        when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> {
+            saved[0] = i.getArgument(0);
+            ReflectionTestUtils.setField(saved[0], "id", 2L);
+            return saved[0];
+        });
+        when(fuelRecordRepository.findPrevious(eq(10L), anyInt(), any())).thenReturn(Optional.of(previous));
+        // 행 연비는 이력 전체로 낸 구간(평균과 같은 계산)
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
+                .thenAnswer(i -> List.of(previous, saved[0]));
 
         FuelRecordResponse response = fuelRecordService.register(1L, "V10",
                 new FuelRecordRegisterRequest(LocalDate.of(2026, 9, 10), 10500,
@@ -170,14 +178,16 @@ class FuelRecordServiceTest {
         when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
 
         // 11000 → 10500 이 한 페이지. 10500 의 짝(10000)은 다음 페이지
+        FuelRecord first = record(1L, vehicle, 10000, "30.00", 60000);
         List<FuelRecord> items = List.of(
                 record(3L, vehicle, 11000, "25.00", 50000),
                 record(2L, vehicle, 10500, "25.00", 50000));
         Pageable pageable = PageRequest.of(0, 2);
         when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(items, pageable, 3));
-        when(fuelRecordRepository.findPrevious(eq(10L), eq(10500), any()))
-                .thenReturn(Optional.of(record(1L, vehicle, 10000, "30.00", 60000)));
+        when(fuelRecordRepository.findPrevious(eq(10L), eq(10500), any())).thenReturn(Optional.of(first));
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
+                .thenReturn(List.of(first, items.get(1), items.get(0)));
 
         Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, "V10", pageable);
 
@@ -544,10 +554,11 @@ class FuelRecordServiceTest {
     void resetPointBreaksSegment() {
         Vehicle vehicle = vehicle(20000);
         FuelRecord existing = record(2L, vehicle, 20000, "25.00", 50000);
+        FuelRecord previous = record(1L, vehicle, 19500, "30.00", 60000);
         when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
         when(fuelRecordRepository.findByPublicIdAndVehicleId("R2", 10L)).thenReturn(Optional.of(existing));
-        when(fuelRecordRepository.findPrevious(
-                eq(10L), anyInt(), any())).thenReturn(Optional.of(record(1L, vehicle, 19500, "30.00", 60000)));
+        when(fuelRecordRepository.findPrevious(eq(10L), anyInt(), any())).thenReturn(Optional.of(previous));
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(previous, existing));
 
         // 해제 전 500km ÷ 25L = 20.00
         FuelRecordResponse before = fuelRecordService.update(1L, "V10", "R2",
@@ -582,5 +593,112 @@ class FuelRecordServiceTest {
                 new FuelRecordUpdateRequest(null, null, null, null, null, null, null, false));
         assertThat(older.isResetPoint()).isFalse();
         assertThat(latest.isResetPoint()).isFalse();
+    }
+
+    @Test
+    @DisplayName("기준점이 아닌 기록에 해제를 보내면 아무 일도 없다 — 지금 기준점이 말없이 풀리지 않게")
+    void unsetOnNonResetPointKeepsCurrentResetPoint() {
+        Vehicle vehicle = vehicle(30000);
+        FuelRecord current = resetPointAt(1L, vehicle, 25000, "30.00", 60000);
+        FuelRecord other = record(2L, vehicle, 20000, "30.00", 60000);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(fuelRecordRepository.findByPublicIdAndVehicleId("R2", 10L)).thenReturn(Optional.of(other));
+        lenient().when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
+                .thenReturn(List.of(other, current));
+
+        fuelRecordService.update(1L, "V10", "R2",
+                new FuelRecordUpdateRequest(null, null, null, null, null, null, null, false));
+
+        assertThat(current.isResetPoint()).isTrue();
+        assertThat(other.isResetPoint()).isFalse();
+    }
+
+    @Test
+    @DisplayName("기준점보다 앞선 행에는 '기록 빠짐?' 을 붙이지 않는다 — 평균 밖이라 '평균에서 뺐다' 는 말이 거짓")
+    void noMissingRecordFlagBeforeResetPoint() {
+        Vehicle vehicle = vehicle(12400);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+
+        // 평소 400km/40L, 11,600 구간만 800km. 그 뒤 12,000 에서 초기화
+        FuelRecord jump = record(4L, vehicle, 11600, "40.00", 60000);
+        List<FuelRecord> ascending = List.of(
+                record(1L, vehicle, 10000, "40.00", 60000),
+                record(2L, vehicle, 10400, "40.00", 60000),
+                record(3L, vehicle, 10800, "40.00", 60000),
+                jump,
+                resetPointAt(5L, vehicle, 12000, "40.00", 60000),
+                record(6L, vehicle, 12400, "40.00", 60000));
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(ascending);
+
+        Pageable pageable = PageRequest.of(0, 1);
+        when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(jump), pageable, 6));
+        when(fuelRecordRepository.findPrevious(eq(10L), eq(11600), any()))
+                .thenReturn(Optional.of(ascending.get(2)));
+
+        FuelRecordResponse row = fuelRecordService.findByVehicle(1L, "V10", pageable).getContent().get(0);
+
+        assertThat(row.efficiency()).isEqualByComparingTo("20.00");
+        assertThat(row.missingRecordSuspected()).isFalse();
+    }
+
+    @Test
+    @DisplayName("수정에서 값과 비움이 함께 오면 비움이 이긴다 — 주유량·금액 모두")
+    void clearWinsOverValueOnUpdate() {
+        Vehicle vehicle = vehicle(30000);
+        FuelRecord record = record(1L, vehicle, 20000, "30.00", 60000);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(fuelRecordRepository.findByPublicIdAndVehicleId("R1", 10L)).thenReturn(Optional.of(record));
+
+        FuelRecordResponse response = fuelRecordService.update(1L, "V10", "R1",
+                new FuelRecordUpdateRequest(null, null, new BigDecimal("50.00"), 90000, true, true, null, null));
+
+        assertThat(record.getLiters()).isNull();
+        assertThat(record.getTotalCost()).isNull();
+        assertThat(response.liters()).isNull();
+        assertThat(response.totalCost()).isNull();
+    }
+
+    @Test
+    @DisplayName("덜 채운 주유 행은 연비 없이 가득 여부만, 다음 가득 행은 직전 가득부터의 거리·연비")
+    void partialFillRowsInList() {
+        Vehicle vehicle = vehicle(10600);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+        FuelRecord first = record(1L, vehicle, 10000, "40.00", 60000);
+        FuelRecord partial = record(2L, vehicle, 10300, "10.00", 15000);
+        partial.changeFullTank(false);
+        FuelRecord full = record(3L, vehicle, 10600, "30.00", 45000);
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(List.of(first, partial, full));
+
+        Pageable pageable = PageRequest.of(0, 3);
+        when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(full, partial, first), pageable, 3));
+        when(fuelRecordRepository.findPrevious(eq(10L), eq(10000), any())).thenReturn(Optional.empty());
+
+        List<FuelRecordResponse> rows = fuelRecordService.findByVehicle(1L, "V10", pageable).getContent();
+
+        // 가득 행: 600km ÷ (10 + 30)L
+        assertThat(rows.get(0).distance()).isEqualTo(600);
+        assertThat(rows.get(0).efficiency()).isEqualByComparingTo("15.00");
+        // 덜 채운 행: 거리는 직전부터, 연비 없음
+        assertThat(rows.get(1).fullTank()).isFalse();
+        assertThat(rows.get(1).distance()).isEqualTo(300);
+        assertThat(rows.get(1).efficiency()).isNull();
+    }
+
+    @Test
+    @DisplayName("가득 여부를 안 보내면 가득으로 등록한다 — 지금까지의 기록과 같은 뜻")
+    void registerDefaultsToFullTank() {
+        Vehicle vehicle = vehicle(10000);
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(fuelRecordRepository.save(any(FuelRecord.class))).thenAnswer(i -> i.getArgument(0));
+
+        FuelRecordResponse full = fuelRecordService.register(1L, "V10",
+                new FuelRecordRegisterRequest(LocalDate.of(2026, 9, 1), 10000, new BigDecimal("30.00"), 60000, null));
+        FuelRecordResponse partial = fuelRecordService.register(1L, "V10",
+                new FuelRecordRegisterRequest(LocalDate.of(2026, 9, 2), 10100, new BigDecimal("5.00"), 10000, null, false));
+
+        assertThat(full.fullTank()).isTrue();
+        assertThat(partial.fullTank()).isFalse();
     }
 }

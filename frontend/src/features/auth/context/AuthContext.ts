@@ -13,6 +13,10 @@ export interface AuthContextValue {
   loading: boolean
   /** 서버가 세션을 끊어(401) 로그아웃된 상태. 로그인 화면 안내용 */
   sessionEnded: boolean
+  /** 끊긴 세션의 이메일. 다른 계정으로 로그인하면 앞 계정의 주소로 돌아가지 않게 */
+  endedEmail: string | null
+  /** 로그인 화면이 끊김 안내를 보여 준 뒤 끔 */
+  acknowledgeSessionEnded: () => void
   login: (request: LoginRequest) => Promise<void>
   /** 서버 세션을 못 끊었으면(네트워크 등) 던지고 로그인 상태 유지 */
   logout: () => Promise<void>

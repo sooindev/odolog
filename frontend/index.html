@@ -20,18 +20,19 @@
           document.documentElement.lang = 'ko'
           document.title = '오도로그'
         }
+        var stored = null
         try {
-          var stored = localStorage.getItem('odolog-theme')
-          var dark =
-            stored === 'dark' ||
-            (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-
-          if (dark) {
-            document.documentElement.classList.add('dark')
-            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#17171a')
-          }
+          stored = localStorage.getItem('odolog-theme')
         } catch (error) {
-          // localStorage 차단 환경은 라이트로 시작
+          // 저장소 차단 환경은 저장값 없이 기기 설정으로. React 쪽도 그때 'system' 이라 둘이 같아짐
+        }
+        var dark =
+          stored === 'dark' ||
+          (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+        if (dark) {
+          document.documentElement.classList.add('dark')
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#17171a')
         }
       })()
     </script>

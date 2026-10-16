@@ -64,38 +64,42 @@ public class PasswordResetMailer {
     /** 받는 사람의 언어로 제목·본문. 발송과 분리해 테스트 가능 */
     SimpleMailMessage compose(String email, String token, int validMinutes, Language language) {
         SimpleMailMessage message = new SimpleMailMessage();
-        // from 이 비면 spring.mail.username 사용
+        // from 은 spring.mail.username 기본값. 둘 다 비면 메일 서버가 로그인 계정으로 채움
         if (!from.isBlank()) {
             message.setFrom(from);
         }
         message.setTo(email);
 
         String link = link(token);
-        switch (language) {
-            case EN -> {
-                message.setSubject("[OdoLog] Reset your password");
-                message.setText("""
-                        Use the link below to set a new password.
+        // switch 식. 언어가 늘면 여기서 컴파일이 깨져 제목·본문이 빈 메일이 나가지 않음
+        Mail mail = switch (language) {
+            case EN -> new Mail(
+                    "[OdoLog] Reset your password",
+                    """
+                    Use the link below to set a new password.
 
-                        %s
+                    %s
 
-                        The link works for %d minutes and only once.
-                        If you didn't ask for this, ignore this email. Your password stays the same.
-                        """.formatted(link, validMinutes));
-            }
-            case KO -> {
-                message.setSubject("[오도로그] 비밀번호 재설정");
-                message.setText("""
-                        아래 링크에서 새 비밀번호를 설정하세요.
+                    The link works for %d minutes and only once.
+                    If you didn't ask for this, ignore this email. Your password stays the same.
+                    """.formatted(link, validMinutes));
+            case KO -> new Mail(
+                    "[오도로그] 비밀번호 재설정",
+                    """
+                    아래 링크에서 새 비밀번호를 설정하세요.
 
-                        %s
+                    %s
 
-                        이 링크는 %d분 동안만 쓸 수 있고, 한 번 쓰면 사라집니다.
-                        본인이 요청한 것이 아니라면 이 메일을 무시하세요. 비밀번호는 그대로입니다.
-                        """.formatted(link, validMinutes));
-            }
-        }
+                    이 링크는 %d분 동안만 쓸 수 있고, 한 번 쓰면 사라집니다.
+                    본인이 요청한 것이 아니라면 이 메일을 무시하세요. 비밀번호는 그대로입니다.
+                    """.formatted(link, validMinutes));
+        };
+        message.setSubject(mail.subject());
+        message.setText(mail.text());
         return message;
+    }
+
+    private record Mail(String subject, String text) {
     }
 
     private String link(String token) {

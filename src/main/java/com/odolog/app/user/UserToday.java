@@ -2,6 +2,7 @@ package com.odolog.app.user;
 
 import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.exception.type.InvalidRequestException;
+import com.odolog.app.common.validation.InputLimits;
 import com.odolog.app.user.domain.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -43,18 +44,28 @@ public class UserToday {
         return LocalDate.now(clock.withZone(ZoneId.of(user.getTimeZone())));
     }
 
-    /** 사용자의 오늘 이후면 400. null 은 통과(안 보낸 값). @PastOrPresent 는 서버 시간대 기준이라 미사용 */
-    public void rejectFuture(Long userId, LocalDate date, String field) {
+    /**
+     * 기록 날짜 범위 검사. 사용자의 오늘 이후·하한(1900년) 이전이면 400. null 은 통과(안 보낸 값)
+     * @PastOrPresent 는 서버 시간대 기준이라 미사용
+     */
+    public void rejectOutOfRange(Long userId, LocalDate date, String field) {
         if (date != null) {
-            rejectFuture(of(userId), date, field);
+            rejectOutOfRange(of(userId), date, field);
         }
     }
 
     /** 이미 계산한 오늘 기준. 여러 날짜를 한 번에 검사할 때(가져오기) */
-    public static void rejectFuture(LocalDate today, LocalDate date, String field) {
-        if (date != null && date.isAfter(today)) {
+    public static void rejectOutOfRange(LocalDate today, LocalDate date, String field) {
+        if (date == null) {
+            return;
+        }
+        if (date.isAfter(today)) {
             throw new InvalidRequestException(ErrorCode.FUTURE_DATE,
                     field + ": 오늘 이후 날짜는 입력할 수 없습니다.", field);
+        }
+        if (date.isBefore(InputLimits.MIN_RECORD_DATE)) {
+            throw new InvalidRequestException(ErrorCode.VALIDATION_FAILED,
+                    field + ": " + InputLimits.MIN_RECORD_DATE.getYear() + "년 이후 날짜만 입력할 수 있습니다.", field);
         }
     }
 }

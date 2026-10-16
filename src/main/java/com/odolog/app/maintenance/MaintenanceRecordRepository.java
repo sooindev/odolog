@@ -24,7 +24,7 @@ public interface MaintenanceRecordRepository extends JpaRepository<MaintenanceRe
     /** 종류별 최신 1건용 전체 조회. 종류마다 조회 시 15쿼리 */
     List<MaintenanceRecord> findByVehicleIdOrderByServiceDateDescIdDesc(Long vehicleId);
 
-    /** 한 사용자의 전체 정비 이력. 홈 요약 전용 */
+    /** 한 사용자의 전체 정비 이력. 홈 요약·차량 목록·내보내기가 한 번에 읽음 */
     List<MaintenanceRecord> findByVehicle_Owner_IdOrderByServiceDateDescIdDesc(Long ownerId);
 
     /**

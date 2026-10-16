@@ -15,6 +15,7 @@ import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.sql.SQLException;
 
@@ -82,5 +83,29 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode().value()).isEqualTo(500);
         assertThat(((ErrorResponse) response.getBody()).code()).isEqualTo(ErrorCode.SERVER_ERROR);
         assertThat(output).contains("응답을 JSON 으로 못 씀");
+    }
+
+    @Test
+    @DisplayName("스프링이 413 으로 처리한 예외는 BAD_REQUEST 가 아니라 PAYLOAD_TOO_LARGE")
+    void payloadTooLargeKeepsItsCode() throws Exception {
+        ResponseEntity<Object> response = handler.handleException(
+                new MaxUploadSizeExceededException(10),
+                new ServletWebRequest(new MockHttpServletRequest(), new MockHttpServletResponse()));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(413);
+        assertThat(((ErrorResponse) response.getBody()).code()).isEqualTo(ErrorCode.PAYLOAD_TOO_LARGE);
+    }
+
+    @Test
+    @DisplayName("이미 보내기 시작한 응답에는 오류 본문을 쓰지 않는다")
+    void committedResponseIsLeftAlone() throws Exception {
+        MockHttpServletResponse committed = new MockHttpServletResponse();
+        committed.setCommitted(true);
+
+        ResponseEntity<Object> response = handler.handleException(
+                new HttpMessageNotWritableException("응답 도중 실패"),
+                new ServletWebRequest(new MockHttpServletRequest(), committed));
+
+        assertThat(response).isNull();
     }
 }

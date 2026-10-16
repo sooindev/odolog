@@ -244,7 +244,7 @@ export function TypeCostChart({
                   <span className="text-body text-strong">
                     {t.serviceTypes[entry.type]}
                     <span className="ml-2 text-unit tabular-nums text-muted-foreground">
-                      {t.common.records(entry.count)}
+                      {t.common.records(f.count(entry.count))}
                     </span>
                   </span>
                   <span className="shrink-0 text-caption tabular-nums text-strong">

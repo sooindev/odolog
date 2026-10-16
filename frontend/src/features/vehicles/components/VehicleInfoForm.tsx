@@ -14,6 +14,7 @@ import type {
   VehicleResponse,
   VehicleUpdateRequest,
 } from '@/features/vehicles/api/types'
+import { MAX_MANUFACTURER_LENGTH, MAX_MODEL_NAME_LENGTH, MAX_PLATE_LENGTH } from '@/shared/lib/limits'
 
 /**
  * 차량 정보(번호판·제조사·모델·연식) 수정. 주행거리 제외
@@ -141,7 +142,7 @@ function EditForm({
           // 번호판에 첫 포커스
           autoFocus
           required
-          maxLength={20}
+          maxLength={MAX_PLATE_LENGTH}
           value={plateNumber}
           onChange={(event) => setPlateNumber(event.target.value)}
         />
@@ -152,7 +153,7 @@ function EditForm({
           <Input
             id="edit-manufacturer"
             required
-            maxLength={50}
+            maxLength={MAX_MANUFACTURER_LENGTH}
             value={manufacturer}
             onChange={(event) => setManufacturer(event.target.value)}
           />
@@ -162,7 +163,7 @@ function EditForm({
           <Input
             id="edit-model-name"
             required
-            maxLength={100}
+            maxLength={MAX_MODEL_NAME_LENGTH}
             value={modelName}
             onChange={(event) => setModelName(event.target.value)}
           />

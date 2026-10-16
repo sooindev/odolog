@@ -60,7 +60,7 @@ class FuelRecordControllerTest {
 
     private FuelRecordResponse response() {
         return new FuelRecordResponse("R1", LocalDate.of(2026, 9, 10), 10500,
-                new BigDecimal("25.00"), 50000, "KRW", null, false,
+                new BigDecimal("25.00"), 50000, "KRW", null, false, true,
                 2000L, 500, new BigDecimal("20.00"), false, false, false);
     }
 
@@ -224,5 +224,31 @@ class FuelRecordControllerTest {
     void deleteSuccess() throws Exception {
         mockMvc.perform(delete("/api/vehicles/10/fuel-records/1").session(loginSessionOf(1L)))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("정수 칸에 소수를 보내면 400 — 0.5 가 0원으로 바뀌어 저장되지 않게")
+    void rejectsFractionInIntegerField() throws Exception {
+        mockMvc.perform(post("/api/vehicles/10/fuel-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fueledAt":"2026-09-10","odometer":10500,"totalCost":0.5}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value("totalCost"));
+    }
+
+    @Test
+    @DisplayName("숫자 칸에 문자열을 보내면 400")
+    void rejectsStringInNumberField() throws Exception {
+        mockMvc.perform(post("/api/vehicles/10/fuel-records")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fueledAt":"2026-09-10","odometer":"10500"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value("odometer"));
     }
 }

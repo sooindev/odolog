@@ -101,9 +101,15 @@ public class PasswordResetService {
      * 재설정 링크 발송. 없는 주소도 같은 정상 응답(가입 여부 노출 방지)
      * 횟수 집계만 요청 스레드에서. 조회·토큰 저장은 다른 스레드라 가입 여부와 무관하게 같은 응답 시간
      */
-    public void request(String email) {
+    /** 트랜잭션 없음. 횟수만 세고 나머지는 다른 스레드라 커넥션을 쥘 이유가 없음 */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void request(String email, String clientIp) {
+        // 로그인과 같은 짝 키. 남의 주소로 열 번 요청해도 그 사람의 재설정 메일은 막히지 않음
+        // 계정 전체는 다섯 배. 같은 주소로의 메일 폭주 방지
         String limitKey = RATE_LIMIT_PREFIX + email;
-        rateLimiter.acquire(limitKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
+        rateLimiter.acquire(LoginAttemptLimiter.pair(limitKey, clientIp), ErrorCode.TOO_MANY_RESET_REQUESTS,
+                "비밀번호 재설정 요청이 너무 많습니다.");
+        rateLimiter.acquireShared(limitKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
 
         if (!pending.tryAcquire()) {
             log.warn("비밀번호 재설정 대기 작업이 상한({})에 닿아 요청을 버립니다.", MAX_PENDING);
@@ -188,10 +194,12 @@ public class PasswordResetService {
         // 주인 확인은 잠금 없이 따로. 잠그는 트랜잭션의 첫 조회가 사용자 행 잠금이 되게
         Long userId = tokenRepository.findUserIdByTokenHash(tokenHash).orElseThrow(PasswordResetService::invalidLink);
 
-        transactionTemplate.executeWithoutResult(status -> confirmLocked(userId, tokenHash, request.newPassword()));
+        // 새 해시는 잠그기 전에. BCrypt 동안 사용자 행 잠금을 쥐지 않게
+        String newHash = passwordEncoder.encode(request.newPassword());
+        transactionTemplate.executeWithoutResult(status -> confirmLocked(userId, tokenHash, newHash));
     }
 
-    private void confirmLocked(Long userId, String tokenHash, String newPassword) {
+    private void confirmLocked(Long userId, String tokenHash, String newHash) {
         LocalDateTime now = LocalDateTime.now(clock);
 
         User user = userRepository.findLockedById(userId).orElseThrow(PasswordResetService::invalidLink);
@@ -200,14 +208,15 @@ public class PasswordResetService {
                 .filter(candidate -> candidate.isUsable(now))
                 .orElseThrow(PasswordResetService::invalidLink);
 
-        user.changePassword(passwordEncoder.encode(newPassword));
+        user.changePassword(newHash);
         token.markUsed(now);
 
         // 잠금 해제·세션 종료는 커밋 뒤. 세션 표는 별도 트랜잭션이라 안에서 지우면 롤백돼도 사라짐
         String loginKey = UserService.LOGIN_KEY_PREFIX + user.getEmail();
         String passwordCheckKey = UserService.PASSWORD_CHECK_KEY_PREFIX + userId;
         afterCommit(() -> {
-            rateLimiter.recordSuccess(loginKey);
+            // 어느 IP 에서 잠겼든 풂(계정 키와 짝 키 전부)
+            rateLimiter.forgetWithPairs(loginKey);
             // 비밀번호 확인 잠금도 해제. 남기면 재설정 직후 변경·탈퇴가 10분간 막힘
             rateLimiter.recordSuccess(passwordCheckKey);
             sessionRegistry.invalidateAll(userId);

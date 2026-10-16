@@ -59,7 +59,7 @@ class UserTodayTest {
     void acceptsTodayAheadOfSeoul() {
         UserToday auckland = userTodayIn("Pacific/Auckland");
 
-        assertThatCode(() -> auckland.rejectFuture(1L, LocalDate.of(2026, 9, 30), "serviceDate"))
+        assertThatCode(() -> auckland.rejectOutOfRange(1L, LocalDate.of(2026, 9, 30), "serviceDate"))
                 .doesNotThrowAnyException();
     }
 
@@ -68,10 +68,21 @@ class UserTodayTest {
     void rejectsTomorrowButNotNull() {
         UserToday seoul = userTodayIn("Asia/Seoul");
 
-        assertThatThrownBy(() -> seoul.rejectFuture(1L, LocalDate.of(2026, 9, 30), "serviceDate"))
+        assertThatThrownBy(() -> seoul.rejectOutOfRange(1L, LocalDate.of(2026, 9, 30), "serviceDate"))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageStartingWith("serviceDate: ");
-        assertThatCode(() -> seoul.rejectFuture(1L, null, "serviceDate"))
+        assertThatCode(() -> seoul.rejectOutOfRange(1L, null, "serviceDate"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("1900년 이전 날짜는 400 — 연도 오타(0026)·음수 연도가 깨져 저장되거나 영영 '지남' 으로 남지 않게")
+    void rejectsDatesBefore1900() {
+        assertThatThrownBy(() -> UserToday.rejectOutOfRange(LocalDate.of(2026, 9, 29), LocalDate.of(26, 10, 1), "serviceDate"))
+                .isInstanceOf(InvalidRequestException.class);
+        assertThatThrownBy(() -> UserToday.rejectOutOfRange(LocalDate.of(2026, 9, 29), LocalDate.of(-1, 1, 1), "fueledAt"))
+                .isInstanceOf(InvalidRequestException.class);
+        assertThatCode(() -> UserToday.rejectOutOfRange(LocalDate.of(2026, 9, 29), LocalDate.of(1900, 1, 1), "serviceDate"))
                 .doesNotThrowAnyException();
     }
 }

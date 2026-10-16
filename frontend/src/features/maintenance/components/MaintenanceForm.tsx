@@ -12,7 +12,7 @@ import { ErrorText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { todayString } from '@/shared/lib/format'
-import { MAX_ODOMETER } from '@/shared/lib/limits'
+import { MAX_MEMO_LENGTH, MAX_ODOMETER } from '@/shared/lib/limits'
 import { fromMinor, inputStep, maxMajor, toMinor } from '@/shared/lib/money'
 import { looksBigJump, looksPast } from '@/shared/lib/odometer'
 import { fromKm, toKm } from '@/shared/lib/units'
@@ -232,7 +232,7 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
         <Textarea
           id="description"
           rows={2}
-          maxLength={255}
+          maxLength={MAX_MEMO_LENGTH}
           placeholder={t.maintenance.form.memoPlaceholder}
           value={description}
           onChange={(event) => setDescription(event.target.value)}

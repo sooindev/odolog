@@ -10,7 +10,7 @@ import { useI18n } from '@/shared/i18n/I18nContext'
 
 /** 홈 통계. 차량이 한 대 이상일 때의 얼굴 */
 export function Dashboard({ data, nickname }: { data: HomeData; nickname: string }) {
-  const { t } = useI18n()
+  const { t, f } = useI18n()
 
   return (
     <Page
@@ -35,7 +35,7 @@ export function Dashboard({ data, nickname }: { data: HomeData; nickname: string
       {/* 통화가 다른 기록은 더할 수 없어 뺌. 말없이 빼지 않음 */}
       {data.otherCurrencyRecordCount > 0 && (
         <p className="-mt-4 text-caption text-muted-foreground sm:-mt-8">
-          {t.home.otherCurrency(data.otherCurrencyRecordCount, data.currency)}
+          {t.home.otherCurrency(f.count(data.otherCurrencyRecordCount), data.currency)}
         </p>
       )}
 
@@ -125,17 +125,17 @@ function VehicleBreakdown({ vehicles }: { vehicles: HomeData['vehicles'] }) {
                     {/* 지난 정비 표시. 빨강 대신 테두리(NextServiceCard 참고) */}
                     {line.overdueServiceCount > 0 && (
                       <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
-                        {t.vehicles.overdue(line.overdueServiceCount)}
+                        {t.vehicles.overdue(f.count(line.overdueServiceCount))}
                       </span>
                     )}
                     {line.dueSoonServiceCount > 0 && (
                       <span className="shrink-0 border border-border px-1.5 py-0.5 text-unit text-muted-foreground">
-                        {t.vehicles.dueSoon(line.dueSoonServiceCount)}
+                        {t.vehicles.dueSoon(f.count(line.dueSoonServiceCount))}
                       </span>
                     )}
                   </p>
                   <p className="text-caption text-muted-foreground">
-                    {line.plateNumber} · {t.home.vehicles.maintenanceCount(line.maintenanceCount)}
+                    {line.plateNumber} · {t.home.vehicles.maintenanceCount(f.count(line.maintenanceCount))}
                     {/* 평균 연비. 없으면 자리 자체를 비움 */}
                     {line.averageEfficiency !== null && ` · ${f.efficiency(line.averageEfficiency, 1)}`}
                   </p>

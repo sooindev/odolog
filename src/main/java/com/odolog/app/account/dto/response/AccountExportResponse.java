@@ -7,17 +7,21 @@ import com.odolog.app.user.domain.User;
 import com.odolog.app.vehicle.domain.Vehicle;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 계정 기록 전체. 백업용이라 계산값(연비·단가) 제외
  * 기록은 차량 밑에 중첩. 우리 DB 의 id 없이도 소속 파악 가능
+ * 시각은 전부 사용자 시간대 + 오프셋. 오프셋이 없으면 같은 파일 안의 시각끼리도 비교할 수 없음
  */
 public record AccountExportResponse(
-        LocalDateTime exportedAt,
+        OffsetDateTime exportedAt,
         UserData user,
         List<VehicleData> vehicles
 ) {
@@ -25,11 +29,11 @@ public record AccountExportResponse(
     public record UserData(
             String email,
             String nickname,
-            LocalDateTime createdAt
+            OffsetDateTime createdAt
     ) {
-        static UserData from(User user) {
+        static UserData from(User user, ZoneId zone) {
             // 비밀번호 해시 제외
-            return new UserData(user.getEmail(), user.getNickname(), user.getCreatedAt());
+            return new UserData(user.getEmail(), user.getNickname(), at(user.getCreatedAt(), zone));
         }
     }
 
@@ -39,7 +43,7 @@ public record AccountExportResponse(
             String modelName,
             Integer modelYear,
             int odometer,
-            LocalDateTime createdAt,
+            OffsetDateTime createdAt,
             List<MaintenanceData> maintenanceRecords,
             List<FuelData> fuelRecords,
             /** 차량별 권장 주기. 빠지면 복원한 차가 기본값으로 돌아감 */
@@ -67,9 +71,9 @@ public record AccountExportResponse(
             String currency,
             Integer serviceOdometer,
             LocalDate serviceDate,
-            LocalDateTime createdAt
+            OffsetDateTime createdAt
     ) {
-        static MaintenanceData from(MaintenanceRecord record) {
+        static MaintenanceData from(MaintenanceRecord record, ZoneId zone) {
             return new MaintenanceData(
                     record.getType().name(),
                     record.getDescription(),
@@ -77,7 +81,7 @@ public record AccountExportResponse(
                     record.getCurrency(),
                     record.getServiceOdometer(),
                     record.getServiceDate(),
-                    record.getCreatedAt());
+                    at(record.getCreatedAt(), zone));
         }
     }
 
@@ -89,9 +93,10 @@ public record AccountExportResponse(
             String currency,
             String memo,
             boolean resetPoint,
-            LocalDateTime createdAt
+            boolean fullTank,
+            OffsetDateTime createdAt
     ) {
-        static FuelData from(FuelRecord record) {
+        static FuelData from(FuelRecord record, ZoneId zone) {
             return new FuelData(
                     record.getFueledAt(),
                     record.getOdometer(),
@@ -100,18 +105,26 @@ public record AccountExportResponse(
                     record.getCurrency(),
                     record.getMemo(),
                     record.isResetPoint(),
-                    record.getCreatedAt());
+                    record.isFullTank(),
+                    at(record.getCreatedAt(), zone));
         }
     }
 
+    /** 기록 시각(JVM 시간대로 저장된 로컬 시각) → 사용자 시간대 + 오프셋 */
+    private static OffsetDateTime at(LocalDateTime stored, ZoneId zone) {
+        return stored == null ? null
+                : stored.atZone(ZoneId.systemDefault()).withZoneSameInstant(zone).toOffsetDateTime();
+    }
+
     public static AccountExportResponse of(
-            LocalDateTime exportedAt,
+            Instant exportedAt,
             User user,
             List<Vehicle> vehicles,
             Map<Long, List<MaintenanceRecord>> maintenanceByVehicle,
             Map<Long, List<FuelRecord>> fuelByVehicle,
             Map<Long, List<ServiceInterval>> intervalsByVehicle) {
 
+        ZoneId zone = ZoneId.of(user.getTimeZone());
         List<VehicleData> vehicleData = vehicles.stream()
                 .map(vehicle -> new VehicleData(
                         vehicle.getPlateNumber(),
@@ -119,18 +132,19 @@ public record AccountExportResponse(
                         vehicle.getModelName(),
                         vehicle.getModelYear(),
                         vehicle.getOdometer(),
-                        vehicle.getCreatedAt(),
+                        at(vehicle.getCreatedAt(), zone),
                         maintenanceByVehicle.getOrDefault(vehicle.getId(), List.of()).stream()
-                                .map(MaintenanceData::from)
+                                .map(record -> MaintenanceData.from(record, zone))
                                 .toList(),
                         fuelByVehicle.getOrDefault(vehicle.getId(), List.of()).stream()
-                                .map(FuelData::from)
+                                .map(record -> FuelData.from(record, zone))
                                 .toList(),
                         intervalsByVehicle.getOrDefault(vehicle.getId(), List.of()).stream()
                                 .map(IntervalData::from)
                                 .toList()))
                 .toList();
 
-        return new AccountExportResponse(exportedAt, UserData.from(user), vehicleData);
+        return new AccountExportResponse(exportedAt.atZone(zone).toOffsetDateTime(),
+                UserData.from(user, zone), vehicleData);
     }
 }

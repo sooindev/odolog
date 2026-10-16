@@ -1,6 +1,8 @@
 package com.odolog.app.common.auth;
 
 import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import org.springframework.stereotype.Component;
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class LoginSessionRegistry {
+
+    private static final Logger log = LoggerFactory.getLogger(LoginSessionRegistry.class);
 
     private final FindByIndexNameSessionRepository<? extends Session> sessions;
 
@@ -29,13 +33,21 @@ public class LoginSessionRegistry {
         invalidateOthers(userId, null);
     }
 
-    /** 비밀번호 변경용. 현재 세션만 유지 */
+    /**
+     * 비밀번호 변경용. 현재 세션만 유지
+     * 실패해도 던지지 않고 ERROR 로그. 부르는 시점엔 비밀번호가 이미 바뀌어 커밋됨
+     * 던지면 바뀐 비밀번호를 500 으로 알리고, 다시 시도한 재설정은 "만료된 링크" 가 됨
+     */
     public void invalidateOthers(Long userId, HttpSession keep) {
         String keepId = keep == null ? null : keep.getId();
-        for (String sessionId : sessions.findByPrincipalName(String.valueOf(userId)).keySet()) {
-            if (!sessionId.equals(keepId)) {
-                sessions.deleteById(sessionId);
+        try {
+            for (String sessionId : sessions.findByPrincipalName(String.valueOf(userId)).keySet()) {
+                if (!sessionId.equals(keepId)) {
+                    sessions.deleteById(sessionId);
+                }
             }
+        } catch (RuntimeException e) {
+            log.error("사용자 {} 의 다른 세션을 끊지 못함", userId, e);
         }
     }
 }

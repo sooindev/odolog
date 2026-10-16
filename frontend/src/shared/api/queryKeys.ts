@@ -17,6 +17,12 @@ export const queryKeys = {
   fuelList: (vehicleId: string, page: number) => ['vehicles', vehicleId, 'fuel', 'list', page] as const,
   fuelSummary: (vehicleId: string) => ['vehicles', vehicleId, 'fuel', 'summary'] as const,
   gettingStarted: (vehicleId: string) => ['vehicles', vehicleId, 'getting-started'] as const,
+  /**
+   * 여러 차량을 합친 화면(홈·차량 목록). 어느 차의 기록이 바뀌어도 달라져서 화면을 떠나면 바로 버림(gcTime 0)
+   * 남겨 두면 다시 열 때 옛 숫자가 먼저 보임
+   */
+  summary: () => ['overview', 'summary'] as const,
+  vehicleList: (page: number) => ['overview', 'vehicles', page] as const,
 }
 
 /**

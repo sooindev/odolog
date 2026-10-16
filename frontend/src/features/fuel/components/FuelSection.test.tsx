@@ -24,6 +24,7 @@ function record(id: string, odometer: number, memo: string): FuelRecordResponse 
     currency: 'KRW',
     memo,
     resetPoint: false,
+    fullTank: true,
     pricePerLiter: 1667,
     distance: 500,
     efficiency: 16.67,
@@ -58,11 +59,11 @@ describe('FuelSection', () => {
     renderWithProviders(<FuelSection vehicleId="vehicle00001" currentOdometer={46000} onChanged={() => {}} />)
 
     const rows = await screen.findAllByRole('listitem')
-    fireEvent.click(within(rows[0]).getByRole('button', { name: '수정' }))
+    fireEvent.click(within(rows[0]).getByRole('button', { name: /수정$/ }))
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('첫 번째 메모')
 
     fireEvent.change(screen.getByLabelText(/메모/), { target: { value: '고치던 중' } })
-    fireEvent.click(within(rows[1]).getByRole('button', { name: '수정' }))
+    fireEvent.click(within(rows[1]).getByRole('button', { name: /수정$/ }))
 
     // 이전 입력이 남으면 다른 기록을 덮어씀
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('두 번째 메모')

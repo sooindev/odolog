@@ -315,4 +315,32 @@ class VehicleControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONCURRENT_UPDATE"));
     }
+
+    @Test
+    @DisplayName("줄바꿈이 든 제조사는 등록에서도 400 — 수정과 같은 한 줄 규칙")
+    void registerRejectsMultilineName() throws Exception {
+        mockMvc.perform(post("/api/vehicles")
+                        .session(loginSessionOf(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"plateNumber":"12가3456","manufacturer":"현대\\n자동차","modelName":"아반떼","modelYear":2020,"odometer":0}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value("manufacturer"));
+    }
+
+    @Test
+    @DisplayName("여러 칸이 틀리면 요청의 칸 순서로 첫 칸을 고른다 — 실행마다 다른 칸이 나가지 않게")
+    void firstInvalidFieldFollowsDeclarationOrder() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/vehicles")
+                            .session(loginSessionOf(1L))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"plateNumber":"","manufacturer":"","modelName":"","modelYear":1800,"odometer":-1}
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.field").value("plateNumber"));
+        }
+    }
 }

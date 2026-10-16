@@ -12,6 +12,7 @@ import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText, NoticeText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
+import { MAX_NICKNAME_LENGTH } from '@/shared/lib/limits'
 
 export function ProfileForm({ user }: { user: UserResponse }) {
   const { replaceUser } = useAuth()
@@ -61,7 +62,7 @@ export function ProfileForm({ user }: { user: UserResponse }) {
               <Input
                 id="nickname"
                 required
-                maxLength={30}
+                maxLength={MAX_NICKNAME_LENGTH}
                 value={nickname}
                 onChange={(event) => {
                   setNickname(event.target.value)

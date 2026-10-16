@@ -15,7 +15,7 @@ export function Pagination({
   hasNext: boolean
   onChange: (updater: (current: number) => number) => void
 }) {
-  const { t } = useI18n()
+  const { t, f } = useI18n()
 
   // 한 장뿐이면 숨김
   if (totalPages <= 1) {
@@ -36,7 +36,7 @@ export function Pagination({
       </Button>
 
       <span className="min-w-16 text-center text-caption tabular-nums text-muted-foreground">
-        {page + 1} / {totalPages}
+        {f.number(page + 1)} / {f.number(totalPages)}
       </span>
 
       <Button

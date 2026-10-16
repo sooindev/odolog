@@ -38,7 +38,7 @@ export interface AccountRestoreResult {
   addedVehicles: number
   addedMaintenanceRecords: number
   addedFuelRecords: number
-  /** 같은 번호판이 있어 기록만 붙인 차량 수 */
+  /** 같은 번호판이 있어 그 차에 기록·주기를 실제로 붙인 차량 수 */
   mergedVehicles: number
   /** 이미 같은 기록이 있어 건너뛴 수 */
   skippedRecords: number

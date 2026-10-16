@@ -36,7 +36,7 @@ public class PasswordResetController {
                                         HttpServletRequest httpRequest) {
         attemptLimiter.acquire(IP_KEY_PREFIX + ClientIp.of(httpRequest), ErrorCode.TOO_MANY_RESET_REQUESTS,
                 "비밀번호 재설정 요청이 너무 많습니다.");
-        passwordResetService.request(request.email());
+        passwordResetService.request(request.email(), ClientIp.of(httpRequest));
 
         return ResponseEntity.noContent().build();
     }

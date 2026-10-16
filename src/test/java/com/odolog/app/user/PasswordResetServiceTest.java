@@ -86,7 +86,7 @@ class PasswordResetServiceTest {
         // 없는 주소도 조용히 성공. 가입 여부 노출 방지
         when(userRepository.findLockedByEmail("nobody@odolog.com")).thenReturn(Optional.empty());
 
-        service.request("nobody@odolog.com");
+        service.request("nobody@odolog.com", "127.0.0.1");
         runScheduled();
 
         verify(mailer, never()).send(anyString(), anyString(), anyInt(), any());
@@ -98,7 +98,7 @@ class PasswordResetServiceTest {
     void issuesTokenAndSendsMail() {
         when(userRepository.findLockedByEmail("me@odolog.com")).thenReturn(Optional.of(user));
 
-        service.request("me@odolog.com");
+        service.request("me@odolog.com", "127.0.0.1");
         runScheduled();
 
         // 재발급 시 이전 토큰 폐기
@@ -118,7 +118,7 @@ class PasswordResetServiceTest {
         // DB 유출만으로는 비밀번호 변경 불가
         when(userRepository.findLockedByEmail("me@odolog.com")).thenReturn(Optional.of(user));
 
-        service.request("me@odolog.com");
+        service.request("me@odolog.com", "127.0.0.1");
         runScheduled();
 
         ArgumentCaptor<String> mailed = ArgumentCaptor.forClass(String.class);
@@ -145,7 +145,8 @@ class PasswordResetServiceTest {
         assertThat(user.getPassword()).isNotEqualTo("old-hash");
         assertThat(token.getUsedAt()).isEqualTo(NOW);
         // 재설정 성공 시 로그인 잠금 해제
-        verify(rateLimiter).recordSuccess("login:me@odolog.com");
+        // 어느 IP 에서 잠겼든 풂
+        verify(rateLimiter).forgetWithPairs("login:me@odolog.com");
         // 열려 있던 세션 전부 종료
         verify(sessionRegistry).invalidateAll(1L);
     }
@@ -164,6 +165,7 @@ class PasswordResetServiceTest {
             // 커밋 전. 여기서 롤백되면 세션·잠금이 그대로 남아야 함
             verifyNoInteractions(sessionRegistry);
             verify(rateLimiter, never()).recordSuccess(anyString());
+            verify(rateLimiter, never()).forgetWithPairs(anyString());
 
             TransactionSynchronizationManager.getSynchronizations()
                     .forEach(TransactionSynchronization::afterCommit);
@@ -171,7 +173,8 @@ class PasswordResetServiceTest {
             TransactionSynchronizationManager.clearSynchronization();
         }
 
-        verify(rateLimiter).recordSuccess("login:me@odolog.com");
+        // 어느 IP 에서 잠겼든 풂
+        verify(rateLimiter).forgetWithPairs("login:me@odolog.com");
         verify(sessionRegistry).invalidateAll(1L);
     }
 
@@ -259,7 +262,7 @@ class PasswordResetServiceTest {
         org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("SMTP 실패"))
                 .when(mailer).send(anyString(), anyString(), anyInt(), any());
 
-        service.request("me@odolog.com");
+        service.request("me@odolog.com", "127.0.0.1");
         runScheduled();
 
         verify(tokenRepository).save(any());
@@ -268,10 +271,11 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("요청 스레드는 횟수만 세고 조회·저장은 하지 않는다 — 응답 시간이 가입 여부를 알려주지 않게")
     void requestThreadDoesNoAccountWork() {
-        service.request("me@odolog.com");
+        service.request("me@odolog.com", "127.0.0.1");
 
         // 가입 여부와 무관하게 같은 일만 하고 반환
-        verify(rateLimiter).acquire(eq("password-reset:me@odolog.com"), any(), anyString());
+        verify(rateLimiter).acquire(eq("password-reset:me@odolog.com|127.0.0.1"), any(), anyString());
+        verify(rateLimiter).acquireShared(eq("password-reset:me@odolog.com"), any(), anyString());
         org.mockito.Mockito.verifyNoInteractions(userRepository, tokenRepository, mailer);
         assertThat(scheduled).hasSize(1);
     }
@@ -284,7 +288,7 @@ class PasswordResetServiceTest {
                 .thenThrow(new CannotAcquireLockException("Record has changed since last read"))
                 .thenReturn(0);
 
-        service.request("me@odolog.com");
+        service.request("me@odolog.com", "127.0.0.1");
         runScheduled();
 
         verify(tokenRepository).save(any());
@@ -298,7 +302,7 @@ class PasswordResetServiceTest {
         when(tokenRepository.deleteByExpiresAtBefore(any()))
                 .thenThrow(new CannotAcquireLockException("Record has changed since last read"));
 
-        service.request("me@odolog.com");
+        service.request("me@odolog.com", "127.0.0.1");
         runScheduled();
 
         verify(tokenRepository).save(any());
@@ -308,14 +312,14 @@ class PasswordResetServiceTest {
     @DisplayName("대기 중인 발급 작업이 상한에 닿으면 더 받지 않는다 — 실행기 대기열이 끝없이 쌓이지 않게")
     void dropsRequestsBeyondPendingLimit() {
         for (int i = 0; i < PasswordResetService.MAX_PENDING + 5; i++) {
-            service.request("flood" + i + "@odolog.com");
+            service.request("flood" + i + "@odolog.com", "127.0.0.1");
         }
 
         assertThat(scheduled).hasSize(PasswordResetService.MAX_PENDING);
 
         // 처리되면 자리가 다시 남
         runScheduled();
-        service.request("me@odolog.com");
+        service.request("me@odolog.com", "127.0.0.1");
         assertThat(scheduled).hasSize(1);
     }
 

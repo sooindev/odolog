@@ -23,7 +23,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -136,7 +137,7 @@ class AccountExportServiceTest {
 
         assertThat(response.vehicles()).isEmpty();
         // 기본 시간대(서울) 기준 시각
-        assertThat(response.exportedAt()).isEqualTo(LocalDateTime.of(2026, 9, 21, 12, 0));
+        assertThat(response.exportedAt()).isEqualTo(OffsetDateTime.of(2026, 9, 21, 12, 0, 0, 0, ZoneOffset.ofHours(9)));
     }
 
     @Test
@@ -151,7 +152,8 @@ class AccountExportServiceTest {
                 .thenReturn(List.of());
 
         // 서울 9/21 12:00 = 로스앤젤레스 9/20 20:00
+        // 오프셋까지 실어 같은 파일 안의 다른 시각(서울로 저장된 createdAt)과 비교할 수 있게
         assertThat(accountExportService.export(1L, NOW).exportedAt())
-                .isEqualTo(LocalDateTime.of(2026, 9, 20, 20, 0));
+                .isEqualTo(OffsetDateTime.of(2026, 9, 20, 20, 0, 0, 0, ZoneOffset.ofHours(-7)));
     }
 }

@@ -12,6 +12,20 @@ public final class InputLimits {
     /** 금액 상한(통화의 최소 단위). 원화 1억, 달러 100만 */
     public static final long MAX_AMOUNT = 100_000_000L;
 
+    /** 기록 날짜 하한. 연식 하한과 같은 해. 연도 오타(0026)·음수 연도(DB 가 깨뜨려 저장) 차단 */
+    public static final java.time.LocalDate MIN_RECORD_DATE = java.time.LocalDate.of(1900, 1, 1);
+
+    /**
+     * 한 줄 이름(닉네임). 제어 문자(Cc)·서식 문자(Cf, 글자 방향 뒤집기 포함)·줄·문단 구분자를 거부
+     * 서식 문자 중 ZWJ(U+200D)는 가족 이모지 같은 합성 이모지에 쓰여 허용
+     * \p{Cntrl} 은 ASCII 제어 문자만 뜻해 U+202E·U+2028 이 통과함
+     */
+    public static final String SINGLE_LINE_TEXT = "(?:[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200D)*";
+
+    /** 차량별 정비 주기 상한. 주기 변경·가져오기 공용, 화면 limits.ts 와 같은 값 */
+    public static final int MAX_INTERVAL_KM = 500_000;
+    public static final int MAX_INTERVAL_MONTHS = 120;
+
     /** 이메일 길이 상한. 가입·로그인·재설정 공용 */
     public static final int MAX_EMAIL_LENGTH = 100;
 
@@ -21,7 +35,7 @@ public final class InputLimits {
      */
     public static final String EMAIL_CHARS = "^[!-~]+$";
 
-    /** 비밀번호 글자 수 상한. 가입·변경과 같은 값. 확인용 칸(로그인·탈퇴)에도 적용 */
+    /** 확인용 비밀번호 칸(로그인·탈퇴·현재 비밀번호)의 글자 수 상한. 새 비밀번호는 72바이트(@MaxBytes) */
     public static final int MAX_PASSWORD_LENGTH = 100;
 
     /**

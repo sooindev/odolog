@@ -2,6 +2,7 @@ package com.odolog.app.fuel.dto.response;
 
 import com.odolog.app.fuel.domain.FuelAnomaly;
 import com.odolog.app.fuel.domain.FuelRecord;
+import com.odolog.app.fuel.domain.FuelSegment;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -22,10 +23,12 @@ public record FuelRecordResponse(
         String memo,
         /** 연비 재계산 기준점 여부 */
         boolean resetPoint,
+        /** 가득 채웠는지. 덜 채웠으면 다음 가득 주유의 구간에 합쳐 계산 */
+        boolean fullTank,
 
         /** 리터당 단가(통화의 최소 단위). 총액 ÷ 리터 반올림. 둘 중 하나라도 없으면 null */
         Long pricePerLiter,
-        /** 직전 주유 이후 거리(km). 직전 없으면 null */
+        /** 연비 구간의 거리(km). 구간이 없으면 직전 주유 이후 거리, 직전 없으면 null */
         Integer distance,
         /** 연비(km/L), 소수 2자리. 구간 미성립이면 null */
         BigDecimal efficiency,
@@ -40,24 +43,21 @@ public record FuelRecordResponse(
 ) {
 
     /**
-     * @param segmentLiters 이 구간에 쓴 연료. 보통 이 기록의 주유량, 같은 주행거리로 나눠 넣었으면 그 합
+     * @param segment 이 기록이 닫는 연비 구간(FuelSegment). 평균과 같은 계산. 없으면 연비 없음
      */
-    public static FuelRecordResponse of(FuelRecord record, FuelRecord previous, BigDecimal segmentLiters,
+    public static FuelRecordResponse of(FuelRecord record, FuelRecord previous, FuelSegment segment,
                                           FuelAnomaly.Baseline baseline) {
         Integer distance = null;
         BigDecimal efficiency = null;
 
-        // 기준점은 직전과 연결 끊김
-        if (!record.isResetPoint() && previous != null
+        if (segment != null) {
+            // 덜 채운 주유를 지나 왔으면 직전 가득부터의 거리
+            distance = segment.distance();
+            efficiency = segment.efficiency();
+        } else if (!record.isResetPoint() && previous != null
                 && record.getOdometer() > previous.getOdometer()) {
+            // 연비는 없어도 거리는 표시. 기준점은 직전과 연결 끊김
             distance = record.getOdometer() - previous.getOdometer();
-
-            // 거리와 연비는 조건 분리. 주유량이 없어도 거리는 표시
-            if (segmentLiters != null) {
-                // 단순법. 가득 채우지 않은 주유가 섞이면 그 구간만 높게 나옴
-                efficiency = BigDecimal.valueOf(distance)
-                        .divide(segmentLiters, 2, RoundingMode.HALF_UP);
-            }
         }
 
         return new FuelRecordResponse(
@@ -69,6 +69,7 @@ public record FuelRecordResponse(
                 record.getCurrency(),
                 record.getMemo(),
                 record.isResetPoint(),
+                record.isFullTank(),
                 pricePerLiter(record),
                 distance,
                 efficiency,

@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router'
 
@@ -9,7 +10,7 @@ import { Page } from '@/shared/ui/layout/page'
 import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
-import { useAsyncData } from '@/shared/lib/hooks/useAsyncData'
+import { queryKeys } from '@/shared/api/queryKeys'
 import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
 import { fetchVehicles } from '@/features/vehicles/api/endpoints'
 
@@ -17,18 +18,22 @@ export function VehicleListPage() {
   const { t, f } = useI18n()
   const [page, setPage] = useState(0)
 
-  // page 변경 시 재조회
-  const load = useCallback(() => fetchVehicles(page), [page])
-  const { data, loading, error } = useAsyncData(load)
-  usePageInRange(data, setPage)
+  // 쪽을 넘기는 동안은 앞 쪽을 그대로(placeholderData). 떠나면 버림(홈과 같은 이유)
+  const { data, isPending, error } = useQuery({
+    queryKey: queryKeys.vehicleList(page),
+    queryFn: () => fetchVehicles(page),
+    placeholderData: keepPreviousData,
+    gcTime: 0,
+  })
+  usePageInRange(data ?? null, setPage)
 
-  if (loading) {
+  if (isPending) {
     return <VehicleListSkeleton />
   }
 
   // 오류·빈 상태도 머리말(h1) 유지. 버튼은 빈 상태 안의 하나만
   // 받아 둔 목록이 있으면 오류만 위에 덧붙임. 페이지 이동 실패로 목록이 통째로 사라지지 않게
-  if (data === null || data.totalElements === 0) {
+  if (data === undefined || data.totalElements === 0) {
     return (
       <Page eyebrow="Garage" title={t.vehicles.list.title}>
         {error !== null ? <ErrorText message={errorMessage(error, t, t.vehicles.list.loadFailed)} /> : <EmptyGarage />}
@@ -41,7 +46,7 @@ export function VehicleListPage() {
       eyebrow="Garage"
       title={t.vehicles.list.title}
       // 대수는 설명에. 제목 길이 고정
-      description={t.vehicles.list.count(data.totalElements)}
+      description={t.vehicles.list.count(f.count(data.totalElements))}
       action={
         // render: 버튼 스타일을 Link 에. button 안 a 금지
         <Button size="sm" render={<Link to="/vehicles/new" />}>
@@ -74,12 +79,12 @@ export function VehicleListPage() {
                     {/* 지난 정비 표시. 빨강 대신 테두리(NextServiceCard 참고) */}
                     {vehicle.overdueServiceCount !== null && vehicle.overdueServiceCount > 0 && (
                       <span className="shrink-0 border border-strong/30 px-1.5 py-0.5 text-unit font-medium text-strong">
-                        {t.vehicles.overdue(vehicle.overdueServiceCount)}
+                        {t.vehicles.overdue(f.count(vehicle.overdueServiceCount))}
                       </span>
                     )}
                     {vehicle.dueSoonServiceCount !== null && vehicle.dueSoonServiceCount > 0 && (
                       <span className="shrink-0 border border-border px-1.5 py-0.5 text-unit text-muted-foreground">
-                        {t.vehicles.dueSoon(vehicle.dueSoonServiceCount)}
+                        {t.vehicles.dueSoon(f.count(vehicle.dueSoonServiceCount))}
                       </span>
                     )}
                   </p>
@@ -93,7 +98,7 @@ export function VehicleListPage() {
                 {/* 수치는 오른쪽 끝, tabular-nums */}
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   {/* 좁은 화면에서는 숨김. 아래 km 과 중복, 넓은 자간이 폭 차지 */}
-                  <p className="hidden text-eyebrow text-faint uppercase sm:block">Odometer</p>
+                  <p className="hidden text-eyebrow text-muted-foreground uppercase sm:block">Odometer</p>
                   <p className="text-figure tabular-nums text-strong">
                     {f.distanceNumber(vehicle.odometer)}
                     <span className="ml-1.5 text-caption tracking-normal text-muted-foreground">

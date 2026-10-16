@@ -293,4 +293,42 @@ class HomeSummaryServiceTest {
         assertThat(summary.byType()).isEmpty();
         assertThat(summary.monthly()).hasSize(12);
     }
+
+    @Test
+    @DisplayName("차량이 둘이면 정비 수·지남/곧·평균 연비를 차량마다 따로 낸다 — 다른 통화 주유는 합계에서만 빠진다")
+    void twoVehiclesKeepTheirOwnLines() {
+        Vehicle overdueCar = vehicle(10L, "12가3456", 50000);
+        Vehicle soonCar = vehicle(20L, "34나5678", 14500);
+        // 첫 차: 엔진오일 2025-01-01 → 6개월 지남. 둘째 차: 10,000km 에 엔진오일 → 15,000km 까지 500km 남아 곧
+        MaintenanceRecord oldOil = record(1L, overdueCar, ServiceType.ENGINE_OIL, 80000, LocalDate.of(2025, 1, 1));
+        MaintenanceRecord recentOil = record(2L, soonCar, ServiceType.ENGINE_OIL, 70000, LocalDate.of(2026, 8, 1));
+        FuelRecord dollarFuel = fuel(3L, overdueCar, 49000, "40.00", 6000, LocalDate.of(2026, 8, 1));
+        ReflectionTestUtils.setField(dollarFuel, "currency", "USD");
+        FuelRecord wonFuel = fuel(4L, overdueCar, 49500, "40.00", 70000, LocalDate.of(2026, 9, 1));
+        FuelRecord soonFirst = fuel(5L, soonCar, 14000, "30.00", 50000, LocalDate.of(2026, 8, 15));
+        FuelRecord soonSecond = fuel(6L, soonCar, 14400, "20.00", 40000, LocalDate.of(2026, 9, 10));
+        given(List.of(overdueCar, soonCar), List.of(recentOil, oldOil),
+                List.of(soonFirst, soonSecond, dollarFuel, wonFuel));
+
+        HomeSummaryResponse summary = homeSummaryService.summarize(1L, TODAY, "KRW");
+
+        HomeSummaryResponse.VehicleLine first = summary.vehicles().stream()
+                .filter(line -> line.plateNumber().equals("12가3456")).findFirst().orElseThrow();
+        HomeSummaryResponse.VehicleLine second = summary.vehicles().stream()
+                .filter(line -> line.plateNumber().equals("34나5678")).findFirst().orElseThrow();
+
+        assertThat(first.maintenanceCount()).isEqualTo(1);
+        assertThat(first.overdueServiceCount()).isEqualTo(1);
+        assertThat(first.dueSoonServiceCount()).isZero();
+        // 500km ÷ 40L. 다른 차의 주유가 섞이면 값이 달라짐
+        assertThat(first.averageEfficiency()).isEqualByComparingTo("12.50");
+
+        assertThat(second.overdueServiceCount()).isZero();
+        assertThat(second.dueSoonServiceCount()).isEqualTo(1);
+        assertThat(second.averageEfficiency()).isEqualByComparingTo("20.00");
+
+        // 달러 주유는 금액 합계에서만 빠지고 밝힘
+        assertThat(summary.otherCurrencyRecordCount()).isEqualTo(1);
+        assertThat(summary.totalCost()).isEqualTo(80000 + 70000 + 70000 + 50000 + 40000);
+    }
 }

@@ -57,8 +57,14 @@ export function createFormatter(settings: FormatSettings) {
     return new Date(Date.UTC(year, month - 1, day))
   }
 
+  /** 문장 속 개수. 사전이 text 를 찍고 영어는 n 으로 단·복수를 고름. 숫자를 그대로 넣으면 1000 이 쉼표 없이 나감 */
+  function count(value: number) {
+    return { n: value, text: number(value) }
+  }
+
   return {
     number,
+    count,
     compact,
 
     distanceUnit: distanceUnit(unitSystem),
@@ -87,7 +93,14 @@ export function createFormatter(settings: FormatSettings) {
       if (wonStyle(currency)) {
         return `${number(minor)}원`
       }
-      return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(fromMinor(minor, currency))
+      // 소수 자리는 우리 표로. 브라우저 기본값을 쓰면 IDR 이 반올림돼 저장값과 다르게 보임
+      const digits = fractionDigits(currency)
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      }).format(fromMinor(minor, currency))
     },
 
     /** 히어로 숫자와 작은 단위를 따로 그릴 때 */

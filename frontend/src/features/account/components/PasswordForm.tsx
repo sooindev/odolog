@@ -10,7 +10,7 @@ import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText, NoticeText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
-import { passwordHint } from '@/shared/lib/limits'
+import { MAX_PASSWORD_BYTES, passwordHint } from '@/shared/lib/limits'
 
 export function PasswordForm() {
   const { t } = useI18n()
@@ -77,7 +77,7 @@ export function PasswordForm() {
                 required
                 minLength={8}
                 // 글자 수 상한은 대략적인 천장. 실제 판정은 hint 와 서버 @MaxBytes
-                maxLength={72}
+                maxLength={MAX_PASSWORD_BYTES}
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(event) => {
