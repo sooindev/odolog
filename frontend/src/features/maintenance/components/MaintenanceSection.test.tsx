@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MaintenanceSection } from '@/features/maintenance/components/MaintenanceSection'
@@ -15,7 +15,7 @@ vi.mock('@/features/maintenance/api/endpoints', () => ({
   updateRecord: vi.fn(),
 }))
 
-const { fetchRecords } = await import('@/features/maintenance/api/endpoints')
+const { fetchRecords, deleteRecord } = await import('@/features/maintenance/api/endpoints')
 
 function record(id: string, description: string, serviceDate: string): MaintenanceRecordResponse {
   return {
@@ -75,6 +75,35 @@ describe('MaintenanceSection', () => {
 
     // 이전 입력이 남으면 다른 기록을 덮어씀
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('두 번째 메모')
+  })
+
+  it('다른 행을 지워도 작성 중이던 새 기록 폼은 입력 그대로 남는다', async () => {
+    vi.stubGlobal('confirm', () => true)
+    vi.mocked(deleteRecord).mockResolvedValue(undefined)
+    renderWithProviders(<Harness />)
+
+    const rows = await screen.findAllByRole('listitem')
+    fireEvent.click(screen.getByRole('button', { name: '이력 추가' }))
+    fireEvent.change(screen.getByLabelText(/메모/), { target: { value: '적던 중' } })
+    fireEvent.click(within(rows[1]).getByRole('button', { name: '삭제' }))
+
+    await waitFor(() => expect(deleteRecord).toHaveBeenCalledWith('vehicle00001', 'recordBBBBBB'))
+    // 삭제 뒤 재조회까지 끝나도 폼과 입력이 남음
+    await waitFor(() => expect(fetchRecords).toHaveBeenCalledTimes(2))
+    expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('적던 중')
+  })
+
+  it('수정 중인 행을 지우면 그 폼은 닫힌다', async () => {
+    vi.stubGlobal('confirm', () => true)
+    vi.mocked(deleteRecord).mockResolvedValue(undefined)
+    renderWithProviders(<Harness />)
+
+    const rows = await screen.findAllByRole('listitem')
+    fireEvent.click(within(rows[0]).getByRole('button', { name: '수정' }))
+    fireEvent.click(within(rows[0]).getByRole('button', { name: '삭제' }))
+
+    // 없어진 기록을 고치는 폼이 남으면 저장 때 404
+    await waitFor(() => expect(screen.queryByLabelText(/메모/)).toBeNull())
   })
 
   it('다른 카드가 기록을 만들어 목록을 다시 읽어도 열어 둔 수정 폼은 그대로다', async () => {

@@ -37,10 +37,11 @@ export function useRecordList<R extends { id: string }>({
     setActionError(null)
   }
 
-  /** 페이지 이동. 수정 중인 행이 화면에서 사라지므로 폼·문구도 닫음 */
+  /** 페이지 이동. 수정 중인 행은 화면에서 사라지므로 닫고, 새 기록 폼은 쪽과 무관해 남김 */
   function changePage(next: SetStateAction<number>) {
     setPage(next)
-    close()
+    setEditing((current) => (current === 'new' ? current : 'closed'))
+    setActionError(null)
   }
 
   /** 저장 뒤. 새 기록은 첫 장 위쪽이라 첫 장으로(지금 장에 머물면 저장 실패로 오해) */
@@ -61,7 +62,9 @@ export function useRecordList<R extends { id: string }>({
 
     try {
       await remove(recordId)
-      close()
+      // 지운 행의 수정 폼만 닫음. 작성 중이던 새 기록·다른 행의 폼은 입력 그대로
+      setEditing((current) => (typeof current === 'object' && current.id === recordId ? 'closed' : current))
+      setActionError(null)
       await afterChange()
     } catch (caught) {
       setActionError(errorMessage(caught, t, failedMessage))
