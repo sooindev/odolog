@@ -465,6 +465,7 @@ export const ko = {
     noEfficiency: '· 연비 계산 안 됨',
     resetPoint: '연비 기준점',
     sameOdometer: '직전 기록과 같은 주행거리',
+    mergedIntoPrevious: '· 주유량은 직전 기록 연비에 합산',
     baseline: '기준 기록',
     fromNext: '· 다음 주유부터 계산',
     suspicious: '확인 필요',

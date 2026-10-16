@@ -55,6 +55,16 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
     return data !== undefined && !data.hasNext && index === data.items.length - 1
   }
 
+  // 같은 주행거리로 이어진 아래 줄에 연비가 있으면 이 주유량도 거기 합쳐짐. 쪽 밖이면 모름으로
+  function mergedIntoPrevious(index: number) {
+    const items = data?.items ?? []
+    for (let j = index + 1; j < items.length && items[j].odometer === items[index].odometer; j++) {
+      if (items[j].efficiency !== null) return true
+      if (items[j].resetPoint) return false
+    }
+    return false
+  }
+
   return (
     <Card>
       {/* 좁은 화면은 줄바꿈으로 접기 */}
@@ -124,7 +134,9 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                               // 직전 기록과 주행거리가 같아 구간 없음
                               <>
                                 {t.fuel.sameOdometer}
-                                <span className="ml-1 text-muted-foreground">{t.fuel.noEfficiency}</span>
+                                <span className="ml-1 text-muted-foreground">
+                                  {mergedIntoPrevious(index) ? t.fuel.mergedIntoPrevious : t.fuel.noEfficiency}
+                                </span>
                               </>
                             )}
                           </span>

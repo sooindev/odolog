@@ -310,6 +310,34 @@ class FuelRecordServiceTest {
     }
 
     @Test
+    @DisplayName("같은 주행거리로 나눠 넣은 주유는 목록 행에서도 합쳐 나눈다 — 묶음이 쪽 경계에 걸려도")
+    void listMergesSplitFillAcrossPages() {
+        Vehicle vehicle = vehicle(41000);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+
+        // 40,500km 에서 30L + 15L
+        List<FuelRecord> ascending = List.of(
+                record(1L, vehicle, 40000, "40.00", 60000),
+                record(2L, vehicle, 40500, "30.00", 50000),
+                record(3L, vehicle, 40500, "15.00", 25000),
+                record(4L, vehicle, 41000, "40.00", 60000));
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L)).thenReturn(ascending);
+
+        // 2쪽(크기 2) = 30L 기록과 첫 기록. 15L 기록은 1쪽
+        Pageable pageable = PageRequest.of(1, 2);
+        when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(ascending.get(1), ascending.get(0)), pageable, 4));
+        when(fuelRecordRepository.findPrevious(eq(10L), eq(40000), any())).thenReturn(Optional.empty());
+
+        FuelRecordResponse first = fuelRecordService.findByVehicle(1L, "V10", pageable).getContent().get(0);
+
+        // 500 ÷ 45. 30L 만이면 16.67
+        assertThat(first.efficiency()).isEqualByComparingTo("11.11");
+        // 주유량 칸은 자기 값 그대로
+        assertThat(first.liters()).isEqualByComparingTo("30.00");
+    }
+
+    @Test
     @DisplayName("기록이 빠진 것으로 보이는 구간은 목록 행에 표시된다")
     void listMarksMissingRecordSegment() {
         Vehicle vehicle = vehicle(12000);

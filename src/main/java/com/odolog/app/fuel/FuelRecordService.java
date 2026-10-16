@@ -6,6 +6,7 @@ import com.odolog.app.common.validation.InputText;
 import com.odolog.app.fuel.domain.FuelAnomaly;
 import com.odolog.app.fuel.domain.FuelEfficiency;
 import com.odolog.app.fuel.domain.FuelRecord;
+import com.odolog.app.fuel.domain.FuelSegment;
 import com.odolog.app.fuel.dto.request.FuelRecordRegisterRequest;
 import com.odolog.app.fuel.dto.request.FuelRecordUpdateRequest;
 import com.odolog.app.fuel.dto.response.FuelRecordResponse;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -62,12 +64,12 @@ public class FuelRecordService {
         // 계기판 값이 더 크면 차량 주행거리도 갱신
         vehicle.liftOdometerTo(request.odometer());
 
-        return FuelRecordResponse.of(record, findPrevious(id, record), baselineOf(id));
+        return rowsOf(id).of(record, findPrevious(id, record));
     }
 
     /**
-     * 페이지당 쿼리 5번(차량·페이지·개수·직전 1건·평소 구간). 마지막 행의 짝만 추가 조회
-     * 평소 구간은 이력 전체 기준. 페이지마다 판정이 달라지는 문제 방지
+     * 페이지당 쿼리 5번(차량·페이지·개수·직전 1건·이력 전체). 마지막 행의 짝만 추가 조회
+     * 평소 구간·나눠 넣은 묶음은 이력 전체 기준. 페이지마다 판정이 달라지는 문제 방지
      */
     public Page<FuelRecordResponse> findByVehicle(Long requesterId, String vehicleId, Pageable pageable) {
         Long id = vehicleService.findOwnedVehicle(requesterId, vehicleId).getId();
@@ -83,12 +85,12 @@ public class FuelRecordService {
         // 내림차순의 마지막 = 가장 오래된 기록. 그 직전 한 건
         FuelRecord beforePage = findPrevious(id, items.get(items.size() - 1));
 
-        FuelAnomaly.Baseline baseline = baselineOf(id);
+        Rows rows = rowsOf(id);
 
         List<FuelRecordResponse> responses = new ArrayList<>(items.size());
         for (int i = 0; i < items.size(); i++) {
             FuelRecord previous = (i == items.size() - 1) ? beforePage : items.get(i + 1);
-            responses.add(FuelRecordResponse.of(items.get(i), previous, baseline));
+            responses.add(rows.of(items.get(i), previous));
         }
 
         return new PageImpl<>(responses, page.getPageable(), page.getTotalElements());
@@ -123,7 +125,7 @@ public class FuelRecordService {
             changeResetPoint(id, record, request.resetPoint());
         }
 
-        return FuelRecordResponse.of(record, findPrevious(id, record), baselineOf(id));
+        return rowsOf(id).of(record, findPrevious(id, record));
     }
 
     /**
@@ -206,10 +208,25 @@ public class FuelRecordService {
                         .toList());
     }
 
-    /** 그 차량의 평소 구간. 목록·등록·수정 공통 기준 */
-    private FuelAnomaly.Baseline baselineOf(Long vehicleId) {
-        return FuelAnomaly.baselineOf(
-                fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId));
+    /** 이력 전체를 한 번 읽어 행 계산 기준을 만듦. 목록·등록·수정 공통 */
+    private Rows rowsOf(Long vehicleId) {
+        List<FuelRecord> all = fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(vehicleId);
+        return new Rows(FuelAnomaly.baselineOf(all), FuelSegment.splitFills(all));
+    }
+
+    /**
+     * 행 계산의 이력 전체 기준. 평소 구간과 같은 주행거리로 나눠 넣은 묶음
+     * 페이지만 보고 정하면 묶음이 쪽 경계에 걸릴 때 행마다 판정이 달라짐
+     */
+    private record Rows(FuelAnomaly.Baseline baseline, Map<Long, BigDecimal> splitFills) {
+
+        FuelRecordResponse of(FuelRecord record, FuelRecord previous) {
+            // 묶음이면 합(모르면 null), 아니면 자기 주유량
+            BigDecimal liters = splitFills.containsKey(record.getId())
+                    ? splitFills.get(record.getId())
+                    : record.getLiters();
+            return FuelRecordResponse.of(record, previous, liters, baseline);
+        }
     }
 
     private FuelRecord findPrevious(Long vehicleId, FuelRecord record) {

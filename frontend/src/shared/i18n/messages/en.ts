@@ -467,6 +467,7 @@ export const en: Messages = {
     noEfficiency: '· no economy',
     resetPoint: 'Reset point',
     sameOdometer: 'Same odometer as the previous fill-up',
+    mergedIntoPrevious: '· fuel counted in its economy',
     baseline: 'Baseline',
     fromNext: '· calculated from the next fill-up',
     suspicious: 'Check this',

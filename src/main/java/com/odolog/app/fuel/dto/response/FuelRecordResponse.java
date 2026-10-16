@@ -36,7 +36,10 @@ public record FuelRecordResponse(
         boolean missingRecordSuspected
 ) {
 
-    public static FuelRecordResponse of(FuelRecord record, FuelRecord previous,
+    /**
+     * @param segmentLiters 이 구간에 쓴 연료. 보통 이 기록의 주유량, 같은 주행거리로 나눠 넣었으면 그 합
+     */
+    public static FuelRecordResponse of(FuelRecord record, FuelRecord previous, BigDecimal segmentLiters,
                                           FuelAnomaly.Baseline baseline) {
         Integer distance = null;
         BigDecimal efficiency = null;
@@ -47,10 +50,10 @@ public record FuelRecordResponse(
             distance = record.getOdometer() - previous.getOdometer();
 
             // 거리와 연비는 조건 분리. 주유량이 없어도 거리는 표시
-            if (record.getLiters() != null) {
+            if (segmentLiters != null) {
                 // 단순법. 가득 채우지 않은 주유가 섞이면 그 구간만 높게 나옴
                 efficiency = BigDecimal.valueOf(distance)
-                        .divide(record.getLiters(), 2, RoundingMode.HALF_UP);
+                        .divide(segmentLiters, 2, RoundingMode.HALF_UP);
             }
         }
 
