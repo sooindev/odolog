@@ -486,7 +486,7 @@ export const ko = {
       confirmIntro: '이대로 저장하면:',
       confirmOutro: '계속할까요?',
       warnSameOdometer: (current: string) =>
-        `· 주행거리가 차량의 현재 값(${current})과 같습니다.\n  이번 구간의 연비가 계산되지 않고, 차량 주행거리도 올라가지 않습니다.`,
+        `· 주행거리가 차량에 기록된 값(${current}) 그대로입니다.\n  주유할 때 계기판 숫자로 고치지 않으면 이번 구간 연비가 실제와 달라집니다.`,
       warnNoVolume: '· 주유량이 비어 있어 이번 구간의 연비를 계산할 수 없습니다.',
       warnNoCost: '· 결제 금액이 비어 있어 유류비 합계와 단가에서 빠집니다.',
       warnBigJump: (from: string, to: string) =>

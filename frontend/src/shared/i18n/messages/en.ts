@@ -488,7 +488,7 @@ export const en: Messages = {
       confirmIntro: 'If you save this:',
       confirmOutro: 'Continue?',
       warnSameOdometer: (current: string) =>
-        `· The odometer matches the vehicle’s current value (${current}).\n  This stretch won’t get a fuel economy and the vehicle’s odometer won’t go up.`,
+        `· The odometer is still the vehicle’s saved value (${current}).\n  If it isn’t what the dashboard showed at the pump, this stretch’s fuel economy will be off.`,
       warnNoVolume: '· The fuel amount is empty, so this stretch won’t get a fuel economy.',
       warnNoCost: '· The amount paid is empty, so it won’t count toward spending or unit price.',
       warnBigJump: (from: string, to: string) =>
