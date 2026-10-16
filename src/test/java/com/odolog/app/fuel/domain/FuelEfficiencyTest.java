@@ -145,6 +145,36 @@ class FuelEfficiencyTest {
     }
 
     @Test
+    @DisplayName("중간에 같은 주행거리로 나눠 넣은 주유는 앞 구간에 합쳐 계산한다")
+    void splitFillMergedIntoSegment() {
+        // 40,500km 에서 30L + 15L. 둘째를 빼면 500÷30 = 16.67, 평균 14.29
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                record(40000, "40.00"),
+                record(40500, "30.00"),
+                record(40500, "15.00"),
+                record(41000, "40.00")));
+
+        // 1000km ÷ 85L(45 + 40)
+        assertThat(result.distance()).isEqualTo(1000);
+        assertThat(result.average()).isEqualByComparingTo("11.76");
+    }
+
+    @Test
+    @DisplayName("나눠 넣은 주유 중 하나라도 주유량이 비면 그 구간은 계산하지 않는다")
+    void splitFillWithUnknownLitersSkipped() {
+        // 둘째 양을 모름. 30L 만으로 나누면 부풀려짐
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                record(40000, "40.00"),
+                record(40500, "30.00"),
+                withoutLiters(40500),
+                record(41000, "40.00")));
+
+        // 남는 구간은 40,500 → 41,000 하나
+        assertThat(result.distance()).isEqualTo(500);
+        assertThat(result.average()).isEqualByComparingTo("12.50");
+    }
+
+    @Test
     @DisplayName("기준점 이후 구간만 평균에 들어간다")
     void sinceResetPoint() {
         FuelRecord resetPoint = record(20000, "30.00");
