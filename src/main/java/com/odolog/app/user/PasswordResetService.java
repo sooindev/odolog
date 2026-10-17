@@ -107,9 +107,7 @@ public class PasswordResetService {
         // 로그인과 같은 짝 키. 남의 주소로 열 번 요청해도 그 사람의 재설정 메일은 막히지 않음
         // 계정 전체는 다섯 배. 같은 주소로의 메일 폭주 방지
         String limitKey = RATE_LIMIT_PREFIX + email;
-        rateLimiter.acquire(LoginAttemptLimiter.pair(limitKey, clientIp), ErrorCode.TOO_MANY_RESET_REQUESTS,
-                "비밀번호 재설정 요청이 너무 많습니다.");
-        rateLimiter.acquireShared(limitKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
+        rateLimiter.acquirePaired(limitKey, clientIp, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
 
         if (!pending.tryAcquire()) {
             log.warn("비밀번호 재설정 대기 작업이 상한({})에 닿아 요청을 버립니다.", MAX_PENDING);

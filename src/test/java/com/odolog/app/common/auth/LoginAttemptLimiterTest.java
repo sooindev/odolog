@@ -363,4 +363,33 @@ class LoginAttemptLimiterTest {
         assertThatThrownBy(() -> limiter.acquire(LoginAttemptLimiter.pair("login:a@b.com.x", "1.1.1.1"),
                 ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "잠김")).isInstanceOf(TooManyRequestsException.class);
     }
+
+    @Test
+    @DisplayName("계정 키가 잠겨 거절된 시도는 짝 키에 세지 않는다 — 계정 잠금이 풀린 뒤 자기 짝 잠금으로 더 기다리지 않게")
+    void rejectedByAccountLockDoesNotCountOnPair() {
+        MovableClock clock = new MovableClock();
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(clock);
+        String account = "login:victim@odolog.com";
+
+        // 다섯 곳에서 짝 한도(10)씩 채우면 계정 전체(50)가 다음 시도에 잠김
+        for (int ip = 1; ip <= 5; ip++) {
+            for (int i = 0; i < 10; i++) {
+                limiter.acquirePaired(account, "10.0.0." + ip, ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON);
+            }
+        }
+        assertThatThrownBy(() -> limiter.acquirePaired(account, "10.0.0.6", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON))
+                .isInstanceOf(TooManyRequestsException.class);
+
+        // 잠긴 동안 진짜 사용자가 자기 IP 에서 열한 번 다시 누름
+        clock.advance(Duration.ofMinutes(5));
+        for (int i = 0; i < 11; i++) {
+            assertThatThrownBy(() -> limiter.acquirePaired(account, "192.168.0.7", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON))
+                    .isInstanceOf(TooManyRequestsException.class);
+        }
+
+        // 계정 잠금이 풀리면 바로 시도할 수 있음
+        clock.advance(Duration.ofMinutes(5).plusSeconds(1));
+        assertThatCode(() -> limiter.acquirePaired(account, "192.168.0.7", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON))
+                .doesNotThrowAnyException();
+    }
 }

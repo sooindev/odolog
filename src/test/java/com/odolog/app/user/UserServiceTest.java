@@ -80,9 +80,9 @@ class UserServiceTest {
                 .isInstanceOf(AuthenticationFailedException.class);
 
         // 비밀번호 확인 키(password-check:1)와 겹치지 않음
-        // 이메일 + IP 짝 키와 계정 전체 키 둘 다 login: 접두사
-        verify(loginAttemptLimiter).acquire(eq("login:password-check:1|127.0.0.1"), eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
-        verify(loginAttemptLimiter).acquireShared(eq("login:password-check:1"), eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
+        // 이메일 + IP 짝 키와 계정 전체 키 둘 다 login: 접두사(짝 키는 limiter 가 이 키에 IP 를 붙임)
+        verify(loginAttemptLimiter).acquirePaired(eq("login:password-check:1"), eq("127.0.0.1"),
+                eq(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS), any());
         verify(loginAttemptLimiter, never()).acquire(eq("password-check:1"), any(), any());
     }
 

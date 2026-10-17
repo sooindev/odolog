@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 시도 횟수 제한. 인메모리라 재시작 시 초기화
- * 로그인(이메일)·재설정 요청(접두사+이메일)·회원가입(접두사+IP) 공용. 잠금 문구는 호출하는 쪽이 전달
+ * 키는 용도 접두사를 붙여 구분. 로그인·재설정 요청은 이메일+IP 짝과 계정 전체, 가입은 IP. 잠금 문구는 호출하는 쪽이 전달
  * 없는 계정도 집계. 계정 존재 여부 노출 방지
  */
 @Component
@@ -77,6 +77,21 @@ public class LoginAttemptLimiter {
     /** 여러 사람이 함께 쓰는 키(IP). 한 사람 기준 한도의 SHARED_FACTOR 배 */
     public void acquireShared(String key, ErrorCode code, String reason) {
         acquire(key, maxAttempts * SHARED_FACTOR, code, reason);
+    }
+
+    /**
+     * 짝 키(계정|IP) 한도 → 계정 전체 한도(SHARED_FACTOR 배) 순서로 집계. 로그인·재설정 요청 공용
+     * 계정 쪽이 잠겨 거절되면 짝 키의 이번 시도는 되돌림. 안 그러면 남이 잠근 동안 다시 누른 횟수로 자기 짝까지 잠김
+     */
+    public void acquirePaired(String accountKey, String clientIp, ErrorCode code, String reason) {
+        String pairKey = pair(accountKey, clientIp);
+        acquire(pairKey, code, reason);
+        try {
+            acquireShared(accountKey, code, reason);
+        } catch (TooManyRequestsException e) {
+            refund(pairKey);
+            throw e;
+        }
     }
 
     private void acquire(String key, int limit, ErrorCode code, String reason) {

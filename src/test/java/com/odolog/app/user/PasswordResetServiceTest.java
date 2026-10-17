@@ -274,8 +274,7 @@ class PasswordResetServiceTest {
         service.request("me@odolog.com", "127.0.0.1");
 
         // 가입 여부와 무관하게 같은 일만 하고 반환
-        verify(rateLimiter).acquire(eq("password-reset:me@odolog.com|127.0.0.1"), any(), anyString());
-        verify(rateLimiter).acquireShared(eq("password-reset:me@odolog.com"), any(), anyString());
+        verify(rateLimiter).acquirePaired(eq("password-reset:me@odolog.com"), eq("127.0.0.1"), any(), anyString());
         org.mockito.Mockito.verifyNoInteractions(userRepository, tokenRepository, mailer);
         assertThat(scheduled).hasSize(1);
     }

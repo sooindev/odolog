@@ -94,8 +94,7 @@ public class UserService {
         // 계정 전체는 다섯 배. 여러 IP 로 흩은 대입 대비. IP 하나는 짝 한도(10)까지만 보탤 수 있어 다섯 곳 이상 필요
         String accountKey = LOGIN_KEY_PREFIX + request.email();
         String pairKey = LoginAttemptLimiter.pair(accountKey, clientIp);
-        loginAttemptLimiter.acquire(pairKey, ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
-        loginAttemptLimiter.acquireShared(accountKey, ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
+        loginAttemptLimiter.acquirePaired(accountKey, clientIp, ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다.");
 
         User user = userRepository.findByEmail(request.email()).orElse(null);
 
