@@ -67,7 +67,7 @@ function App() {
           0.18s 페이드만
         */}
         <div key={location.pathname} className="animate-fade">
-          {/* 화면 조각을 못 받으면 헤더·푸터는 두고 본문만 안내로. 위 key 덕에 주소가 바뀌면 다시 시도 */}
+          {/* 화면 조각을 못 받으면 헤더·푸터는 두고 본문만 안내로. 위 key 덕에 다른 주소의 화면은 다시 그림 */}
           <ScreenErrorBoundary>
             {/* 화면 조각을 받는 동안. 보호 라우트의 세션 복구 대기와 같은 모양 */}
             <Suspense fallback={<LoadingText className="justify-center py-24" />}>

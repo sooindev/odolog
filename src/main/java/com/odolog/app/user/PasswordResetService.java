@@ -100,8 +100,8 @@ public class PasswordResetService {
     /**
      * 재설정 링크 발송. 없는 주소도 같은 정상 응답(가입 여부 노출 방지)
      * 횟수 집계만 요청 스레드에서. 조회·토큰 저장은 다른 스레드라 가입 여부와 무관하게 같은 응답 시간
+     * 트랜잭션 없음. 횟수만 세고 나머지는 다른 스레드라 커넥션을 쥘 이유가 없음
      */
-    /** 트랜잭션 없음. 횟수만 세고 나머지는 다른 스레드라 커넥션을 쥘 이유가 없음 */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void request(String email, String clientIp) {
         // 로그인과 같은 짝 키. 남의 주소로 열 번 요청해도 그 사람의 재설정 메일은 막히지 않음

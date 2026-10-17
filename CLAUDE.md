@@ -203,8 +203,8 @@
     쓰기가 실패해서 바로 드러난다. 반대로 하면 아무 일도 안 일어나 영영 모른다.
     **예외는 BCrypt 를 도는 경로다.** `user/LoginService` 는 트랜잭션을 걸지 않는다 — 로그인은 세션을 저장한 **뒤**
     비밀번호가 그대로인지 다시 보는데, 그 재확인이 **새 트랜잭션**이어야 그 사이 커밋된 재설정·변경·탈퇴가 보인다
-    (REPEATABLE READ 는 첫 조회 때 스냅숏을 잡는다). `UserService` 의 `signUp`·`login`·`verifyPassword`·`changePassword`, 탈퇴,
-    `PasswordResetService.request` 는 `Propagation.NOT_SUPPORTED` — BCrypt(수십 ms) 동안 커넥션(풀 10)·사용자 행 잠금을 쥐지 않게.
+    (REPEATABLE READ 는 첫 조회 때 스냅숏을 잡는다). `UserService` 의 `signUp`·`login`·`verifyPassword`·`changePassword`,
+    `AccountWithdrawalService.withdraw`, `PasswordResetService` 의 `request`·`confirm` 은 `Propagation.NOT_SUPPORTED` — BCrypt(수십 ms) 동안 커넥션(풀 10)·사용자 행 잠금을 쥐지 않게.
     비밀번호 변경과 탈퇴는 BCrypt 를 먼저 하고 `TransactionTemplate` 안에서 `lockIfPasswordUnchanged` 로 잠그며 **맞춰 본 해시가 그대로인지만**
     본다(재설정 확정도 새 해시를 잠그기 전에 만든다). BCrypt 를 부를 때 트랜잭션이 없는지는 `UserServiceTransactionTest` 가 본다.
     **잠금이 필요한 경로는 첫 조회를 잠금 조회로 한다**(`findOwnedVehicleForUpdate`·`findByIdForUpdate`·`findLockedBy…`).
@@ -290,7 +290,7 @@
     `createdAt` 같은 기록 시각에만 남는다. 바꾸면 저장된 시각의 뜻이 9시간 밀리므로 따로 떼어 결정한다.
 18. **계산 결과는 저장하지 않고 읽을 때 계산한다**(연비·단가·구간 거리·다음 정비·지남/곧). 앞 기록이 바뀌면
     뒤 기록의 값이 따라 바뀌기 때문이다. 같은 계산을 두 화면이 쓰면 **한 곳에 둔다** — `fuel/domain/FuelEfficiency`·
-    `FuelAnomaly`(둘 다 `FuelSegment` 의 구간 순회를 쓴다 — 구간은 **가득 주유 → 가득 주유**, 사이의 덜 채운 양과 같은 주행거리로 나눠 넣은 양을 합친다. 목록 행도 같은 구간을 `byClosingRecord` 로 받는다), `maintenance/domain/NextService` 를 차량 상세·목록·홈이 공유한다.
+    `FuelAnomaly`(둘 다 `FuelSegment` 의 구간 순회를 쓴다 — 구간은 **가득 주유 → 가득 주유**, 사이의 덜 채운 양과 같은 주행거리로 나눠 넣은 양을 합친다. 출발 주행거리의 기록 중 하나라도 가득이면 가득에서 출발하고, 그 주행거리에서 넣은 양은 출발 전의 양이라 구간에 안 넣는다. 목록 행도 같은 구간을 `byClosingRecord` 로 받는다), `maintenance/domain/NextService` 를 차량 상세·목록·홈이 공유한다.
     두 벌이면 한 화면은 지났다 하고 다른 화면은 아무 말도 안 한다. 판정을 화면이 아니라 서버가 하는 이유도 같다.
 19. **목록 정렬은 화이트리스트다**(`common/dto/SortGuard`). Spring Data 는 `?sort=owner.password` 처럼 연관을
     타고 들어가는 정렬을 그대로 받는다. 통과하면 같은 방향의 `id` 를 보조 키로 붙인다(동점 페이지 겹침 방지).
@@ -519,7 +519,8 @@
 ## 진행 상황
 
 코드는 끝났고 브라우저 확인(6-B~6-E·7-H)도 2026-10-10 에 한 바퀴 돌았다. **남은 것은 실제 폰으로만 볼 넷**(C-17·C-19·C-21·D-4)과
-Windows 글꼴(H-14), 2026-10-16 에 고친 화면을 사람 눈으로 보는 6-B 다섯 줄이다. H-9 와 6-G 는 2026-10-16 에 끝냈다.
+Windows 글꼴(H-14), 2026-10-16·17 에 고친 화면을 사람 눈으로 보는 6-B 열네 줄이다. H-9 와 6-G 는 2026-10-16 에 끝냈다.
+2026-10-17 두 번째 점검에서 찾은 것(그날 고친 것의 회귀 둘 포함)은 `docs/QA.md` 백로그의 "2026-10-17 점검에서 남은 것" 에 있다.
 배포 준비(PWA·프록시·CI 정렬 규칙·시도 잠금 저장소)는 프로젝트를 완성한 뒤에 따로 한다(사용자 결정).
 운영 DB 는 V1~V4 적용까지 확인을 마쳤다(2026-10-10).
 **V5·V6 은 다음 IntelliJ 기동 때 운영 DB 에 적용된다** — 적용 뒤 `SHOW CREATE TABLE vehicles`(public_id 의 `utf8mb4_bin`)와

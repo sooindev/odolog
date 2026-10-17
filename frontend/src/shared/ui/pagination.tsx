@@ -29,7 +29,7 @@ export function Pagination({
         size="icon-sm"
         aria-label={t.common.previousPage}
         disabled={page === 0}
-        // 연타해도 범위 안. 다음 장 응답 전엔 page 가 그대로라 버튼이 안 잠김
+        // 범위 안으로 자름. 부르는 쪽이 보이는 장 기준으로 계산해 응답 전 연타는 한 장만 넘어감
         onClick={() => onChange((current) => Math.max(0, current - 1))}
       >
         <ChevronLeft />
