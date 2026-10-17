@@ -29,6 +29,8 @@ export const en: Messages = {
     registering: 'Adding…',
     loading: 'Loading…',
     processing: 'Working…',
+    screenFailed: "Couldn't load this page. Check your connection and reload.",
+    reload: 'Reload',
     optional: 'Optional',
     noChanges: 'Nothing changed.',
     previousPage: 'Previous page',

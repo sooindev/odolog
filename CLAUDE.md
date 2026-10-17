@@ -424,7 +424,7 @@
     main.tsx        진입점. ThemeProvider > QueryClientProvider > BrowserRouter > AuthProvider > I18nProvider > App
     index.css       디자인 토큰 전부(docs/DESIGN.md). 테스트 파일은 @source not 으로 Tailwind 스캔에서 뺀다
     app/            조립층 — 라우트 12개(App), HomePage(비로그인 랜딩 / 0대 등록 권유 / 대시보드 갈림), LandingPage,
-                    LegalPage, ProtectedRoute, I18nProvider(사용자를 알아야 해서 여기), layout/(Header·Footer·AuthLayout)
+                    LegalPage, ProtectedRoute, ScreenErrorBoundary(화면 조각을 못 받으면 본문만 안내), I18nProvider(사용자를 알아야 해서 여기), layout/(Header·Footer·AuthLayout)
     features/
       auth/         로그인·가입·재설정 화면, AuthContext(세션 복구·로그인·로그아웃·탈퇴·401)
       account/      프로필 화면(/me)과 그 구역 — 계정·비밀번호·언어/단위·화면·내보내기/가져오기·탈퇴
@@ -475,7 +475,7 @@
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 
-테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 104개(파일 16개) — 순수 함수, 사전 누락,
+테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 106개(파일 17개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
 실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 19개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.

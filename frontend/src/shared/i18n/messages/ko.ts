@@ -24,6 +24,8 @@ export const ko = {
     registering: '등록 중…',
     loading: '불러오는 중…',
     processing: '처리 중…',
+    screenFailed: '화면을 불러오지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.',
+    reload: '새로고침',
     optional: '선택',
     noChanges: '변경된 내용이 없습니다.',
     previousPage: '이전 페이지',

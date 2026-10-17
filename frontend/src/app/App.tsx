@@ -5,6 +5,7 @@ import { AuthLayout } from '@/app/layout/AuthLayout'
 import { Footer } from '@/app/layout/Footer'
 import { HomePage } from '@/app/HomePage'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
+import { ScreenErrorBoundary } from '@/app/ScreenErrorBoundary'
 import { Header } from '@/app/layout/Header'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { LoadingText } from '@/shared/ui/state'
@@ -66,35 +67,38 @@ function App() {
           0.18s 페이드만
         */}
         <div key={location.pathname} className="animate-fade">
-          {/* 화면 조각을 받는 동안. 보호 라우트의 세션 복구 대기와 같은 모양 */}
-          <Suspense fallback={<LoadingText className="justify-center py-24" />}>
-            <Routes>
-              {/* 세 얼굴의 갈림은 HomePage 안에 */}
-              <Route path="/" element={<HomePage />} />
-              {/* 로그인과 무관한 문서 */}
-              <Route path="/privacy" element={<LegalPage kind="privacy" />} />
-              <Route path="/terms" element={<LegalPage kind="terms" />} />
+          {/* 화면 조각을 못 받으면 헤더·푸터는 두고 본문만 안내로. 위 key 덕에 주소가 바뀌면 다시 시도 */}
+          <ScreenErrorBoundary>
+            {/* 화면 조각을 받는 동안. 보호 라우트의 세션 복구 대기와 같은 모양 */}
+            <Suspense fallback={<LoadingText className="justify-center py-24" />}>
+              <Routes>
+                {/* 세 얼굴의 갈림은 HomePage 안에 */}
+                <Route path="/" element={<HomePage />} />
+                {/* 로그인과 무관한 문서 */}
+                <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+                <Route path="/terms" element={<LegalPage kind="terms" />} />
 
-              {/* path 없는 라우트 = 자식을 감싸는 레이아웃 */}
-              <Route element={<AuthLayout />}>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignUpPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-              </Route>
+                {/* path 없는 라우트 = 자식을 감싸는 레이아웃 */}
+                <Route element={<AuthLayout />}>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignUpPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                </Route>
 
-              <Route element={<ProtectedRoute />}>
-                <Route path="/vehicles" element={<VehicleListPage />} />
-                {/* 'new' 가 ':vehicleId' 보다 우선 */}
-                <Route path="/vehicles/new" element={<VehicleNewPage />} />
-                <Route path="/vehicles/:vehicleId" element={<VehicleDetailByKey />} />
-                <Route path="/me" element={<ProfilePage />} />
-              </Route>
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/vehicles" element={<VehicleListPage />} />
+                  {/* 'new' 가 ':vehicleId' 보다 우선 */}
+                  <Route path="/vehicles/new" element={<VehicleNewPage />} />
+                  <Route path="/vehicles/:vehicleId" element={<VehicleDetailByKey />} />
+                  <Route path="/me" element={<ProfilePage />} />
+                </Route>
 
-              {/* 없는 주소는 소개 화면으로 */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+                {/* 없는 주소는 소개 화면으로 */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </ScreenErrorBoundary>
         </div>
       </main>
 
