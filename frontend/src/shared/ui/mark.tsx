@@ -1,7 +1,7 @@
 import { cn } from '@/shared/ui/cn'
 
 /**
- * 계기판 바늘 마크. 파비콘과 같은 도형
+ * 계기판 바늘 마크. 헤더 로고 자리
  * 색은 currentColor. 글자색·테마 자동 반영
  */
 export function GaugeMark({ className }: { className?: string }) {
