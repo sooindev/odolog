@@ -52,7 +52,8 @@ public class UserService {
         this.dummyHash = passwordEncoder.encode("no-such-account");
     }
 
-    @Transactional
+    /** BCrypt 는 트랜잭션 밖. 저장은 리포지토리의 트랜잭션, 동시 가입은 이메일 유니크가 409 로 막음 */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public User signUp(SignUpRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new ConflictException(ErrorCode.EMAIL_DUPLICATE, "이미 가입된 이메일입니다: " + request.email());
@@ -134,10 +135,11 @@ public class UserService {
     }
 
     /**
-     * 되돌릴 수 없는 동작 앞의 비밀번호 확인. 변경·탈퇴 공용
+     * 되돌릴 수 없는 동작 앞의 비밀번호 확인. 변경·탈퇴 공용, BCrypt 라 트랜잭션 밖
      * 로그인과 같은 횟수 제한. 없으면 훔친 세션으로 현재 비밀번호 무제한 대입
+     * 맞춰 본 해시를 돌려줌. 부르는 쪽이 lockIfPasswordUnchanged 로 잠근 뒤 그대로인지 다시 봄
      */
-    /** 맞춰 본 해시를 돌려줌. 부르는 쪽이 잠근 뒤 그대로인지 다시 볼 수 있게 */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public String verifyPassword(Long userId, String rawPassword) {
         String limitKey = PASSWORD_CHECK_KEY_PREFIX + userId;
         loginAttemptLimiter.acquire(limitKey, ErrorCode.TOO_MANY_PASSWORD_ATTEMPTS, "비밀번호를 너무 많이 틀렸습니다.");
@@ -150,6 +152,16 @@ public class UserService {
 
         loginAttemptLimiter.recordSuccess(limitKey);
         return user.getPassword();
+    }
+
+    /** 첫 조회가 사용자 행 잠금. 확인한 뒤 재설정·다른 변경이 끝나 해시가 바뀌었으면 401 */
+    @Transactional
+    public User lockIfPasswordUnchanged(Long userId, String verifiedHash) {
+        User user = findByIdForUpdate(userId);
+        if (!user.getPassword().equals(verifiedHash)) {
+            throw new AuthenticationFailedException(ErrorCode.WRONG_PASSWORD, "현재 비밀번호가 올바르지 않습니다.");
+        }
+        return user;
     }
 
     @Transactional
@@ -176,12 +188,8 @@ public class UserService {
         String newHash = passwordEncoder.encode(request.newPassword());
 
         transactionTemplate.executeWithoutResult(status -> {
-            // 첫 조회가 사용자 행 잠금. 재설정 확정과 겹치면 늦은 쪽이 앞선 쪽의 결과를 보고 진행
-            User user = userRepository.findLockedById(userId)
-                    .orElseThrow(() -> new IllegalStateException("존재하지 않는 사용자입니다: " + userId));
-            if (!user.getPassword().equals(verifiedHash)) {
-                throw new AuthenticationFailedException(ErrorCode.WRONG_PASSWORD, "현재 비밀번호가 올바르지 않습니다.");
-            }
+            // 재설정 확정과 겹치면 늦은 쪽이 앞선 쪽의 결과를 보고 진행
+            User user = lockIfPasswordUnchanged(userId, verifiedHash);
 
             user.changePassword(newHash);
             // 발급된 재설정 링크 폐기. 남겨 두면 바꾼 비밀번호를 30분 동안 링크로 덮어쓸 수 있음

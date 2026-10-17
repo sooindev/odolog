@@ -203,9 +203,10 @@
     쓰기가 실패해서 바로 드러난다. 반대로 하면 아무 일도 안 일어나 영영 모른다.
     **예외는 BCrypt 를 도는 경로다.** `user/LoginService` 는 트랜잭션을 걸지 않는다 — 로그인은 세션을 저장한 **뒤**
     비밀번호가 그대로인지 다시 보는데, 그 재확인이 **새 트랜잭션**이어야 그 사이 커밋된 재설정·변경·탈퇴가 보인다
-    (REPEATABLE READ 는 첫 조회 때 스냅숏을 잡는다). `UserService.login`·`changePassword`·`PasswordResetService.request` 는
-    `Propagation.NOT_SUPPORTED` — BCrypt(수십 ms) 동안 커넥션(풀 10)·사용자 행 잠금을 쥐지 않게. 비밀번호 변경은 BCrypt 를
-    먼저 하고 `TransactionTemplate` 으로 잠근 뒤 **맞춰 본 해시가 그대로인지만** 본다(재설정 확정도 새 해시를 잠그기 전에 만든다).
+    (REPEATABLE READ 는 첫 조회 때 스냅숏을 잡는다). `UserService` 의 `signUp`·`login`·`verifyPassword`·`changePassword`, 탈퇴,
+    `PasswordResetService.request` 는 `Propagation.NOT_SUPPORTED` — BCrypt(수십 ms) 동안 커넥션(풀 10)·사용자 행 잠금을 쥐지 않게.
+    비밀번호 변경과 탈퇴는 BCrypt 를 먼저 하고 `TransactionTemplate` 안에서 `lockIfPasswordUnchanged` 로 잠그며 **맞춰 본 해시가 그대로인지만**
+    본다(재설정 확정도 새 해시를 잠그기 전에 만든다). BCrypt 를 부를 때 트랜잭션이 없는지는 `UserServiceTransactionTest` 가 본다.
     **잠금이 필요한 경로는 첫 조회를 잠금 조회로 한다**(`findOwnedVehicleForUpdate`·`findByIdForUpdate`·`findLockedBy…`).
     기록 쓰기와 차량 삭제, 동시 가져오기, 같은 주소의 재설정 발급이 그렇다. 첫 조회여야 기다린 뒤에 앞선 쪽의 결과가 보인다.
     잠금 순서는 **사용자 행 → 차량·토큰 행**으로 맞춘다(반대면 데드락).
@@ -406,10 +407,10 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 429개):
+테스트 종류 (`./gradlew test`, 432개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
-- **`@SpringBootTest` 여덟** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는
+- **`@SpringBootTest` 열하나** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는
   진짜 서비스가 돌지 않는다. 트랜잭션·잠금·FK·데드락·마이그레이션은 이것들만 본다. 잠금 테스트들은 **잠금을 빼고 돌려
   실패하는 것까지 확인**하고 넣었다
 - 루트의 `FlywayMigrationTest`(전용 스키마 `odolog_migration_test` — 빈 스키마·운영 경로 + `SchemaDrift` 로 nullable·유니크 대조와 일부러 어긋낸 네 경우) ·

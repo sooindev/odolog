@@ -12,12 +12,14 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AccountWithdrawalServiceTest {
@@ -28,17 +30,23 @@ class AccountWithdrawalServiceTest {
     @Mock
     private VehicleRemovalService vehicleRemovalService;
 
+    // TransactionTemplate 이 부르는 대상. 목이라 실제 트랜잭션 없음
+    @Mock
+    private PlatformTransactionManager transactionManager;
+
     @InjectMocks
     private AccountWithdrawalService accountWithdrawalService;
 
     @Test
-    @DisplayName("사용자 잠금 → 비밀번호 확인 → 차량 삭제 → 사용자 삭제 순서로 진행한다")
+    @DisplayName("비밀번호 확인 → 해시 그대로인지 보며 잠금 → 차량 삭제 → 사용자 삭제 순서로 진행한다")
     void withdrawFollowsOrder() {
+        when(userService.verifyPassword(1L, "password1234")).thenReturn("verified-hash");
+
         accountWithdrawalService.withdraw(1L, new WithdrawRequest("password1234"));
 
         InOrder order = inOrder(userService, vehicleRemovalService);
-        order.verify(userService).findByIdForUpdate(1L);
         order.verify(userService).verifyPassword(1L, "password1234");
+        order.verify(userService).lockIfPasswordUnchanged(1L, "verified-hash");
         order.verify(vehicleRemovalService).deleteAllOwnedBy(1L);
         order.verify(userService).delete(1L);
     }

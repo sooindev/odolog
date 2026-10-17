@@ -20,12 +20,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 
 /**
  * 탈퇴를 실제 DB 로. 자식 테이블이 전부 찬 계정
@@ -55,6 +62,10 @@ class AccountWithdrawalServiceTransactionTest {
 
     @Autowired
     private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    // UserServiceTransactionTest 와 같은 덮어쓰기라 스프링 컨텍스트를 같이 씀
+    @MockitoSpyBean
+    private PasswordEncoder passwordEncoder;
 
     @AfterEach
     void tearDown() {
@@ -89,5 +100,22 @@ class AccountWithdrawalServiceTransactionTest {
         assertThat(serviceIntervalRepository.count()).isZero();
         assertThat(fuelRecordRepository.count()).isZero();
         assertThat(passwordResetTokenRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("탈퇴의 비밀번호 확인(BCrypt)은 트랜잭션 밖이다 — 사용자 행 잠금을 쥔 채 돌지 않게")
+    void verifiesPasswordOutsideTransaction() {
+        User user = userRepository.save(new User("bcrypt@odolog.com",
+                new BCryptPasswordEncoder().encode("password1234"), "탈퇴자"));
+        List<Boolean> inTransaction = new ArrayList<>();
+        doAnswer(invocation -> {
+            inTransaction.add(TransactionSynchronizationManager.isActualTransactionActive());
+            return invocation.callRealMethod();
+        }).when(passwordEncoder).matches(any(), any());
+
+        accountWithdrawalService.withdraw(user.getId(), new WithdrawRequest("password1234"));
+
+        assertThat(inTransaction).containsExactly(false);
+        assertThat(userRepository.count()).isZero();
     }
 }
