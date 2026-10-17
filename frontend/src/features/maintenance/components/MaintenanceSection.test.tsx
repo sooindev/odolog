@@ -127,4 +127,39 @@ describe('MaintenanceSection', () => {
     expect(fetchRecords).toHaveBeenCalledTimes(2)
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('고치던 중')
   })
+
+  it('다음 쪽 조회가 실패해도 받아 둔 쪽과 페이지 이동이 남고, 다시 누르면 그 쪽을 다시 읽는다', async () => {
+    const firstPage = {
+      items: [record('recordAAAAAA', '첫 쪽 메모', '2026-09-01')],
+      page: 0,
+      size: 1,
+      totalElements: 2,
+      totalPages: 2,
+      hasNext: true,
+    }
+    vi.mocked(fetchRecords)
+      .mockReset()
+      .mockResolvedValueOnce(firstPage)
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce({
+        ...firstPage,
+        items: [record('recordBBBBBB', '둘째 쪽 메모', '2026-08-01')],
+        page: 1,
+        hasNext: false,
+      })
+    renderWithProviders(<Harness />)
+
+    await screen.findByText('첫 쪽 메모')
+    fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
+
+    // 오류 문구 아래 1쪽 목록과 페이지 이동이 그대로
+    expect((await screen.findByRole('alert')).textContent).toBe('정비 이력을 불러오지 못했습니다.')
+    expect(screen.getByText('첫 쪽 메모')).toBeTruthy()
+
+    // 같은 쪽 번호라 상태는 그대로. 직접 다시 조회해야 함
+    fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
+    await screen.findByText('둘째 쪽 메모')
+    expect(vi.mocked(fetchRecords).mock.calls.map((call) => call[1])).toEqual([0, 1, 1])
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
 })

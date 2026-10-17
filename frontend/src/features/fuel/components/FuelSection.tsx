@@ -9,6 +9,7 @@ import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
+import { useShownPage } from '@/shared/lib/hooks/useShownPage'
 import { useRecordList } from '@/shared/lib/hooks/useRecordList'
 import { invalidateAfterFuel, queryKeys } from '@/shared/api/queryKeys'
 import { deleteFuelRecord, fetchFuelRecords } from '@/features/fuel/api/endpoints'
@@ -27,7 +28,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   const [page, setPage] = useState(0)
 
   // 페이지를 옮기는 동안 직전 목록 유지. 깜빡임 방지
-  const { data, isPending, error } = useQuery({
+  const { data, isPending, isPlaceholderData, isError, error, refetch } = useQuery({
     queryKey: queryKeys.fuelList(vehicleId, page),
     queryFn: () => fetchFuelRecords(vehicleId, page),
     placeholderData: keepPreviousData,
@@ -46,18 +47,19 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
     },
   })
   const { editing, setEditing, deletingId } = list
+  const { shown, changePage } = useShownPage({ page, setPage: list.changePage, data, isPlaceholderData, isError, refetch })
 
   // 변수로 받아 타입 좁히기
   const shownError = error !== null ? errorMessage(error, t, t.fuel.loadFailed) : list.actionError
 
   // 전체의 첫 기록. 주행거리 내림차순이라 마지막 장의 마지막 행
   function isFirstRecord(index: number) {
-    return data !== undefined && !data.hasNext && index === data.items.length - 1
+    return shown !== undefined && !shown.hasNext && index === shown.items.length - 1
   }
 
   // 같은 주행거리로 이어진 아래 줄에 연비가 있으면 이 주유량도 거기 합쳐짐. 쪽 밖이면 모름으로
   function mergedIntoPrevious(index: number) {
-    const items = data?.items ?? []
+    const items = shown?.items ?? []
     for (let j = index + 1; j < items.length && items[j].odometer === items[index].odometer; j++) {
       if (items[j].efficiency !== null) return true
       if (items[j].resetPoint) return false
@@ -97,20 +99,20 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
 
         {shownError !== null && <ErrorText message={shownError} />}
 
-        {isPending ? (
+        {isPending && shown === undefined ? (
           <div className="flex flex-col gap-4">
             {[0, 1, 2].map((row) => (
               <Skeleton key={row} className="h-12" />
             ))}
           </div>
-        ) : data === undefined ? null : data.totalElements === 0 ? (
-          // data 없음은 조회 실패. 위 오류 문구만, "기록 없음"은 거짓
+        ) : shown === undefined ? null : shown.totalElements === 0 ? (
+          // 보일 쪽이 없음은 조회 실패. 위 오류 문구만, "기록 없음"은 거짓
           // 개수는 전체로. 쪽만 비면(범위 밖 쪽을 고치는 중) 기록이 없는 게 아님
           <p className="text-caption text-muted-foreground">{t.fuel.empty}</p>
         ) : (
           <>
             <ul className="border-t border-border">
-              {data.items.map((record, index) => (
+              {shown.items.map((record, index) => (
                 <li key={record.id} className="border-b border-border">
                   {/* 좁은 화면은 두 줄 */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
@@ -222,11 +224,11 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
             </ul>
 
             <Pagination
-              page={data.page}
-              totalPages={data.totalPages}
-              hasNext={data.hasNext}
+              page={shown.page}
+              totalPages={shown.totalPages}
+              hasNext={shown.hasNext}
               // 페이지 이동 시 수정 폼·에러 초기화
-              onChange={list.changePage}
+              onChange={changePage}
             />
           </>
         )}

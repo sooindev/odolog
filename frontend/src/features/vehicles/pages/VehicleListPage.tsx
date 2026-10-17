@@ -12,6 +12,7 @@ import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { queryKeys } from '@/shared/api/queryKeys'
 import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
+import { useShownPage } from '@/shared/lib/hooks/useShownPage'
 import { fetchVehicles } from '@/features/vehicles/api/endpoints'
 
 export function VehicleListPage() {
@@ -19,21 +20,22 @@ export function VehicleListPage() {
   const [page, setPage] = useState(0)
 
   // 쪽을 넘기는 동안은 앞 쪽을 그대로(placeholderData). 떠나면 버림(홈과 같은 이유)
-  const { data, isPending, error } = useQuery({
+  const { data, isPending, isPlaceholderData, isError, error, refetch } = useQuery({
     queryKey: queryKeys.vehicleList(page),
     queryFn: () => fetchVehicles(page),
     placeholderData: keepPreviousData,
     gcTime: 0,
   })
   usePageInRange(data ?? null, setPage)
+  const { shown, changePage } = useShownPage({ page, setPage, data, isPlaceholderData, isError, refetch })
 
-  if (isPending) {
+  if (isPending && shown === undefined) {
     return <VehicleListSkeleton />
   }
 
   // 오류·빈 상태도 머리말(h1) 유지. 버튼은 빈 상태 안의 하나만
   // 받아 둔 목록이 있으면 오류만 위에 덧붙임. 페이지 이동 실패로 목록이 통째로 사라지지 않게
-  if (data === undefined || data.totalElements === 0) {
+  if (shown === undefined || shown.totalElements === 0) {
     return (
       <Page eyebrow="Garage" title={t.vehicles.list.title}>
         {error !== null ? <ErrorText message={errorMessage(error, t, t.vehicles.list.loadFailed)} /> : <EmptyGarage />}
@@ -46,7 +48,7 @@ export function VehicleListPage() {
       eyebrow="Garage"
       title={t.vehicles.list.title}
       // 대수는 설명에. 제목 길이 고정
-      description={t.vehicles.list.count(f.count(data.totalElements))}
+      description={t.vehicles.list.count(f.count(shown.totalElements))}
       action={
         // render: 버튼 스타일을 Link 에. button 안 a 금지
         <Button size="sm" render={<Link to="/vehicles/new" />}>
@@ -59,7 +61,7 @@ export function VehicleListPage() {
         {error !== null && <ErrorText message={errorMessage(error, t, t.vehicles.list.loadFailed)} />}
         {/* 카드 대신 괘선 행. 번호판·주행거리 세로 정렬로 여러 대 비교 */}
         <ul className="border-t border-border">
-          {data.items.map((vehicle) => (
+          {shown.items.map((vehicle) => (
             <li key={vehicle.id} className="border-b border-border">
               <Link
                 to={`/vehicles/${vehicle.id}`}
@@ -115,10 +117,10 @@ export function VehicleListPage() {
         </ul>
 
         <Pagination
-          page={data.page}
-          totalPages={data.totalPages}
-          hasNext={data.hasNext}
-          onChange={setPage}
+          page={shown.page}
+          totalPages={shown.totalPages}
+          hasNext={shown.hasNext}
+          onChange={changePage}
         />
       </div>
     </Page>

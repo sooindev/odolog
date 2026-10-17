@@ -10,6 +10,7 @@ import { ErrorText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
+import { useShownPage } from '@/shared/lib/hooks/useShownPage'
 import { useRecordList } from '@/shared/lib/hooks/useRecordList'
 import { invalidateAfterMaintenance, queryKeys } from '@/shared/api/queryKeys'
 import { deleteRecord, fetchRecords } from '@/features/maintenance/api/endpoints'
@@ -45,7 +46,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
   )
 
   // 페이지·필터를 옮기는 동안 직전 목록 유지. 깜빡임 방지
-  const { data, isPending, error } = useQuery({
+  const { data, isPending, isPlaceholderData, isError, error, refetch } = useQuery({
     queryKey: queryKeys.maintenanceList(vehicleId, page, filter),
     queryFn: () => fetchRecords(vehicleId, page, filter),
     placeholderData: keepPreviousData,
@@ -63,6 +64,15 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
     },
   })
   const { editing, setEditing, deletingId } = list
+  const { shown, changePage } = useShownPage({
+    page,
+    setPage: list.changePage,
+    data,
+    isPlaceholderData,
+    isError,
+    refetch,
+    scope: filter,
+  })
 
   // 변수로 받아 타입 좁히기
   const shownError = error !== null ? errorMessage(error, t, t.maintenance.loadFailed) : list.actionError
@@ -136,14 +146,14 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
 
         {shownError !== null && <ErrorText message={shownError} />}
 
-        {isPending ? (
+        {isPending && shown === undefined ? (
           <div className="flex flex-col gap-5">
             {[0, 1].map((row) => (
               <Skeleton key={row} className="h-12" />
             ))}
           </div>
-        ) : data === undefined ? null : data.totalElements === 0 ? (
-          // data 없음은 조회 실패(위 오류 문구만). 필터 결과가 비었을 때는 별도 문구
+        ) : shown === undefined ? null : shown.totalElements === 0 ? (
+          // 보일 쪽이 없음은 조회 실패(위 오류 문구만). 필터 결과가 비었을 때는 별도 문구
           <p className="py-4 text-caption text-muted-foreground">
             {filter === null
               ? t.maintenance.empty
@@ -151,7 +161,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
           </p>
         ) : (
           <ul className="divide-y divide-border">
-            {data.items.map((record) => (
+            {shown.items.map((record) => (
               // 호버 시 버튼 진하게. 터치 대비 완전히 숨기지 않음
               <li
                 key={record.id}
@@ -218,13 +228,13 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
           </ul>
         )}
 
-        {data !== undefined && (
+        {shown !== undefined && (
           <Pagination
-            page={data.page}
-            totalPages={data.totalPages}
-            hasNext={data.hasNext}
+            page={shown.page}
+            totalPages={shown.totalPages}
+            hasNext={shown.hasNext}
             // 페이지 이동 시 수정 폼·에러 초기화
-            onChange={list.changePage}
+            onChange={changePage}
           />
         )}
       </CardContent>

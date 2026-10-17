@@ -459,6 +459,7 @@
   되돌리되 열어 둔 수정 폼은 남긴다
 - 홈·차량 목록도 TanStack Query(`queryKeys.summary`·`vehicleList`, `gcTime: 0` — 다른 화면에서 바뀐 기록이 옛 숫자로 먼저 보이지 않게).
   목록 두 카드의 공통 상태(폼 열림·동작 실패·삭제 중인 행)는 `useRecordList`, 범위 밖 페이지 복귀는 `usePageInRange`.
+  쪽 이동 조회가 실패해도 받아 둔 쪽과 페이지 이동을 남기는 것은 `useShownPage`(목록 셋 공용) — `keepPreviousData` 는 받는 동안만 앞 쪽을 준다.
   `useRecordList` 는 지운 행의 수정 폼만 닫는다 — 작성 중인 새 기록 폼은 삭제·쪽 넘김에도 남는다
 - 차량 상세는 `VehicleDetailByKey`(`App.tsx`)가 주소의 차량 id 로 key 를 준다 — 페이드용 key 에 기대지 않는다
 - 문장 속 개수는 `f.count(n)` 으로 넘긴다(`{ n, text }`). 사전은 `text` 를 찍고 영어는 `n` 으로 단·복수를 고른다 — 숫자를 그대로 넣으면 쉼표가 빠진다
@@ -475,7 +476,7 @@
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 
-테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 106개(파일 17개) — 순수 함수, 사전 누락,
+테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 107개(파일 17개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
 실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 19개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.
