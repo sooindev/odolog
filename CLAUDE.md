@@ -290,7 +290,7 @@
     `createdAt` 같은 기록 시각에만 남는다. 바꾸면 저장된 시각의 뜻이 9시간 밀리므로 따로 떼어 결정한다.
 18. **계산 결과는 저장하지 않고 읽을 때 계산한다**(연비·단가·구간 거리·다음 정비·지남/곧). 앞 기록이 바뀌면
     뒤 기록의 값이 따라 바뀌기 때문이다. 같은 계산을 두 화면이 쓰면 **한 곳에 둔다** — `fuel/domain/FuelEfficiency`·
-    `FuelAnomaly`(둘 다 `FuelSegment` 의 구간 순회를 쓴다 — 구간은 **가득 주유 → 가득 주유**, 사이의 덜 채운 양과 같은 주행거리로 나눠 넣은 양을 합친다. 출발 주행거리의 기록 중 하나라도 가득이면 가득에서 출발하고, 그 주행거리에서 넣은 양은 출발 전의 양이라 구간에 안 넣는다. 목록 행도 같은 구간을 `byClosingRecord` 로 받는다), `maintenance/domain/NextService` 를 차량 상세·목록·홈이 공유한다.
+    `FuelAnomaly`(둘 다 `FuelSegment` 의 구간 순회를 쓴다 — 구간은 **가득 주유 → 가득 주유**, 사이의 덜 채운 양과 같은 주행거리로 나눠 넣은 양을 합친다. 출발 주행거리의 기록 중 하나라도 가득이면 가득에서 출발하고, 그 주행거리에서 넣은 양은 출발 전의 양이라 구간에 안 넣는다. 목록 행도 같은 구간을 `byClosingRecord` 로 받고, 주유량이 어느 구간에 들어갔는지(`LitersUse`)도 같은 순회에서 받는다 — 덜 채운 행의 안내를 화면이 짐작하지 않게), `maintenance/domain/NextService` 를 차량 상세·목록·홈이 공유한다.
     두 벌이면 한 화면은 지났다 하고 다른 화면은 아무 말도 안 한다. 판정을 화면이 아니라 서버가 하는 이유도 같다.
 19. **목록 정렬은 화이트리스트다**(`common/dto/SortGuard`). Spring Data 는 `?sort=owner.password` 처럼 연관을
     타고 들어가는 정렬을 그대로 받는다. 통과하면 같은 방향의 `id` 를 보조 키로 붙인다(동점 페이지 겹침 방지).
@@ -408,7 +408,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 433개):
+테스트 종류 (`./gradlew test`, 439개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 열하나** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는
@@ -478,7 +478,7 @@
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 
-테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 107개(파일 17개) — 순수 함수, 사전 누락,
+테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 110개(파일 17개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
 실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 19개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.

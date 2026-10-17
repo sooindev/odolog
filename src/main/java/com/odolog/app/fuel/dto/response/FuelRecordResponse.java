@@ -25,6 +25,8 @@ public record FuelRecordResponse(
         boolean resetPoint,
         /** 가득 채웠는지. 덜 채웠으면 다음 가득 주유의 구간에 합쳐 계산 */
         boolean fullTank,
+        /** 이 주유량이 들어간 구간. 덜 채움·같은 주행거리 행의 안내가 계산과 같게 */
+        FuelSegment.LitersUse litersUse,
 
         /** 리터당 단가(통화의 최소 단위). 총액 ÷ 리터 반올림. 둘 중 하나라도 없으면 null */
         Long pricePerLiter,
@@ -44,9 +46,10 @@ public record FuelRecordResponse(
 
     /**
      * @param segment 이 기록이 닫는 연비 구간(FuelSegment). 평균과 같은 계산. 없으면 연비 없음
+     * @param litersUse 이 기록의 주유량이 들어간 구간. 같은 순회의 결과
      */
     public static FuelRecordResponse of(FuelRecord record, FuelRecord previous, FuelSegment segment,
-                                          FuelAnomaly.Baseline baseline) {
+                                          FuelSegment.LitersUse litersUse, FuelAnomaly.Baseline baseline) {
         Integer distance = null;
         BigDecimal efficiency = null;
 
@@ -70,6 +73,7 @@ public record FuelRecordResponse(
                 record.getMemo(),
                 record.isResetPoint(),
                 record.isFullTank(),
+                litersUse,
                 pricePerLiter(record),
                 distance,
                 efficiency,

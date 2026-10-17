@@ -23,6 +23,7 @@ const RECORD: FuelRecordResponse = {
   memo: '처음 메모',
   resetPoint: false,
   fullTank: true,
+  litersUse: 'CLOSING',
   pricePerLiter: 1695,
   distance: 500,
   efficiency: 15.4,

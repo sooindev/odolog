@@ -28,7 +28,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   const [page, setPage] = useState(0)
 
   // 페이지를 옮기는 동안 직전 목록 유지. 깜빡임 방지
-  const { data, isPending, isPlaceholderData, isError, error, refetch } = useQuery({
+  const { data, isPending, isPlaceholderData, isError, error: queryError, refetch } = useQuery({
     queryKey: queryKeys.fuelList(vehicleId, page),
     queryFn: () => fetchFuelRecords(vehicleId, page),
     placeholderData: keepPreviousData,
@@ -47,7 +47,15 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
     },
   })
   const { editing, setEditing, deletingId } = list
-  const { shown, changePage } = useShownPage({ page, setPage: list.changePage, data, isPlaceholderData, isError, refetch })
+  const { shown, changePage, error } = useShownPage({
+    page,
+    setPage: list.changePage,
+    data,
+    isPlaceholderData,
+    isError,
+    error: queryError,
+    refetch,
+  })
 
   // 변수로 받아 타입 좁히기
   const shownError = error !== null ? errorMessage(error, t, t.fuel.loadFailed) : list.actionError
@@ -55,16 +63,6 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   // 전체의 첫 기록. 주행거리 내림차순이라 마지막 장의 마지막 행
   function isFirstRecord(index: number) {
     return shown !== undefined && !shown.hasNext && index === shown.items.length - 1
-  }
-
-  // 같은 주행거리로 이어진 아래 줄에 연비가 있으면 이 주유량도 거기 합쳐짐. 쪽 밖이면 모름으로
-  function mergedIntoPrevious(index: number) {
-    const items = shown?.items ?? []
-    for (let j = index + 1; j < items.length && items[j].odometer === items[index].odometer; j++) {
-      if (items[j].efficiency !== null) return true
-      if (items[j].resetPoint) return false
-    }
-    return false
   }
 
   return (
@@ -125,7 +123,14 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                             {!record.fullTank ? (
                               <>
                                 {t.fuel.partial}
-                                <span className="ml-1 text-muted-foreground">{t.fuel.partialMerged}</span>
+                                {/* 실제로 들어간 구간을 서버가 알림. 출발 전의 양·끊긴 구간은 어디에도 안 들어감 */}
+                                <span className="ml-1 text-muted-foreground">
+                                  {record.litersUse === 'NEXT'
+                                    ? t.fuel.partialMerged
+                                    : record.litersUse === 'PREVIOUS'
+                                      ? t.fuel.mergedIntoPrevious
+                                      : t.fuel.noEfficiency}
+                                </span>
                               </>
                             ) : record.distance !== null && record.liters === null ? (
                               <>
@@ -149,7 +154,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                               <>
                                 {t.fuel.sameOdometer}
                                 <span className="ml-1 text-muted-foreground">
-                                  {mergedIntoPrevious(index) ? t.fuel.mergedIntoPrevious : t.fuel.noEfficiency}
+                                  {record.litersUse === 'PREVIOUS' ? t.fuel.mergedIntoPrevious : t.fuel.noEfficiency}
                                 </span>
                               </>
                             )}
@@ -213,7 +218,8 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         variant="ghost"
                         onClick={() => list.handleDelete(record.id)}
                         disabled={deletingId === record.id}
-                        aria-label={t.common.deleteOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
+                        // 삭제 중에는 보이는 글자 그대로. 이름을 덮어쓰면 삭제 중… 이 안 읽힘
+                        aria-label={deletingId === record.id ? t.common.deleting : t.common.deleteOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
                       >
                         {deletingId === record.id ? t.common.deleting : t.common.delete}
                       </Button>

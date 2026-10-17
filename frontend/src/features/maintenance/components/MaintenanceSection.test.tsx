@@ -128,25 +128,26 @@ describe('MaintenanceSection', () => {
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('고치던 중')
   })
 
-  it('다음 쪽 조회가 실패해도 받아 둔 쪽과 페이지 이동이 남고, 다시 누르면 그 쪽을 다시 읽는다', async () => {
-    const firstPage = {
-      items: [record('recordAAAAAA', '첫 쪽 메모', '2026-09-01')],
-      page: 0,
-      size: 1,
-      totalElements: 2,
-      totalPages: 2,
-      hasNext: true,
-    }
+  /** 1쪽은 늘 성공, 2쪽은 처음 한 번 실패 */
+  function failSecondPageOnce(firstItems: MaintenanceRecordResponse[]) {
+    const firstPage = { items: firstItems, page: 0, size: 1, totalElements: 2, totalPages: 2, hasNext: true }
+    let secondPageCalls = 0
     vi.mocked(fetchRecords)
       .mockReset()
-      .mockResolvedValueOnce(firstPage)
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValueOnce({
-        ...firstPage,
-        items: [record('recordBBBBBB', '둘째 쪽 메모', '2026-08-01')],
-        page: 1,
-        hasNext: false,
+      .mockImplementation(async (_vehicleId, page) => {
+        if (page === 0) {
+          return firstPage
+        }
+        secondPageCalls += 1
+        if (secondPageCalls === 1) {
+          throw new TypeError('Failed to fetch')
+        }
+        return { ...firstPage, items: [record('recordBBBBBB', '둘째 쪽 메모', '2026-08-01')], page: 1, hasNext: false }
       })
+  }
+
+  it('다음 쪽 조회가 실패해도 받아 둔 쪽과 페이지 이동이 남고, 다시 누르면 그 쪽을 다시 읽는다', async () => {
+    failSecondPageOnce([record('recordAAAAAA', '첫 쪽 메모', '2026-09-01')])
     renderWithProviders(<Harness />)
 
     await screen.findByText('첫 쪽 메모')
@@ -155,11 +156,32 @@ describe('MaintenanceSection', () => {
     // 오류 문구 아래 1쪽 목록과 페이지 이동이 그대로
     expect((await screen.findByRole('alert')).textContent).toBe('정비 이력을 불러오지 못했습니다.')
     expect(screen.getByText('첫 쪽 메모')).toBeTruthy()
+    // 보이는 쪽으로 되돌아가 1쪽을 다시 읽음
+    await waitFor(() => expect(vi.mocked(fetchRecords).mock.calls.map((call) => call[1])).toEqual([0, 1, 0]))
+    expect(screen.getByRole('alert')).toBeTruthy()
 
-    // 같은 쪽 번호라 상태는 그대로. 직접 다시 조회해야 함
     fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
     await screen.findByText('둘째 쪽 메모')
-    expect(vi.mocked(fetchRecords).mock.calls.map((call) => call[1])).toEqual([0, 1, 1])
+    expect(vi.mocked(fetchRecords).mock.calls.map((call) => call[1])).toEqual([0, 1, 0, 1])
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('쪽 이동이 실패한 뒤 보이는 쪽에서 지우면 그 쪽을 다시 읽는다', async () => {
+    vi.stubGlobal('confirm', () => true)
+    vi.mocked(deleteRecord).mockResolvedValue(undefined as never)
+    failSecondPageOnce([record('recordAAAAAA', '첫 쪽 메모', '2026-09-01')])
+    renderWithProviders(<Harness />)
+
+    await screen.findByText('첫 쪽 메모')
+    fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
+    await screen.findByRole('alert')
+    await waitFor(() => expect(vi.mocked(fetchRecords).mock.calls).toHaveLength(3))
+
+    fireEvent.click(screen.getByRole('button', { name: /삭제$/ }))
+
+    // 실패한 2쪽이 아니라 보이는 1쪽을 다시 읽음. 2쪽을 읽으면 고르지 않은 쪽으로 넘어감
+    await waitFor(() => expect(vi.mocked(fetchRecords).mock.calls).toHaveLength(4))
+    expect(vi.mocked(fetchRecords).mock.calls[3][1]).toBe(0)
+    expect(screen.queryByText('둘째 쪽 메모')).toBeNull()
   })
 })

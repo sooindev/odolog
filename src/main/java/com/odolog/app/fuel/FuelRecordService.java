@@ -233,7 +233,8 @@ public class FuelRecordService {
             }
         }
 
-        return new Rows(FuelAnomaly.baselineOf(all), FuelSegment.byClosingRecord(all), beforeResetPoint);
+        return new Rows(FuelAnomaly.baselineOf(all), FuelSegment.byClosingRecord(all),
+                FuelSegment.litersUses(all), beforeResetPoint);
     }
 
     /**
@@ -241,13 +242,14 @@ public class FuelRecordService {
      * 페이지만 보고 정하면 덜 채운 주유·나눠 넣은 주유가 쪽 경계에 걸릴 때 행마다 판정이 달라짐
      */
     private record Rows(FuelAnomaly.Baseline baseline, Map<Long, FuelSegment> segments,
-                        Set<Long> beforeResetPoint) {
+                        Map<Long, FuelSegment.LitersUse> litersUses, Set<Long> beforeResetPoint) {
 
         FuelRecordResponse of(FuelRecord record, FuelRecord previous) {
             // 기준점 앞은 누락 판정 안 함. "확인 필요"(불가능한 값)는 입력 오류라 그대로
             FuelAnomaly.Baseline rowBaseline = beforeResetPoint.contains(record.getId())
                     ? FuelAnomaly.Baseline.NONE : baseline;
-            return FuelRecordResponse.of(record, previous, segments.get(record.getId()), rowBaseline);
+            return FuelRecordResponse.of(record, previous, segments.get(record.getId()),
+                    litersUses.getOrDefault(record.getId(), FuelSegment.LitersUse.NONE), rowBaseline);
         }
     }
 

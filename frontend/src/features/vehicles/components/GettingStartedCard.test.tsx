@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { GettingStartedCard } from '@/features/vehicles/components/GettingStartedCard'
 import type { VehicleResponse } from '@/features/vehicles/api/types'
+import type { FuelSummaryResponse } from '@/features/fuel/api/types'
 import { queryKeys } from '@/shared/api/queryKeys'
 import { renderWithProviders } from '@/shared/lib/renderWithProviders'
 
@@ -11,11 +12,11 @@ vi.mock('@/features/maintenance/api/endpoints', () => ({
   registerRecord: vi.fn(),
 }))
 vi.mock('@/features/fuel/api/endpoints', () => ({
-  fetchFuelRecords: vi.fn(),
+  fetchFuelSummary: vi.fn(),
 }))
 
 const { fetchRecords, registerRecord } = await import('@/features/maintenance/api/endpoints')
-const { fetchFuelRecords } = await import('@/features/fuel/api/endpoints')
+const { fetchFuelSummary } = await import('@/features/fuel/api/endpoints')
 
 const vehicle: VehicleResponse = {
   id: 'vehicle00001',
@@ -32,12 +33,29 @@ function page(totalElements: number) {
   return { items: [], page: 0, size: 1, totalElements, totalPages: totalElements, hasNext: false }
 }
 
+function fuelSummary(recordCount: number, averageEfficiency: number | null = null): FuelSummaryResponse {
+  return {
+    recordCount,
+    totalCost: null,
+    currency: 'KRW',
+    otherCurrencyRecordCount: 0,
+    totalLiters: null,
+    totalDistance: null,
+    averageEfficiency,
+    latestRecordId: null,
+    resetPointId: null,
+    longSegmentCount: 0,
+    excludedSegmentCount: 0,
+    trend: [],
+  }
+}
+
 describe('GettingStartedCard', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
     vi.mocked(fetchRecords).mockReset().mockResolvedValue(page(0))
-    vi.mocked(fetchFuelRecords).mockReset().mockResolvedValue(page(0))
+    vi.mocked(fetchFuelSummary).mockReset().mockResolvedValue(fuelSummary(0))
     vi.mocked(registerRecord).mockReset()
   })
 
@@ -84,5 +102,19 @@ describe('GettingStartedCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '취소' }))
     expect(onServicesSaved).toHaveBeenCalledTimes(1)
+  })
+
+  it('주유가 2건이어도 연비가 아직 없으면 연비 단계는 끝나지 않는다', async () => {
+    // 덜 채운 주유가 섞여 구간이 없음
+    vi.mocked(fetchRecords).mockResolvedValue(page(1))
+    vi.mocked(fetchFuelSummary).mockResolvedValue(fuelSummary(2))
+    const { queryClient } = renderWithProviders(<GettingStartedCard vehicle={vehicle} onServicesSaved={() => {}} />)
+
+    expect(await screen.findByText('4단계 중 3단계 완료')).toBeTruthy()
+
+    // 다음 가득 주유로 연비가 나오면 카드가 사라짐
+    vi.mocked(fetchFuelSummary).mockResolvedValue(fuelSummary(3, 15))
+    await queryClient.invalidateQueries({ queryKey: queryKeys.gettingStarted(vehicle.id) })
+    await waitFor(() => expect(screen.queryByText(/단계 완료/)).toBeNull())
   })
 })

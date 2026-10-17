@@ -20,14 +20,22 @@ export function VehicleListPage() {
   const [page, setPage] = useState(0)
 
   // 쪽을 넘기는 동안은 앞 쪽을 그대로(placeholderData). 떠나면 버림(홈과 같은 이유)
-  const { data, isPending, isPlaceholderData, isError, error, refetch } = useQuery({
+  const { data, isPending, isPlaceholderData, isError, error: queryError, refetch } = useQuery({
     queryKey: queryKeys.vehicleList(page),
     queryFn: () => fetchVehicles(page),
     placeholderData: keepPreviousData,
     gcTime: 0,
   })
   usePageInRange(data ?? null, setPage)
-  const { shown, changePage } = useShownPage({ page, setPage, data, isPlaceholderData, isError, refetch })
+  const { shown, changePage, error } = useShownPage({
+    page,
+    setPage,
+    data,
+    isPlaceholderData,
+    isError,
+    error: queryError,
+    refetch,
+  })
 
   if (isPending && shown === undefined) {
     return <VehicleListSkeleton />

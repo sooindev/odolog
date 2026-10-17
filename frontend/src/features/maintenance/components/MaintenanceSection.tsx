@@ -46,7 +46,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
   )
 
   // 페이지·필터를 옮기는 동안 직전 목록 유지. 깜빡임 방지
-  const { data, isPending, isPlaceholderData, isError, error, refetch } = useQuery({
+  const { data, isPending, isPlaceholderData, isError, error: queryError, refetch } = useQuery({
     queryKey: queryKeys.maintenanceList(vehicleId, page, filter),
     queryFn: () => fetchRecords(vehicleId, page, filter),
     placeholderData: keepPreviousData,
@@ -64,12 +64,13 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
     },
   })
   const { editing, setEditing, deletingId } = list
-  const { shown, changePage } = useShownPage({
+  const { shown, changePage, error } = useShownPage({
     page,
     setPage: list.changePage,
     data,
     isPlaceholderData,
     isError,
+    error: queryError,
     refetch,
     scope: filter,
   })
@@ -218,7 +219,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
                     variant="ghost"
                     disabled={deletingId === record.id}
                     onClick={() => list.handleDelete(record.id)}
-                    aria-label={t.common.deleteOf(`${t.serviceTypes[record.type]} ${f.date(record.serviceDate)}`)}
+                    // 삭제 중에는 보이는 글자 그대로. 이름을 덮어쓰면 삭제 중… 이 안 읽힘
+                    aria-label={deletingId === record.id ? t.common.deleting : t.common.deleteOf(`${t.serviceTypes[record.type]} ${f.date(record.serviceDate)}`)}
                   >
                     {deletingId === record.id ? t.common.deleting : t.common.delete}
                   </Button>

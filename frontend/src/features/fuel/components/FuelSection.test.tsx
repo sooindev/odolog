@@ -25,6 +25,7 @@ function record(id: string, odometer: number, memo: string): FuelRecordResponse 
     memo,
     resetPoint: false,
     fullTank: true,
+    litersUse: 'CLOSING',
     pricePerLiter: 1667,
     distance: 500,
     efficiency: 16.67,
@@ -67,5 +68,27 @@ describe('FuelSection', () => {
 
     // 이전 입력이 남으면 다른 기록을 덮어씀
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('두 번째 메모')
+  })
+
+  it('덜 채운 주유 행은 서버가 알린 구간대로 안내한다', async () => {
+    const partial = { fullTank: false, distance: null, efficiency: null }
+    vi.mocked(fetchFuelRecords).mockResolvedValue({
+      items: [
+        { ...record('fuelAAAAAAAA', 46000, '다음에 합산'), ...partial, litersUse: 'NEXT' },
+        // 출발 주행거리에서 더 넣은 양. 어느 구간에도 안 들어감
+        { ...record('fuelBBBBBBBB', 45500, '출발 전'), ...partial, litersUse: 'NONE' },
+      ],
+      page: 0,
+      size: 10,
+      totalElements: 2,
+      totalPages: 1,
+      hasNext: false,
+    })
+    renderWithProviders(<FuelSection vehicleId="vehicle00001" currentOdometer={46000} onChanged={() => {}} />)
+
+    const rows = await screen.findAllByRole('listitem')
+    expect(rows[0].textContent).toContain('다음 가득 주유의 연비에 합산')
+    expect(rows[1].textContent).not.toContain('다음 가득 주유의 연비에 합산')
+    expect(rows[1].textContent).toContain('연비 계산 안 됨')
   })
 })

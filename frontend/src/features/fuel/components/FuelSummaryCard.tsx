@@ -193,7 +193,7 @@ function EfficiencyTrend({
   return (
     <figure className="flex flex-col gap-2">
       <figcaption className="text-caption text-muted-foreground">
-        {t.fuel.summary.trend(trend.length)}
+        {t.fuel.summary.trend(f.count(trend.length))}
       </figcaption>
 
       {/* mt-5: 가장 높은 막대의 말풍선 자리. 없으면 제목과 겹침. padding 이면 평균선 % 기준이 어긋남 */}

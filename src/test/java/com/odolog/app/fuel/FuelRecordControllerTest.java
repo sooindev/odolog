@@ -3,6 +3,7 @@ package com.odolog.app.fuel;
 import com.odolog.app.common.exception.ErrorCode;
 import com.odolog.app.common.auth.SessionConst;
 import com.odolog.app.common.exception.type.InvalidRequestException;
+import com.odolog.app.fuel.domain.FuelSegment;
 import com.odolog.app.fuel.dto.request.FuelRecordRegisterRequest;
 import com.odolog.app.fuel.dto.request.FuelRecordUpdateRequest;
 import com.odolog.app.fuel.dto.response.FuelRecordResponse;
@@ -60,7 +61,7 @@ class FuelRecordControllerTest {
 
     private FuelRecordResponse response() {
         return new FuelRecordResponse("R1", LocalDate.of(2026, 9, 10), 10500,
-                new BigDecimal("25.00"), 50000, "KRW", null, false, true,
+                new BigDecimal("25.00"), 50000, "KRW", null, false, true, FuelSegment.LitersUse.CLOSING,
                 2000L, 500, new BigDecimal("20.00"), false, false, false);
     }
 

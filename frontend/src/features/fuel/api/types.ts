@@ -31,6 +31,9 @@ export interface FuelRecordUpdateRequest {
   fullTank?: boolean
 }
 
+/** 이 기록이 닫는 구간 / 같은 주행거리에서 앞서 닫힌 구간 / 뒤의 가득 주유 구간 / 어디에도 안 들어감 */
+export type FuelLitersUse = 'CLOSING' | 'PREVIOUS' | 'NEXT' | 'NONE'
+
 export interface FuelRecordResponse {
   /** 공개 id(12자) */
   id: string
@@ -47,6 +50,8 @@ export interface FuelRecordResponse {
   resetPoint: boolean
   /** 가득 채웠는지. 덜 채웠으면 연비는 다음 가득 주유에서 합쳐 계산 */
   fullTank: boolean
+  /** 이 주유량이 들어간 구간(서버 계산). 덜 채움·같은 주행거리 행의 안내 근거 */
+  litersUse: FuelLitersUse
 
   /** 리터당 단가(통화의 최소 단위). 주유량·금액 중 하나라도 없으면 null */
   pricePerLiter: number | null

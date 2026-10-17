@@ -124,7 +124,7 @@ export function QuickServiceForm({
       // 저장된 줄이 있으면 밝힘. 안 그러면 아무것도 안 들어간 줄 알고 다시 적음
       // 앞선 시도에서 저장된 것까지. 다시 눌러 또 실패해도 이미 들어간 건수가 사라지지 않게
       const total = savedCount + saved
-      setError(total > 0 ? t.maintenance.quick.partlySaved(total, reason) : reason)
+      setError(total > 0 ? t.maintenance.quick.partlySaved(f.count(total), reason) : reason)
       setPending(false)
     }
   }

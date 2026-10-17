@@ -190,7 +190,7 @@ function MonthColumn({
           {f.money(entry.cost, currency)}
         </p>
         <p className="text-unit tabular-nums text-muted-foreground">
-          {t.home.monthly.tooltipCount(f.month(entry.month), entry.count)}
+          {t.home.monthly.tooltipCount(f.month(entry.month), f.count(entry.count))}
         </p>
         {/* 구성은 표에도 있음 */}
         {entry.cost > 0 && (

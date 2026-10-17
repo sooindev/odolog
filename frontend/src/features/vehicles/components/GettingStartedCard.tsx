@@ -4,7 +4,7 @@ import { Check } from 'lucide-react'
 
 import { QuickServiceForm } from '@/features/maintenance/components/QuickServiceForm'
 import { fetchRecords } from '@/features/maintenance/api/endpoints'
-import { fetchFuelRecords } from '@/features/fuel/api/endpoints'
+import { fetchFuelSummary } from '@/features/fuel/api/endpoints'
 import type { VehicleResponse } from '@/features/vehicles/api/types'
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/base/card'
@@ -35,19 +35,25 @@ export function GettingStartedCard({
   vehicle: VehicleResponse
   onServicesSaved: () => void
 }) {
-  const { t } = useI18n()
+  const { t, f } = useI18n()
   const [hidden, setHidden] = useState(() => readHidden(vehicle.id))
   const [quickOpen, setQuickOpen] = useState(false)
   // 빠른 정비가 일부 저장된 채 열려 있음. 안내 닫기로 폼이 사라져도 재조회
   const [unreported, setUnreported] = useState(false)
 
-  // 건수만 필요해 한 건씩. 정비·주유가 바뀌면 캐시 무효화로 재조회(재조회 중에도 직전 값 유지라 깜빡이지 않음)
+  // 정비는 건수만 필요해 한 건, 주유는 연비가 나왔는지까지 요약으로. 정비·주유가 바뀌면 캐시 무효화로 재조회(재조회 중에도 직전 값 유지라 깜빡이지 않음)
   const { data } = useQuery({
     queryKey: queryKeys.gettingStarted(vehicle.id),
     queryFn: () =>
-      Promise.all([fetchRecords(vehicle.id, 0, null, 1), fetchFuelRecords(vehicle.id, 0, 1)]).then(
-        ([records, fuels]) => ({ services: records.totalElements, fuels: fuels.totalElements }),
-      ),
+      Promise.all([fetchRecords(vehicle.id, 0, null, 1), fetchFuelSummary(vehicle.id)]).then(([records, fuel]) => ({
+        services: records.totalElements,
+        fuels: fuel.recordCount,
+        // 서버가 구간을 하나라도 셌는지. 2건이어도 덜 채움·주유량 모름이면 아직 연비가 없음
+        // 뺀 구간도 계산은 된 것, 기준점은 사용자가 일부러 새로 시작한 것
+        efficiency: fuel.averageEfficiency !== null ||
+          fuel.excludedSegmentCount + fuel.longSegmentCount > 0 ||
+          fuel.resetPointId !== null,
+      })),
   })
 
   // 불러오기 전·실패 시에는 그리지 않음. 안내가 틀린 상태로 보이는 것보다 안 보이는 편이 낫다
@@ -60,7 +66,7 @@ export function GettingStartedCard({
     odometer: true,
     services: data.services > 0,
     fuel: data.fuels >= 1,
-    efficiency: data.fuels >= 2,
+    efficiency: data.efficiency,
   }
   const order: StepKey[] = ['odometer', 'services', 'fuel', 'efficiency']
   const doneCount = order.filter((key) => done[key]).length
@@ -131,7 +137,7 @@ export function GettingStartedCard({
 
       <CardContent className="flex flex-col gap-5">
         <p className="text-caption tabular-nums text-muted-foreground">
-          {t.vehicles.gettingStarted.progress(doneCount, order.length)}
+          {t.vehicles.gettingStarted.progress(f.count(doneCount), f.count(order.length))}
         </p>
 
         <ol className="divide-y divide-border">

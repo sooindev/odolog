@@ -317,7 +317,7 @@ export const ko = {
     gettingStarted: {
       title: '시작하기',
       description: '타던 차도 오늘부터 기록하면 됩니다. 아래 순서대로 하면 다음 정비와 연비가 저절로 채워집니다.',
-      progress: (done: number, total: number) => `${total}단계 중 ${done}단계 완료`,
+      progress: (done: Count, total: Count) => `${total.text}단계 중 ${done.text}단계 완료`,
       hide: '안내 닫기',
       done: '완료',
       steps: {
@@ -436,8 +436,8 @@ export const ko = {
       nothingPicked: '고른 항목이 없습니다. 기억나는 것 하나만 골라도 됩니다.',
       failed: '저장하지 못했습니다.',
       /** 일부만 저장. 저장된 줄은 이미 '모름' 으로 돌아가 있음 */
-      partlySaved: (saved: number, reason: string) =>
-        `${saved}건은 저장했고 나머지는 저장하지 못했습니다. ${reason}`,
+      partlySaved: (saved: Count, reason: string) =>
+        `${saved.text}건은 저장했고 나머지는 저장하지 못했습니다. ${reason}`,
     },
     next: {
       title: '다음 정비 시점',
@@ -530,7 +530,7 @@ export const ko = {
       distance: '주행',
       volume: '주유량',
       cost: '총 유류비',
-      trend: (n: number) => `최근 ${n}회 구간 연비`,
+      trend: (c: Count) => `최근 ${c.text}회 구간 연비`,
       average: (value: string) => `평균 ${value}`,
       axisNote: '세로축은 0 부터가 아니라 최솟값 근처에서 시작합니다. 절대량이 아니라 변화를 보는 그림입니다.',
       lowerIsBetter: '이 단위는 숫자가 작을수록 연비가 좋습니다.',
@@ -578,7 +578,7 @@ export const ko = {
       maintenance: '정비',
       fuel: '주유',
       total: '합계',
-      tooltipCount: (month: string, n: number) => `${month} · ${n}건`,
+      tooltipCount: (month: string, c: Count) => `${month} · ${c.text}건`,
       breakdown: (maintenance: string, fuel: string) => `정비 ${maintenance} · 주유 ${fuel}`,
     },
     byType: {

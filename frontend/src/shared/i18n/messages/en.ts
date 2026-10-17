@@ -320,7 +320,7 @@ export const en: Messages = {
       title: 'Getting started',
       description:
         'You can start tracking a car you already drive today. Follow these steps and the next service and fuel economy fill in on their own.',
-      progress: (done: number, total: number) => `${done} of ${total} steps done`,
+      progress: (done: Count, total: Count) => `${done.text} of ${total.text} steps done`,
       hide: 'Hide guide',
       done: 'Done',
       steps: {
@@ -439,8 +439,8 @@ export const en: Messages = {
       submit: 'Save',
       nothingPicked: 'Nothing picked yet. Even one item you remember helps.',
       failed: 'Couldn’t save.',
-      partlySaved: (saved: number, reason: string) =>
-        `Saved ${saved}, but couldn’t save the rest. ${reason}`,
+      partlySaved: (saved: Count, reason: string) =>
+        `Saved ${saved.text}, but couldn’t save the rest. ${reason}`,
     },
     next: {
       title: 'Next service',
@@ -532,7 +532,7 @@ export const en: Messages = {
       distance: 'Distance',
       volume: 'Fuel',
       cost: 'Spent',
-      trend: (n: number) => `Last ${n} ${plural(n, 'stretch', 'stretches')}`,
+      trend: (c: Count) => `Last ${c.text} ${plural(c.n, 'stretch', 'stretches')}`,
       average: (value: string) => `avg ${value}`,
       axisNote: 'The axis starts near the lowest value, not zero. It shows change, not size.',
       lowerIsBetter: 'In these units, lower is better.',
@@ -580,7 +580,7 @@ export const en: Messages = {
       maintenance: 'Service',
       fuel: 'Fuel',
       total: 'Total',
-      tooltipCount: (month: string, n: number) => `${month} · ${n} ${plural(n, 'record', 'records')}`,
+      tooltipCount: (month: string, c: Count) => `${month} · ${c.text} ${plural(c.n, 'record', 'records')}`,
       breakdown: (maintenance: string, fuel: string) => `Service ${maintenance} · Fuel ${fuel}`,
     },
     byType: {
