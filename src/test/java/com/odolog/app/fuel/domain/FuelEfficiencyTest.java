@@ -242,6 +242,33 @@ class FuelEfficiencyTest {
     }
 
     @Test
+    @DisplayName("가득 뒤 같은 주행거리로 덜 채워 더 넣어도 탱크는 가득 — 다음 구간을 낸다")
+    void partialAfterFullAtSameOdometerKeepsTankFull() {
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                record(10000, "40.00"),
+                record(10500, "25.00"),
+                partial(10500, "5.00"),
+                record(11000, "25.00")));
+
+        // 500÷30(25+5) 와 500÷25. 묶음 끝의 덜 채움만 보면 뒤 구간이 빠짐
+        assertThat(result.distance()).isEqualTo(1000);
+        assertThat(result.average()).isEqualByComparingTo("18.18");
+    }
+
+    @Test
+    @DisplayName("첫 기록을 나눠 넣으며 뒤에서 가득 채웠으면 거기서 구간을 시작한다")
+    void fullAfterPartialAtFirstOdometerStartsSegment() {
+        FuelEfficiency result = FuelEfficiency.of(ascending(
+                partial(10000, "20.00"),
+                record(10000, "10.00"),
+                record(10500, "30.00")));
+
+        // 같은 주행거리에서 가득 채운 뒤 500km. 시작 전에 넣은 30L 는 셈에 안 들어감
+        assertThat(result.distance()).isEqualTo(500);
+        assertThat(result.average()).isEqualByComparingTo("16.67");
+    }
+
+    @Test
     @DisplayName("사이의 덜 채운 주유량을 모르면 그 구간은 계산하지 않는다")
     void unknownPartialLitersSkipsSegment() {
         FuelEfficiency result = FuelEfficiency.of(ascending(
