@@ -57,6 +57,7 @@ export const en: Messages = {
     login: 'Log in',
     logout: 'Log out',
     logoutFailed: 'Couldn’t log out. Check your connection and try again.',
+    offline: 'You’re offline. Loading will pick up where it left off once you reconnect.',
   },
 
   footer: {

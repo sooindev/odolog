@@ -1,7 +1,9 @@
+import { WifiOff } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { useI18n } from '@/shared/i18n/I18nContext'
+import { useOnline } from '@/shared/lib/hooks/useOnline'
 import { ThemeToggle } from '@/shared/theme/ThemeToggle'
 import { Button } from '@/shared/ui/base/button'
 import { GaugeMark } from '@/shared/ui/mark'
@@ -12,6 +14,7 @@ export function Header() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
+  const online = useOnline()
 
   // 로그인·가입 화면에서는 로그인 버튼 숨김
   const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'
@@ -64,6 +67,21 @@ export function Header() {
             </>
           )}
         </div>
+      </div>
+
+      {/*
+        오프라인 안내. 조회가 실패하지 않고 멈추므로 버튼이 안 먹는 것처럼 보이지 않게
+        상자는 늘 두고 글만 바꿈. 처음부터 있던 status 라야 읽어 줌
+      */}
+      <div role="status">
+        {!online && (
+          <div className="border-t border-border bg-sunken">
+            <p className="mx-auto flex max-w-[76rem] items-center gap-2 px-5 py-2.5 text-caption text-foreground sm:px-8 lg:px-10">
+              <WifiOff className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              {t.header.offline}
+            </p>
+          </div>
+        )}
       </div>
     </header>
   )

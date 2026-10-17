@@ -53,6 +53,7 @@ export const ko = {
     login: '로그인',
     logout: '로그아웃',
     logoutFailed: '로그아웃하지 못했습니다. 연결을 확인하고 다시 눌러 주세요.',
+    offline: '오프라인입니다. 연결되면 멈춘 불러오기를 이어서 합니다.',
   },
 
   footer: {
