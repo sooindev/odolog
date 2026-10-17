@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -31,9 +32,16 @@ public record AccountRestoreRequest(
 ) {
 
     public record VehicleData(
-            @NotBlank @Size(max = 20) String plateNumber,
-            @NotBlank @Size(max = 50) String manufacturer,
-            @NotBlank @Size(max = 100) String modelName,
+            // 등록과 같은 한 줄 규칙. 파일로 들어온 줄바꿈·방향 뒤집기 문자 차단
+            @NotBlank @Size(max = 20)
+            @Pattern(regexp = InputLimits.SINGLE_LINE_TEXT, message = "줄바꿈·제어 문자는 쓸 수 없습니다")
+            String plateNumber,
+            @NotBlank @Size(max = 50)
+            @Pattern(regexp = InputLimits.SINGLE_LINE_TEXT, message = "줄바꿈·제어 문자는 쓸 수 없습니다")
+            String manufacturer,
+            @NotBlank @Size(max = 100)
+            @Pattern(regexp = InputLimits.SINGLE_LINE_TEXT, message = "줄바꿈·제어 문자는 쓸 수 없습니다")
+            String modelName,
             // 내보내기·DB 는 연식 없음(null)을 허용. 필수로 받으면 자기 백업을 못 넣음
             @Min(1900) @Max(2100) Integer modelYear,
             // int 면 빠진 값이 조용히 0. 등록과 같이 필수

@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -163,6 +164,25 @@ class AccountControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"vehicles\":[]}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("파일 속 모델명에 줄바꿈이 있으면 400 — 등록과 같은 한 줄 규칙")
+    void restoreRejectsMultilineName() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_USER_ID, 1L);
+
+        mockMvc.perform(post("/api/users/me/restore")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"vehicles":[{"plateNumber":"12가3456","manufacturer":"기아","modelName":"카니\\n발",
+                                 "modelYear":null,"odometer":30000,"maintenanceRecords":[],"fuelRecords":[]}]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        verifyNoInteractions(accountRestoreService);
     }
 
     @Test
