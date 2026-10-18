@@ -376,6 +376,10 @@ Phase 1 의 보류 항목(`@EnableJpaAuditing`)은 2026-09-16 에 끝나 남은 
         지금 코드와 디자인 시스템이 그대로 산다.
       → ⚠️ 하면 **`theme-color` 가 네 곳 중복**이 된다(`index.css`·`index.html`·
         `ThemeProvider.tsx`·manifest). manifest 는 정적이라 테마를 못 따라간다.
+- [ ] 정비 알림(웹 푸시) — **PWA 다음, 배포 뒤**(2026-10-18 사용자 결정: 앱으로 바꾸지 않고 웹으로. 근거는 `HISTORY.md` 같은 날)
+      → 서버: 구독 저장 표(V7…), 지남·곧을 매일 훑는 스케줄러(`NextService` 재사용, 사용자 시간대 기준 `UserToday`), VAPID 발송
+      → 화면: 알림 권한 요청과 끄기(`/me`). iOS 는 홈 화면에 추가해야 받는다는 안내
+      → iOS 설치 안내가 실제 걸림돌이면 Capacitor 로 감싸고 발송 통로만 FCM/APNs 로 바꾼다
 
 ---
 
