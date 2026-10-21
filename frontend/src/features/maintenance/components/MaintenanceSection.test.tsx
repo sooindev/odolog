@@ -146,6 +146,21 @@ describe('MaintenanceSection', () => {
       })
   }
 
+  it('지운 뒤 재조회가 실패해도 지운 행은 화면에서 빠진다', async () => {
+    vi.stubGlobal('confirm', () => true)
+    vi.mocked(deleteRecord).mockResolvedValue(undefined)
+    renderWithProviders(<Harness />)
+
+    await screen.findByText('두 번째 메모')
+    vi.mocked(fetchRecords).mockRejectedValue(new TypeError('blocked'))
+    fireEvent.click(within(screen.getAllByRole('listitem')[1]).getByRole('button', { name: /삭제$/ }))
+
+    await waitFor(() => expect(fetchRecords).toHaveBeenCalledTimes(2))
+    // 남으면 지우지 못한 줄 알고 다시 누름
+    await waitFor(() => expect(screen.queryByText('두 번째 메모')).toBeNull())
+    expect(screen.getByText('첫 번째 메모')).toBeTruthy()
+  })
+
   it('다음 쪽 조회가 실패해도 받아 둔 쪽과 페이지 이동이 남고, 다시 누르면 그 쪽을 다시 읽는다', async () => {
     failSecondPageOnce([record('recordAAAAAA', '첫 쪽 메모', '2026-09-01')])
     renderWithProviders(<Harness />)

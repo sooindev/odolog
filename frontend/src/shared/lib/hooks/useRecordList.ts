@@ -31,6 +31,13 @@ export function useRecordList<R extends { id: string }>({
   const [actionError, setActionError] = useState<string | null>(null)
   // 삭제 중인 행 id
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  // 지운 행 id. 재조회가 실패하면 받아 둔 쪽에 그 행이 남아 있어서
+  const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(new Set())
+
+  /** 화면에 그릴 행. 지운 행을 뺌 */
+  function visible(items: R[]) {
+    return removedIds.size === 0 ? items : items.filter((item) => !removedIds.has(item.id))
+  }
 
   function close() {
     setEditing('closed')
@@ -62,6 +69,7 @@ export function useRecordList<R extends { id: string }>({
 
     try {
       await remove(recordId)
+      setRemovedIds((current) => new Set(current).add(recordId))
       // 지운 행의 수정 폼만 닫음. 작성 중이던 새 기록·다른 행의 폼은 입력 그대로
       setEditing((current) => (typeof current === 'object' && current.id === recordId ? 'closed' : current))
       setActionError(null)
@@ -74,5 +82,5 @@ export function useRecordList<R extends { id: string }>({
     }
   }
 
-  return { editing, setEditing, actionError, deletingId, close, changePage, saved, handleDelete }
+  return { editing, setEditing, actionError, deletingId, visible, close, changePage, saved, handleDelete }
 }

@@ -60,9 +60,11 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   // 변수로 받아 타입 좁히기
   const shownError = error !== null ? errorMessage(error, t, t.fuel.loadFailed) : list.actionError
 
+  const rows = shown === undefined ? [] : list.visible(shown.items)
+
   // 전체의 첫 기록. 주행거리 내림차순이라 마지막 장의 마지막 행
   function isFirstRecord(index: number) {
-    return shown !== undefined && !shown.hasNext && index === shown.items.length - 1
+    return shown !== undefined && !shown.hasNext && index === rows.length - 1
   }
 
   return (
@@ -110,7 +112,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
         ) : (
           <>
             <ul className="border-t border-border">
-              {shown.items.map((record, index) => (
+              {rows.map((record, index) => (
                 <li key={record.id} className="border-b border-border">
                   {/* 좁은 화면은 두 줄 */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">

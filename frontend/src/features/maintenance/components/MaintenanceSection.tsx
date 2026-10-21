@@ -162,7 +162,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
           </p>
         ) : (
           <ul className="divide-y divide-border">
-            {shown.items.map((record) => (
+            {list.visible(shown.items).map((record) => (
               // 호버 시 버튼 진하게. 터치 대비 완전히 숨기지 않음
               <li
                 key={record.id}

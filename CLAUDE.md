@@ -462,7 +462,7 @@
 - 홈·차량 목록도 TanStack Query(`queryKeys.summary`·`vehicleList`, `gcTime: 0` — 다른 화면에서 바뀐 기록이 옛 숫자로 먼저 보이지 않게).
   목록 두 카드의 공통 상태(폼 열림·동작 실패·삭제 중인 행)는 `useRecordList`, 범위 밖 페이지 복귀는 `usePageInRange`.
   쪽 이동 조회가 실패해도 받아 둔 쪽과 페이지 이동을 남기는 것은 `useShownPage`(목록 셋 공용) — `keepPreviousData` 는 받는 동안만 앞 쪽을 준다.
-  `useRecordList` 는 지운 행의 수정 폼만 닫는다 — 작성 중인 새 기록 폼은 삭제·쪽 넘김에도 남는다
+  `useRecordList` 는 지운 행의 수정 폼만 닫는다 — 작성 중인 새 기록 폼은 삭제·쪽 넘김에도 남는다. 지운 행은 재조회가 실패해도 `visible()` 로 화면에서 뺀다(받아 둔 쪽에 남아 있어서)
 - 차량 상세는 `VehicleDetailByKey`(`App.tsx`)가 주소의 차량 id 로 key 를 준다 — 페이드용 key 에 기대지 않는다
 - 문장 속 개수는 `f.count(n)` 으로 넘긴다(`{ n, text }`). 사전은 `text` 를 찍고 영어는 `n` 으로 단·복수를 고른다 — 숫자를 그대로 넣으면 쉼표가 빠진다
 - 통화 소수 자리는 `money.ts` 의 ISO 4217 표다. 브라우저 ICU 에 묻지 않는다(크롬은 IDR·HUF 를 0 으로 봐 같은 저장값이 100배로 갈렸다)
@@ -478,7 +478,7 @@
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 
-테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 110개(파일 17개) — 순수 함수, 사전 누락,
+테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 111개(파일 17개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
 실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 19개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.
@@ -519,7 +519,7 @@
 ## 진행 상황
 
 코드는 끝났고 브라우저 확인(6-B~6-E·7-H)도 2026-10-10 에 한 바퀴 돌았다. **남은 것은 실제 폰으로만 볼 넷**(C-17·C-19·C-21·D-4)과
-Windows 글꼴(H-14)이다(`docs/QA.md` 6-B). 맥 브라우저로 보는 R-1~R-22 는 2026-10-20 에 끝났고, 그때 찾은 것은 6-F 55·56 이다.
+Windows 글꼴(H-14)이다(`docs/QA.md` 6-B). 맥 브라우저로 보는 R-1~R-22 는 2026-10-20 에 끝났고, 그때 찾은 6-F 56 은 2026-10-21 에 고쳤다.
 H-9 와 6-G 는 2026-10-16 에 끝냈다.
 2026-10-17 두 번째 점검에서 찾은 것(그날 고친 것의 회귀 둘 포함)은 `docs/QA.md` 백로그의 "2026-10-17 점검에서 남은 것" 에 있다.
 배포 준비(PWA·프록시·CI 정렬 규칙·시도 잠금 저장소)는 프로젝트를 완성한 뒤에 따로 한다(사용자 결정).
