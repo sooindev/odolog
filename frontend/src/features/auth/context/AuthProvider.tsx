@@ -77,7 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 서버 세션이 남았을 수 있으면(네트워크 등) 던지고 로그인 상태 유지. 화면만 비우면 새로고침 때 다시 로그인된 채
   // 401 은 이미 끊긴 세션이라 성공으로 봄
-  const logout = useCallback(async () => {
+  // 이동과 상태 지우기는 탈퇴와 같은 transition. 따로면 보호 라우트가 지금 주소를 from 으로 남김
+  const logout = useCallback(async (leave: () => void) => {
     try {
       await requestLogout()
     } catch (caught) {
@@ -87,9 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     sessionDecided.current = true
     queryClient.clear()
-    setSessionEnded(false)
-    setEndedEmail(null)
-    setUser(null)
+    startTransition(() => {
+      leave()
+      setSessionEnded(false)
+      setEndedEmail(null)
+      setUser(null)
+    })
   }, [queryClient])
 
   // 탈퇴 실패는 그대로 전달. 지워진 것처럼 보이는 문제 방지

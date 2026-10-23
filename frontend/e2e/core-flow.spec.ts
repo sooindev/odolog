@@ -215,21 +215,26 @@ test('같은 탭에서 다른 계정으로 바꿔 로그인하면 앞 계정의 
   await expect(page).toHaveURL(/\/login$/)
   await page.locator('#email').fill(otherEmail)
   await page.locator('#password').fill(PASSWORD)
-  // 차량 응답을 늦춰 둔다. 캐시가 남아 있으면 그동안 앞 계정의 차량이 보인다
+  await page.getByRole('button', { name: '로그인', exact: true }).last().click()
+
+  // 직접 로그아웃하면 앞 계정의 차량 주소를 기억하지 않음. 다른 계정이 남의 주소에서 "없는 차량"을 보지 않게
+  await expect(page).toHaveURL(/\/vehicles$/)
+  await expect(page.getByText('아직 등록된 차량이 없습니다')).toBeVisible()
+
+  // 앞 계정의 차량 주소로 화면 안 이동. 차량 응답을 늦춰 두면 캐시가 남았을 때 그동안 앞 계정의 차량이 보인다
   const vehicleApi = new RegExp(`/api/vehicles/${new URL(url).pathname.split('/').pop()}$`)
   await page.route(vehicleApi, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 2000))
     await route.continue()
   })
-  await page.getByRole('button', { name: '로그인', exact: true }).last().click()
+  // 라우터가 듣는 popstate 로 이동. e2e 타입에는 DOM 이 없어 문자열로
+  await page.evaluate(`history.pushState(null, '', '${new URL(url).pathname}'); dispatchEvent(new PopStateEvent('popstate'))`)
   await expect(page).toHaveURL(url)
   // 늦춘 응답이 오기 전. 이 사이에 보이는 것은 캐시뿐
   // 재시도하는 단언은 늦춘 응답이 오면 통과해 버리므로 지금 한 번만 센다
   await page.waitForTimeout(1000)
   expect(await page.getByText('56다7890').count()).toBe(0)
 
-  // 로그인 화면이 기억해 둔 앞 계정의 차량 주소로 돌아온다 — 새로고침 없는 화면 안 이동
-  await expect(page).toHaveURL(url)
   await expect(page.getByText('존재하지 않는 차량입니다.')).toBeVisible()
   await expect(page.getByText('56다7890')).toHaveCount(0)
 })

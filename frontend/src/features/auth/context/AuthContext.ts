@@ -18,8 +18,11 @@ export interface AuthContextValue {
   /** 로그인 화면이 끊김 안내를 보여 준 뒤 끔 */
   acknowledgeSessionEnded: () => void
   login: (request: LoginRequest) => Promise<void>
-  /** 서버 세션을 못 끊었으면(네트워크 등) 던지고 로그인 상태 유지 */
-  logout: () => Promise<void>
+  /**
+   * 로그아웃. 성공 시 leave 로 이동하며 로그인 상태 제거
+   * 서버 세션을 못 끊었으면(네트워크 등) 던지고 로그인 상태 유지
+   */
+  logout: (leave: () => void) => Promise<void>
   /**
    * 탈퇴. 성공 시 로그인 상태 제거
    * 실패는 그대로 전달

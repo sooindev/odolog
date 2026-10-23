@@ -22,12 +22,10 @@ export function Header() {
   // 서버 세션을 못 끊었으면 로그인 상태 그대로 두고 알림. 공용 PC 에서 로그아웃된 줄 알고 떠나지 않게
   async function handleLogout() {
     try {
-      await logout()
+      await logout(() => navigate('/login', { replace: true }))
     } catch {
       window.alert(t.header.logoutFailed)
-      return
     }
-    navigate('/login', { replace: true })
   }
 
   return (

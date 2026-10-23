@@ -56,9 +56,9 @@ export function ResetPasswordPage() {
       // 서버는 그 계정의 세션만 끊음. 다른 계정으로 로그인한 브라우저도 확실히 로그아웃
       // 화면만 비우면 새로고침 시 그 세션으로 다시 로그인된 채 14일 유지
       // 그 로그아웃이 실패해도 재설정은 끝났으므로 로그인 화면으로
-      await logout().catch(() => {})
       // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
-      navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
+      const leave = () => navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
+      await logout(leave).catch(leave)
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'RESET_LINK_INVALID') {
         setLinkError(errorMessage(caught, t, t.resetPassword.invalidLink))
