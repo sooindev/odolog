@@ -200,6 +200,25 @@ class FuelEfficiencyTest {
     }
 
     @Test
+    @DisplayName("기준점이 같은 주행거리에서 가득 뒤에 덜 채운 주유여도 가득에서 출발한다 — 목록 행과 같은 판정")
+    void partialResetPointAfterFullAtSameOdometer() {
+        FuelRecord resetPoint = partial(1500, "5.00");
+        resetPoint.changeResetPoint(true);
+        List<FuelRecord> records = ascending(
+                record(1000, "40.00"),
+                record(1500, "30.00"),
+                resetPoint,
+                record(2000, "35.00"));
+
+        FuelEfficiency result = FuelEfficiency.of(records);
+
+        // 목록의 2,000km 행이 내는 500÷35 와 같은 구간
+        assertThat(result.distance()).isEqualTo(500);
+        assertThat(result.average()).isEqualByComparingTo("14.29");
+        assertThat(FuelEfficiency.trend(records, 12)).hasSize(1);
+    }
+
+    @Test
     @DisplayName("기준점이 마지막 기록이면 평균이 없다")
     void resetPointAtLastRecord() {
         FuelRecord resetPoint = record(20000, "30.00");

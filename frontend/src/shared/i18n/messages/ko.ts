@@ -481,6 +481,7 @@ export const ko = {
     mergedIntoPrevious: '· 주유량은 직전 기록 연비에 합산',
     baseline: '기준 기록',
     fromNext: '· 다음 주유부터 계산',
+    fromNextFull: '· 다음 가득 주유부터 계산',
     suspicious: '확인 필요',
     dateBeforePrevious: '주행거리는 아래 기록보다 큰데 날짜가 더 이릅니다. 날짜나 주행거리를 확인해 주세요.',
     missing: '기록 빠짐?',
@@ -516,7 +517,7 @@ export const ko = {
       unreset: '초기화 해제',
       resetConfirm: '지금까지의 기록을 연비 계산에서 빼고 다시 셉니다. 계속할까요?',
       resetFailed: '연비 초기화에 실패했습니다.',
-      afterReset: '연비를 초기화했습니다. 다음 주유 기록부터 다시 계산합니다.',
+      afterReset: '연비를 초기화했습니다. 이후 가득 채운 주유부터 다시 계산합니다.',
       firstRecord: '첫 주유 기록은 기준점이 됩니다. 다음 주유 기록부터 연비를 계산합니다.',
       noSegment:
         '아직 연비를 계산할 수 있는 구간이 없습니다. 주행거리가 늘고 주유량이 적힌 기록이 두 건 이어져야 계산됩니다.',

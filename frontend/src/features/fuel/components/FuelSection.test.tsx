@@ -91,4 +91,31 @@ describe('FuelSection', () => {
     expect(rows[1].textContent).not.toContain('다음 가득 주유의 연비에 합산')
     expect(rows[1].textContent).toContain('연비 계산 안 됨')
   })
+
+  it('덜 채운 주유가 연비 기준점이면 그 행에 기준점이라고 밝힌다', async () => {
+    vi.mocked(fetchFuelRecords).mockResolvedValue({
+      items: [
+        record('fuelAAAAAAAA', 46000, '가득'),
+        {
+          ...record('fuelBBBBBBBB', 45500, '초기화한 주유'),
+          fullTank: false,
+          resetPoint: true,
+          distance: null,
+          efficiency: null,
+          litersUse: 'NONE',
+        },
+      ],
+      page: 0,
+      size: 10,
+      totalElements: 2,
+      totalPages: 1,
+      hasNext: false,
+    })
+    renderWithProviders(<FuelSection vehicleId="vehicle00001" currentOdometer={46000} onChanged={() => {}} />)
+
+    const rows = await screen.findAllByRole('listitem')
+    // 덜 채움 문구만 보이면 어디서 초기화했는지 목록에서 사라짐
+    expect(rows[1].textContent).toContain('연비 기준점')
+    expect(rows[1].textContent).toContain('다음 가득 주유부터 계산')
+  })
 })

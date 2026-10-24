@@ -3,7 +3,10 @@ package com.odolog.app.fuel.domain;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 평균 연비 공식. 차량 상세와 홈 요약이 공유
@@ -21,10 +24,10 @@ public record FuelEfficiency(Integer distance, BigDecimal average,
 
     /** @param all 주행거리 오름차순 정렬된 한 차량의 주유 기록 */
     public static FuelEfficiency of(List<FuelRecord> all) {
-        List<FuelRecord> records = sinceResetPoint(all);
+        List<FuelSegment> segments = sinceResetPoint(all);
 
-        // 구간 계산에 최소 두 건 필요
-        if (records.size() < 2) {
+        // 셀 구간이 없음
+        if (segments.isEmpty()) {
             return NONE;
         }
 
@@ -36,8 +39,8 @@ public record FuelEfficiency(Integer distance, BigDecimal average,
         int excluded = 0;
         int missing = 0;
 
-        // 기준점 이후 목록이라 안쪽에 다른 기준점 없음. 주유량 없는 기록은 자기 구간만 제외
-        for (FuelSegment segment : FuelSegment.between(records)) {
+        // 주유량 없는 기록은 자기 구간만 제외
+        for (FuelSegment segment : segments) {
             // 불가능한 구간은 평균에서 제외. 목록에서는 값 유지 + 확인 필요 표시
             if (FuelAnomaly.isImpossible(segment.efficiency())) {
                 excluded++;
@@ -69,11 +72,10 @@ public record FuelEfficiency(Integer distance, BigDecimal average,
      * @param limit 최근 몇 개까지
      */
     public static List<Point> trend(List<FuelRecord> all, int limit) {
-        List<FuelRecord> records = sinceResetPoint(all);
         FuelAnomaly.Baseline baseline = FuelAnomaly.baselineOf(all);
 
         List<Point> points = new ArrayList<>();
-        for (FuelSegment segment : FuelSegment.between(records)) {
+        for (FuelSegment segment : sinceResetPoint(all)) {
             if (FuelAnomaly.isImpossible(segment.efficiency())
                     || baseline.suspectsMissingRecord(segment.distance(), segment.efficiency())) {
                 continue;
@@ -90,13 +92,20 @@ public record FuelEfficiency(Integer distance, BigDecimal average,
     public record Point(LocalDate fueledAt, BigDecimal efficiency) {
     }
 
-    /** 최근 기준점 이후만. 기준점 없으면 전체 */
-    private static List<FuelRecord> sinceResetPoint(List<FuelRecord> records) {
+    /**
+     * 최근 기준점 뒤에서 닫힌 구간만. 기준점 없으면 전체
+     * 순회는 이력 전체로. 잘라서 돌면 기준점과 같은 주행거리에 먼저 적은 가득 주유를 못 봐 목록 행과 갈림
+     */
+    private static List<FuelSegment> sinceResetPoint(List<FuelRecord> records) {
+        List<FuelSegment> segments = FuelSegment.between(records);
         for (int i = records.size() - 1; i >= 0; i--) {
             if (records.get(i).isResetPoint()) {
-                return records.subList(i, records.size());
+                // 저장 전 기록은 id 가 없어 같은 객체인지로 셈
+                Set<FuelRecord> after = Collections.newSetFromMap(new IdentityHashMap<>());
+                after.addAll(records.subList(i + 1, records.size()));
+                return segments.stream().filter(segment -> after.contains(segment.to())).toList();
             }
         }
-        return records;
+        return segments;
     }
 }

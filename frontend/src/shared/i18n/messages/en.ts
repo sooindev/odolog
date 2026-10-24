@@ -483,6 +483,7 @@ export const en: Messages = {
     mergedIntoPrevious: '· fuel counted in its economy',
     baseline: 'Baseline',
     fromNext: '· calculated from the next fill-up',
+    fromNextFull: '· calculated from the next full tank',
     suspicious: 'Check this',
     dateBeforePrevious: 'Higher odometer than the fill-up below but an earlier date. Check the date or odometer.',
     missing: 'Missing fill-up?',
@@ -518,7 +519,7 @@ export const en: Messages = {
       unreset: 'Undo reset',
       resetConfirm: 'Leave out everything so far and start counting fuel economy again?',
       resetFailed: 'Couldn’t reset fuel economy.',
-      afterReset: 'Fuel economy was reset. It’ll be calculated again from your next fill-up.',
+      afterReset: 'Fuel economy was reset. It’ll be calculated again starting from a full tank.',
       firstRecord: 'Your first fill-up is the baseline. Fuel economy starts from the next one.',
       noSegment:
         'No stretch to calculate yet. It takes two fill-ups in a row with a higher odometer and a fuel amount.',

@@ -120,9 +120,17 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                       <div className="flex items-baseline gap-2">
                         {/* 연비를 맨 앞에 */}
                         {record.efficiency === null ? (
-                          // 연비가 없는 이유별 문구. 덜 채움 / 주유량 없음 / 기준점·첫 기록 / 앞이 덜 채움 / 직전과 같은 주행거리
+                          // 연비가 없는 이유별 문구. 덜 채운 기준점 / 덜 채움 / 주유량 없음 / 기준점·첫 기록 / 앞이 덜 채움 / 직전과 같은 주행거리
                           <span className="text-caption text-muted-foreground">
-                            {!record.fullTank ? (
+                            {record.resetPoint && !record.fullTank ? (
+                              // 덜 채운 기준점. 덜 채움 문구만 보이면 어디서 초기화했는지 목록에서 사라짐
+                              <>
+                                {t.fuel.resetPoint}
+                                <span className="ml-1 text-muted-foreground">
+                                  · {t.fuel.partial} {t.fuel.fromNextFull}
+                                </span>
+                              </>
+                            ) : !record.fullTank ? (
                               <>
                                 {t.fuel.partial}
                                 {/* 실제로 들어간 구간을 서버가 알림. 출발 전의 양·끊긴 구간은 어디에도 안 들어감 */}
