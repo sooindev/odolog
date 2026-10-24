@@ -131,9 +131,9 @@ public class MaintenanceRecordService {
         }
         // 비움이 값보다 우선
         if (Boolean.TRUE.equals(request.clearCost())) {
-            record.changeCost(null);
+            record.changeCost(null, record.getCurrency());
         } else if (request.cost() != null) {
-            record.changeCost(request.cost());
+            record.changeCost(request.cost(), vehicle.getOwner().getCurrency());
         }
         if (Boolean.TRUE.equals(request.clearServiceOdometer())) {
             record.changeServiceOdometer(null);

@@ -34,12 +34,25 @@ public final class InputText {
     }
 
     /**
-     * 필수 입력용 strip. 지운 뒤 비면 400
-     * @NotBlank(trim 기준)·\S 는 전각 공백·NBSP 를 글자로 보고 통과시킴. 그대로 두면 빈 문자열 저장
+     * 글자로 세어지지만 화면에 아무것도 안 그려지는 것. 서식 문자(ZWJ 등)·이형 선택자·한글 채움 문자·점자 빈칸
+     * 다른 글자와 섞이면 그대로 둠. 합성 이모지의 ZWJ 를 지우면 이모지가 쪼개짐
+     */
+    private static boolean isInvisible(int codePoint) {
+        return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint)
+                || Character.getType(codePoint) == Character.FORMAT
+                || (codePoint >= 0xFE00 && codePoint <= 0xFE0F)
+                || (codePoint >= 0xE0100 && codePoint <= 0xE01EF)
+                || codePoint == 0x115F || codePoint == 0x1160 || codePoint == 0x3164 || codePoint == 0xFFA0
+                || codePoint == 0x2800 || codePoint == 0x034F;
+    }
+
+    /**
+     * 필수 입력용 strip. 지운 뒤 비거나 보이지 않는 글자만 남으면 400
+     * @NotBlank(trim 기준)·\S 는 전각 공백·NBSP·한글 채움 문자를 글자로 보고 통과시킴. 그대로 두면 빈 칸으로 보이는 이름 저장
      */
     public static String required(String value, String field) {
         String stripped = strip(value);
-        if (stripped != null && stripped.isEmpty()) {
+        if (stripped != null && stripped.codePoints().allMatch(InputText::isInvisible)) {
             throw new InvalidRequestException(ErrorCode.VALIDATION_FAILED,
                     field + ": 공백만으로는 설정할 수 없습니다", field);
         }

@@ -90,14 +90,14 @@ export function RestoreForm() {
         </label>
       </div>
 
-      {/* 건너뛴 수까지 안내. 새로 넣은 것이 없으면 "0건을 넣었습니다" 대신 없다고 말함 */}
+      {/* 건너뛴 수까지 안내. 차량·기록이 없으면 "0건을 넣었습니다" 대신 없다고 말함(주기만 들어갔어도) */}
       {result !== null && (
         <NoticeText
           message={
-            (result.addedVehicles === 0 &&
-            result.addedMaintenanceRecords + result.addedFuelRecords === 0 &&
-            result.addedServiceIntervals === 0
-              ? t.profile.data.nothingNew
+            (result.addedVehicles === 0 && result.addedMaintenanceRecords + result.addedFuelRecords === 0
+              ? result.addedServiceIntervals === 0
+                ? t.profile.data.nothingNew
+                : t.profile.data.onlyIntervals(f.count(result.addedServiceIntervals))
               : t.profile.data.imported(
                   f.count(result.addedVehicles),
                   f.count(result.addedMaintenanceRecords + result.addedFuelRecords),

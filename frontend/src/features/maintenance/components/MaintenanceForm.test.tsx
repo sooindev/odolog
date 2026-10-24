@@ -11,7 +11,7 @@ vi.mock('@/features/maintenance/api/endpoints', () => ({
   updateRecord: vi.fn(),
 }))
 
-const { registerRecord } = await import('@/features/maintenance/api/endpoints')
+const { registerRecord, updateRecord } = await import('@/features/maintenance/api/endpoints')
 
 const SAVED: MaintenanceRecordResponse = {
   id: 'mntAAAAAAAAA',
@@ -65,5 +65,40 @@ describe('MaintenanceForm 등록', () => {
 
     await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(vi.mocked(registerRecord).mock.calls[0][1].serviceOdometer).toBe(45000)
+  })
+})
+
+describe('MaintenanceForm 수정', () => {
+  afterEach(cleanup)
+
+  beforeEach(() => {
+    vi.mocked(updateRecord).mockReset().mockResolvedValue(SAVED)
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+  })
+
+  it('비용이 비어 있던 기록은 지금 통화로 받는다 — 옛 통화(USD)의 소수 자리로 바꾸지 않음', async () => {
+    const onSaved = vi.fn()
+    const { container } = renderWithProviders(
+      <MaintenanceForm
+        vehicleId="vehicle00001"
+        record={{ ...SAVED, currency: 'USD' }}
+        defaultOdometer={45000}
+        onSaved={onSaved}
+        onCancel={() => {}}
+      />,
+    )
+
+    // 사용자 통화는 원화. 라벨도 원화
+    expect(screen.getByLabelText(/KRW/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText(/KRW/), { target: { value: '50000' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+    // 달러로 바꾸면 5,000,000(센트)이 됨
+    expect(vi.mocked(updateRecord).mock.calls[0][2].cost).toBe(50000)
   })
 })

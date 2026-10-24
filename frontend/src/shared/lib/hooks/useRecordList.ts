@@ -44,6 +44,14 @@ export function useRecordList<R extends { id: string }>({
     setActionError(null)
   }
 
+  /** 행 수정 열기. 작성 중인 새 기록 폼을 덮으면 입력이 사라져 한 번 물음. 행끼리 바꿀 때는 묻지 않음 */
+  function edit(record: R) {
+    if (editing === 'new' && !window.confirm(t.common.discardNewRecord)) {
+      return
+    }
+    setEditing(record)
+  }
+
   /** 페이지 이동. 수정 중인 행은 화면에서 사라지므로 닫고, 새 기록 폼은 쪽과 무관해 남김 */
   function changePage(next: SetStateAction<number>) {
     setPage(next)
@@ -82,5 +90,5 @@ export function useRecordList<R extends { id: string }>({
     }
   }
 
-  return { editing, setEditing, actionError, deletingId, visible, close, changePage, saved, handleDelete }
+  return { editing, setEditing, edit, actionError, deletingId, visible, close, changePage, saved, handleDelete }
 }

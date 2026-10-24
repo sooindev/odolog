@@ -48,4 +48,19 @@ class InputTextTest {
         assertThat(InputText.optional("a\uD83Db")).isEqualTo("a?b");
         assertThat(InputText.optional("세차 🚗")).isEqualTo("세차 🚗");
     }
+
+    @Test
+    @DisplayName("보이지 않는 글자만 있는 필수 입력은 거절한다 — 한글 채움 문자·ZWJ·이형 선택자·점자 빈칸")
+    void requiredRejectsOnlyInvisibleCharacters() {
+        for (String invisible : new String[]{"\u3164", "\uFFA0", "\u115F", "\u2800", "\u200D", "\uFE0F", "\u3164\u200D\u3164"}) {
+            assertThatThrownBy(() -> InputText.required(invisible, "nickname"))
+                    .isInstanceOf(InvalidRequestException.class);
+            assertThatThrownBy(() -> InputText.plateNumber(invisible, "plateNumber"))
+                    .isInstanceOf(InvalidRequestException.class);
+        }
+
+        // 보이는 글자가 하나라도 있으면 그대로. 합성 이모지의 ZWJ 는 지우지 않음
+        assertThat(InputText.required("\u3164가", "nickname")).isEqualTo("\u3164가");
+        assertThat(InputText.required("👨\u200D👩\u200D👧", "nickname")).isEqualTo("👨\u200D👩\u200D👧");
+    }
 }

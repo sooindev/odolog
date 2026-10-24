@@ -87,7 +87,9 @@ public record FuelRecordResponse(
                 !FuelAnomaly.isImpossible(efficiency)
                         && distance != null
                         && baseline.suspectsMissingRecord(distance, efficiency),
-                previous != null && record.getFueledAt().isBefore(previous.getFueledAt())
+                // 주행거리가 같으면 순서는 넣은 순서일 뿐이라 모순이 아님
+                previous != null && previous.getOdometer() < record.getOdometer()
+                        && record.getFueledAt().isBefore(previous.getFueledAt())
         );
     }
 

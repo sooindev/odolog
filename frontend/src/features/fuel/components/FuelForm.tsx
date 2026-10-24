@@ -40,14 +40,18 @@ export function FuelForm({
 
   // 폼을 연 시점의 차량 주행거리 고정(km). 입력칸과 판정 기준의 어긋남 방지
   const [baseOdometer] = useState(defaultOdometer)
-  // 수정은 기록의 통화, 등록은 지금 사용자 통화. 서버도 같은 규칙
-  const currency = record?.currency ?? userCurrency
+  // 갤런은 소수 셋째 자리까지(미국 주유기·영수증 표기). 리터는 저장 정밀도와 같은 둘째 자리
+  const volumeDecimals = f.volumeUnit === 'gal' ? 3 : 2
+  const volumeScale = 10 ** volumeDecimals
+
+  // 금액이 있는 기록은 그 통화, 금액이 비어 있던 기록·등록은 지금 사용자 통화. 서버도 같은 규칙
+  const currency = record != null && record.totalCost !== null ? record.currency : userCurrency
 
   // 입력칸은 화면 단위(마일·갤런·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로
   const [initialOdometerKm] = useState(record?.odometer ?? defaultOdometer)
   const [initial] = useState(() => ({
     odometer: String(Math.round(fromKm(unitSystem, initialOdometerKm))),
-    volume: record?.liters == null ? '' : String(Math.round(fromLiters(unitSystem, record.liters) * 100) / 100),
+    volume: record?.liters == null ? '' : String(Math.round(fromLiters(unitSystem, record.liters) * volumeScale) / volumeScale),
     cost: record?.totalCost == null ? '' : String(fromMinor(record.totalCost, currency)),
   }))
 
@@ -198,9 +202,10 @@ export function FuelForm({
           <Input
             id="fuel-liters"
             type="number"
-            min={0.01}
-            max={Math.floor(fromLiters(unitSystem, 9999.99) * 100) / 100}
-            step={0.01}
+            // 0.003gal 이 0.01L 로 반올림되는 가장 작은 갤런
+            min={volumeDecimals === 3 ? 0.003 : 0.01}
+            max={Math.floor(fromLiters(unitSystem, 9999.99) * volumeScale) / volumeScale}
+            step={1 / volumeScale}
             className="tabular-nums"
             placeholder={f.volumeUnit === 'gal' ? '9.87' : '32.45'}
             value={volume}

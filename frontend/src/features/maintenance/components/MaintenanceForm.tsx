@@ -40,8 +40,8 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
 
   // 폼을 연 시점의 차량 주행거리 고정(km). 입력칸과 판정 기준의 어긋남 방지
   const [baseOdometer] = useState(defaultOdometer)
-  // 수정은 기록의 통화, 등록은 지금 사용자 통화. 서버도 같은 규칙
-  const currency = record?.currency ?? userCurrency
+  // 금액이 있는 기록은 그 통화, 금액이 비어 있던 기록·등록은 지금 사용자 통화. 서버도 같은 규칙
+  const currency = record != null && record.cost !== null ? record.currency : userCurrency
 
   // 입력칸은 화면 단위(마일·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로 전송
   // 비용·주행거리는 모르면 빈칸(null). 등록은 주행거리만 차량 값으로 미리 채움

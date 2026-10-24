@@ -371,6 +371,27 @@ class FuelRecordServiceTest {
     }
 
     @Test
+    @DisplayName("주행거리가 같은 직전 기록보다 날짜가 이른 것은 표시하지 않는다 — 같은 자리의 순서는 넣은 순서일 뿐")
+    void sameOdometerEarlierDateNotMarked() {
+        Vehicle vehicle = vehicle(40500);
+        when(vehicleService.findOwnedVehicle(1L, "V10")).thenReturn(vehicle);
+
+        FuelRecord first = record(1L, vehicle, 40500, "30.00", 50000);
+        first.changeFueledAt(LocalDate.of(2026, 10, 5));
+        // 빠뜨린 영수증을 나중에 적음. 같은 40,500km, 하루 앞
+        FuelRecord laterEntered = record(2L, vehicle, 40500, "5.00", 9000);
+        laterEntered.changeFueledAt(LocalDate.of(2026, 10, 4));
+
+        Pageable pageable = PageRequest.of(0, 2);
+        when(fuelRecordRepository.findByVehicleId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(laterEntered, first), pageable, 2));
+
+        Page<FuelRecordResponse> page = fuelRecordService.findByVehicle(1L, "V10", pageable);
+
+        assertThat(page.getContent().get(0).dateBeforePrevious()).isFalse();
+    }
+
+    @Test
     @DisplayName("기록이 빠진 것으로 보이는 구간은 목록 행에 표시된다")
     void listMarksMissingRecordSegment() {
         Vehicle vehicle = vehicle(12000);
@@ -640,6 +661,27 @@ class FuelRecordServiceTest {
 
         assertThat(row.efficiency()).isEqualByComparingTo("20.00");
         assertThat(row.missingRecordSuspected()).isFalse();
+    }
+
+    @Test
+    @DisplayName("비어 있던 금액을 처음 채우면 지금 통화로, 있던 금액을 고치면 기록의 통화 그대로")
+    void firstCostTakesCurrentCurrency() {
+        Vehicle vehicle = vehicle(30000);
+        FuelRecord noCost = bare(1L, vehicle, 20000);
+        FuelRecord priced = record(2L, vehicle, 20500, "30.00", 60000);
+        // 기록을 넣은 뒤 통화를 바꿈
+        vehicle.getOwner().changeCurrency("USD");
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(fuelRecordRepository.findByPublicIdAndVehicleId("R1", 10L)).thenReturn(Optional.of(noCost));
+        when(fuelRecordRepository.findByPublicIdAndVehicleId("R2", 10L)).thenReturn(Optional.of(priced));
+
+        fuelRecordService.update(1L, "V10", "R1",
+                new FuelRecordUpdateRequest(null, null, null, 5000, null, null, null, null));
+        fuelRecordService.update(1L, "V10", "R2",
+                new FuelRecordUpdateRequest(null, null, null, 70000, null, null, null, null));
+
+        assertThat(noCost.getCurrency()).isEqualTo("USD");
+        assertThat(priced.getCurrency()).isEqualTo("KRW");
     }
 
     @Test

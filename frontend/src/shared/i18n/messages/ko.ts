@@ -19,6 +19,7 @@ export const ko = {
     deleting: '삭제 중…',
     /** 행마다 같은 버튼을 화면 낭독기가 구분하게. 보이는 글자(수정·삭제)를 이름에 포함 */
     editOf: (what: string) => `${what} 수정`,
+    discardNewRecord: '작성 중인 새 기록은 저장되지 않습니다. 이 기록을 수정할까요?',
     deleteOf: (what: string) => `${what} 삭제`,
     register: '등록',
     registering: '등록 중…',
@@ -254,6 +255,7 @@ export const ko = {
       notOurFile: '오도로그에서 내려받은 JSON 파일이 맞는지 확인해 주세요.',
       imported: (vehicles: Count, records: Count) => `차량 ${vehicles.text}대와 기록 ${records.text}건을 넣었습니다.`,
       nothingNew: '새로 넣을 기록이 없습니다.',
+      onlyIntervals: (c: Count) => `새 기록은 없고 차량별 정비 주기 ${c.text}개를 되살렸습니다.`,
       merged: (c: Count) => ` 이미 있던 차량 ${c.text}대에는 새 차를 만들지 않고 그 차에 더했습니다.`,
       intervals: (c: Count) => ` 차량별 정비 주기 ${c.text}개도 되살렸습니다.`,
       skipped: (c: Count) => ` 이미 같은 기록이 있어 ${c.text}건은 건너뛰었습니다.`,

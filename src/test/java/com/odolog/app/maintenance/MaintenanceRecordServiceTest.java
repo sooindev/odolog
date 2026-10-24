@@ -137,6 +137,30 @@ class MaintenanceRecordServiceTest {
     }
 
     @Test
+    @DisplayName("비어 있던 비용을 처음 채우면 지금 통화로, 있던 비용을 고치면 기록의 통화 그대로")
+    void firstCostTakesCurrentCurrency() {
+        Vehicle vehicle = createVehicle(10L);
+        MaintenanceRecord noCost = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, null,
+                null, "KRW", null, LocalDate.of(2026, 1, 1));
+        MaintenanceRecord priced = new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL, null,
+                50000, "KRW", null, LocalDate.of(2026, 1, 1));
+        // 기록을 넣은 뒤 통화를 바꿈
+        vehicle.getOwner().changeCurrency("USD");
+        when(vehicleService.findOwnedVehicleForUpdate(1L, "V10")).thenReturn(vehicle);
+        when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R1", 10L)).thenReturn(Optional.of(noCost));
+        when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R2", 10L)).thenReturn(Optional.of(priced));
+
+        maintenanceRecordService.update(1L, "V10", "R1",
+                new MaintenanceRecordUpdateRequest(null, null, 5000, null, null, null, null));
+        maintenanceRecordService.update(1L, "V10", "R2",
+                new MaintenanceRecordUpdateRequest(null, null, 60000, null, null, null, null));
+
+        // 지킬 옛 금액이 없으면 지금 통화. 옛 금액이 있으면 그 통화의 값을 고친 것
+        assertThat(noCost.getCurrency()).isEqualTo("USD");
+        assertThat(priced.getCurrency()).isEqualTo("KRW");
+    }
+
+    @Test
     @DisplayName("다른 차량 소속의 정비 이력 id로 접근하면 ResourceNotFoundException")
     void updateRecordNotBelongingToVehicle() {
         Vehicle vehicle = createVehicle(10L);

@@ -139,7 +139,11 @@ public class MaintenanceRecord extends BaseTimeEntity {
         this.description = description;
     }
 
-    public void changeCost(Integer cost) {
+    /** 비어 있던 비용을 처음 채우면 지금 통화로. 지킬 옛 금액이 없어 옛 통화에 묶일 이유가 없음 */
+    public void changeCost(Integer cost, String currentCurrency) {
+        if (this.cost == null && cost != null) {
+            this.currency = currentCurrency;
+        }
         this.cost = cost;
     }
 

@@ -58,7 +58,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   })
 
   // 변수로 받아 타입 좁히기
-  const shownError = error !== null ? errorMessage(error, t, t.fuel.loadFailed) : list.actionError
+  const loadError = error !== null ? errorMessage(error, t, t.fuel.loadFailed) : null
 
   const rows = shown === undefined ? [] : list.visible(shown.items)
 
@@ -97,7 +97,9 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
           </div>
         )}
 
-        {shownError !== null && <ErrorText message={shownError} />}
+        {/* 조회 실패와 동작 실패는 다른 사실. 하나만 고르면 삭제를 시도했는지 알 수 없음 */}
+        {loadError !== null && <ErrorText message={loadError} />}
+        {list.actionError !== null && <ErrorText message={list.actionError} />}
 
         {isPending && shown === undefined ? (
           <div className="flex flex-col gap-4">
@@ -217,7 +219,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setEditing(record)}
+                        onClick={() => list.edit(record)}
                         disabled={deletingId === record.id}
                         aria-label={t.common.editOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
                       >

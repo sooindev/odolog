@@ -6,8 +6,8 @@ import type { Messages } from '@/shared/i18n/messages/ko'
 /** 주행거리 상한(km) */
 export const MAX_ODOMETER = 2_000_000
 
-/** 금액 상한(통화의 최소 단위). 원화 1억, 달러 100만 */
-export const MAX_AMOUNT = 100_000_000
+/** 금액 상한(통화의 최소 단위). 원화 20억, 달러 2천만. 서버 금액 칸이 INT */
+export const MAX_AMOUNT = 2_000_000_000
 
 /** 비밀번호 상한(UTF-8 바이트). BCrypt 한계 */
 export const MAX_PASSWORD_BYTES = 72

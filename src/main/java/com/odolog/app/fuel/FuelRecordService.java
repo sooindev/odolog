@@ -120,9 +120,9 @@ public class FuelRecordService {
             record.changeLiters(request.liters());
         }
         if (Boolean.TRUE.equals(request.clearTotalCost())) {
-            record.changeTotalCost(null);
+            record.changeTotalCost(null, record.getCurrency());
         } else if (request.totalCost() != null) {
-            record.changeTotalCost(request.totalCost());
+            record.changeTotalCost(request.totalCost(), record.getVehicle().getOwner().getCurrency());
         }
         if (request.memo() != null) record.changeMemo(InputText.optional(request.memo()));
         if (request.fullTank() != null) record.changeFullTank(request.fullTank());

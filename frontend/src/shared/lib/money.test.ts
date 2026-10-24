@@ -27,8 +27,10 @@ describe('통화의 최소 단위', () => {
   it('step 과 상한이 통화를 따른다', () => {
     expect(inputStep('USD')).toBe(0.01)
     expect(inputStep('KRW')).toBe(1)
-    // 서버 상한은 최소 단위 1억 — 원화 1억, 달러 100만
-    expect(maxMajor('KRW')).toBe(100_000_000)
-    expect(maxMajor('USD')).toBe(1_000_000)
+    // 서버 상한은 최소 단위 20억(DB INT) — 원화 20억, 달러 2천만
+    expect(maxMajor('KRW')).toBe(2_000_000_000)
+    expect(maxMajor('USD')).toBe(20_000_000)
+    // 2자리 고액권도 정비비 한 번은 넣을 수 있게
+    expect(maxMajor('IDR')).toBe(20_000_000)
   })
 })

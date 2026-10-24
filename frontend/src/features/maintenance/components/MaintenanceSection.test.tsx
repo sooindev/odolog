@@ -101,6 +101,25 @@ describe('MaintenanceSection', () => {
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('적던 중')
   })
 
+  it('새 기록을 적던 중 다른 행의 수정을 누르면 묻고, 취소하면 입력이 그대로 남는다', async () => {
+    const confirm = vi.fn(() => false)
+    vi.stubGlobal('confirm', confirm)
+    renderWithProviders(<Harness />)
+
+    const rows = await screen.findAllByRole('listitem')
+    fireEvent.click(screen.getByRole('button', { name: '이력 추가' }))
+    fireEvent.change(screen.getByLabelText(/메모/), { target: { value: '적던 중' } })
+    fireEvent.click(within(rows[0]).getByRole('button', { name: /수정$/ }))
+
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('적던 중')
+
+    // 확인하면 그 행의 수정 폼으로
+    confirm.mockReturnValue(true)
+    fireEvent.click(within(rows[0]).getByRole('button', { name: /수정$/ }))
+    expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('첫 번째 메모')
+  })
+
   it('수정 중인 행을 지우면 그 폼은 닫힌다', async () => {
     vi.stubGlobal('confirm', () => true)
     vi.mocked(deleteRecord).mockResolvedValue(undefined)
@@ -179,6 +198,23 @@ describe('MaintenanceSection', () => {
     await screen.findByText('둘째 쪽 메모')
     expect(vi.mocked(fetchRecords).mock.calls.map((call) => call[1])).toEqual([0, 1, 0, 1])
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('쪽 이동 실패 문구가 떠 있어도 삭제 실패 문구가 함께 보인다', async () => {
+    vi.stubGlobal('confirm', () => true)
+    vi.mocked(deleteRecord).mockRejectedValue(new TypeError('Failed to fetch'))
+    failSecondPageOnce([record('recordAAAAAA', '첫 쪽 메모', '2026-09-01')])
+    renderWithProviders(<Harness />)
+
+    await screen.findByText('첫 쪽 메모')
+    fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
+    await screen.findByRole('alert')
+
+    fireEvent.click(screen.getByRole('button', { name: /삭제$/ }))
+
+    // 조회 실패 하나만 보이면 삭제를 시도했는지 알 수 없음
+    await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2))
+    expect(screen.getByText('정비 이력을 불러오지 못했습니다.')).toBeTruthy()
   })
 
   it('쪽 이동이 실패한 뒤 보이는 쪽에서 지우면 그 쪽을 다시 읽는다', async () => {

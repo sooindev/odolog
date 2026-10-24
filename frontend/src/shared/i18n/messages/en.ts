@@ -24,6 +24,7 @@ export const en: Messages = {
     delete: 'Delete',
     deleting: 'Deleting…',
     editOf: (what: string) => `Edit ${what}`,
+    discardNewRecord: 'The new record you’re writing won’t be saved. Edit this record instead?',
     deleteOf: (what: string) => `Delete ${what}`,
     register: 'Add',
     registering: 'Adding…',
@@ -256,6 +257,8 @@ export const en: Messages = {
       imported: (vehicles: Count, records: Count) =>
         `Added ${vehicles.text} ${plural(vehicles.n, 'vehicle', 'vehicles')} and ${records.text} ${plural(records.n, 'record', 'records')}.`,
       nothingNew: 'Nothing new to add.',
+      onlyIntervals: (c: Count) =>
+        `No new records. Restored ${c.text} custom service ${plural(c.n, 'interval', 'intervals')}.`,
       merged: (c: Count) => ` Added to ${c.text} existing ${plural(c.n, 'vehicle', 'vehicles')} instead of creating new ones.`,
       intervals: (c: Count) => ` Restored ${c.text} custom service ${plural(c.n, 'interval', 'intervals')}.`,
       skipped: (c: Count) => ` Skipped ${c.text} ${plural(c.n, 'record', 'records')} you already had.`,

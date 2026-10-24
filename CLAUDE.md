@@ -224,7 +224,7 @@
     - 선택 입력(메모·정비 설명 등)은 `InputText.optional` — 앞뒤 공백을 지우고, 비면 `''` 가 아니라 `null`,
       짝 없는 서로게이트는 `?` 로(DB 가 그렇게 저장해서, 안 바꾸면 비교 열쇠가 어긋난다).
       그대로 두면 "없음" 이 두 모양이 되고 **내보낸 JSON 에도 그 차이가 그대로 나간다.**
-    - 필수 입력(번호판·제조사·모델명·닉네임)은 `InputText.required` — 지운 뒤 비면 400.
+    - 필수 입력(번호판·제조사·모델명·닉네임)은 `InputText.required` — 지운 뒤 비거나 보이지 않는 글자(한글 채움 문자·ZWJ·이형 선택자)만 남으면 400.
       번호판만 `InputText.plateNumber` — 가운데 공백까지 지운다(DB 는 가운데 공백을 글자로 봐서 같은 차가 둘로 들어간다).
     - 닉네임·번호판·제조사·모델명은 **한 줄**(`InputLimits.SINGLE_LINE_TEXT`) — 제어·서식 문자와 줄 구분자를 거부한다.
       `\P{Cntrl}` 은 ASCII 제어 문자만 뜻해 글자 방향 뒤집기(U+202E)가 통과했다. 합성 이모지의 ZWJ 는 허용
@@ -283,6 +283,7 @@
     정비 주기)은 km·L 기준 그대로다. 단위 체계는 네 값(`KM_PER_L`·`L_PER_100KM`·`MPG_US`·`MPG_UK`)이고 거리·부피·연비를
     따로 고르지 않는다. **통화 코드(ISO 4217)는 사용자가 아니라 기록마다** 붙는다 — 사용자에만 두면 설정을 바꾸는 순간
     옛 50,000원이 $500.00 이 된다. 합계는 사용자 통화 기록만 더하고 나머지는 건수로 밝힌다.
+    **금액이 비어 있던 기록에 처음 금액을 넣으면 지금 통화**로 바뀐다(`changeCost`·`changeTotalCost`) — 지킬 옛 금액이 없다. 폼도 그 통화로 라벨·환산한다.
     입력칸은 화면 단위(마일·갤런·달러)로 받고 저장 직전에 바꾼다. **손대지 않은 칸은 저장값을 그대로 보낸다** —
     마일로 바꿨다 되돌리면 1km 가 어긋나 아무것도 안 고친 수정이 주행거리를 바꾼다.
     **"오늘"은 사용자 시간대로 계산한다**(`user/UserToday`). 미래 날짜 판정·정비 지남·홈 월별 12칸이 공유한다 —
@@ -299,6 +300,7 @@
 20. **입력 상한은 "되돌릴 수 없게 망가지는 것"을 막으려고 둔다**(`common/validation/InputLimits`, 프론트 `shared/lib/limits.ts` 와
     같은 숫자 — 의도한 중복). `liftOdometerTo` 가 최댓값을 잡아 두므로 한 번 크게 잘못 넣으면 그 뒤 모든 폼이 그 값을 기준으로 말한다.
     비밀번호는 글자 수가 아니라 **UTF-8 72바이트**(`@MaxBytes`, BCrypt 한계) — 가입·변경·재설정 셋이 같아야 한다.
+    금액은 통화와 무관하게 최소 단위 20억(금액 칸이 `INT`). 2자리 고액권은 주 단위로 작아진다(Rp 2천만).
 
 ## 디자인 시스템
 
@@ -408,7 +410,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 441개):
+테스트 종류 (`./gradlew test`, 445개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 열하나** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는
@@ -478,7 +480,7 @@
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 
-테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 113개(파일 17개) — 순수 함수, 사전 누락,
+테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 117개(파일 17개) — 순수 함수, 사전 누락,
 의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
 실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 19개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.

@@ -29,7 +29,11 @@ export function FuelSummaryCard({ vehicleId }: { vehicleId: string }) {
     try {
       await updateFuelRecord(vehicleId, recordId, { resetPoint })
       // 기준점이 바뀌면 목록의 구간 연비도 바뀜. 요약·목록 함께
-      await queryClient.invalidateQueries({ queryKey: queryKeys.fuel(vehicleId) })
+      // 시작하기 카드는 기준점이 있으면 연비 단계를 완료로 봄
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.fuel(vehicleId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.gettingStarted(vehicleId) }),
+      ])
     } catch (caught) {
       setActionError(errorMessage(caught, t, t.fuel.summary.resetFailed))
     } finally {

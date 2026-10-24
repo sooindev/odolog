@@ -9,8 +9,11 @@ public final class InputLimits {
     /** 주행거리 상한(km). 정상 입력은 통과, 자리수 실수는 차단 */
     public static final long MAX_ODOMETER = 2_000_000L;
 
-    /** 금액 상한(통화의 최소 단위). 원화 1억, 달러 100만 */
-    public static final long MAX_AMOUNT = 100_000_000L;
+    /**
+     * 금액 상한(통화의 최소 단위). 원화 20억, 달러 2천만. 금액 칸이 INT 라 그 안의 깔끔한 값
+     * 통화마다 한 숫자라 2자리 고액권(IDR 등)은 주 단위로 작아짐. Rp 2천만까지
+     */
+    public static final long MAX_AMOUNT = 2_000_000_000L;
 
     /** 기록 날짜 하한. 연식 하한과 같은 해. 연도 오타(0026)·음수 연도(DB 가 깨뜨려 저장) 차단 */
     public static final java.time.LocalDate MIN_RECORD_DATE = java.time.LocalDate.of(1900, 1, 1);

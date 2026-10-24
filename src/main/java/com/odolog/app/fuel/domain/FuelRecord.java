@@ -115,7 +115,11 @@ public class FuelRecord extends BaseTimeEntity {
         this.liters = liters;
     }
 
-    public void changeTotalCost(Integer totalCost) {
+    /** 비어 있던 금액을 처음 채우면 지금 통화로. 지킬 옛 금액이 없어 옛 통화에 묶일 이유가 없음 */
+    public void changeTotalCost(Integer totalCost, String currentCurrency) {
+        if (this.totalCost == null && totalCost != null) {
+            this.currency = currentCurrency;
+        }
         this.totalCost = totalCost;
     }
 

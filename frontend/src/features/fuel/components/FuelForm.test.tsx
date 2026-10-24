@@ -83,6 +83,27 @@ describe('FuelForm 수정', () => {
     // 비운 칸은 저장 전에 한 번 확인
     expect(window.confirm).toHaveBeenCalledTimes(1)
   })
+
+  it('금액이 비어 있던 기록은 지금 통화로 받는다 — 옛 통화(USD)의 소수 자리로 바꾸지 않음', async () => {
+    const onSaved = vi.fn()
+    renderWithProviders(
+      <FuelForm
+        vehicleId="vehicle00001"
+        record={{ ...RECORD, totalCost: null, pricePerLiter: null, currency: 'USD' }}
+        defaultOdometer={20000}
+        onSaved={onSaved}
+        onCancel={() => {}}
+      />,
+    )
+
+    // 사용자 통화는 원화. 라벨도 원화
+    fireEvent.change(screen.getByLabelText(/KRW/), { target: { value: '50000' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+    // 달러로 바꾸면 5,000,000(센트)이 됨
+    expect(sentFields()).toEqual({ totalCost: 50000 })
+  })
 })
 
 /** 폼이 열린 채 차량 주행거리가 바뀌는 상황. 다른 카드에서 주유·갱신을 저장한 경우 */
