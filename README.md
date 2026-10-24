@@ -8,56 +8,501 @@ Spring Boot 3.5 + MariaDB 백엔드에 React 19 SPA 를 붙인 구성이고, 인
 **이미 타던 차**를 등록하는 경우를 기본으로 본다 — 현재 주행거리와 기억나는 정비 몇 가지만 적으면
 다음 정비 시점이 바로 뜨고, 이후 주유·정비를 적을 때마다 기록이 쌓인다.
 
-백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 549개(백엔드 439 · 프론트 110)와 실제 브라우저 E2E 19개가 통과한다.
+백엔드 API 29개 · 화면 12 라우트가 동작하고, 테스트 562개(백엔드 445 · 프론트 117)와 실제 브라우저 E2E 19개가 통과한다.
 플랫폼은 웹 하나다(근거는 `HISTORY.md` 의 2026-09-16 항목). 개인 학습 프로젝트라
-**로컬에서 완전히 동작하는 것**까지가 범위이고 배포는 범위 밖이다 — 다만 "올린다면"은 운영 프로파일로 준비해 뒀다.
+**로컬에서 완전히 동작하는 것**까지가 범위이고 배포는 아직 하지 않았다 — "올린다면"은 운영 프로파일로 준비해 뒀다.
 
 | 문서 | 내용 |
 |---|---|
-| `CLAUDE.md` | 설계 원칙과 그 이유, 구조 지도, 의존 방향 |
+| `README.md`(이 파일) | 처음 보는 사람을 위한 지도·전체 흐름·기능별 설명, 실행 방법, API, 보안 |
+| `CLAUDE.md` | 지금 지켜야 할 설계 원칙과 그 이유, 폴더 지도, 의존 방향 |
 | `docs/DESIGN.md` | 프론트엔드 디자인 시스템 |
-| `docs/QA.md` | 로드맵, 눈 확인 체크리스트, 완료 판정 기준, 백로그 |
-| `HISTORY.md` | 작업 일지 — 무엇을 왜 그렇게 정했는지 |
+| `docs/QA.md` | 로드맵, 눈 확인 체크리스트, 발견한 문제(6-F), 완료 판정 기준, 백로그 |
+| `HISTORY.md` | 작업 일지 — 무엇을 왜 그렇게 정했는지(최신순) |
 
-## 도메인 규칙 — 계산되는 값 둘
+## 처음 읽는다면
 
-둘 다 **저장하지 않고 조회할 때 계산한다** — 앞 기록이 수정되면 뒤 기록의 값이 따라 바뀌므로,
-계산 결과를 컬럼으로 들고 있으면 언젠가 반드시 원본과 어긋난다.
+이 순서로 읽으면 된다.
 
-### 연비
+1. **[전체 지도](#전체-지도)** — 그림 넷. 무엇이 어디서 돌고, 요청 하나가 어떻게 지나가는지
+2. **[전체 로직 — 사용자의 하루를 따라가기](#전체-로직--사용자의-하루를-따라가기)** — 가입부터 탈퇴까지 각 장면에서 코드의 어디가 일하는지
+3. **[기능별 설명](#기능별-설명)** — 폴더 하나씩. 하는 일, 주요 파일, 지키는 규칙
+4. 코드를 직접 열 때는 **테스트부터** 본다. 테스트 이름(`@DisplayName`, `it('…')`)이 곧 "이 코드가 지키는 약속"의 목록이다
 
-**구간(segment) 단위**로 계산한다. 구간은 **가득 주유에서 다음 가득 주유까지**다. 주유마다 "가득 채움"을 표시하고(기본 켬),
-덜 채운 주유는 다음 가득 주유의 구간에 합쳐진다 — 덜 채운 양으로 그 자리에서 나누면 그 구간은 높게, 다음 구간은 낮게 나온다.
+용어 몇 개:
 
-    구간 연비 = (이번 가득 odometer − 직전 가득 odometer) ÷ (사이의 덜 채운 양 + 이번 주유량)
+| 용어 | 뜻 |
+|---|---|
+| 엔티티 | DB 표 한 줄을 자바 객체로 나타낸 것(`User`, `Vehicle` …). JPA 가 표와 객체를 오간다 |
+| 리포지토리 | DB 를 읽고 쓰는 창구. 메서드 이름만 적으면 Spring Data 가 SQL 을 만든다 |
+| 서비스 | 규칙을 실행하는 곳. 트랜잭션(전부 되거나 전부 안 되거나)의 경계 |
+| 컨트롤러 | URL 과 서비스를 잇는 곳. 입력 검증과 HTTP 상태 코드 |
+| DTO | 요청·응답에 실리는 모양. 엔티티를 그대로 내보내지 않으려고 따로 둔다 |
+| 공개 id | URL 에 나가는 12자 무작위 문자열(`k3Xq9mTa2LpZ`). DB 의 숫자 id 는 밖으로 내보내지 않는다 |
+| 조율 층 | 여러 기능을 동시에 알아야 하는 일(탈퇴, 홈 요약)을 맡는 패키지. `garage`·`account`·`summary` |
+
+## 전체 지도
+
+### 1. 시스템 구성 — 무엇이 어디서 도는가
+
+```mermaid
+flowchart LR
+    subgraph Browser["브라우저 (localhost:5173)"]
+        UI["React 화면<br/>features/*"]
+        RQ["TanStack Query<br/>조회 캐시"]
+        CL["api client<br/>fetch + 쿠키 + CSRF 헤더"]
+        UI --> RQ --> CL
+    end
+
+    subgraph Server["Spring Boot (localhost:8080)"]
+        F["필터 체인<br/>CORS → 본문 크기 → 세션 → CSRF·보안 헤더"]
+        C["컨트롤러<br/>입력 검증, @LoginUser"]
+        S["서비스<br/>트랜잭션, 규칙, 계산"]
+        R["리포지토리<br/>Spring Data JPA"]
+        F --> C --> S --> R
+    end
+
+    DB[("MariaDB<br/>odolog")]
+    MAIL["SMTP 서버<br/>재설정 메일"]
+
+    CL -- "HTTP + JSON<br/>JSESSIONID 쿠키" --> F
+    R --> DB
+    F -. "세션 표 SPRING_SESSION" .-> DB
+    S -. "커밋 뒤 다른 스레드" .-> MAIL
+```
+
+- **화면과 서버는 완전히 다른 프로그램이다.** 화면(`frontend/`)은 Vite 가 띄우는 React 앱이고, 서버(`src/`)는 Spring Boot 앱이다.
+  둘은 HTTP 로 JSON 을 주고받을 뿐 서로의 빌드에 관여하지 않는다
+- **로그인 상태는 서버의 세션에 있다.** 브라우저는 `JSESSIONID` 쿠키만 들고 다니고, 서버는 그 쿠키로 DB 의 세션 표를 찾아
+  "이 요청은 사용자 7번"을 안다. 그래서 서버를 재시작해도 로그인이 유지된다
+- **스키마는 Flyway 가 만든다.** `src/main/resources/db/migration/V1…V6` 을 순서대로 실행해 표를 만들고, Hibernate 는 엔티티와 표가 맞는지 확인만 한다
+- 화면이 보여 주는 숫자(연비, 다음 정비, 홈 통계)는 **전부 서버가 계산**해서 준다. 화면은 단위·통화 표기만 바꾼다
+
+### 2. 요청 하나가 지나가는 길 — "주유 기록 저장"
+
+```mermaid
+sequenceDiagram
+    actor U as 사용자
+    participant FF as FuelForm (React)
+    participant API as shared/api/client.ts
+    participant FL as 필터 체인
+    participant CT as FuelRecordController
+    participant SV as FuelRecordService
+    participant DB as MariaDB
+
+    U->>FF: 주행거리·주유량 입력 후 저장
+    FF->>FF: 화면 단위(마일·갤런·달러) → km·L·최소 단위
+    FF->>API: registerFuelRecord(vehicleId, body)
+    API->>FL: POST /api/vehicles/{id}/fuel-records<br/>쿠키 + X-XSRF-TOKEN 헤더
+    FL->>FL: 쿠키로 세션 찾기, CSRF 쿠키와 헤더 비교
+    FL->>CT: 통과
+    CT->>CT: @Valid 로 입력 검증, @LoginUser 로 세션의 사용자 id
+    CT->>SV: register(userId, vehicleId, request)
+    SV->>DB: 차량 행을 잠그며 조회 — 내 차가 아니면 404
+    SV->>SV: 날짜 범위 확인(사용자 시간대의 오늘까지), 통화 붙이기
+    SV->>DB: 주유 기록 INSERT, 차량 주행거리 올리기
+    SV->>DB: 그 차의 주유 이력 전체 읽기 → 연비 구간 계산
+    SV-->>CT: FuelRecordResponse (연비 포함)
+    CT-->>API: 201 Created + JSON
+    API-->>FF: 결과
+    FF->>FF: 목록 카드(FuelSection)가 연비·차량·다음 정비 캐시를 무효화 → 다시 읽기
+```
+
+모든 쓰기 요청이 이 모양이다. 기억할 점 셋:
+
+1. **"누구의 요청인가"는 세션에서만 꺼낸다**(`@LoginUser`). 요청 본문의 사용자 id 는 믿지 않는다 — 조작할 수 있다
+2. **"내 차인가"는 서비스의 첫 조회가 확인한다**(`findOwnedVehicleForUpdate`). 남의 차는 403 이 아니라 404 — "있긴 하다"도 알려 주지 않는다
+3. **실패는 예외로 던지고 `GlobalExceptionHandler` 가 HTTP 응답으로 바꾼다.** 응답 본문은 늘 `{code, message, field?}` 이고,
+   화면은 `code` 로 자기 언어의 문구를 고른다
+
+### 3. 데이터 모델 — 표 여섯 개
+
+```mermaid
+erDiagram
+    users ||--o{ vehicles : "가진다"
+    users ||--o{ password_reset_tokens : "재설정 링크"
+    vehicles ||--o{ maintenance_records : "정비 이력"
+    vehicles ||--o{ fuel_records : "주유 기록"
+    vehicles ||--o{ service_intervals : "차량별 권장 주기"
+
+    users {
+        bigint id PK
+        varchar email UK "로그인 아이디, ASCII 만"
+        varchar password "BCrypt 해시"
+        varchar nickname
+        varchar language "KO 또는 EN"
+        varchar time_zone "오늘 판정 기준"
+        varchar currency "새 기록에 붙는 통화"
+        varchar unit_system "KM_PER_L 등 넷"
+    }
+    vehicles {
+        bigint id PK
+        varchar public_id UK "URL 에 나가는 12자"
+        bigint user_id FK
+        varchar plate_number "사용자 안에서 유일"
+        varchar manufacturer
+        varchar model_name
+        int model_year "모르면 null"
+        int odometer "현재 주행거리 km"
+        bigint version "동시 수정 감지"
+    }
+    maintenance_records {
+        bigint id PK
+        varchar public_id UK
+        bigint vehicle_id FK
+        varchar type "ENGINE_OIL 등 15종"
+        date service_date
+        int service_odometer "모르면 null"
+        int cost "통화의 최소 단위, 모르면 null"
+        varchar currency "기록마다"
+        varchar description
+    }
+    fuel_records {
+        bigint id PK
+        varchar public_id UK
+        bigint vehicle_id FK
+        date fueled_at
+        int odometer
+        decimal liters "모르면 null"
+        int total_cost "모르면 null"
+        varchar currency
+        bit full_tank "가득 채웠는지"
+        bit reset_point "연비 초기화 기준점"
+        varchar memo
+    }
+    service_intervals {
+        bigint id PK
+        bigint vehicle_id FK
+        varchar type "차량+종류로 유일"
+        int interval_km
+        int interval_months
+    }
+    password_reset_tokens {
+        bigint id PK
+        bigint user_id FK
+        varchar token_hash UK "SHA-256, 원문은 저장 안 함"
+        datetime expires_at "30분"
+        datetime used_at "한 번 쓰면 기록"
+    }
+```
+
+- **저장 단위는 하나다** — 거리는 km, 부피는 L, 금액은 통화의 최소 단위 정수(원화는 원, 달러는 센트). 마일·갤런·달러 표기는 화면이 바꾼다
+- **계산값은 표에 없다** — 연비, 구간 거리, 단가, 다음 정비 시점, 지남/곧은 읽을 때마다 계산한다. 앞 기록이 바뀌면 뒤의 값이 따라 바뀌기 때문이다
+- **모르는 값은 `0` 이 아니라 `null`** — `0원` 은 "공짜로 했다"는 다른 사실이고, 주유량 0 은 연비를 0 으로 나누게 만든다
+- 모든 표에 `created_at`·`updated_at` 이 있다(`BaseTimeEntity` 를 상속하면 저절로 채워진다). 세션은 Spring Session 이 만드는 `SPRING_SESSION`·`SPRING_SESSION_ATTRIBUTES` 두 표에 따로 있다
+
+### 4. 코드 의존 방향 — 누가 누구를 아는가
+
+```mermaid
+flowchart TB
+    subgraph Backend["백엔드 com.odolog.app"]
+        direction TB
+        ACC["account<br/>탈퇴·내보내기·가져오기"] --> GAR["garage<br/>차량 목록·삭제"]
+        SUM["summary<br/>홈 요약"]
+        GAR --> FUEL["fuel"] & MNT["maintenance"] & VEH
+        ACC --> FUEL & MNT & VEH
+        SUM --> FUEL & MNT & VEH
+        FUEL --> VEH["vehicle"]
+        MNT --> VEH
+        VEH --> USR["user"]
+        ACC & SUM --> USR
+        COM["common<br/>인증·예외·검증·설정 — 모두가 씀"]
+    end
+
+    subgraph Frontend["프론트엔드 frontend/src"]
+        direction TB
+        APP["app<br/>라우트·레이아웃·홈 갈림"] --> FEAT["features<br/>auth · account · vehicles · maintenance · fuel · summary"]
+        FEAT --> SHR["shared<br/>api · i18n · lib · theme · ui"]
+    end
+```
+
+화살표는 한 방향으로만 흐른다. `user` 는 `vehicle` 을 모르고, `shared` 는 `features` 를 모른다.
+그림은 읽기 쉽게 줄인 것이고, 정확한 허용 목록은 이렇다(`DependencyDirectionTest` 와 같다).
+
+| 패키지 | 가져다 쓸 수 있는 패키지 |
+|---|---|
+| `common` | (없음) |
+| `user` | `common` |
+| `vehicle` | `common` · `user` |
+| `maintenance` · `fuel` | `common` · `user` · `vehicle` |
+| `garage` · `summary` | `common` · `user` · `vehicle` · `maintenance` · `fuel` |
+| `account` | 위 전부 + `garage` |
+
+프론트 기능 사이에서는 `vehicles → maintenance·fuel`(상세 화면이 두 카드를 얹음), `account → auth`, `summary → maintenance`(정비 종류 타입만)가 허용된다.
+"회원 탈퇴"처럼 차·정비·주유를 모두 지워야 하는 일을 `UserService` 에 넣으면 거꾸로 가는 화살표가 생긴다 — 그래서 그런 일은
+**조율 층**(`account`·`garage`·`summary`)이 맡는다. 이 방향은 **테스트가 지킨다**: 백엔드 `DependencyDirectionTest`, 프론트
+`src/dependency-direction.test.ts` 가 import 를 훑어 허용 목록 밖이면 실패한다.
+
+## 전체 로직 — 사용자의 하루를 따라가기
+
+처음 보는 사람이 전체를 한 번에 잡을 수 있게, 한 사용자가 앱을 쓰는 순서대로 각 장면에서 무슨 일이 일어나는지 따라간다.
+괄호 안은 그 일을 하는 코드다.
+
+### 1. 처음 방문 — 랜딩
+
+`/` 는 로그인 여부와 차량 수에 따라 세 갈래다(`app/HomePage`). 로그인 전이면 소개 화면(`LandingPage`),
+로그인했는데 차가 없으면 등록 권유, 차가 있으면 대시보드. 화면은 라우트 단위로 나눠 받는다 — 첫 화면에 필요한 것만 먼저 내려온다(`App.tsx` 의 `lazy`).
+
+### 2. 회원가입 → 자동 로그인
+
+1. 가입 화면이 브라우저의 언어·시간대·지역을 읽어 설정 넷을 함께 보낸다(`shared/lib/preferences`). 미국 사용자가 서울 시간·원화로 시작하지 않게
+2. 서버는 이메일 중복을 보고(있으면 409), 비밀번호를 **BCrypt** 로 해시해 저장한다(`UserService.signUp`). 원문 비밀번호는 어디에도 남지 않는다.
+   같은 IP 에서 가입을 너무 많이 시도하면 429 — 남의 주소가 가입돼 있는지 쓸어 보는 것을 막는다
+3. 가입은 세션을 만들지 않으므로 화면이 이어서 로그인을 부른다
+
+### 3. 로그인 — 세션이 생기는 순간
+
+1. 시도 횟수를 **먼저** 센다(`LoginAttemptLimiter`). 10분 안에 10번 넘게 틀리면 잠긴다
+2. 이메일로 사용자를 찾아 BCrypt 로 비밀번호를 맞춰 본다. 없는 이메일이어도 가짜 해시로 한 번 돌린다 — 응답 시간으로 가입 여부가 새지 않게
+3. 맞으면 **세션 id 를 새로 바꾸고**(고정 공격 방어) 세션에 사용자 id 하나만 넣는다(`LoginService`). 세션은 DB 표에 저장되고 14일 간다
+4. 응답의 `Set-Cookie: JSESSIONID=…` 를 브라우저가 기억해 이후 모든 요청에 붙인다. `XSRF-TOKEN` 쿠키도 받아 두었다가 쓰기 요청마다 헤더로 되돌려 보낸다(CSRF 방어)
+5. 화면은 `AuthContext` 에 사용자를 올리고, **조회 캐시를 통째로 비운다** — 앞 사람이 쓰던 탭이면 그 사람의 차가 캐시에 남아 있을 수 있다
+
+새로고침하면 화면은 `GET /api/users/me` 로 "나 아직 로그인돼 있나"를 묻는다. 보호된 주소(`/vehicles`, `/me`)는 `ProtectedRoute` 가
+로그인 화면으로 돌려보내고, 로그인하면 원래 주소로 돌아온다.
+
+### 4. 차량 등록 — 타던 차 그대로
+
+1. 번호판·제조사·모델·연식·**현재 주행거리**를 적는다. 서버는 앞뒤 공백·보이지 않는 글자를 정리하고(`InputText`) 번호판의 가운데 공백까지 지운다 —
+   `33나 3333` 과 `33나3333` 이 다른 차로 들어가지 않게
+2. 같은 사용자 안에서 번호판이 겹치면 409. "같은가"는 자바가 아니라 DB 가 판단한다(대소문자·전각 숫자까지 같게 보는 정렬 규칙)
+3. 저장되면 12자 **공개 id** 가 붙고, 화면은 `/vehicles/{공개 id}` 로 간다
+
+### 5. 차량 상세 — 앱의 중심 화면
+
+한 화면에 카드 여럿이 얹힌다(`VehicleDetailPage`):
+
+| 카드 | 하는 일 | 서버 |
+|---|---|---|
+| 주행거리(큰 숫자)·갱신 폼 | 계기판 숫자를 적는다. 줄이면 409 — 자리수 오타만 확인 창을 거쳐 낮출 수 있다 | `vehicle` |
+| 차량 정보 | 번호판·모델 등 수정 | `vehicle` |
+| 시작하기 | 4단계 안내(주행거리 → 기억나는 정비 → 첫 주유 → 첫 연비). 빠른 정비 폼이 여기 있다 | 여러 조회를 합침 |
+| 다음 정비 시점 | 종류마다 "언제·몇 km 에" 와 `지남`/`곧`. 차량별 주기를 바꾼다 | `maintenance` |
+| 정비 이력 | 목록·추가·수정·삭제, 종류로 거르기 | `maintenance` |
+| 연비 | 평균, 최근 구간 추이, 합계, 연비 초기화 | `fuel` |
+| 주유 기록 | 목록·추가·수정·삭제. 행마다 그 구간의 연비 | `fuel` |
+| 차량 삭제 | 정비·주유·주기를 먼저 지우고 차를 지운다 | `garage` |
+
+각 카드는 TanStack Query 로 따로 읽고, 키가 모두 `['vehicles', 공개 id, …]` 아래에 있다. 무언가를 저장하면
+`invalidateAfterFuel`·`invalidateAfterMaintenance` 가 "다시 읽을 카드"를 한 곳에서 정한다 — 주유가 주행거리를 올리면 다음 정비 판정도 바뀌므로 그 카드까지.
+
+### 6. 정비 기록과 "다음 정비 시점"
+
+1. **빠른 정비**: 엔진오일·타이어 등 다섯 종류를 "모름 / 3개월 전 / 6개월 전 / 1년 전 / 날짜 지정"으로 한 번에 적는다. 비용·주행거리는 몰라도 된다
+2. 정비를 저장하면 서버는 그때 주행거리가 차량보다 크면 차량 주행거리도 올린다(`liftOdometerTo`)
+3. 다음 정비는 저장하지 않고 **물을 때마다 계산한다**(`NextService`): 종류별 마지막 정비 + 권장 주기 → "주행거리 기준"과 "날짜 기준" 두 시점.
+   지났으면 `지남`, 1,000km 또는 한 달 안이면 `곧`. "오늘"은 서버 시계가 아니라 **사용자 시간대의 오늘**이다(`UserToday`)
+4. 권장 주기는 `ServiceType` enum 에 기본값이 있고(엔진오일 5,000km·6개월 등), 차량마다 바꾸면 `service_intervals` 에 저장된다
+
+### 7. 주유 기록과 연비
+
+1. 주유마다 날짜·주행거리·주유량·금액·"가득 채움"을 적는다. 주유량·금액은 비워도 된다
+2. 저장하면 서버는 그 차의 주유 이력 전체를 주행거리 순으로 읽어 **가득 → 가득** 구간을 다시 계산한다(`FuelSegment`).
+   덜 채운 주유는 다음 가득 주유의 구간에 합쳐진다
+3. 평균 연비(`FuelEfficiency`)는 말이 안 되는 구간(200 km/L 같은 오타)과 기록이 빠진 것으로 보이는 구간을 **빼고** 낸다.
+   뺀 구간도 목록에서 지우지 않고 `확인 필요`·`기록 빠짐?` 을 붙인다
+4. `연비 초기화`는 가장 최근 기록을 기준점으로 삼아 그 앞의 구간을 평균에서 뺀다(엔진 교체 뒤 등). 기록은 그대로다
+
+자세한 계산 규칙은 아래 [fuel](#fuel--주유와-연비) 절에 있다.
+
+### 8. 홈 대시보드
+
+`GET /api/summary` 한 번으로 다 받는다(`HomeSummaryService`) — 차량 수·총 주행거리·기록 수·유지비, 지난 12개월 월별 유지비,
+정비 종류별 비용, 최근 활동, 차량별 요약(지남/곧 수·평균 연비). 계산은 전부 서버가 하고, 합계는 **사용자 통화의 기록만** 더한다
+(원화와 달러를 그냥 더하면 뜻이 없다).
+
+### 9. 설정 바꾸기 — 언어·시간대·통화·단위
+
+`/me` 에서 바꾼다. 단위를 마일로 바꿔도 **저장값은 그대로 km** 이고 화면만 바뀐다. 통화를 바꿔도 **옛 기록의 통화는 그대로**다 —
+기록마다 통화를 들고 있어서, 옛 50,000원이 갑자기 $500.00 이 되지 않는다. 설정을 바꾸면 화면은 차량 관련 캐시를 버리고 새로 읽는다.
+
+### 10. 내보내기·가져오기
+
+- **내보내기**: 내 차량·정비·주유·차량별 주기·기준점을 JSON 파일로 받는다. 계산값과 비밀번호 해시는 넣지 않는다(`AccountExportService`)
+- **가져오기**: 그 파일을 내 계정에 **더한다**. 같은 번호판의 차가 있으면 새 차를 만들지 않고 그 차에 붙이고, 이미 있는 기록은 건너뛴다.
+  등록과 같은 규칙(날짜 범위·통화·문자열 정리)을 다시 적용한다(`AccountRestoreService`). 한 번에 차량 50대·기록 2만 건까지
+
+### 11. 비밀번호를 잊었을 때
+
+1. 이메일을 넣으면 **가입 여부와 상관없이** 늘 같은 응답(204)을 준다. 실제 일(사용자 찾기·토큰 저장·메일)은 **다른 스레드**가 한다 —
+   가입된 주소만 늦게 답하면 그 시간 차이로 가입 여부가 샌다(`PasswordResetService.request`)
+2. 토큰은 256비트 난수다. 메일에는 원문을, DB 에는 SHA-256 해시만 저장한다. 30분·한 번만 쓸 수 있다
+3. 링크로 새 비밀번호를 정하면 그 계정의 **모든 세션을 끊는다**. 자동 로그인하지 않고 로그인 화면으로 보낸다
+
+### 12. 로그아웃·탈퇴
+
+- **로그아웃**: 서버 세션을 지운다. 서버에 닿지 못하면 화면도 로그인 상태를 유지하고 알린다 — 공용 PC 에서 로그아웃된 줄 알고 떠나지 않게
+- **탈퇴**: 비밀번호를 한 번 더 확인하고, 정비·주유·주기 → 차량 → 재설정 토큰 → 사용자 순서로 지운 뒤 모든 세션을 끊는다(`AccountWithdrawalService`).
+  순서가 중요한 이유는 외래키다 — 차를 먼저 지우면 그 차를 가리키는 기록 때문에 DB 가 거절한다
+
+## 기능별 설명
+
+### 백엔드 — 패키지 하나의 모양
+
+모든 기능 패키지가 같은 모양이라, 어느 기능을 열어도 같은 자리에 같은 것이 있다.
+
+    <feature>/
+    ├── domain/            엔티티 · enum · 값 계산(NextService, FuelEfficiency 처럼 엔티티가 아닌 계산도 여기)
+    ├── dto/request/       클라이언트가 보내는 모양. @NotBlank 같은 검증 애노테이션은 여기에만
+    ├── dto/response/      서버가 돌려주는 모양. 엔티티에서 만드는 from()/of()
+    ├── XxxRepository.java DB 창구
+    ├── XxxService.java    규칙·트랜잭션
+    └── XxxController.java URL ↔ 서비스
+
+테스트는 대상과 같은 경로에 있다(`user/UserServiceTest`, `fuel/domain/FuelEfficiencyTest`).
+
+### `user` — 회원과 설정
+
+| | |
+|---|---|
+| 하는 일 | 가입, 로그인, 내 정보·설정 넷(언어·시간대·통화·단위) 조회·수정, 비밀번호 변경, 비밀번호 재설정 |
+| 엔티티 | `User`, `PasswordResetToken`. enum `Language`·`UnitSystem` 은 `@Convert` 로 문자열 저장 |
+| 주요 파일 | `UserService`(가입·로그인 검증·변경), `LoginService`(세션 만들기), `PasswordResetService`·`PasswordResetMailer`(재설정), `UserToday`(사용자 시간대의 오늘) |
+| API | `POST /api/users`, `POST /api/users/login`·`logout`, `GET·PATCH /api/users/me`, `PATCH /api/users/me/password`, `POST·PATCH /api/users/password-reset` |
+
+지키는 규칙:
+- **BCrypt 는 트랜잭션 밖에서 돌린다.** 한 번에 수십 ms 걸리는데 그동안 DB 커넥션(풀 10개)을 쥐고 있으면 틀린 로그인 몇 개로 다른 API 가 멈춘다
+- **비밀번호 상한은 글자 수가 아니라 UTF-8 72바이트**다. BCrypt 가 그 뒤를 읽지 않아서, 가입·변경·재설정이 같은 기준을 쓴다
+- 비밀번호를 바꾸면 **지금 세션만 남기고** 다른 기기를 끊는다. 현재 비밀번호를 거듭 틀리면 막힌다 — 훔친 세션으로 비밀번호를 대입하지 못하게
+- 로그인은 세션을 저장한 **뒤** 비밀번호가 그대로인지 한 번 더 본다. 맞춰 보는 0.06초 사이에 재설정이 끝났으면 그 세션은 무효다
+- `UserToday` — 미래 날짜 판정, 정비 지남, 홈 월별 칸이 모두 이 "오늘"을 쓴다. 한 곳이라도 서버 시계를 쓰면 화면마다 오늘이 갈린다
+
+### `vehicle` — 차량
+
+| | |
+|---|---|
+| 하는 일 | 차량 등록·상세·정보 수정·주행거리 갱신 |
+| 엔티티 | `Vehicle`(`@Version` — 두 탭에서 동시에 고치면 늦은 쪽이 409) |
+| 주요 파일 | `VehicleService`(`findOwnedVehicle`·`findOwnedVehicleForUpdate` — 다른 기능이 "내 차인가"를 물을 때 쓰는 입구) |
+| API | `POST /api/vehicles`, `GET·PATCH /api/vehicles/{id}`, `PATCH /api/vehicles/{id}/odometer` |
+
+지키는 규칙:
+- **주행거리 메서드가 셋이다.** 의도가 다르기 때문이다
+  - `updateOdometer` — 사용자가 직접 적음. 줄이면 409
+  - `liftOdometerTo` — 정비·주유를 적다가 따라 올라감. 작으면 아무 일도 안 함
+  - `correctOdometer` — 자리수 오타 정정. `force: true` 로만 닿는다
+- 상한 200만 km. 차량 주행거리는 기록을 따라 오르기만 해서, 한 번 크게 잘못 들어가면 되돌릴 길이 없다
+- `vehicle` 은 `user` 만 안다. 정비·주유를 모른다 — 그래서 차량 삭제(기록까지 지워야 함)는 `garage` 가 한다
+
+### `maintenance` — 정비 이력과 다음 정비
+
+| | |
+|---|---|
+| 하는 일 | 정비 이력 등록·목록(종류로 거르기)·수정·삭제, 다음 정비 시점, 차량별 권장 주기 |
+| 엔티티·값 | `MaintenanceRecord`, `ServiceInterval`, enum `ServiceType`(15종), 계산 `NextService` |
+| 주요 파일 | `MaintenanceRecordService` |
+| API | `POST·GET …/maintenance-records`, `PATCH·DELETE …/maintenance-records/{recordId}`, `GET …/next-services`, `PATCH …/intervals/{type}` |
+
+정비 종류와 기본 주기(`ServiceType`):
+
+| 종류 | 주기 | 종류 | 주기 |
+|---|---|---|---|
+| 엔진오일 | 5,000km · 6개월 | 타이어 | 50,000km · 4년 |
+| 미션오일 | 60,000km · 4년 | 타이어 위치 교환 | 10,000km · 6개월 |
+| 점화 플러그 | 80,000km · 4년 | 휠 얼라인먼트 | 20,000km · 1년 |
+| 타이밍 벨트 | 100,000km | 에어 필터 | 20,000km · 1년 |
+| 냉각수 | 40,000km · 2년 | 에어컨 필터 | 15,000km · 1년 |
+| 브레이크 패드 | 20,000km · 2년 | 배터리 | 30,000km · 3년 |
+| 브레이크액 | 40,000km · 2년 | 와이퍼 | 1년 |
+| | | 기타 | 없음(계산 안 함) |
+
+다음 정비 시점(`NextService`):
+- 종류마다 **마지막 정비**에 주기를 더해 **두 기준을 모두** 내려보낸다. 먼저 오는 쪽이 실제 시기다
+- 지났으면 **`지남`**, 1,000km 또는 한 달 안(주기의 마지막 1/5 이내)이면 **`곧`**. 정렬은 지남 → 곧 → 나머지이고, 지남·곧 안에서는 급한 순
+- 차량 목록과 홈에도 `정비 N건 지남/곧` 이 붙는다. 세 화면이 같은 `NextService` 를 쓴다 — 두 벌이면 한 화면은 지났다 하고 다른 화면은 말이 없다
+- 기본 주기는 광유 기준이라 엔진오일이 5,000km 다. 합성유를 쓰면 차량마다 주기를 바꾼다 — 손잡이가 없으면 `지남` 이 늘 켜져 아무도 안 보는 경고등이 된다
+- 정비의 비용·그때 주행거리는 비워도 된다. 주행거리가 비면 날짜 기준만 계산한다. **이력이 없는 종류는 응답에서 뺀다**
+- 색을 늘리지 않고 대비로 표현한다 — 빨강은 "실패"이고, 정비 시기가 지난 것은 실패가 아니라 할 일이다
+
+### `fuel` — 주유와 연비
+
+| | |
+|---|---|
+| 하는 일 | 주유 기록 등록·목록·수정·삭제, 연비 요약, 연비 초기화 기준점 |
+| 엔티티·값 | `FuelRecord`, 계산 `FuelSegment`(구간 순회) → `FuelEfficiency`(평균·추이), `FuelAnomaly`(이상 구간 판정) |
+| 주요 파일 | `FuelRecordService` |
+| API | `POST·GET …/fuel-records`, `PATCH·DELETE …/fuel-records/{recordId}`, `GET …/fuel-records/summary` |
+
+연비는 **구간(segment) 단위**로 계산한다. 구간은 **가득 주유에서 다음 가득 주유까지**다.
+
+    구간 연비 = (이번 가득 주행거리 − 직전 가득 주행거리) ÷ (사이의 덜 채운 양 + 이번 주유량)
     평균 연비 = Σ(구간 거리) ÷ Σ(구간 주유량)
 
 총 거리 ÷ 총 주유량과 값은 같지만, **구간 단위라야 말이 안 되는 구간을 골라낼 수 있다.**
 
-- **주유량과 결제 금액은 비워 둘 수 있다.** 비운 기록은 자기 구간의 연비만 빠지고 거리는 그대로 나온다.
-  `0` 으로 채우지 않는다 — 0 은 "0L 를 0원에 넣었다"는 다른 사실이고, 연비가 0 으로 나누기가 된다
-- 첫 기록과 "연비 초기화" 기준점에는 짝이 없다 → 응답이 `0` 이 아니라 **`null`** 이고, 화면은
-  `기준 기록 · 다음 주유부터 계산` 으로 이유를 말한다
-- 성립할 수 없는 구간(odometer 를 한 자리 잘못 적어 200 km/L)은 **평균에서 빼고**, 몇 개를 뺐는지(`excludedSegmentCount`) 함께 내려보낸다
-- **기록이 빠진 구간도 뺀다**(`longSegmentCount`). 한 번 안 적으면 그 구간은 거리만 두 배라 연비가 두 배로 뜨는데,
-  "불가능"하지는 않아 조용히 평균을 끌어올린다. 기준은 그 차량의 평소 구간 **중앙값의 1.8배**이고(평균은 이상값에 끌려간다),
-  **거리와 연비가 둘 다** 넘어야 한다 — 거리만 보면 장거리 여행을 잡는다. 구간이 3개 미만이면 판단하지 않는다
-- 뺀 구간의 숫자는 목록에서 지우지 않고 `확인 필요` / `기록 빠짐?` 만 붙인다 — 무엇이 잘못됐는지 보려면 값이 남아 있어야 한다
-- 같은 주행거리로 나눠 넣은 주유(카드 두 장 등)는 한 번으로 친다. 출발점에서 그중 하나라도 가득이면 가득에서 출발한다
-- 출발이 가득이 아니면(첫 기록이 덜 채움 등) 그 구간은 낼 수 없다 — 그때 탱크에 얼마 있었는지 모른다
+- **덜 채운 주유**는 다음 가득 주유의 구간에 합쳐진다 — 그 자리에서 나누면 그 구간은 높게, 다음 구간은 낮게 나온다
+- **같은 주행거리로 나눠 넣은 주유**(카드 두 장 등)는 한 번으로 친다. 출발점에서 그중 하나라도 가득이면 가득에서 출발한다
+- **출발이 가득이 아니면** 그 구간은 낼 수 없다 — 그때 탱크에 얼마 있었는지 모른다
+- **주유량·금액을 비운 기록**은 자기 구간의 연비만 빠지고 거리는 그대로 나온다. 왜 빠졌는지는 서버가 행마다 알려 준다(`litersUse`, `efficiencyGap`) —
+  화면이 이웃 기록을 보고 짐작하면 이웃이 다른 쪽(페이지)에 있을 때 틀린다
+- 첫 기록과 기준점에는 짝이 없다 → 연비가 `0` 이 아니라 **`null`** 이고, 화면은 `기준 기록 · 다음 주유부터 계산` 으로 이유를 말한다
+- **성립할 수 없는 구간**(50 km/L 초과·2 미만, 대개 주행거리 오타)은 평균에서 빼고 개수(`excludedSegmentCount`)를 함께 보낸다
+- **기록이 빠진 구간**(`longSegmentCount`)도 뺀다. 한 번 안 적으면 그 구간은 거리만 두 배라 연비가 두 배로 뜨는데, "불가능"하지는 않아
+  조용히 평균을 끌어올린다. 기준은 그 차의 평소 구간 **중앙값의 1.8배**이고 **거리와 연비가 둘 다** 넘어야 한다 — 거리만 보면 장거리 여행을 잡는다
+- **목록 정렬은 서버가 고정한다**(`odometer DESC, id DESC`). 정렬이 곧 연비 계산의 전제라 `sort` 를 받지 않는다.
+  행의 연비는 그 쪽(페이지)만이 아니라 **이력 전체**로 계산한다 — 쪽 경계에 걸린 구간도 평균과 같은 값이 나오게
 
-### 다음 정비 시점
+### `garage` — 조율 층 ⓪: 차량 목록·삭제
 
-`ServiceType` enum 15종이 각각 권장 주기(km·개월)를 들고 있다. 해당 종류의 마지막 이력에 주기를 더해
-**두 기준을 모두** 내려보내고, 먼저 오는 쪽이 실제 시기다.
+URL 은 `/api/vehicles` 인데 패키지는 `garage` 다. 차량 목록은 차마다 "정비 N건 지남/곧"을 붙여야 해서 정비를 알아야 하고,
+차량 삭제는 정비·주유를 먼저 지워야 해서 둘 다 알아야 한다. `vehicle` 이 그것들을 알면 화살표가 거꾸로 간다.
 
-- **권장 주기는 차량마다 바꿀 수 있다.** 기본값은 광유 기준이라 엔진오일이 5,000km 인데 합성유는 10,000~15,000km 다 —
-  손잡이가 없으면 `지남` 이 늘 켜진 경고등이 되고, 늘 켜진 경고는 아무도 안 본다
-- 지난 것은 **`지남`**, 다음 시점까지 1,000km 또는 한 달 안(주기의 마지막 1/5 이내)이면 **`곧`**. 정렬은 지남 → 곧 → 나머지.
-  차량 목록과 홈에도 `정비 N건 지남/곧` 이 붙는다. 판정은 서버가 한다 — 화면마다 오늘과 비교하면 서로 다른 말을 한다
-- 색을 늘리지 않고 대비로 표현한다 — 빨강은 "실패"이고, 정비 시기가 지난 것은 실패가 아니라 할 일이다
-- 정비 기록의 비용과 그때 주행거리는 비워 둘 수 있다(타던 차의 "석 달 전쯤 갈았다"). 주행거리가 비면 날짜 기준만 계산한다
-- `OTHER` 는 주기가 없어 계산하지 않는다. **이력이 없는 종류는 응답에서 뺀다** — 15종을 "기록 없음"으로 늘어놓지 않는다
+- 목록(`GET /api/vehicles`): **읽어서 합치기만** 하므로 리포지토리를 직접 받는다
+- 삭제(`DELETE /api/vehicles/{id}`): **순서를 조율**하므로 각 기능의 서비스에 맡긴다 — 정비·주유 → 차량. 첫 조회가 차량 행을 잠가, 삭제 중에 들어온 기록이 외래키 오류를 내지 않게 한다
+
+### `account` — 조율 층 ①: 탈퇴·내보내기·가져오기
+
+URL 은 `/api/users/me/…` 인데 패키지는 `account` 다 — `user` 에 두면 `user → vehicle` 역방향이 생긴다.
+
+- **탈퇴**(`DELETE /api/users/me`): 비밀번호는 URL 이 아니라 본문에(URL 은 로그에 남는다). BCrypt 를 먼저 하고, 사용자 행을 잠근 뒤 맞춰 본 해시가 그대로인지만 본다
+- **내보내기**(`GET /api/users/me/export`): 계산값·비밀번호 해시는 빼고 **차량별 주기는 넣는다** — 빠지면 복원한 차의 `지남` 이 기본 주기로 돌아간다
+- **가져오기**(`POST /api/users/me/restore`): 사용자 정보는 받지 않는다 — 내 계정에 기록을 더할 뿐이다. 기록 2만 건을 한 트랜잭션에 넣는 일괄 작업이라
+  조율 층 중 유일하게 리포지토리에 직접 쓰고, 대신 등록 규칙을 그 안에서 다시 적용한다
+
+### `summary` — 조율 층 ②: 홈 요약
+
+`GET /api/summary` 하나. 차량·정비·주유·주기를 리포지토리로 한꺼번에 읽어(쿼리 4번) 통계, 월별 12칸, 종류별 비용, 최근 활동, 차량별 요약을 만든다.
+금액을 모르는 정비는 `0원` 이 아니라 `—` 로 보이도록 "금액을 적은 건수"를 따로 센다.
+
+### `common` — 모두가 쓰는 것
+
+| 폴더 | 들어 있는 것 |
+|---|---|
+| `auth/` | `@LoginUser`(세션의 사용자 id 를 컨트롤러 매개변수로), `CsrfTokenFilter`(double submit), `LoginAttemptLimiter`(시도 제한), `LoginSessionRegistry`(다른 기기 세션 끊기), `ClientIp` |
+| `config/` | `WebConfig`(CORS 필터·리졸버), `JpaAuditingConfig`(생성·수정 시각 자동 기록), `OpenApiConfig`(Swagger), `PasswordEncoderConfig`(BCrypt 빈 하나) |
+| `domain/` | `BaseTimeEntity`(`created_at`·`updated_at`), `PublicId`(12자 무작위 id) |
+| `dto/` | `SortGuard`(정렬 화이트리스트), `ErrorResponse`, `PageResponse` |
+| `exception/` | `ErrorCode`(오류 코드 목록), `GlobalExceptionHandler`(예외 → HTTP 응답), `type/`(상태 코드당 예외 하나: 400·401·403·404·409·429) |
+| `validation/` | `InputText`(문자열 정리), `InputLimits`(상한), `MaxBytes`(바이트 길이 검증), `CurrencyCode`(ISO 4217) |
+| `web/` | `SecurityHeadersFilter`(보안 응답 헤더), `RequestSizeLimitFilter`(본문 10MB) |
+
+`common` 은 기능별로 나누지 않는다 — 모든 기능이 쓰는 것이라 어느 기능으로 옮겨도 잘못된 방향의 의존이 생긴다.
+
+**오류가 응답이 되는 과정**: 서비스가 `throw new ResourceNotFoundException(ErrorCode.VEHICLE_NOT_FOUND, "…")` →
+`GlobalExceptionHandler` 가 받아 404 와 `{"code":"VEHICLE_NOT_FOUND","message":"…"}` 로 → 화면이 `code` 로 사전에서 "존재하지 않는 차량입니다."를 고른다.
+오류 코드를 더하면 세 곳을 같이 고친다(백엔드 `ErrorCode`, 프론트 `ERROR_CODES`, 사전 두 벌) — 빠지면 테스트가 잡는다.
+
+### 프론트엔드 — 폴더별
+
+| 폴더 | 하는 일 |
+|---|---|
+| `main.tsx` | 진입점. 테마 → 조회 캐시 → 라우터 → 로그인 상태 → 언어 순으로 감싼다 |
+| `app/` | 라우트 12개(`App.tsx`), 홈 갈림(`HomePage`), 랜딩·약관, `ProtectedRoute`, 헤더·푸터, 화면 조각을 못 받았을 때의 안내(`ScreenErrorBoundary`). 여러 기능을 아는 유일한 층 |
+| `features/auth/` | 로그인·가입·재설정 화면, `AuthContext`(세션 복구·로그인·로그아웃·탈퇴·401 처리) |
+| `features/account/` | 프로필(`/me`) — 계정·비밀번호·언어/단위/통화/시간대·화면 테마·내보내기/가져오기·탈퇴 |
+| `features/vehicles/` | 차량 목록·등록·상세. 상세가 정비·주유 카드를 얹는다. 주행거리·차량 정보 폼, 시작하기 카드 |
+| `features/maintenance/` | 정비 이력 목록·폼, 빠른 정비, 다음 정비 카드, 주기 폼(자기 라우트 없음) |
+| `features/fuel/` | 주유 목록·폼, 연비 카드(자기 라우트 없음) |
+| `features/summary/` | 홈 대시보드와 차트(라이브러리 없이 HTML/CSS) |
+| `shared/api/` | `client.ts`(fetch 래퍼 — 쿠키 포함, CSRF 헤더, 오류를 `ApiError` 로, 401 전역 처리), `queryKeys.ts`(캐시 키와 "저장 뒤 다시 읽을 것") |
+| `shared/i18n/` | 사전 두 벌(`messages/ko.ts`·`en.ts`), `useI18n`(`t` 문구, `f` 숫자·날짜·거리·연비·금액 표기), `errorMessage`(오류 코드 → 문구) |
+| `shared/lib/` | 단위 변환(`units`), 통화 소수 자리(`money`), 표기(`format`), 상한(`limits` — 서버와 같은 숫자), 훅(`useRecordList`·`useShownPage` 등) |
+| `shared/theme/`·`shared/ui/` | 라이트/다크/시스템 테마, 버튼·입력칸·카드 같은 공용 부품(shadcn 기반) |
+
+화면 코드에서 자주 보게 될 것 셋:
+- **문구를 직접 적지 않는다** — `t.fuel.partial` 처럼 사전에서 읽는다. 숫자·날짜·거리는 `f.distance(…)` 처럼 표기 함수로 — 그래야 영어·마일로 바꿀 때 한 곳도 안 남는다
+- **조회는 `useQuery`, 저장 뒤에는 무효화** — 저장한 화면이 직접 목록을 고치지 않고 "다시 읽어라"만 말한다. 서버가 계산한 값(연비 등)이 함께 바뀌기 때문이다
+- **손대지 않은 칸은 저장값을 그대로 보낸다** — 마일로 보여 줬다가 km 로 되돌리면 1km 가 어긋나, 아무것도 안 고친 수정이 주행거리를 바꾼다
 
 ## 기술 스택
 
@@ -141,11 +586,11 @@ npm run dev     # http://localhost:5173
 ### 4. 검사
 
 ```
-./gradlew test                  # 백엔드 439개
-cd frontend && npm run test     # 프론트 110개 (vitest)
+./gradlew test                  # 백엔드 445개
+cd frontend && npm run test     # 프론트 117개 (vitest)
 cd frontend && npm run e2e      # 실제 브라우저 19개 (Playwright). 처음엔 npx playwright install chromium
 cd frontend && npm run lint     # oxlint
-cd frontend && npm run build    # tsc -b + vite build (번들 500kB 경고는 알려진 것)
+cd frontend && npm run build    # tsc -b + vite build (화면은 라우트 단위로 나눠 받는다)
 ```
 
 `main` 푸시와 PR 마다 GitHub Actions 가 백엔드·프론트·E2E 를 돌린다(`.github/workflows/ci.yml`).
@@ -231,29 +676,6 @@ DB 는 V1 과 다를 수 있고, 다르면 Hibernate 검증이 기동을 막는�
 (09-29 의 사용자 설정 넷과 기록의 `currency` — 기존 행은 `KO`·`Asia/Seoul`·`KRW`·`KM_PER_L` 로 채운다 —, 10-03 의 `vehicles.version` 등)이
 빠져 있다면 `V1__baseline.sql` 과 `SHOW CREATE TABLE` 을 견줘 맞춘다. 맞지 않으면 검증이 기동을 막으므로 조용히 틀어지지는 않는다.
 
-## 프로젝트 구조
-
-백엔드와 프론트엔드 모두 **기능별(package-by-feature)** 이다. 폴더 단위 지도와 각 자리의 이유는 `CLAUDE.md` 에 있다.
-
-    src/main/java/com/odolog/app/
-    ├── user/  vehicle/  maintenance/  fuel/      기능 넷
-    ├── garage/  account/  summary/               조율 층 — 여러 기능을 동시에 알아도 되는 자리
-    │                                             (차량 목록·삭제 / 탈퇴·내보내기·가져오기 / 홈 요약)
-    └── common/                                   auth · config · domain · dto · exception · validation · web
-
-    frontend/src/
-    ├── app/                라우트, 레이아웃, 홈 갈림, 랜딩·약관 — 여러 기능을 아는 유일한 층
-    ├── features/           auth · account · vehicles · maintenance · fuel · summary
-    └── shared/             api(클라이언트·조회 캐시 키) · i18n · lib(단위·금액·포맷·훅) · theme · ui
-
-백엔드의 기능 하나는 모두 같은 모양이다 — `domain/`(엔티티·enum·값 계산), `dto/request/`, `dto/response/`,
-그리고 기능 폴더 바로 아래의 리포지토리·서비스·컨트롤러. 테스트도 같은 경로를 따라간다.
-
-의존 방향은 `fuel·maintenance → vehicle → user`, 조율 층 → 기능, 프론트는 `app → features → shared` 한 방향이다.
-**문서가 아니라 테스트가 지킨다** — 백엔드 `DependencyDirectionTest`, 프론트 `src/dependency-direction.test.ts` 가
-import 를 훑어 허용 목록 밖이면 실패한다. 회원 탈퇴처럼 여러 기능을 지우는 일을 `UserService` 에 넣으면
-`user → vehicle` 역방향이 생겨서, 그런 일은 조율 층이 맡는다.
-
 ## API 개요
 
 | 기능 | 엔드포인트 |
@@ -291,7 +713,7 @@ import 를 훑어 허용 목록 밖이면 실패한다. 회원 탈퇴처럼 여�
 | 정렬 | `sort` 는 화이트리스트(밖이면 400). **주유 목록은 `sort` 를 받지 않는다** — 정렬이 연비 계산의 전제라 고정 |
 | 에러 본문 | `{"code", "message", "field"?, "retryAfterMinutes"?}`. 화면은 `code` 로 문구를 고른다. `message` 는 개발자용 한국어 |
 | 검증 실패 | **400**. 여러 칸이 틀려도 첫 칸 하나만 `field` 에 실린다 |
-| 필수 입력의 공백 | 앞뒤 공백은 서버가 잘라 저장한다. 잘라서 비면(전각 공백만 포함) **400** |
+| 필수 입력의 공백 | 앞뒤 공백은 서버가 잘라 저장한다. 잘라서 비거나 보이지 않는 글자(전각 공백·한글 채움 문자·ZWJ 등)만 남으면 **400** |
 
 API 를 쓸 때 걸려 넘어지기 쉬운 것:
 
@@ -302,8 +724,9 @@ API 를 쓸 때 걸려 넘어지기 쉬운 것:
 - **금액은 통화의 최소 단위 정수 + 기록마다 통화 코드** — `4567` + `USD` 는 $45.67, `50000` + `KRW` 는 50,000원.
   통화는 기록할 때 사용자 설정에서 가져와 나중에 설정을 바꿔도 옛 기록의 뜻이 안 바뀐다.
   통화 칸이 없는 옛 백업 파일은 원화로 읽는다
-- **주행거리·금액에는 상한이 있다**(200만 km / 최소 단위 1억). 차량 주행거리는 기록을 따라 오르기만 해서,
-  한 번 크게 잘못 넣으면 되돌릴 수 없게 망가지기 때문이다
+- **주행거리와 금액에는 상한이 있다.** 주행거리는 200만 km — 차량 주행거리는 기록을 따라 오르기만 해서,
+  한 번 크게 잘못 넣으면 되돌릴 수 없게 망가지기 때문이다. 금액은 통화와 무관하게 최소 단위 20억(금액 칸이 `INT`) —
+  원화 20억, 달러 2천만, 인도네시아 루피아 Rp 2천만
 - **주행거리는 줄이면 409 다.** 자리수 오타·계기판 교체는 의도를 밝히면 낮출 수 있다:
 
 ```json
@@ -334,9 +757,15 @@ Spring Security 를 안 쓰므로 아래가 전부 직접 만든 것이다. 근�
 
 ## 진행 상황
 
-코드와 브라우저 확인은 끝났다(2026-10-10). 남은 것은 실제 폰과 Windows 에서만 볼 수 있는 몇 줄이다 — 체크리스트는 `docs/QA.md`,
-완료한 작업과 그 근거는 `HISTORY.md`.
-공개 전에 사람이 채워야 할 것(약관의 운영자 정보, 메일 발송 서비스)도 `docs/QA.md` 에 있다.
+코드와 브라우저 확인은 끝났다(맥 브라우저 2026-10-20, 휴대폰 흉내 2026-10-22). 2026-10-23·24 두 번의 기능 버그 점검에서 찾은 열세 건도 고쳤다(`docs/QA.md` 6-F 57~69).
+남은 눈 확인은 Windows 글꼴(H-14) 하나와, 선택으로 실제 아이폰 Safari 한 번이다.
+
+**배포는 아직 하지 않는다.** 남은 것:
+- 사람이 정할 것 — 약관·개인정보처리방침의 운영자 정보(지금은 자리표시자와 "공개 전 초안" 표시), 메일 발송 서비스
+- 배포 준비 — HTTPS·프록시 설정, 시도 잠금 기록을 메모리 밖으로, CI 의 DB 정렬 규칙을 운영과 맞추기, 백업
+- 그 전에 이 README 와 코드를 함께 읽으며 구조를 이해하는 단계를 먼저 둔다(2026-10-24 결정)
+
+체크리스트와 백로그는 `docs/QA.md`, 완료한 작업과 그 근거는 `HISTORY.md`.
 
 ## 트러블슈팅
 
