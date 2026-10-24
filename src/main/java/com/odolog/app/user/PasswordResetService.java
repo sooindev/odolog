@@ -10,6 +10,8 @@ import com.odolog.app.user.dto.request.PasswordResetConfirmRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.task.TaskExecutionAutoConfiguration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -64,13 +66,14 @@ public class PasswordResetService {
     private final Clock clock;
 
     // 스프링이 쓸 생성자 지정. 아래 생성자는 테스트의 시계 주입용
+    // 실행기는 이름으로. TaskExecutor 타입 빈이 여럿이면 매개변수 이름이 우연히 맞아야 주입됨
     @Autowired
     public PasswordResetService(UserRepository userRepository,
                                 PasswordResetTokenRepository tokenRepository,
                                 PasswordResetMailer mailer,
                                 LoginAttemptLimiter rateLimiter,
                                 LoginSessionRegistry sessionRegistry,
-                                TaskExecutor taskExecutor,
+                                @Qualifier(TaskExecutionAutoConfiguration.APPLICATION_TASK_EXECUTOR_BEAN_NAME) TaskExecutor taskExecutor,
                                 PlatformTransactionManager transactionManager,
                                 PasswordEncoder passwordEncoder) {
         this(userRepository, tokenRepository, mailer, rateLimiter, sessionRegistry,

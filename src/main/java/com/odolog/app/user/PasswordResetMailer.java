@@ -3,7 +3,9 @@ package com.odolog.app.user;
 import com.odolog.app.user.domain.Language;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.task.TaskExecutionAutoConfiguration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -30,8 +32,9 @@ public class PasswordResetMailer {
     /** 발송 실패 시 링크를 로그에. 메일 설정 없는 로컬 확인용. 운영은 꺼짐(토큰이 로그에 남음) */
     private final boolean logLinkOnFailure;
 
+    // 실행기는 이름으로. TaskExecutor 타입 빈이 여럿이면 매개변수 이름이 우연히 맞아야 주입됨
     public PasswordResetMailer(JavaMailSender mailSender,
-                               TaskExecutor taskExecutor,
+                               @Qualifier(TaskExecutionAutoConfiguration.APPLICATION_TASK_EXECUTOR_BEAN_NAME) TaskExecutor taskExecutor,
                                @Value("${odolog.app.base-url}") String baseUrl,
                                @Value("${spring.mail.username:}") String from,
                                @Value("${odolog.mail.log-link-on-failure:false}") boolean logLinkOnFailure) {
