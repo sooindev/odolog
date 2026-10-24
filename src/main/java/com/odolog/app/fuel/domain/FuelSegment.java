@@ -31,8 +31,16 @@ public record FuelSegment(FuelRecord to, int distance, BigDecimal liters, BigDec
         NONE
     }
 
-    /** 구간 목록과 기록마다의 주유량 쓰임. 한 번 순회로 둘 다 */
-    record Walk(List<FuelSegment> segments, Map<Long, LitersUse> uses) {
+    /** 가득 주유인데 연비가 없는 이유. 목록 행이 이유를 짐작하지 않게 */
+    public enum Gap {
+        /** 출발 주행거리의 기록이 덜 채움이라 그때 탱크에 얼마 있었는지 모름 */
+        START_NOT_FULL,
+        /** 사이에 덜 채운 주유나 같은 주행거리로 이어 넣은 주유의 양을 모름 */
+        LITERS_UNKNOWN
+    }
+
+    /** 구간 목록, 기록마다의 주유량 쓰임, 연비가 빠진 이유. 한 번 순회로 모두 */
+    record Walk(List<FuelSegment> segments, Map<Long, LitersUse> uses, Map<Long, Gap> gaps) {
     }
 
     /**
@@ -48,6 +56,7 @@ public record FuelSegment(FuelRecord to, int distance, BigDecimal liters, BigDec
     static Walk walk(List<FuelRecord> records) {
         List<FuelSegment> segments = new ArrayList<>();
         Map<Long, LitersUse> uses = new HashMap<>();
+        Map<Long, Gap> gaps = new HashMap<>();
 
         // 구간의 시작 기록, 시작 주행거리에서 탱크가 가득이었는지, 그 뒤 아직 구간에 넣지 않은 덜 채운 주유량(하나라도 모르면 null)
         int start = 0;
@@ -103,6 +112,9 @@ public record FuelSegment(FuelRecord to, int distance, BigDecimal liters, BigDec
                 for (FuelRecord counted : pending) {
                     uses.put(counted.getId(), LitersUse.NEXT);
                 }
+            } else {
+                // 출발 상태가 먼저. 그게 맞아야 양을 모르는 것이 이유가 됨
+                gaps.put(record.getId(), !startFull ? Gap.START_NOT_FULL : Gap.LITERS_UNKNOWN);
             }
 
             // 묶음이 가득 주유로 닫혔으니 다음 구간은 가득에서 출발. 묶음 끝 기록이 덜 채움이어도 같음
@@ -120,12 +132,17 @@ public record FuelSegment(FuelRecord to, int distance, BigDecimal liters, BigDec
             }
         }
 
-        return new Walk(segments, uses);
+        return new Walk(segments, uses, gaps);
     }
 
     /** 기록마다 주유량의 쓰임. 없는 id 는 NONE */
     public static Map<Long, LitersUse> litersUses(List<FuelRecord> records) {
         return walk(records).uses();
+    }
+
+    /** 가득 주유인데 연비가 없는 기록의 id → 이유 */
+    public static Map<Long, Gap> gaps(List<FuelRecord> records) {
+        return walk(records).gaps();
     }
 
     /** 구간을 닫는 기록의 id → 구간. 목록 행이 평균과 같은 구간으로 연비를 보이게 */

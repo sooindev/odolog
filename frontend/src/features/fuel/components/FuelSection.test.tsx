@@ -26,6 +26,7 @@ function record(id: string, odometer: number, memo: string): FuelRecordResponse 
     resetPoint: false,
     fullTank: true,
     litersUse: 'CLOSING',
+    efficiencyGap: null,
     pricePerLiter: 1667,
     distance: 500,
     efficiency: 16.67,
@@ -117,5 +118,26 @@ describe('FuelSection', () => {
     // 덜 채움 문구만 보이면 어디서 초기화했는지 목록에서 사라짐
     expect(rows[1].textContent).toContain('연비 기준점')
     expect(rows[1].textContent).toContain('다음 가득 주유부터 계산')
+  })
+
+  it('연비가 빠진 이유가 주유량을 모르는 것이면 앞 주유 탓으로 말하지 않는다', async () => {
+    const gap = { distance: 500, efficiency: null }
+    vi.mocked(fetchFuelRecords).mockResolvedValue({
+      items: [
+        { ...record('fuelAAAAAAAA', 46000, '양 모름'), ...gap, efficiencyGap: 'LITERS_UNKNOWN' },
+        { ...record('fuelBBBBBBBB', 45500, '앞이 덜 채움'), ...gap, efficiencyGap: 'START_NOT_FULL' },
+      ],
+      page: 0,
+      size: 10,
+      totalElements: 3,
+      totalPages: 1,
+      hasNext: true,
+    })
+    renderWithProviders(<FuelSection vehicleId="vehicle00001" currentOdometer={46000} onChanged={() => {}} />)
+
+    const rows = await screen.findAllByRole('listitem')
+    expect(rows[0].textContent).toContain('구간에 주유량을 모르는 기록이 있어')
+    expect(rows[0].textContent).not.toContain('앞 주유를 가득 채웠는지 몰라')
+    expect(rows[1].textContent).toContain('앞 주유를 가득 채웠는지 몰라')
   })
 })

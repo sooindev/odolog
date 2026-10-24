@@ -24,6 +24,7 @@ const RECORD: FuelRecordResponse = {
   resetPoint: false,
   fullTank: true,
   litersUse: 'CLOSING',
+  efficiencyGap: null,
   pricePerLiter: 1695,
   distance: 500,
   efficiency: 15.4,

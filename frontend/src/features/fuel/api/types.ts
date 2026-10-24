@@ -34,6 +34,9 @@ export interface FuelRecordUpdateRequest {
 /** 이 기록이 닫는 구간 / 같은 주행거리에서 앞서 닫힌 구간 / 뒤의 가득 주유 구간 / 어디에도 안 들어감 */
 export type FuelLitersUse = 'CLOSING' | 'PREVIOUS' | 'NEXT' | 'NONE'
 
+/** 가득 주유인데 연비가 없는 이유. 출발이 덜 채움 / 구간 안의 주유량을 모름 */
+export type FuelEfficiencyGap = 'START_NOT_FULL' | 'LITERS_UNKNOWN'
+
 export interface FuelRecordResponse {
   /** 공개 id(12자) */
   id: string
@@ -62,6 +65,8 @@ export interface FuelRecordResponse {
   distance: number | null
   /** 연비(km/L) */
   efficiency: number | null
+  /** 가득 주유인데 연비가 없는 이유(서버 계산). 아니면 null */
+  efficiencyGap: FuelEfficiencyGap | null
   /** 물리적으로 불가능한 연비(50 초과·2 미만) = 입력 오류 */
   efficiencySuspicious: boolean
   /** 주유 기록 누락 의심 구간. 평균에서도 제외 */

@@ -34,6 +34,8 @@ public record FuelRecordResponse(
         Integer distance,
         /** 연비(km/L), 소수 2자리. 구간 미성립이면 null */
         BigDecimal efficiency,
+        /** 가득 주유인데 연비가 없는 이유. 연비가 있거나 구간을 닫지 않는 기록이면 null */
+        FuelSegment.Gap efficiencyGap,
         /** 물리적으로 불가능한 연비(50 초과·2 미만) = 입력 오류 */
         boolean efficiencySuspicious,
 
@@ -47,9 +49,11 @@ public record FuelRecordResponse(
     /**
      * @param segment 이 기록이 닫는 연비 구간(FuelSegment). 평균과 같은 계산. 없으면 연비 없음
      * @param litersUse 이 기록의 주유량이 들어간 구간. 같은 순회의 결과
+     * @param gap 연비가 빠진 이유. 같은 순회의 결과
      */
     public static FuelRecordResponse of(FuelRecord record, FuelRecord previous, FuelSegment segment,
-                                          FuelSegment.LitersUse litersUse, FuelAnomaly.Baseline baseline) {
+                                          FuelSegment.LitersUse litersUse, FuelSegment.Gap gap,
+                                          FuelAnomaly.Baseline baseline) {
         Integer distance = null;
         BigDecimal efficiency = null;
 
@@ -77,6 +81,7 @@ public record FuelRecordResponse(
                 pricePerLiter(record),
                 distance,
                 efficiency,
+                gap,
                 FuelAnomaly.isImpossible(efficiency),
                 // 불가능한 값 표시 우선. 한 행에 표시 하나
                 !FuelAnomaly.isImpossible(efficiency)

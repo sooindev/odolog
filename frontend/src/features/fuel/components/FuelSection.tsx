@@ -154,9 +154,9 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                                 <span className="ml-1 text-muted-foreground">{t.fuel.fromNext}</span>
                               </>
                             ) : record.distance !== null ? (
-                              // 거리·주유량은 있는데 연비가 없음 = 앞 구간이 덜 채운 주유에서 시작했거나 그 양을 모름
+                              // 거리·주유량은 있는데 연비가 없음. 이유는 서버가 알림 — 출발이 덜 채움 / 구간 안의 양을 모름
                               <>
-                                {t.fuel.afterPartial}
+                                {record.efficiencyGap === 'LITERS_UNKNOWN' ? t.fuel.litersUnknown : t.fuel.afterPartial}
                                 <span className="ml-1 text-muted-foreground">{t.fuel.noEfficiency}</span>
                               </>
                             ) : (

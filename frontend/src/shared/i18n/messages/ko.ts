@@ -478,6 +478,7 @@ export const ko = {
     partial: '가득 채우지 않음',
     partialMerged: '· 다음 가득 주유의 연비에 합산',
     afterPartial: '앞 주유를 가득 채웠는지 몰라',
+    litersUnknown: '구간에 주유량을 모르는 기록이 있어',
     mergedIntoPrevious: '· 주유량은 직전 기록 연비에 합산',
     baseline: '기준 기록',
     fromNext: '· 다음 주유부터 계산',

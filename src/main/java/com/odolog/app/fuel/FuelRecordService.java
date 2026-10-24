@@ -234,22 +234,23 @@ public class FuelRecordService {
         }
 
         return new Rows(FuelAnomaly.baselineOf(all), FuelSegment.byClosingRecord(all),
-                FuelSegment.litersUses(all), beforeResetPoint);
+                FuelSegment.litersUses(all), FuelSegment.gaps(all), beforeResetPoint);
     }
 
     /**
-     * 행 계산의 이력 전체 기준. 평소 구간·기록마다 닫는 연비 구간·기준점 앞 기록
+     * 행 계산의 이력 전체 기준. 평소 구간·기록마다 닫는 연비 구간·연비가 빠진 이유·기준점 앞 기록
      * 페이지만 보고 정하면 덜 채운 주유·나눠 넣은 주유가 쪽 경계에 걸릴 때 행마다 판정이 달라짐
      */
     private record Rows(FuelAnomaly.Baseline baseline, Map<Long, FuelSegment> segments,
-                        Map<Long, FuelSegment.LitersUse> litersUses, Set<Long> beforeResetPoint) {
+                        Map<Long, FuelSegment.LitersUse> litersUses, Map<Long, FuelSegment.Gap> gaps,
+                        Set<Long> beforeResetPoint) {
 
         FuelRecordResponse of(FuelRecord record, FuelRecord previous) {
             // 기준점 앞은 누락 판정 안 함. "확인 필요"(불가능한 값)는 입력 오류라 그대로
             FuelAnomaly.Baseline rowBaseline = beforeResetPoint.contains(record.getId())
                     ? FuelAnomaly.Baseline.NONE : baseline;
             return FuelRecordResponse.of(record, previous, segments.get(record.getId()),
-                    litersUses.getOrDefault(record.getId(), FuelSegment.LitersUse.NONE), rowBaseline);
+                    litersUses.getOrDefault(record.getId(), FuelSegment.LitersUse.NONE), gaps.get(record.getId()), rowBaseline);
         }
     }
 

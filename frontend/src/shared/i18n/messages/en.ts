@@ -480,6 +480,7 @@ export const en: Messages = {
     partial: 'Not a full tank',
     partialMerged: '· counted in the next full fill-up',
     afterPartial: 'Previous fill-up wasn’t full',
+    litersUnknown: 'A fill-up in this stretch has no amount',
     mergedIntoPrevious: '· fuel counted in its economy',
     baseline: 'Baseline',
     fromNext: '· calculated from the next fill-up',

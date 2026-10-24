@@ -116,4 +116,26 @@ class FuelSegmentTest {
         assertThat(FuelSegment.between(resetThenFull)).last()
                 .satisfies(segment -> assertThat(segment.efficiency()).isEqualByComparingTo("20.00"));
     }
+
+    @Test
+    @DisplayName("가득 주유인데 연비가 없으면 이유를 남긴다 — 출발이 덜 채움인지, 구간 안의 주유량을 모르는지")
+    void gapReasons() {
+        // 출발이 덜 채움
+        FuelRecord afterPartial = full(10500, "30.00");
+        assertThat(FuelSegment.gaps(List.of(partial(10000, "40.00"), afterPartial)))
+                .containsEntry(afterPartial.getId(), FuelSegment.Gap.START_NOT_FULL);
+
+        // 같은 주행거리로 이어 넣은 주유량을 모름. 앞 기록은 가득이라 출발 문제가 아님
+        FuelRecord closing = full(11500, "30.00");
+        List<FuelRecord> unknownSplit = List.of(full(11000, "40.00"), closing, full(11500, null), full(12000, "35.00"));
+        assertThat(FuelSegment.gaps(unknownSplit)).containsEntry(closing.getId(), FuelSegment.Gap.LITERS_UNKNOWN);
+
+        // 사이에 덜 채운 주유량을 모름
+        FuelRecord afterUnknownPartial = full(13600, "30.00");
+        List<FuelRecord> unknownPartial = List.of(full(13000, "40.00"), partial(13300, null), afterUnknownPartial);
+        assertThat(FuelSegment.gaps(unknownPartial)).containsEntry(afterUnknownPartial.getId(), FuelSegment.Gap.LITERS_UNKNOWN);
+
+        // 연비가 나온 구간은 이유 없음
+        assertThat(FuelSegment.gaps(unknownSplit)).doesNotContainKey(unknownSplit.get(3).getId());
+    }
 }
