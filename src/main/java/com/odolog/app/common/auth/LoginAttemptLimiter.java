@@ -47,8 +47,11 @@ public class LoginAttemptLimiter {
     /** 공유 키의 한도 배수. 같은 공유기 뒤의 가족·사무실이 함께 걸리지 않을 만큼. 계정 전체 키도 같은 배수 */
     static final int SHARED_FACTOR = 5;
 
-    /** 짝 키 구분자. 이메일은 출력 가능한 ASCII 지만 | 가 든 주소도 그 뒤가 IP 형식이 아니라 겹치지 않음 */
-    private static final String PAIR = "|";
+    /**
+     * 짝 키 구분자. 공백은 이메일(EMAIL_CHARS)에 들어올 수 없는 글자
+     * 이메일에 올 수 있는 글자면 "주소|IP" 를 이메일로 보내 남의 짝 키를 올릴 수 있음
+     */
+    private static final String PAIR = " ";
     private volatile Instant lastPurge = Instant.EPOCH;
 
     @Autowired
@@ -154,7 +157,7 @@ public class LoginAttemptLimiter {
     }
 
     /**
-     * 그 키와 그 키에 IP 를 붙인 짝 키(key|ip) 전부 삭제. 재설정을 마친 계정의 잠금을 어느 IP 에서든 풂
+     * 그 키와 그 키에 IP 를 붙인 짝 키(key ip) 전부 삭제. 재설정을 마친 계정의 잠금을 어느 IP 에서든 풂
      * 같은 접두사의 다른 키(a@b.com 과 a@b.com.x)는 남김
      */
     public void forgetWithPairs(String key) {

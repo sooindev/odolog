@@ -258,7 +258,7 @@
     - **리미터 키에는 반드시 용도 접두사를 붙인다.** 접두사가 없던 로그인 키에 `password-check:1` 을 넣어
       남의 비밀번호 변경·탈퇴를 잠글 수 있었다. 지금은 `login:`·`login-ip:`·`password-reset:`·`password-reset-ip:`·
       `signup:`·`password-check:` 여섯이다. 로그인 IP 키는 여러 사람이 한 IP 를 쓰므로 한도가 다섯 배(`acquireShared`)이고,
-      **이메일 키는 IP 와의 짝(`login:이메일|IP`)으로 10번, 계정 전체는 다섯 배**다 — 남의 주소로 한 곳에서 틀려도 잠기는 건
+      **이메일 키는 IP 와의 짝(`login:이메일 IP`, 구분자는 이메일에 못 오는 공백)으로 10번, 계정 전체는 다섯 배**다 — 남의 주소로 한 곳에서 틀려도 잠기는 건
       그 짝뿐이고, 계정 전체를 잠그려면 다섯 곳 이상이 필요하다. 재설정 요청도 같다(둘 다 `acquirePaired`).
       계정 쪽 잠금으로 거절된 시도는 짝 키에서 되돌린다 — 안 그러면 남이 잠근 동안 다시 누른 횟수로 자기 짝까지 잠긴다. 재설정을 마치면 짝 키까지 지운다(`forgetWithPairs`).
       대가로 같은 주소로 가는 재설정 메일 상한이 10통에서 IP 여럿이면 50통이 됐다.
@@ -412,7 +412,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 445개):
+테스트 종류 (`./gradlew test`, 446개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 열하나** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는

@@ -392,4 +392,21 @@ class LoginAttemptLimiterTest {
         assertThatCode(() -> limiter.acquirePaired(account, "192.168.0.7", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    @DisplayName("이메일에 짝 키 모양(주소|IP)을 적어 보내도 남의 짝 키를 올리지 못한다")
+    void emailShapedLikePairDoesNotHitVictimPair() {
+        LoginAttemptLimiter limiter = new LoginAttemptLimiter(Clock.systemUTC());
+        String victim = "login:victim@odolog.com";
+
+        // 공격자가 자기 IP 에서 피해자의 짝 키와 같은 글자를 계정 키로 열 번
+        for (int i = 0; i < 10; i++) {
+            limiter.acquirePaired("login:victim@odolog.com|1.2.3.4", "9.9.9.9",
+                    ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON);
+        }
+
+        // 피해자는 자기 IP 에서 첫 시도
+        assertThatCode(() -> limiter.acquirePaired(victim, "1.2.3.4", ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, REASON))
+                .doesNotThrowAnyException();
+    }
 }
