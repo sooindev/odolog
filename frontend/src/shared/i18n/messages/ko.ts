@@ -204,6 +204,7 @@ export const ko = {
     submit: '비밀번호 변경',
     submitting: '변경 중…',
     failed: '비밀번호 재설정에 실패했습니다.',
+    logoutFailed: '이 브라우저는 다른 계정으로 로그인되어 있는데 로그아웃하지 못했습니다. 위의 로그아웃을 누른 뒤 새 비밀번호로 로그인해 주세요.',
   },
 
   profile: {
@@ -432,7 +433,7 @@ export const ko = {
     quick: {
       intro: '마지막으로 언제 했는지 고르세요. 기억나지 않는 항목은 그대로 두면 됩니다.',
       unknown: '모름',
-      monthsAgo: (months: number) => (months === 12 ? '1년 전' : `${months}개월 전`),
+      monthsAgo: (months: Count) => (months.n === 12 ? '1년 전' : `${months.text}개월 전`),
       pickDate: '날짜 지정',
       odometer: (unit: string) => `그때 주행거리 (${unit}, 모르면 비움)`,
       submit: '저장',

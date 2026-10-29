@@ -58,6 +58,11 @@ class UserTest {
         assertThat(user.getCurrency()).isEqualTo("USD");
         assertThatThrownBy(() -> user.changeCurrency("XYZ"))
                 .isInstanceOf(InvalidRequestException.class);
+        // 목록에는 있지만 화폐가 아닌 코드(금·시험용·특별인출권)
+        for (String notMoney : new String[]{"XAU", "XXX", "XDR"}) {
+            assertThatThrownBy(() -> user.changeCurrency(notMoney))
+                    .isInstanceOf(InvalidRequestException.class);
+        }
         assertThat(user.getCurrency()).isEqualTo("USD");
     }
 }

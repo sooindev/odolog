@@ -9,6 +9,9 @@ export const MAX_ODOMETER = 2_000_000
 /** 금액 상한(통화의 최소 단위). 원화 20억, 달러 2천만. 서버 금액 칸이 INT */
 export const MAX_AMOUNT = 2_000_000_000
 
+/** 주유량 상한(L). 서버 InputLimits.MAX_LITERS 와 같은 값 */
+export const MAX_LITERS = 9999.99
+
 /** 비밀번호 상한(UTF-8 바이트). BCrypt 한계 */
 export const MAX_PASSWORD_BYTES = 72
 

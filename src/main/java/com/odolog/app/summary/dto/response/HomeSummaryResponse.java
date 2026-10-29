@@ -61,7 +61,7 @@ public record HomeSummaryResponse(
             int maintenanceCount,
             /** 정비 이력 없으면 null */
             LocalDate lastServiceDate,
-            /** 주유 2건 미만이면 null */
+            /** 기준점 뒤에 닫힌 가득 → 가득 구간이 없으면 null(주유 1건·전부 덜 채움·주유량 모름 포함) */
             BigDecimal averageEfficiency,
             /** 권장 주기가 지난 정비 종류 수. 차량 상세와 같은 NextService 계산 */
             int overdueServiceCount,

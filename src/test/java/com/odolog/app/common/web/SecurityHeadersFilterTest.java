@@ -2,6 +2,8 @@ package com.odolog.app.common.web;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -12,6 +14,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SecurityHeadersFilterTest {
 
     private final SecurityHeadersFilter filter = new SecurityHeadersFilter();
+
+    @Test
+    @DisplayName("CORS 바로 뒤, 크기 상한보다 앞 — 앞에서 끝나는 413·403 에도 헤더가 붙게")
+    void runsBeforeFiltersThatEndEarly() {
+        int order = SecurityHeadersFilter.class.getAnnotation(Order.class).value();
+
+        assertThat(order).isGreaterThan(Ordered.HIGHEST_PRECEDENCE);
+        assertThat(order).isLessThan(RequestSizeLimitFilter.class.getAnnotation(Order.class).value());
+        // CSRF 필터는 순서를 정하지 않아 가장 뒤(LOWEST)
+        assertThat(order).isLessThan(Ordered.LOWEST_PRECEDENCE);
+    }
 
     @Test
     @DisplayName("모든 응답에 기본 보안 헤더를 붙인다")

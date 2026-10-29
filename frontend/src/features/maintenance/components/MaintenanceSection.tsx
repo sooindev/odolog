@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { MaintenanceForm } from '@/features/maintenance/components/MaintenanceForm'
 import { Button } from '@/shared/ui/base/button'
@@ -45,11 +45,11 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
     [onViewChange],
   )
 
-  // 페이지·필터를 옮기는 동안 직전 목록 유지. 깜빡임 방지
+  // 쪽을 옮기는 동안만 직전 목록 유지. 필터가 바뀌면 다른 조건의 목록이 새 필터 이름 아래 보이지 않게 버림
   const { data, isPending, isPlaceholderData, isError, error: queryError, refetch } = useQuery({
     queryKey: queryKeys.maintenanceList(vehicleId, page, filter),
     queryFn: () => fetchRecords(vehicleId, page, filter),
-    placeholderData: keepPreviousData,
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[5] === filter ? previous : undefined),
   })
   usePageInRange(data ?? null, setPage)
 

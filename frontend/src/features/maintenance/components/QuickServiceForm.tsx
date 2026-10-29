@@ -158,7 +158,7 @@ export function QuickServiceForm({
                         ? t.maintenance.quick.unknown
                         : choice === 'date'
                           ? t.maintenance.quick.pickDate
-                          : t.maintenance.quick.monthsAgo(choice)}
+                          : t.maintenance.quick.monthsAgo(f.count(choice))}
                     </Button>
                   ))}
                 </div>

@@ -16,6 +16,7 @@ import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { queryKeys } from '@/shared/api/queryKeys'
 import type { Language, UnitSystem } from '@/shared/lib/preferences'
+import { isMoney } from '@/shared/lib/money'
 
 const LANGUAGES: Language[] = ['KO', 'EN']
 const UNIT_SYSTEMS: UnitSystem[] = ['KM_PER_L', 'L_PER_100KM', 'MPG_US', 'MPG_UK']
@@ -44,7 +45,7 @@ export function RegionForm({ user }: { user: UserResponse }) {
   const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const currencies = useMemo(() => {
     const names = new Intl.DisplayNames([locale], { type: 'currency' })
-    return withCurrent(Intl.supportedValuesOf('currency'), user.currency).map((code) => ({
+    return withCurrent(Intl.supportedValuesOf('currency').filter(isMoney), user.currency).map((code) => ({
       code,
       label: `${code} · ${names.of(code) ?? code}`,
     }))

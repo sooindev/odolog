@@ -15,6 +15,9 @@ public final class InputLimits {
      */
     public static final long MAX_AMOUNT = 2_000_000_000L;
 
+    /** 주유량 상한(L). 칸이 DECIMAL(6,2). @DecimalMax 가 문자열을 받아 문자열 */
+    public static final String MAX_LITERS = "9999.99";
+
     /** 기록 날짜 하한. 연식 하한과 같은 해. 연도 오타(0026)·음수 연도(DB 가 깨뜨려 저장) 차단 */
     public static final java.time.LocalDate MIN_RECORD_DATE = java.time.LocalDate.of(1900, 1, 1);
 
@@ -22,8 +25,9 @@ public final class InputLimits {
      * 한 줄 이름(닉네임). 제어 문자(Cc)·서식 문자(Cf, 글자 방향 뒤집기 포함)·줄·문단 구분자를 거부
      * 서식 문자 중 ZWJ(U+200D)는 가족 이모지 같은 합성 이모지에 쓰여 허용
      * \p{Cntrl} 은 ASCII 제어 문자만 뜻해 U+202E·U+2028 이 통과함
+     * 짝 없는 서로게이트(Cs)도 거부. DB 가 '?' 로 바꿔 저장해 응답과 다음 조회의 값이 갈림
      */
-    public static final String SINGLE_LINE_TEXT = "(?:[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200D)*";
+    public static final String SINGLE_LINE_TEXT = "(?:[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}\\p{Cs}]|\\u200D)*";
 
     /** 차량별 정비 주기 상한. 주기 변경·가져오기 공용, 화면 limits.ts 와 같은 값 */
     public static final int MAX_INTERVAL_KM = 500_000;

@@ -52,7 +52,7 @@ public class VehicleService {
         // 잠금. 기록 쓰기·차량 삭제와 한 줄로 세움. 겹치면 409 대신 앞선 결과(삭제면 404)를 보고 진행
         Vehicle vehicle = findOwnedVehicleForUpdate(requesterId, vehicleId);
 
-        // 번호판 먼저 처리. 다른 필드 변경 후 exists 전 자동 flush 로 자기 중복 판정 방지
+        // 번호판 중복 확인. 자기 자신은 IdNot 으로 제외
         String plateNumber = InputText.plateNumber(request.plateNumber(), "plateNumber");
         if (plateNumber != null && !plateNumber.equals(vehicle.getPlateNumber())) {
             // 같은 번호판인지는 DB 가 판단. 자바 비교는 전각 숫자·악센트에서 DB 와 갈려 자기 자신과 409
@@ -77,7 +77,7 @@ public class VehicleService {
 
     @Transactional
     public Vehicle updateOdometer(Long requesterId, String vehicleId, UpdateOdometerRequest request) {
-        // 잠금. 주유가 그 사이 올린 값을 보고 판정(감소면 현재 값을 담은 409)
+        // 잠금. 주유가 그 사이 올린 값을 보고 판정(감소면 409. 현재 값은 화면이 차량을 다시 읽어 보여 줌)
         Vehicle vehicle = findOwnedVehicleForUpdate(requesterId, vehicleId);
 
         // 기본은 감소 금지. force 일 때만 정정

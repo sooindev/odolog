@@ -19,7 +19,7 @@ export interface VehicleUpdateRequest {
 
 export interface UpdateOdometerRequest {
   odometer: number
-  /** 감소 허용 여부. 계기판 교체·자리수 오타 정정 때만 */
+  /** 감소 허용 여부. 자리수 오타 정정 때만. 계기판 교체에는 맞지 않음(서버 UpdateOdometerRequest) */
   force?: boolean
 }
 

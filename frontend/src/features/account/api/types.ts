@@ -30,6 +30,7 @@ export interface AccountExport {
     createdAt: string | null
     maintenanceRecords: unknown[]
     fuelRecords: unknown[]
+    serviceIntervals: unknown[]
   }[]
 }
 

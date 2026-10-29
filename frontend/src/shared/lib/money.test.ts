@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { fractionDigits, fromMinor, inputStep, maxMajor, toMinor } from './money'
+import { fractionDigits, fromMinor, inputStep, isMoney, maxMajor, toMinor } from './money'
 
 describe('통화의 최소 단위', () => {
   it('원화는 소수 자리가 없고 달러는 둘', () => {
@@ -32,5 +32,14 @@ describe('통화의 최소 단위', () => {
     expect(maxMajor('USD')).toBe(20_000_000)
     // 2자리 고액권도 정비비 한 번은 넣을 수 있게
     expect(maxMajor('IDR')).toBe(20_000_000)
+  })
+})
+
+describe('고를 수 있는 통화', () => {
+  it('브라우저 목록에 섞인 화폐 아닌 코드(특별인출권·수크레)는 뺀다 — 서버가 400 으로 거절', () => {
+    expect(isMoney('USD')).toBe(true)
+    expect(isMoney('XAF')).toBe(true)
+    expect(isMoney('XDR')).toBe(false)
+    expect(isMoney('XSU')).toBe(false)
   })
 })

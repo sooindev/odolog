@@ -51,7 +51,7 @@ export function OdometerForm({
 
     const next = odometer === initial ? vehicle.odometer : toKm(unitSystem, Number(odometer))
 
-    // 감소는 확인 후 force 로. 자리수 오타·계기판 교체의 유일한 복구 경로
+    // 감소는 확인 후 force 로. 자리수 오타의 유일한 복구 경로
     // 급증도 확인. 올라간 값은 force 정정으로만 복구
     if (looksBigJump(next, vehicle.odometer)) {
       const confirmed = window.confirm(

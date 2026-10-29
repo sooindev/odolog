@@ -81,7 +81,7 @@ public record AccountRestoreRequest(
     public record FuelData(
             @NotNull LocalDate fueledAt,
             @NotNull @PositiveOrZero @Max(InputLimits.MAX_ODOMETER) Integer odometer,
-            @Positive @Digits(integer = 4, fraction = 2) @DecimalMax("9999.99") BigDecimal liters,
+            @Positive @Digits(integer = 4, fraction = 2) @DecimalMax(InputLimits.MAX_LITERS) BigDecimal liters,
             @PositiveOrZero @Max(InputLimits.MAX_AMOUNT) Integer totalCost,
             @Size(max = 3) String currency,
             @Size(max = 255) String memo,

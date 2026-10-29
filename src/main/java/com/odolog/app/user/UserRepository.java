@@ -13,7 +13,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    /** 행 잠금 조회. 한 사용자의 계정 단위 쓰기(가져오기)를 한 줄로 세움 */
+    /** 행 잠금 조회. 한 사용자의 계정 단위 쓰기(비밀번호 변경·탈퇴·재설정 확정·가져오기)를 한 줄로 세움 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<User> findLockedById(Long id);
 

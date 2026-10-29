@@ -71,7 +71,7 @@ export function MonthlyCostChart({ monthly, currency }: { monthly: MonthlyCost[]
                   (monthly.length - 1 - index) % 2 === 1 ? 'invisible sm:visible' : ''
                 }`}
               >
-                {Number(entry.month.slice(5))}
+                {f.number(Number(entry.month.slice(5)))}
               </span>
             ))}
           </div>

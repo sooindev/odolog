@@ -70,11 +70,11 @@ export interface MaintenanceRecordResponse {
 
 export interface NextServiceResponse {
   type: ServiceType
-  /** 이력 없으면 null */
+  /** 마지막 기록에 주행거리를 안 적었으면 null. 이력이 없는 종류는 응답에 없음 */
   lastServiceOdometer: number | null
-  /** 이력이 없거나 주기 없는 종류(OTHER)면 null */
+  /** 마지막 기록에 주행거리가 없거나 km 주기가 없는 종류(OTHER)면 null */
   nextServiceOdometer: number | null
-  lastServiceDate: string | null
+  lastServiceDate: string
   nextServiceDate: string | null
   /** 주행거리·날짜 중 하나라도 지남. 서버 판정 */
   overdue: boolean

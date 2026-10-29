@@ -38,15 +38,15 @@ interface Props {
 export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, onCancel }: Props) {
   const { t, f, unitSystem, timeZone, currency: userCurrency } = useI18n()
 
-  // 폼을 연 시점의 차량 주행거리 고정(km). 입력칸과 판정 기준의 어긋남 방지
-  const [baseOdometer] = useState(defaultOdometer)
+  // 판정 기준(km). 열어 둔 사이 차량 값이 바뀌면 아래에서 칸과 함께 따라감
+  const [baseOdometer, setBaseOdometer] = useState(defaultOdometer)
   // 금액이 있는 기록은 그 통화, 금액이 비어 있던 기록·등록은 지금 사용자 통화. 서버도 같은 규칙
   const currency = record != null && record.cost !== null ? record.currency : userCurrency
 
   // 입력칸은 화면 단위(마일·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로 전송
   // 비용·주행거리는 모르면 빈칸(null). 등록은 주행거리만 차량 값으로 미리 채움
-  const [initialOdometerKm] = useState(record === null ? defaultOdometer : record.serviceOdometer)
-  const [initialOdometer] = useState(
+  const [initialOdometerKm, setInitialOdometerKm] = useState(record === null ? defaultOdometer : record.serviceOdometer)
+  const [initialOdometer, setInitialOdometer] = useState(
     initialOdometerKm === null ? '' : String(Math.round(fromKm(unitSystem, initialOdometerKm))),
   )
   const [initialCost] = useState(
@@ -62,6 +62,17 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
   const [pending, setPending] = useState(false)
   // 날짜를 바꿔 미리 채운 주행거리를 비웠는지. 오늘로 돌아오면 되살림
   const [odometerAutoCleared, setOdometerAutoCleared] = useState(false)
+
+  // 다른 카드가 차량 주행거리를 바꾸면 판정 기준을 새 값으로. 등록의 손대지 않은 칸도 같이 바꿔 보이는 값 = 보내는 값
+  if (defaultOdometer !== baseOdometer) {
+    setBaseOdometer(defaultOdometer)
+    if (record === null) {
+      const next = String(Math.round(fromKm(unitSystem, defaultOdometer)))
+      setInitialOdometerKm(defaultOdometer)
+      setInitialOdometer(next)
+      if (serviceOdometer === initialOdometer) setServiceOdometer(next)
+    }
+  }
 
   /** 등록에서 미리 채운 주행거리는 오늘 값. 다른 날짜면 그때 값을 모르므로 손대지 않은 칸만 비움 */
   function changeServiceDate(next: string) {

@@ -55,16 +55,27 @@ describe('MaintenanceForm 등록', () => {
     }))
   })
 
-  it('폼을 연 뒤 차량 주행거리가 바뀌어도 손대지 않은 칸은 보이는 값 그대로 보낸다', async () => {
+  it('폼을 연 뒤 차량 주행거리가 바뀌면 손대지 않은 칸은 새 값으로 따라가고 보이는 값 그대로 보낸다', async () => {
     const onSaved = vi.fn()
     renderWithProviders(<OdometerChangesWhileOpen onSaved={onSaved} />)
 
     fireEvent.click(screen.getByRole('button', { name: '차량 주행거리 갱신' }))
-    expect(screen.getByLabelText(/주행거리/)).toHaveProperty('value', '45000')
+    expect(screen.getByLabelText(/주행거리/)).toHaveProperty('value', '45500')
     fireEvent.click(screen.getByRole('button', { name: '등록' }))
 
     await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
-    expect(vi.mocked(registerRecord).mock.calls[0][1].serviceOdometer).toBe(45000)
+    expect(vi.mocked(registerRecord).mock.calls[0][1].serviceOdometer).toBe(45500)
+  })
+
+  it('직접 적은 주행거리는 그대로 두고, 바뀐 차량 값보다 작으면 과거 안내를 띄운다', () => {
+    renderWithProviders(<OdometerChangesWhileOpen onSaved={() => {}} />)
+
+    fireEvent.change(screen.getByLabelText(/주행거리/), { target: { value: '45200' } })
+    expect(screen.queryByText(/보다 작습니다/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '차량 주행거리 갱신' }))
+
+    expect(screen.getByLabelText(/주행거리/)).toHaveProperty('value', '45200')
+    expect(screen.getByText(/보다 작습니다/)).toBeTruthy()
   })
 })
 

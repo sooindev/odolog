@@ -87,7 +87,13 @@ class HomeSummaryServiceTest {
         ReflectionTestUtils.setField(blankDollar, "cost", null);
         given(List.of(car), List.of(blankDollar), List.of());
 
-        assertThat(homeSummaryService.summarize(1L, TODAY, "KRW").otherCurrencyRecordCount()).isZero();
+        HomeSummaryResponse summary = homeSummaryService.summarize(1L, TODAY, "KRW");
+
+        assertThat(summary.otherCurrencyRecordCount()).isZero();
+        // 빼지 않았으니 월별·종류별 건수에는 들어감
+        assertThat(summary.byType()).extracting(HomeSummaryResponse.TypeCost::type)
+                .containsExactly(ServiceType.TIRE);
+        assertThat(summary.monthly().get(summary.monthly().size() - 1).count()).isEqualTo(1);
     }
 
     @Test

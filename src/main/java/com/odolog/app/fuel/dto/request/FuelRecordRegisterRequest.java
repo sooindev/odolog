@@ -29,7 +29,7 @@ public record FuelRecordRegisterRequest(
 
         @Positive
         @Digits(integer = 4, fraction = 2)
-        @DecimalMax("9999.99")
+        @DecimalMax(InputLimits.MAX_LITERS)
         BigDecimal liters,
 
         @PositiveOrZero

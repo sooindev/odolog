@@ -58,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 세션 만료 시 사용자 정보 비움 → ProtectedRoute 가 /login 으로
   useEffect(() => {
     setUnauthorizedHandler(() => {
+      // 이미 로그아웃한 뒤 늦게 도착한 401. 끊긴 것이 아니라 끝낸 것
+      if (userRef.current === null) return
       setEndedEmail(userRef.current?.email ?? null)
       setSessionEnded(true)
       setUser(null)
@@ -87,6 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     sessionDecided.current = true
+    // 그리기 전에 도착하는 401 도 로그아웃 뒤로 보게
+    userRef.current = null
     queryClient.clear()
     startTransition(() => {
       leave()
@@ -102,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const withdraw = useCallback(async (request: WithdrawRequest, leave: () => void) => {
     await requestWithdraw(request)
     sessionDecided.current = true
+    userRef.current = null
     startTransition(() => {
       leave()
       setSessionEnded(false)

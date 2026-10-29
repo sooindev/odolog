@@ -206,6 +206,7 @@ export const en: Messages = {
     submit: 'Change password',
     submitting: 'Changing…',
     failed: 'Couldn’t reset your password.',
+    logoutFailed: 'This browser is logged in to another account and we couldn’t log it out. Log out at the top, then log in with your new password.',
   },
 
   profile: {
@@ -436,8 +437,8 @@ export const en: Messages = {
     quick: {
       intro: 'Pick when each was last done. Leave anything you don’t remember as it is.',
       unknown: 'Don’t know',
-      monthsAgo: (months: number) =>
-        months === 12 ? '1 year ago' : `${months} ${plural(months, 'month', 'months')} ago`,
+      monthsAgo: (months: Count) =>
+        months.n === 12 ? '1 year ago' : `${months.text} ${plural(months.n, 'month', 'months')} ago`,
       pickDate: 'Pick a date',
       odometer: (unit: string) => `Odometer then (${unit}, optional)`,
       submit: 'Save',

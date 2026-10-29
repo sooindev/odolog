@@ -412,4 +412,17 @@ class UserControllerTest {
         }
         verify(userService, never()).signUp(any());
     }
+
+    @Test
+    @DisplayName("짝 없는 서로게이트가 든 닉네임은 400 — 저장하면 '?' 로 바뀌어 응답과 다음 조회가 달라짐")
+    void signUpRejectsLoneSurrogateNickname() throws Exception {
+        // JSON 이스케이프로만 보낼 수 있음. 문자열을 UTF-8 로 바꾸는 순간 '?' 가 되므로 본문을 직접 적음
+        String body = "{\"email\":\"test@odolog.com\",\"password\":\"password1234\",\"nickname\":\"\\uD800abc\"}";
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+        verify(userService, never()).signUp(any());
+    }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 import { cn } from '@/shared/ui/cn'
 import { controlClassName } from '@/shared/ui/form/control'
@@ -152,6 +152,8 @@ function WheelColumn({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const index = values.indexOf(value)
+  // 옵션 id 접두사. 화면 낭독기가 지금 값을 읽게 aria-activedescendant 로 가리킴
+  const optionId = useId()
 
   // 최신 확정 함수를 ref 로. 렌더마다 구독을 다시 걸면 대기 중인 타이머가 지워져 값이 안 바뀜
   const commitRef = useRef<() => void>(() => {})
@@ -216,6 +218,7 @@ function WheelColumn({
       ref={ref}
       role="listbox"
       aria-label={ariaLabel}
+      aria-activedescendant={index < 0 ? undefined : `${optionId}-${value}`}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       // overscroll-contain 필수. 바깥 페이지로의 스크롤 연쇄 차단
@@ -225,8 +228,11 @@ function WheelColumn({
       {values.map((entry) => (
         <div
           key={entry}
+          id={`${optionId}-${entry}`}
           role="option"
           aria-selected={entry === value}
+          // 스크롤 대신 탭으로도 고름. 화면 낭독기의 두 번 탭이 여기로 옴
+          onClick={() => onChange(entry)}
           className={cn(
             'flex snap-center items-center justify-center text-base tabular-nums transition-colors duration-200 ease-apple',
             entry === value ? 'text-strong' : 'text-faint',

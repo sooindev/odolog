@@ -180,6 +180,17 @@ describe('MaintenanceSection', () => {
     expect(screen.getByText('첫 번째 메모')).toBeTruthy()
   })
 
+  it('정비 종류 필터를 바꾸는 동안 앞 필터의 목록을 새 필터 이름 아래 보이지 않는다', async () => {
+    renderWithProviders(<Harness />)
+    await screen.findByText('첫 번째 메모')
+
+    // 새 필터의 응답은 아직 오지 않음
+    vi.mocked(fetchRecords).mockReturnValue(new Promise(() => {}))
+    fireEvent.change(screen.getByLabelText('정비 종류로 거르기'), { target: { value: 'TIRE' } })
+
+    await waitFor(() => expect(screen.queryByText('첫 번째 메모')).toBeNull())
+  })
+
   it('다음 쪽 조회가 실패해도 받아 둔 쪽과 페이지 이동이 남고, 다시 누르면 그 쪽을 다시 읽는다', async () => {
     failSecondPageOnce([record('recordAAAAAA', '첫 쪽 메모', '2026-09-01')])
     renderWithProviders(<Harness />)

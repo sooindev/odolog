@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router'
+import { Link, Navigate } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { LandingPage } from '@/app/LandingPage'
@@ -18,11 +18,16 @@ import { queryKeys } from '@/shared/api/queryKeys'
  * 갈림만 여기. 통계 화면은 features/summary
  */
 export function HomePage() {
-  const { user, loading } = useAuth()
+  const { user, loading, sessionEnded, endedEmail } = useAuth()
 
   // 세션 복구 전 판단 금지. 소개 화면 깜빡임 방지
   if (loading) {
     return <LoadingText className="justify-center py-24" />
+  }
+
+  // 쓰던 중 세션이 끊겼으면 소개 화면 대신 이유를 알리는 로그인 화면으로(ProtectedRoute 와 같은 안내)
+  if (user === null && sessionEnded) {
+    return <Navigate to="/login" replace state={{ from: '/', notice: 'sessionEnded', owner: endedEmail ?? undefined }} />
   }
 
   if (user === null) {

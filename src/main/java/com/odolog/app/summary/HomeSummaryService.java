@@ -63,11 +63,12 @@ public class HomeSummaryService {
         List<FuelRecord> fuels = fuelRecordRepository.findByVehicle_Owner_IdOrderByOdometerAscIdAsc(ownerId);
 
         // 통화가 다른 금액은 더할 수 없음. 건수·연비·지남은 전체 기준
+        // 금액이 빈 기록은 통화와 무관하게 남김. 빼면 월별·종류별 건수에서 말없이 사라짐
         List<MaintenanceRecord> pricedRecords = records.stream()
-                .filter(record -> currency.equals(record.getCurrency()))
+                .filter(record -> record.getCost() == null || currency.equals(record.getCurrency()))
                 .toList();
         List<FuelRecord> pricedFuels = fuels.stream()
-                .filter(record -> currency.equals(record.getCurrency()))
+                .filter(record -> record.getTotalCost() == null || currency.equals(record.getCurrency()))
                 .toList();
         // 금액이 비어 있는 기록은 빼지 않았으므로 세지 않음
         int otherCurrency = (int) (records.stream()

@@ -368,7 +368,8 @@
 **건드리기 전에 알아야 할 자리**(이유가 코드 밖에 있는 것만):
 
 - **필터 순서**: CORS 필터가 맨 앞(CSRF 403 에도 CORS 헤더가 붙어야 브라우저가 "연결 실패"로 읽지 않는다),
-  `RequestSizeLimitFilter` 가 그 바로 뒤(`FormContentFilter` 가 폼 본문을 상한 없이 먼저 읽지 않게). 10MB, 넘으면 413
+  `SecurityHeadersFilter` 가 그 뒤(앞에서 끝나는 413·CSRF 403 에도 헤더가 붙게), `RequestSizeLimitFilter` 가 그 바로 뒤
+  (`FormContentFilter` 가 폼 본문을 상한 없이 먼저 읽지 않게). 10MB, 넘으면 413
 - **CSRF 는 경로와 무관하게 모든 쓰기 요청을 본다** — 날 URI 로 `/api/` 를 판정하면 `/%61pi/…` 가 통과한다.
   테스트에서는 `odolog.csrf.enabled=false` 로 꺼 둔다(`@WebMvcTest` 가 Filter 빈을 같이 올린다). 필터는 `CsrfTokenFilterTest` 가 직접 본다
 - **시도 제한(`LoginAttemptLimiter`)은 인메모리**다. 재시작하면 잊고, 맵이 10만 개를 넘으면 잠기지 않은 키 중 가장 오래 쉰 것부터 버린다.
@@ -412,7 +413,7 @@
 테스트 쪽에서 DB 주소 한 줄만 빠져도 테스트(create-drop)가 운영 DB 에 붙는다.
 대가로 세션·쿠키·페이지 상한처럼 양쪽이 같아야 하는 키는 두 번 적고 **`ConfigParityTest` 가 같은지 본다.**
 
-테스트 종류 (`./gradlew test`, 447개):
+테스트 종류 (`./gradlew test`, 449개):
 
 - Mockito 단위 테스트 · `@WebMvcTest`(서비스는 `@MockitoBean`) · `@DataJpaTest`(`@Import(JpaAuditingConfig.class)`)
 - **`@SpringBootTest` 열하나** — Mockito 는 스프링 프록시를 안 거치므로 `@Transactional` 이 적용되지 않고, `@WebMvcTest` 는
@@ -482,8 +483,8 @@
 - `index.html` 의 테마 스크립트와 `ThemeContext.ts` 가 `'odolog-theme'` 를, `index.css`·`index.html`·`ThemeProvider.tsx` 가
   다크 배경색을 중복으로 가진다. **한쪽만 고치면 안 된다**(docs/DESIGN.md)
 
-테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 117개(파일 17개) — 순수 함수, 사전 누락,
-의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`.
+테스트: **대상 파일 옆에 둔다**(`format.ts` 옆 `format.test.ts`). `npm run test` 122개(파일 18개) — 순수 함수, 사전 누락,
+의존 방향, `cn` 토큰 인식, 그리고 `renderWithProviders` 로 그려 보는 `MaintenanceSection`·`MaintenanceForm`·`FuelForm`·`DateInput`(드럼 휠).
 실제 브라우저 E2E 는 `frontend/e2e`(`npm run e2e`, 19개, Playwright) — 이미 떠 있는 서버를 재사용하지 않는다(평소 서버가 운영 DB 라서).
 콘솔 오류가 하나라도 나면 실패한다.
 

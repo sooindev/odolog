@@ -11,7 +11,7 @@ import { ErrorText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { todayString } from '@/shared/lib/format'
-import { MAX_MEMO_LENGTH, MAX_ODOMETER } from '@/shared/lib/limits'
+import { MAX_LITERS, MAX_MEMO_LENGTH, MAX_ODOMETER } from '@/shared/lib/limits'
 import { fromMinor, inputStep, maxMajor, toMinor } from '@/shared/lib/money'
 import { looksBigJump, looksPast } from '@/shared/lib/odometer'
 import { fromKm, fromLiters, toKm, toLiters } from '@/shared/lib/units'
@@ -38,8 +38,8 @@ export function FuelForm({
 }) {
   const { t, f, unitSystem, timeZone, currency: userCurrency } = useI18n()
 
-  // 폼을 연 시점의 차량 주행거리 고정(km). 입력칸과 판정 기준의 어긋남 방지
-  const [baseOdometer] = useState(defaultOdometer)
+  // 판정 기준(km). 열어 둔 사이 차량 값이 바뀌면 아래에서 칸과 함께 따라감
+  const [baseOdometer, setBaseOdometer] = useState(defaultOdometer)
   // 갤런은 소수 셋째 자리까지(미국 주유기·영수증 표기). 리터는 저장 정밀도와 같은 둘째 자리
   const volumeDecimals = f.volumeUnit === 'gal' ? 3 : 2
   const volumeScale = 10 ** volumeDecimals
@@ -48,8 +48,8 @@ export function FuelForm({
   const currency = record != null && record.totalCost !== null ? record.currency : userCurrency
 
   // 입력칸은 화면 단위(마일·갤런·달러). 처음 값 문자열을 기억해 손대지 않은 칸은 저장값 그대로
-  const [initialOdometerKm] = useState(record?.odometer ?? defaultOdometer)
-  const [initial] = useState(() => ({
+  const [initialOdometerKm, setInitialOdometerKm] = useState(record?.odometer ?? defaultOdometer)
+  const [initial, setInitial] = useState(() => ({
     odometer: String(Math.round(fromKm(unitSystem, initialOdometerKm))),
     volume: record?.liters == null ? '' : String(Math.round(fromLiters(unitSystem, record.liters) * volumeScale) / volumeScale),
     cost: record?.totalCost == null ? '' : String(fromMinor(record.totalCost, currency)),
@@ -64,6 +64,17 @@ export function FuelForm({
   const [fullTank, setFullTank] = useState(record?.fullTank ?? true)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+
+  // 다른 카드가 차량 주행거리를 바꾸면 판정 기준을 새 값으로. 등록의 손대지 않은 칸도 같이 바꿔 보이는 값 = 보내는 값
+  if (defaultOdometer !== baseOdometer) {
+    setBaseOdometer(defaultOdometer)
+    if (record === null) {
+      const next = String(Math.round(fromKm(unitSystem, defaultOdometer)))
+      setInitialOdometerKm(defaultOdometer)
+      setInitial({ ...initial, odometer: next })
+      if (odometer === initial.odometer) setOdometer(next)
+    }
+  }
 
   // 저장 단위(km·L·최소 단위)로 바꾼 값. 빈 칸은 null(Number('') 는 0)
   const odometerKm = odometer === initial.odometer ? initialOdometerKm : toKm(unitSystem, Number(odometer))
@@ -204,7 +215,7 @@ export function FuelForm({
             type="number"
             // 0.003gal 이 0.01L 로 반올림되는 가장 작은 갤런
             min={volumeDecimals === 3 ? 0.003 : 0.01}
-            max={Math.floor(fromLiters(unitSystem, 9999.99) * volumeScale) / volumeScale}
+            max={Math.floor(fromLiters(unitSystem, MAX_LITERS) * volumeScale) / volumeScale}
             step={1 / volumeScale}
             className="tabular-nums"
             placeholder={f.volumeUnit === 'gal' ? '9.87' : '32.45'}

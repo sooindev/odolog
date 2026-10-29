@@ -38,6 +38,8 @@ export function ResetPasswordPage() {
   const [pending, setPending] = useState(false)
   // 만료·사용된 링크. 폼을 다시 내도 소용없어 다시 받기로 안내
   const [linkError, setLinkError] = useState<string | null>(null)
+  // 재설정은 끝났는데 이 브라우저의 로그인을 끝내지 못함
+  const [loggedInElsewhere, setLoggedInElsewhere] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -57,8 +59,9 @@ export function ResetPasswordPage() {
       // 화면만 비우면 새로고침 시 그 세션으로 다시 로그인된 채 14일 유지
       // 그 로그아웃이 실패해도 재설정은 끝났으므로 로그인 화면으로
       // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
+      // 로그아웃이 실패하면 이 브라우저는 다른 계정으로 로그인된 채라 로그인 화면이 그 계정으로 돌려보냄. 여기서 알림
       const leave = () => navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
-      await logout(leave).catch(leave)
+      await logout(leave).catch(() => setLoggedInElsewhere(true))
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'RESET_LINK_INVALID') {
         setLinkError(errorMessage(caught, t, t.resetPassword.invalidLink))
@@ -68,6 +71,19 @@ export function ResetPasswordPage() {
     } finally {
       setPending(false)
     }
+  }
+
+  if (loggedInElsewhere) {
+    return (
+      <Page title={t.resetPassword.title}>
+        <Card>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-body">{t.login.notices.passwordReset}</p>
+            <ErrorText message={t.resetPassword.logoutFailed} />
+          </CardContent>
+        </Card>
+      </Page>
+    )
   }
 
   // 토큰 없이 직접 들어왔거나, 보낸 뒤 만료·사용된 링크로 판명

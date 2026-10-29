@@ -14,6 +14,19 @@ const MINOR_UNITS: Record<string, number> = {
   CLF: 4, UYW: 4,
 }
 
+/**
+ * 화폐가 아닌 ISO 4217 코드(금·은·시험용·특별인출권 등). 서버 CurrencyCode 가 소수 자리 없는 코드로 거절하는 목록
+ * 브라우저 목록(Intl.supportedValuesOf)에 XDR·XSU 가 섞여 나와 고르면 400
+ */
+const NOT_MONEY = new Set([
+  'XAG', 'XAU', 'XBA', 'XBB', 'XBC', 'XBD', 'XDR', 'XFO', 'XFU', 'XPD', 'XPT', 'XSU', 'XTS', 'XUA', 'XXX',
+])
+
+/** 통화로 고를 수 있는 코드인지 */
+export function isMoney(currency: string) {
+  return !NOT_MONEY.has(currency)
+}
+
 /** 소수 자리. KRW 0, USD 2. 표에 없는 코드는 2(ISO 4217 의 대부분) */
 export function fractionDigits(currency: string) {
   return MINOR_UNITS[currency] ?? 2

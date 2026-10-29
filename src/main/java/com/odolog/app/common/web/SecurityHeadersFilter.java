@@ -4,13 +4,19 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/** 모든 응답의 보안 헤더. 스프링 시큐리티 미사용이라 직접 추가 */
+/**
+ * 모든 응답의 보안 헤더. 스프링 시큐리티 미사용이라 직접 추가
+ * CORS 바로 뒤. 크기 상한 413·CSRF 403 처럼 앞에서 끝나는 응답에도 붙게
+ */
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class SecurityHeadersFilter extends OncePerRequestFilter {
 
     @Override

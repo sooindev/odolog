@@ -10,8 +10,12 @@ public final class CurrencyCode {
     /** 통화 칸이 생기기 전의 기록·백업 파일. 그때까지 전부 원화 */
     public static final String LEGACY = "KRW";
 
-    /** 한 번만 읽음. 가져오기에서 기록마다 300여 개를 훑지 않게 */
+    /**
+     * 한 번만 읽음. 가져오기에서 기록마다 300여 개를 훑지 않게
+     * 소수 자리가 없는 코드(금 XAU·시험용 XXX·특별인출권 XDR 등)는 화폐가 아니라 뺌. 최소 단위로 저장할 수 없음
+     */
     private static final Set<String> KNOWN = Currency.getAvailableCurrencies().stream()
+            .filter(currency -> currency.getDefaultFractionDigits() >= 0)
             .map(Currency::getCurrencyCode)
             .collect(Collectors.toUnmodifiableSet());
 
