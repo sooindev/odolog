@@ -179,7 +179,7 @@ class PasswordResetServiceTest {
     }
 
     @Test
-    @DisplayName("만료된 토큰이면 거절한다")
+    @DisplayName("주인을 찾은 뒤 잠그는 사이 만료됐으면 거절한다")
     void rejectsExpiredToken() {
         String raw = "raw-token-value";
         PasswordResetToken token = new PasswordResetToken(user, hashOf(raw), NOW.minusMinutes(1));
@@ -192,7 +192,7 @@ class PasswordResetServiceTest {
     }
 
     @Test
-    @DisplayName("이미 쓴 토큰이면 거절한다")
+    @DisplayName("주인을 찾은 뒤 잠그는 사이 다른 요청이 썼으면 거절한다")
     void rejectsUsedToken() {
         String raw = "raw-token-value";
         PasswordResetToken token = new PasswordResetToken(user, hashOf(raw), NOW.plusMinutes(10));
@@ -206,7 +206,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("없는 토큰이면 거절한다")
     void rejectsUnknownToken() {
-        when(tokenRepository.findUserIdByTokenHash(anyString())).thenReturn(Optional.empty());
+        when(tokenRepository.findUsableOwnerId(anyString(), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.confirm(new PasswordResetConfirmRequest("아무값", "new-password-1234")))
                 .isInstanceOf(AuthenticationFailedException.class);
@@ -238,7 +238,7 @@ class PasswordResetServiceTest {
 
     /** 주인 조회 → 사용자 잠금 → 토큰 잠금 */
     private void stubConfirm(String raw, PasswordResetToken token) {
-        when(tokenRepository.findUserIdByTokenHash(hashOf(raw))).thenReturn(Optional.of(1L));
+        when(tokenRepository.findUsableOwnerId(hashOf(raw), NOW)).thenReturn(Optional.of(1L));
         when(userRepository.findLockedById(1L)).thenReturn(Optional.of(user));
         when(tokenRepository.findByTokenHash(hashOf(raw))).thenReturn(Optional.of(token));
     }

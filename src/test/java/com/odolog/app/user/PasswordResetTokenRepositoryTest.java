@@ -85,6 +85,25 @@ class PasswordResetTokenRepositoryTest {
     }
 
     @Test
+    @DisplayName("쓸 수 있는 토큰만 주인을 돌려준다 — 쓴 토큰·만료 토큰은 BCrypt 전에 걸러지게")
+    void findsOwnerOfUsableTokenOnly() {
+        LocalDateTime now = LocalDateTime.of(2026, 9, 21, 12, 0);
+        passwordResetTokenRepository.save(new PasswordResetToken(user, "fresh", now.plusMinutes(10)));
+        passwordResetTokenRepository.save(new PasswordResetToken(user, "expired", now));
+        PasswordResetToken used = new PasswordResetToken(user, "used", now.plusMinutes(10));
+        used.markUsed(now.minusMinutes(1));
+        passwordResetTokenRepository.save(used);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(passwordResetTokenRepository.findUsableOwnerId("fresh", now)).contains(user.getId());
+        // 만료 시각과 같으면 이미 만료(엔티티 isUsable 과 같은 경계)
+        assertThat(passwordResetTokenRepository.findUsableOwnerId("expired", now)).isEmpty();
+        assertThat(passwordResetTokenRepository.findUsableOwnerId("used", now)).isEmpty();
+        assertThat(passwordResetTokenRepository.findUsableOwnerId("unknown", now)).isEmpty();
+    }
+
+    @Test
     @DisplayName("만료·사용 여부는 엔티티가 판단한다")
     void decidesUsability() {
         LocalDateTime now = LocalDateTime.of(2026, 9, 21, 12, 0);

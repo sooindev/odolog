@@ -193,7 +193,9 @@ public class PasswordResetService {
         String tokenHash = hash(request.token());
 
         // 주인 확인은 잠금 없이 따로. 잠그는 트랜잭션의 첫 조회가 사용자 행 잠금이 되게
-        Long userId = tokenRepository.findUserIdByTokenHash(tokenHash).orElseThrow(PasswordResetService::invalidLink);
+        // 쓸 수 없는 토큰은 BCrypt 전에 거절
+        Long userId = tokenRepository.findUsableOwnerId(tokenHash, LocalDateTime.now(clock))
+                .orElseThrow(PasswordResetService::invalidLink);
 
         // 새 해시는 잠그기 전에. BCrypt 동안 사용자 행 잠금을 쥐지 않게
         String newHash = passwordEncoder.encode(request.newPassword());

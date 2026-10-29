@@ -17,9 +17,13 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<PasswordResetToken> findByTokenHash(String tokenHash);
 
-    /** 토큰의 주인. 잠금 없이. 재설정 확정이 사용자 행을 먼저 잠그려고 씀 */
-    @Query("select t.user.id from PasswordResetToken t where t.tokenHash = :tokenHash")
-    Optional<Long> findUserIdByTokenHash(@Param("tokenHash") String tokenHash);
+    /**
+     * 아직 쓸 수 있는 토큰의 주인. 잠금 없이. 재설정 확정이 사용자 행을 먼저 잠그려고 씀
+     * 쓴 토큰·만료 토큰은 여기서 거름. 거르지 않으면 쓴 토큰 하나로 BCrypt 를 횟수 제한 없이 돌림
+     */
+    @Query("select t.user.id from PasswordResetToken t"
+            + " where t.tokenHash = :tokenHash and t.usedAt is null and t.expiresAt > :now")
+    Optional<Long> findUsableOwnerId(@Param("tokenHash") String tokenHash, @Param("now") LocalDateTime now);
 
     /**
      * 재발급·탈퇴 시 기존 토큰 삭제

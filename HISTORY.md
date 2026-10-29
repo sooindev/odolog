@@ -20,6 +20,14 @@
 
 ---
 
+- [x] 재설정 확정이 쓴 토큰·만료 토큰을 BCrypt 전에 거절 (2026-10-29, 전체 점검 2번)
+      → 증상: 주인 조회(`findUserIdByTokenHash`)가 토큰이 표에 있는지만 봐서, 이미 쓴 토큰으로 `PATCH /api/users/password-reset` 을
+        보내면 매번 BCrypt(수십 ms)를 돈 뒤 401 이었다. 이 경로엔 리미터가 없어 쓴 링크 하나로 CPU 를 끝없이 묶을 수 있었다
+      → 고침: 주인 조회를 `findUsableOwnerId(hash, now)` 로 — `usedAt is null and expiresAt > now` 까지 쿼리에서 거른다.
+        잠근 뒤의 `isUsable` 재확인은 그대로(조회와 잠금 사이에 쓰이거나 만료되는 경우). IP 리미터를 다는 안은 버렸다 —
+        키 접두사가 하나 늘고, 맞는 링크를 가진 사람까지 한도에 걸린다. 진짜 토큰은 32바이트 무작위라 추측으로 BCrypt 까지 닿지 못한다
+      → 테스트: `PasswordResetTokenRepositoryTest.findsOwnerOfUsableTokenOnly` — 조건을 빼면 실패하는 것을 확인
+
 - [x] 로그인 시도 제한의 짝 키 구분자를 `|` 에서 공백으로 (2026-10-28, 전체 점검 1번)
       → 증상: 로그인 이메일 칸은 출력 가능한 ASCII 라 `|` 가 들어온다. 이메일에 `victim@x.com|1.2.3.4` 를 보내면 계정 키
         `login:victim@x.com|1.2.3.4` 가 피해자의 짝 키와 같은 글자가 되어, 공격자가 자기 IP 에서 열 번 보내면 피해자는 그 IP 에서
