@@ -8,12 +8,12 @@ import { Card, CardContent } from '@/shared/ui/base/card'
 import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
-import { ErrorText, NoticeText } from '@/shared/ui/state'
+import { ErrorText, LoadingText, NoticeText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 
 export function LoginPage() {
-  const { user, login, acknowledgeSessionEnded } = useAuth()
+  const { user, loading, login, acknowledgeSessionEnded } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
@@ -52,6 +52,11 @@ export function LoginPage() {
       })
     }
   }, [state, location.pathname, navigate, acknowledgeSessionEnded])
+
+  // 세션 복구 전 판단 금지. 폼이 잠깐 보이고 비밀번호 관리자가 채움
+  if (loading) {
+    return <LoadingText className="justify-center py-24" />
+  }
 
   if (user !== null) {
     return <Navigate to={from} replace />

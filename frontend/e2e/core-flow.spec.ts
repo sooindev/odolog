@@ -178,6 +178,17 @@ test('새로고침해도 로그인이 유지된다 — 세션은 DB 에 있다',
   expect(cookies.map((cookie) => cookie.name)).toContain('JSESSIONID')
 })
 
+test('로그인한 채 가입·로그인 주소를 열면 폼 대신 목록으로 — 가입하면 말없이 계정이 바뀌어서', async ({ page }) => {
+  await signUp(page, uniqueEmail('guest-only'))
+
+  // 주소창 입력처럼 새로 읽기. 세션 복구 중에도 폼이 보이지 않아야 함
+  for (const path of ['/signup', '/login']) {
+    await page.goto(path)
+    await expect(page).toHaveURL(/\/vehicles$/)
+    await expect(page.locator('#password')).toHaveCount(0)
+  }
+})
+
 test('현재 비밀번호를 틀려도 로그아웃되지 않는다', async ({ page }) => {
   await signUp(page, uniqueEmail('password'))
   await page.goto('/me')

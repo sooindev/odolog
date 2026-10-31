@@ -20,7 +20,7 @@ export function ResetPasswordPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   // 주소의 토큰은 읽자마자 history.state 로 옮김. 주소창에 남지 않고 새로고침에는 남게
   const [token] = useState(
     () => params.get('token') ?? (location.state as { token?: string } | null)?.token ?? null,
@@ -61,7 +61,8 @@ export function ResetPasswordPage() {
       // 자동 로그인 없이 로그인 화면으로. 안내는 state 로 전달(새로고침 시 사라짐)
       // 로그아웃이 실패하면 이 브라우저는 다른 계정으로 로그인된 채라 로그인 화면이 그 계정으로 돌려보냄. 여기서 알림
       const leave = () => navigate('/login', { replace: true, state: { notice: 'passwordReset' } })
-      await logout(leave).catch(() => setLoggedInElsewhere(true))
+      // 로그인하지 않은 브라우저면 남은 세션이 없어 "다른 계정으로 로그인" 안내는 거짓. 그대로 로그인 화면으로
+      await logout(leave).catch(() => (user === null ? leave() : setLoggedInElsewhere(true)))
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'RESET_LINK_INVALID') {
         setLinkError(errorMessage(caught, t, t.resetPassword.invalidLink))

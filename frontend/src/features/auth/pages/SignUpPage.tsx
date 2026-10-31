@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { Button } from '@/shared/ui/base/button'
@@ -8,14 +8,14 @@ import { Card, CardContent } from '@/shared/ui/base/card'
 import { Field } from '@/shared/ui/form/field'
 import { Input } from '@/shared/ui/base/input'
 import { FormActions, Page } from '@/shared/ui/layout/page'
-import { ErrorText } from '@/shared/ui/state'
+import { ErrorText, LoadingText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { MAX_EMAIL_LENGTH, MAX_NICKNAME_LENGTH, MAX_PASSWORD_BYTES, passwordHint } from '@/shared/lib/limits'
 import { signUp } from '@/features/auth/api/endpoints'
 
 export function SignUpPage() {
-  const { login } = useAuth()
+  const { user, loading, login } = useAuth()
   // 로그인 전 화면이 쓰던 설정 그대로. 추정 못 한 값의 대비책까지 같아야 가입 뒤 단위·통화가 안 바뀜
   const { t, language, timeZone, currency, unitSystem } = useI18n()
   const navigate = useNavigate()
@@ -25,6 +25,16 @@ export function SignUpPage() {
   const [nickname, setNickname] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+
+  // 세션 복구 전 판단 금지. 폼이 잠깐 보였다 사라지지 않게
+  if (loading) {
+    return <LoadingText className="justify-center py-24" />
+  }
+
+  // 이미 로그인했으면 가입 폼 대신 목록으로. 가입하면 말없이 새 계정으로 바뀜
+  if (user !== null) {
+    return <Navigate to="/vehicles" replace />
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
