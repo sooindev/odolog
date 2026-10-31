@@ -3,6 +3,7 @@ package com.odolog.app.user;
 import com.odolog.app.common.auth.ClientIp;
 import com.odolog.app.common.auth.LoginAttemptLimiter;
 import com.odolog.app.common.exception.ErrorCode;
+import com.odolog.app.common.exception.type.TooManyRequestsException;
 import com.odolog.app.user.dto.request.PasswordResetConfirmRequest;
 import com.odolog.app.user.dto.request.PasswordResetRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,9 +35,15 @@ public class PasswordResetController {
     @PostMapping
     public ResponseEntity<Void> request(@Valid @RequestBody PasswordResetRequest request,
                                         HttpServletRequest httpRequest) {
-        attemptLimiter.acquire(IP_KEY_PREFIX + ClientIp.of(httpRequest), ErrorCode.TOO_MANY_RESET_REQUESTS,
-                "비밀번호 재설정 요청이 너무 많습니다.");
-        passwordResetService.request(request.email(), ClientIp.of(httpRequest));
+        String ipKey = IP_KEY_PREFIX + ClientIp.of(httpRequest);
+        attemptLimiter.acquire(ipKey, ErrorCode.TOO_MANY_RESET_REQUESTS, "비밀번호 재설정 요청이 너무 많습니다.");
+        try {
+            passwordResetService.request(request.email(), ClientIp.of(httpRequest));
+        } catch (TooManyRequestsException e) {
+            // 주소 쪽 잠금으로 거절된 시도는 IP 집계에서 되돌림. 남이 잠근 동안 다시 누른 횟수로 자기 IP 까지 잠기지 않게
+            attemptLimiter.refund(ipKey);
+            throw e;
+        }
 
         return ResponseEntity.noContent().build();
     }

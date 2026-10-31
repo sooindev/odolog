@@ -71,7 +71,7 @@ class PasswordResetControllerTest {
     }
 
     @Test
-    @DisplayName("같은 주소로 너무 자주 요청하면 429")
+    @DisplayName("같은 주소로 너무 자주 요청하면 429 — 주소 쪽 잠금으로 거절된 시도는 IP 집계에서 되돌린다")
     void requestIsRateLimited() throws Exception {
         // 메일 폭주 방지. 로그인 리미터 공용
         doThrow(new TooManyRequestsException(ErrorCode.TOO_MANY_RESET_REQUESTS, "로그인 시도가 너무 많습니다. 10분 후 다시 시도해 주세요.", 10))
@@ -79,6 +79,9 @@ class PasswordResetControllerTest {
 
         request(new PasswordResetRequest("me@odolog.com"), false)
                 .andExpect(status().isTooManyRequests());
+
+        // 남이 그 주소를 잠근 동안 다시 누른 횟수로 자기 IP 까지 잠기지 않게
+        verify(attemptLimiter).refund("password-reset-ip:127.0.0.1");
     }
 
     @Test

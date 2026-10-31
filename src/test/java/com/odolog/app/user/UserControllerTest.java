@@ -173,6 +173,20 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("계정 쪽 잠금으로 거절된 로그인은 IP 집계에서 되돌린다 — 비밀번호를 맞춰 보지도 않은 시도")
+    void loginRefundsIpWhenAccountLocked() throws Exception {
+        when(userService.login(any(), any()))
+                .thenThrow(new TooManyRequestsException(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS, "로그인 시도가 너무 많습니다. 10분 후 다시 시도해 주세요.", 10));
+
+        mockMvc.perform(post("/api/users/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("test@odolog.com", "password1234"))))
+                .andExpect(status().isTooManyRequests());
+
+        verify(attemptLimiter).refund("login-ip:127.0.0.1");
+    }
+
+    @Test
     @DisplayName("로그인은 IP 단위로도 센다")
     void loginCountsPerIp() throws Exception {
         when(userService.login(any(), any()))
