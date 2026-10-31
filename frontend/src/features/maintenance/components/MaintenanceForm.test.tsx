@@ -77,6 +77,14 @@ describe('MaintenanceForm 등록', () => {
     expect(screen.getByLabelText(/주행거리/)).toHaveProperty('value', '45200')
     expect(screen.getByText(/보다 작습니다/)).toBeTruthy()
   })
+
+  it('주행거리가 크게 뛰면 저장 전에 칸 아래에서 자릿수를 확인하라고 알린다 — 주유 폼과 같게', () => {
+    renderWithProviders(<OdometerChangesWhileOpen onSaved={() => {}} />)
+
+    fireEvent.change(screen.getByLabelText(/주행거리/), { target: { value: '450000' } })
+
+    expect(screen.getByText(/크게 뜁니다/)).toBeTruthy()
+  })
 })
 
 describe('MaintenanceForm 수정', () => {

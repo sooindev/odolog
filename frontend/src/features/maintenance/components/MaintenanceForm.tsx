@@ -203,7 +203,9 @@ export function MaintenanceForm({ vehicleId, record, defaultOdometer, onSaved, o
                 : t.maintenance.form.odometerEmpty
               : past
                 ? t.odometerHints.past(f.distance(baseOdometer))
-                : undefined
+                : bigJump
+                  ? t.odometerHints.bigJump(f.distance(baseOdometer))
+                  : undefined
           }
         >
           <Input
