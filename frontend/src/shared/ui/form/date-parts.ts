@@ -1,6 +1,6 @@
 // 날짜 문자열 ↔ 년·월·일. 드럼 휠용
 // .ts 분리: 핫 리로드 유지
-// timeZone 을 주면 그 지역의 오늘 기준(서버 미래 판정과 같은 선). 없으면 브라우저 지역
+// 절단 기준은 max(고를 수 있는 마지막 날). 없으면 브라우저 지역의 오늘
 
 import { todayString } from '@/shared/lib/format'
 
@@ -23,28 +23,33 @@ export function parse(value: string, timeZone?: string) {
   return { year, month, day }
 }
 
-/** 그 해·그 달의 선택 가능한 마지막 날. 이번 달이면 오늘 */
-export function lastSelectableDay(year: number, month: number, timeZone?: string) {
-  const today = todayParts(timeZone)
-  const end = daysInMonth(year, month)
-
-  return year === today.year && month === today.month ? Math.min(end, today.day) : end
+/** 고를 수 있는 마지막 날('YYYY-MM-DD'). 없으면 브라우저 지역의 오늘 */
+function lastParts(max?: string) {
+  return max === undefined ? todayParts() : parse(max)
 }
 
-/** 그 해의 선택 가능한 마지막 달. 올해면 이번 달 */
-export function lastSelectableMonth(year: number, timeZone?: string) {
-  const today = todayParts(timeZone)
+/** 그 해·그 달의 선택 가능한 마지막 날. 마지막 날의 달이면 그날 */
+export function lastSelectableDay(year: number, month: number, max?: string) {
+  const last = lastParts(max)
+  const end = daysInMonth(year, month)
 
-  return year === today.year ? today.month : 12
+  return year === last.year && month === last.month ? Math.min(end, last.day) : end
+}
+
+/** 그 해의 선택 가능한 마지막 달. 마지막 날의 해면 그달 */
+export function lastSelectableMonth(year: number, max?: string) {
+  const last = lastParts(max)
+
+  return year === last.year ? last.month : 12
 }
 
 /**
  * 'YYYY-MM-DD' 조립. 선택 불가 값은 년 → 월 → 일 순서로 절단
  * 네이티브 max 와 같은 선. 기기별 차이 방지
  */
-export function join(year: number, month: number, day: number, timeZone?: string) {
-  const clampedMonth = Math.min(month, lastSelectableMonth(year, timeZone))
-  const clampedDay = Math.min(day, lastSelectableDay(year, clampedMonth, timeZone))
+export function join(year: number, month: number, day: number, max?: string) {
+  const clampedMonth = Math.min(month, lastSelectableMonth(year, max))
+  const clampedDay = Math.min(day, lastSelectableDay(year, clampedMonth, max))
 
   return `${year}-${String(clampedMonth).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`
 }

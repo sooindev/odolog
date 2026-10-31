@@ -11,7 +11,6 @@ import {
   lastSelectableMonth,
   parse,
   partOrder,
-  todayParts,
 } from '@/shared/ui/form/date-parts'
 import type { DatePart } from '@/shared/ui/form/date-parts'
 import { MIN_RECORD_DATE } from '@/shared/lib/limits'
@@ -31,12 +30,15 @@ const YEARS_BACK = 20
 function DateWheel({
   id,
   value,
+  max,
   onChange,
   ariaLabel,
   hintId,
 }: {
   id: string
   value: string
+  /** 고를 수 있는 마지막 날. 데스크톱의 max 와 같은 값 */
+  max: string
   onChange: (value: string) => void
   ariaLabel?: string
   hintId?: string
@@ -44,34 +46,33 @@ function DateWheel({
   const { t, f, locale, timeZone } = useI18n()
   const [open, setOpen] = useState(false)
   const wheelRef = useRef<HTMLDivElement>(null)
-  // 오늘·절단 기준은 계정 시간대. 서버의 미래 판정과 같은 선
-  const thisYear = todayParts(timeZone).year
-  // 빈 값은 오늘, 선택 범위 밖(시간대를 바꾼 뒤의 '내일')은 오늘 이하로 절단한 값을 보여 줌
+  const lastYear = parse(max).year
+  // 빈 값은 오늘, 선택 범위 밖은 max 이하로 절단한 값을 보여 줌
   const parsed = parse(value, timeZone)
-  const shown = join(Math.min(parsed.year, thisYear), parsed.month, parsed.day, timeZone)
+  const shown = join(Math.min(parsed.year, lastYear), parsed.month, parsed.day, max)
   const { year, month, day } = parse(shown, timeZone)
 
-  // 칸 목록도 오늘까지만. 데스크톱의 max 와 같은 선
+  // 칸 목록도 max 까지만
   // 기본 20년치, 현재 값이 더 오래됐으면 그 해까지 확장
-  const firstYear = Math.min(thisYear - YEARS_BACK, year)
+  const firstYear = Math.min(lastYear - YEARS_BACK, year)
   const columns: Record<DatePart, { label: string; values: number[]; value: number; pick: (next: number) => string }> = {
     year: {
       label: t.dateWheel.year,
-      values: Array.from({ length: thisYear - firstYear + 1 }, (_, i) => firstYear + i),
+      values: Array.from({ length: lastYear - firstYear + 1 }, (_, i) => firstYear + i),
       value: year,
-      pick: (next) => join(next, month, day, timeZone),
+      pick: (next) => join(next, month, day, max),
     },
     month: {
       label: t.dateWheel.month,
-      values: Array.from({ length: lastSelectableMonth(year, timeZone) }, (_, i) => i + 1),
+      values: Array.from({ length: lastSelectableMonth(year, max) }, (_, i) => i + 1),
       value: month,
-      pick: (next) => join(year, next, day, timeZone),
+      pick: (next) => join(year, next, day, max),
     },
     day: {
       label: t.dateWheel.day,
-      values: Array.from({ length: lastSelectableDay(year, month, timeZone) }, (_, i) => i + 1),
+      values: Array.from({ length: lastSelectableDay(year, month, max) }, (_, i) => i + 1),
       value: day,
-      pick: (next) => join(year, month, next, timeZone),
+      pick: (next) => join(year, month, next, max),
     },
   }
 
@@ -270,6 +271,11 @@ export function DateInput({
   const hintId = useHintId(id)
   // 초기값은 useState 초기화 함수에서. 첫 프레임 컴포넌트 교체 방지
   const [coarse, setCoarse] = useState(() => window.matchMedia('(pointer: coarse)').matches)
+  // 상한은 계정 시간대의 오늘(서버 미래 판정과 같은 선). 단 처음 받은 날짜가 더 늦으면 그날까지
+  // 시간대를 서쪽으로 바꾸면 저장된 오늘이 '내일'이 되어, 날짜를 안 고친 수정까지 막힘
+  const [initialValue] = useState(value)
+  const today = todayString(timeZone)
+  const max = initialValue > today ? initialValue : today
 
   useEffect(() => {
     // 포인터 종류 변경 추적
@@ -288,9 +294,9 @@ export function DateInput({
         required={required}
         aria-label={ariaLabel}
         aria-describedby={hintId}
-        // 오늘까지만(계정 시간대). 휠·서버와 같은 선. 아래는 서버 하한(1900년)
+        // 아래는 서버 하한(1900년)
         min={MIN_RECORD_DATE}
-        max={todayString(timeZone)}
+        max={max}
         className={controlClassName}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -298,5 +304,5 @@ export function DateInput({
     )
   }
 
-  return <DateWheel id={id} value={value} onChange={onChange} ariaLabel={ariaLabel} hintId={hintId} />
+  return <DateWheel id={id} value={value} max={max} onChange={onChange} ariaLabel={ariaLabel} hintId={hintId} />
 }

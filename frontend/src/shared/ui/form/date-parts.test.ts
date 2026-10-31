@@ -82,6 +82,14 @@ describe('오늘 이후는 고를 수 없다 — 휠이 칸을 직접 만들기 
     expect(join(2026, 8, 31)).toBe('2026-08-31')
     expect(join(2025, 12, 31)).toBe('2025-12-31')
   })
+
+  it('max 를 주면 오늘이 아니라 그날까지 — 시간대를 바꾼 뒤 저장된 날짜가 내일인 기록', () => {
+    expect(lastSelectableDay(2026, 9, '2026-09-24')).toBe(24)
+    expect(join(2026, 9, 24, '2026-09-24')).toBe('2026-09-24')
+    // 해를 넘긴 경우
+    expect(lastSelectableMonth(2027, '2027-01-01')).toBe(1)
+    expect(join(2027, 1, 1, '2027-01-01')).toBe('2027-01-01')
+  })
 })
 
 describe('parse — 빈 값·깨진 값', () => {

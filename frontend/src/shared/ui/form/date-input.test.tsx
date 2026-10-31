@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DateInput } from '@/shared/ui/form/date-input'
 import { renderWithProviders } from '@/shared/lib/renderWithProviders'
+import { todayString } from '@/shared/lib/format'
 
 describe('DateInput 드럼 휠', () => {
   afterEach(cleanup)
@@ -36,5 +37,30 @@ describe('DateInput 드럼 휠', () => {
       const active = document.getElementById(listbox.getAttribute('aria-activedescendant') ?? '')
       expect(active?.getAttribute('aria-selected')).toBe('true')
     }
+  })
+})
+
+describe('DateInput 데스크톱 칸의 상한', () => {
+  afterEach(cleanup)
+
+  beforeEach(() => {
+    // 마우스 기기 흉내. 네이티브 date 칸이 뜸
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+  })
+
+  it('처음 받은 날짜가 오늘보다 늦으면 그날이 상한 — 안 고친 날짜로 제출이 막히지 않게', () => {
+    const { container } = renderWithProviders(<DateInput id="date" value="2999-01-01" onChange={() => {}} />)
+
+    expect(container.querySelector('input')?.max).toBe('2999-01-01')
+  })
+
+  it('새 기록(빈 값)은 오늘이 상한', () => {
+    const { container } = renderWithProviders(<DateInput id="date" value="" onChange={() => {}} />)
+
+    expect(container.querySelector('input')?.max).toBe(todayString('Asia/Seoul'))
   })
 })
