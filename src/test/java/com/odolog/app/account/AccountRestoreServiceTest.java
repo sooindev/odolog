@@ -501,8 +501,8 @@ class AccountRestoreServiceTest {
     }
 
     @Test
-    @DisplayName("새로 만든 차량은 파일 기록의 가장 큰 주행거리까지 올라간다 — 등록과 같은 규칙")
-    void liftsNewVehicleToRecordOdometer() {
+    @DisplayName("새로 만든 차량은 파일의 차량 주행거리를 그대로 쓴다 — 원래 계정에서 정정해 낮춘 값이 기록 최댓값으로 되살아나지 않게")
+    void newVehicleKeepsFileOdometer() {
         when(userService.findByIdForUpdate(1L)).thenReturn(owner);
         when(vehicleRepository.findLockedByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.empty());
         when(vehicleRepository.save(any(Vehicle.class))).thenAnswer(call -> {
@@ -511,7 +511,7 @@ class AccountRestoreServiceTest {
             return saved;
         });
 
-        // 파일의 차량 주행거리는 30,000, 주유 기록은 30,100km
+        // 파일의 차량 주행거리는 30,000, 주유 기록은 30,100km. 등록은 늘 올려 왔으니 작다면 정정한 값
         accountRestoreService.restore(1L,
                 new AccountRestoreRequest(List.of(vehicleData("12가1212",
                         List.of(oilData(LocalDate.of(2026, 5, 1), 30000)),
@@ -519,7 +519,33 @@ class AccountRestoreServiceTest {
 
         ArgumentCaptor<Vehicle> saved = ArgumentCaptor.forClass(Vehicle.class);
         verify(vehicleRepository).save(saved.capture());
-        assertThat(saved.getValue().getOdometer()).isEqualTo(30100);
+        assertThat(saved.getValue().getOdometer()).isEqualTo(30000);
+    }
+
+    @Test
+    @DisplayName("똑같은 기록 둘 중 하나를 지운 계정에 백업을 넣으면 지운 하나만 돌아온다 — 있던 기록은 개수로 센다")
+    void restoresDeletedTwinRecord() {
+        Vehicle vehicle = existing("12가1212", 10L);
+        when(userService.findByIdForUpdate(1L)).thenReturn(owner);
+        when(vehicleRepository.findLockedByOwnerIdAndPlateNumber(eq(1L), any())).thenReturn(Optional.of(vehicle));
+
+        // 계정에는 하나씩 남음
+        when(maintenanceRecordRepository.findByVehicleIdOrderByServiceDateDescIdDesc(10L))
+                .thenReturn(List.of(new MaintenanceRecord(vehicle, ServiceType.ENGINE_OIL,
+                        null, 80000, "KRW", 30000, LocalDate.of(2026, 5, 1))));
+        when(fuelRecordRepository.findAllByVehicleIdOrderByOdometerAscIdAsc(10L))
+                .thenReturn(List.of(new FuelRecord(vehicle, LocalDate.of(2026, 5, 2), 30100,
+                        new BigDecimal("50.00"), 90000, "KRW", null)));
+
+        // 백업에는 둘씩
+        AccountRestoreResponse result = accountRestoreService.restore(1L, new AccountRestoreRequest(List.of(
+                vehicleData("12가1212",
+                        List.of(oilData(LocalDate.of(2026, 5, 1), 30000), oilData(LocalDate.of(2026, 5, 1), 30000)),
+                        List.of(fuelData(LocalDate.of(2026, 5, 2), 30100), fuelData(LocalDate.of(2026, 5, 2), 30100))))));
+
+        assertThat(result.addedMaintenanceRecords()).isEqualTo(1);
+        assertThat(result.addedFuelRecords()).isEqualTo(1);
+        assertThat(result.skippedRecords()).isEqualTo(2);
     }
 
     @Test
