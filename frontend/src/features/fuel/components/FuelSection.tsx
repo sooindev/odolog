@@ -46,7 +46,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
       return invalidateAfterFuel(queryClient, vehicleId)
     },
   })
-  const { editing, setEditing, deletingId } = list
+  const { editing, setEditing, isDeleting } = list
   const { shown, changePage, error } = useShownPage({
     page,
     setPage: list.changePage,
@@ -220,7 +220,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         size="sm"
                         variant="ghost"
                         onClick={() => list.edit(record)}
-                        disabled={deletingId === record.id}
+                        disabled={isDeleting(record.id)}
                         aria-label={t.common.editOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
                       >
                         {t.common.edit}
@@ -229,11 +229,11 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                         size="sm"
                         variant="ghost"
                         onClick={() => list.handleDelete(record.id)}
-                        disabled={deletingId === record.id}
+                        disabled={isDeleting(record.id)}
                         // 삭제 중에는 보이는 글자 그대로. 이름을 덮어쓰면 삭제 중… 이 안 읽힘
-                        aria-label={deletingId === record.id ? t.common.deleting : t.common.deleteOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
+                        aria-label={isDeleting(record.id) ? t.common.deleting : t.common.deleteOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
                       >
-                        {deletingId === record.id ? t.common.deleting : t.common.delete}
+                        {isDeleting(record.id) ? t.common.deleting : t.common.delete}
                       </Button>
                     </div>
                   </div>

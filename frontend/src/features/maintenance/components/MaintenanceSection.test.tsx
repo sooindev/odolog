@@ -120,6 +120,22 @@ describe('MaintenanceSection', () => {
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('첫 번째 메모')
   })
 
+  it('한 행을 지우는 중에 다른 행을 지워도 앞 행의 삭제 버튼은 잠긴 채다', async () => {
+    vi.stubGlobal('confirm', () => true)
+    // 두 삭제 모두 응답 대기
+    vi.mocked(deleteRecord).mockReturnValue(new Promise(() => {}))
+    renderWithProviders(<Harness />)
+
+    const rows = await screen.findAllByRole('listitem')
+    fireEvent.click(within(rows[0]).getByRole('button', { name: /삭제$/ }))
+    fireEvent.click(within(rows[1]).getByRole('button', { name: /삭제$/ }))
+
+    // 풀리면 같은 DELETE 가 두 번 나가 지운 행에 404 문구
+    for (const row of rows) {
+      await waitFor(() => expect(within(row).getByRole('button', { name: '삭제 중…' })).toHaveProperty('disabled', true))
+    }
+  })
+
   it('수정 중인 행을 지우면 그 폼은 닫힌다', async () => {
     vi.stubGlobal('confirm', () => true)
     vi.mocked(deleteRecord).mockResolvedValue(undefined)

@@ -29,14 +29,19 @@ export function useRecordList<R extends { id: string }>({
   const [editing, setEditing] = useState<Editing<R>>('closed')
   // 조회 실패와 동작 실패 분리
   const [actionError, setActionError] = useState<string | null>(null)
-  // 삭제 중인 행 id
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  // 삭제 중인 행 id 들. 하나만 들면 두 번째 삭제가 첫 행의 잠금을 풂
+  const [deletingIds, setDeletingIds] = useState<ReadonlySet<string>>(new Set())
   // 지운 행 id. 재조회가 실패하면 받아 둔 쪽에 그 행이 남아 있어서
   const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(new Set())
 
   /** 화면에 그릴 행. 지운 행을 뺌 */
   function visible(items: R[]) {
     return removedIds.size === 0 ? items : items.filter((item) => !removedIds.has(item.id))
+  }
+
+  /** 그 행을 지우는 중인지. 버튼 잠금용 */
+  function isDeleting(recordId: string) {
+    return deletingIds.has(recordId)
   }
 
   function close() {
@@ -73,7 +78,7 @@ export function useRecordList<R extends { id: string }>({
       return
     }
 
-    setDeletingId(recordId)
+    setDeletingIds((current) => new Set(current).add(recordId))
 
     try {
       await remove(recordId)
@@ -85,10 +90,14 @@ export function useRecordList<R extends { id: string }>({
     } catch (caught) {
       setActionError(errorMessage(caught, t, failedMessage))
     } finally {
-      // 먼저 끝난 삭제가 다른 행의 잠금을 풀지 않게
-      setDeletingId((current) => (current === recordId ? null : current))
+      // 이 행의 잠금만 풂
+      setDeletingIds((current) => {
+        const next = new Set(current)
+        next.delete(recordId)
+        return next
+      })
     }
   }
 
-  return { editing, setEditing, edit, actionError, deletingId, visible, close, changePage, saved, handleDelete }
+  return { editing, setEditing, edit, actionError, isDeleting, visible, close, changePage, saved, handleDelete }
 }

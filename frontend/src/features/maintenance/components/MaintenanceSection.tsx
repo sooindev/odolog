@@ -63,7 +63,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
       return invalidateAfterMaintenance(queryClient, vehicleId)
     },
   })
-  const { editing, setEditing, deletingId } = list
+  const { editing, setEditing, isDeleting } = list
   const { shown, changePage, error } = useShownPage({
     page,
     setPage: list.changePage,
@@ -210,7 +210,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
                   <Button
                     size="xs"
                     variant="ghost"
-                    disabled={deletingId === record.id}
+                    disabled={isDeleting(record.id)}
                     onClick={() => list.edit(record)}
                     aria-label={t.common.editOf(`${t.serviceTypes[record.type]} ${f.date(record.serviceDate)}`)}
                   >
@@ -219,12 +219,12 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
                   <Button
                     size="xs"
                     variant="ghost"
-                    disabled={deletingId === record.id}
+                    disabled={isDeleting(record.id)}
                     onClick={() => list.handleDelete(record.id)}
                     // 삭제 중에는 보이는 글자 그대로. 이름을 덮어쓰면 삭제 중… 이 안 읽힘
-                    aria-label={deletingId === record.id ? t.common.deleting : t.common.deleteOf(`${t.serviceTypes[record.type]} ${f.date(record.serviceDate)}`)}
+                    aria-label={isDeleting(record.id) ? t.common.deleting : t.common.deleteOf(`${t.serviceTypes[record.type]} ${f.date(record.serviceDate)}`)}
                   >
-                    {deletingId === record.id ? t.common.deleting : t.common.delete}
+                    {isDeleting(record.id) ? t.common.deleting : t.common.delete}
                   </Button>
                 </div>
               </li>
