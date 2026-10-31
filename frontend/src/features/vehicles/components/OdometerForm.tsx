@@ -46,8 +46,6 @@ export function OdometerForm({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setError(null)
-    onConflict(null)
 
     const next = odometer === initial ? vehicle.odometer : toKm(unitSystem, Number(odometer))
 
@@ -71,6 +69,9 @@ export function OdometerForm({
       force = true
     }
 
+    // 지난 문구는 보낼 때만 지움. 확인 창에서 취소하면 아무것도 안 보냈으니 그대로
+    setError(null)
+    onConflict(null)
     setPending(true)
 
     try {
