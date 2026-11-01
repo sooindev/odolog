@@ -21,6 +21,7 @@ export const ko = {
     editOf: (what: string) => `${what} 수정`,
     discardNewRecord: '작성 중인 새 기록은 저장되지 않습니다. 이 기록을 수정할까요?',
     deleteOf: (what: string) => `${what} 삭제`,
+    movedToOtherPage: '고친 기록은 순서가 바뀌어 다른 쪽으로 옮겨졌습니다.',
     register: '등록',
     registering: '등록 중…',
     loading: '불러오는 중…',

@@ -33,10 +33,17 @@ export function useRecordList<R extends { id: string }>({
   const [deletingIds, setDeletingIds] = useState<ReadonlySet<string>>(new Set())
   // 지운 행 id. 재조회가 실패하면 받아 둔 쪽에 그 행이 남아 있어서
   const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(new Set())
+  // 방금 고쳐 저장한 행 id. 정렬 자리가 바뀌어 지금 쪽에서 빠졌는지 보려고
+  const [savedId, setSavedId] = useState<string | null>(null)
 
   /** 화면에 그릴 행. 지운 행을 뺌 */
   function visible(items: R[]) {
     return removedIds.size === 0 ? items : items.filter((item) => !removedIds.has(item.id))
+  }
+
+  /** 고친 행이 다시 읽은 쪽에 없는지. 날짜·주행거리를 바꿔 다른 쪽으로 옮겨진 경우 */
+  function movedAway(items: R[]) {
+    return savedId !== null && !items.some((item) => item.id === savedId)
   }
 
   /** 그 행을 지우는 중인지. 버튼 잠금용 */
@@ -55,6 +62,7 @@ export function useRecordList<R extends { id: string }>({
       return
     }
     setEditing(record)
+    setSavedId(null)
   }
 
   /** 페이지 이동. 수정 중인 행은 화면에서 사라지므로 닫고, 새 기록 폼은 쪽과 무관해 남김 */
@@ -62,6 +70,7 @@ export function useRecordList<R extends { id: string }>({
     setPage(next)
     setEditing((current) => (current === 'new' ? current : 'closed'))
     setActionError(null)
+    setSavedId(null)
   }
 
   /** 저장 뒤. 새 기록은 첫 장 위쪽이라 첫 장으로(지금 장에 머물면 저장 실패로 오해) */
@@ -69,6 +78,7 @@ export function useRecordList<R extends { id: string }>({
     if (created) {
       setPage(0)
     }
+    setSavedId(typeof editing === 'object' ? editing.id : null)
     close()
     return afterChange()
   }
@@ -86,6 +96,7 @@ export function useRecordList<R extends { id: string }>({
       // 지운 행의 수정 폼만 닫음. 작성 중이던 새 기록·다른 행의 폼은 입력 그대로
       setEditing((current) => (typeof current === 'object' && current.id === recordId ? 'closed' : current))
       setActionError(null)
+      setSavedId(null)
       await afterChange()
     } catch (caught) {
       setActionError(errorMessage(caught, t, failedMessage))
@@ -99,5 +110,5 @@ export function useRecordList<R extends { id: string }>({
     }
   }
 
-  return { editing, setEditing, edit, actionError, isDeleting, visible, close, changePage, saved, handleDelete }
+  return { editing, setEditing, edit, actionError, isDeleting, visible, movedAway, close, changePage, saved, handleDelete }
 }

@@ -26,6 +26,7 @@ export const en: Messages = {
     editOf: (what: string) => `Edit ${what}`,
     discardNewRecord: 'The new record you’re writing won’t be saved. Edit this record instead?',
     deleteOf: (what: string) => `Delete ${what}`,
+    movedToOtherPage: 'The record you edited moved to another page because its place in the order changed.',
     register: 'Add',
     registering: 'Adding…',
     loading: 'Loading…',

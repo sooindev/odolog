@@ -6,7 +6,7 @@ import { MaintenanceForm } from '@/features/maintenance/components/MaintenanceFo
 import { Button } from '@/shared/ui/base/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/base/card'
 import { Pagination } from '@/shared/ui/pagination'
-import { ErrorText, Skeleton } from '@/shared/ui/state'
+import { ErrorText, NoticeText, Skeleton } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
 import { usePageInRange } from '@/shared/lib/hooks/usePageInRange'
@@ -148,6 +148,8 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
         {/* 조회 실패와 동작 실패는 다른 사실. 하나만 고르면 삭제를 시도했는지 알 수 없음 */}
         {loadError !== null && <ErrorText message={loadError} />}
         {list.actionError !== null && <ErrorText message={list.actionError} />}
+        {/* 고친 행이 정렬 자리가 바뀌어 지금 쪽에서 빠짐. 안내 없으면 저장 실패나 삭제로 오해 */}
+        {shown !== undefined && list.movedAway(shown.items) && <NoticeText message={t.common.movedToOtherPage} />}
 
         {isPending && shown === undefined ? (
           <div className="flex flex-col gap-5">

@@ -15,7 +15,7 @@ vi.mock('@/features/maintenance/api/endpoints', () => ({
   updateRecord: vi.fn(),
 }))
 
-const { fetchRecords, deleteRecord } = await import('@/features/maintenance/api/endpoints')
+const { fetchRecords, deleteRecord, updateRecord } = await import('@/features/maintenance/api/endpoints')
 
 function record(id: string, description: string, serviceDate: string): MaintenanceRecordResponse {
   return {
@@ -161,6 +161,40 @@ describe('MaintenanceSection', () => {
 
     expect(fetchRecords).toHaveBeenCalledTimes(2)
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('고치던 중')
+  })
+
+  /** 첫 행을 고쳐 저장. 다시 읽은 쪽은 nextItems */
+  async function editFirstRow(nextItems: MaintenanceRecordResponse[]) {
+    vi.mocked(updateRecord).mockResolvedValue(record('recordAAAAAA', '고친 메모', '2026-09-01'))
+    renderWithProviders(<Harness />)
+
+    const rows = await screen.findAllByRole('listitem')
+    fireEvent.click(within(rows[0]).getByRole('button', { name: /수정$/ }))
+    fireEvent.change(screen.getByLabelText(/메모/), { target: { value: '고친 메모' } })
+    vi.mocked(fetchRecords).mockResolvedValue({
+      items: nextItems,
+      page: 0,
+      size: 10,
+      totalElements: 2,
+      totalPages: 1,
+      hasNext: false,
+    })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(fetchRecords).toHaveBeenCalledTimes(2))
+  }
+
+  it('고친 행이 정렬 자리가 바뀌어 지금 쪽에서 빠지면 다른 쪽으로 옮겨졌다고 알린다', async () => {
+    await editFirstRow([record('recordBBBBBB', '두 번째 메모', '2026-08-01'), record('recordCCCCCC', '세 번째 메모', '2026-07-01')])
+
+    // 안내가 없으면 저장이 실패했거나 지워진 줄 앎
+    expect(await screen.findByText('고친 기록은 순서가 바뀌어 다른 쪽으로 옮겨졌습니다.')).toBeTruthy()
+  })
+
+  it('고친 행이 지금 쪽에 남으면 옮겨졌다는 안내가 없다', async () => {
+    await editFirstRow([record('recordAAAAAA', '고친 메모', '2026-09-01'), record('recordBBBBBB', '두 번째 메모', '2026-08-01')])
+
+    await screen.findByText('고친 메모')
+    expect(screen.queryByText(/다른 쪽으로 옮겨졌습니다/)).toBeNull()
   })
 
   /** 1쪽은 늘 성공, 2쪽은 처음 한 번 실패 */
