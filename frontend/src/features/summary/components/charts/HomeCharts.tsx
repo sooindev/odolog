@@ -157,11 +157,22 @@ function MonthColumn({
   const align =
     index < 2 ? 'left-0' : index > total - 3 ? 'right-0' : 'left-1/2 -translate-x-1/2'
 
+  // 화면 낭독기용 이름. 말풍선과 같은 내용, 달 먼저
+  const label = [
+    t.home.monthly.tooltipCount(f.month(entry.month), f.count(entry.count)),
+    f.money(entry.cost, currency),
+    ...(entry.cost > 0
+      ? [t.home.monthly.breakdown(f.money(entry.maintenanceCost, currency), f.money(entry.fuelCost, currency))]
+      : []),
+  ].join(', ')
+
   return (
-    // tabIndex: 키보드로 같은 값 접근
+    // tabIndex: 키보드로 같은 값 접근. role·이름이 없으면 낭독기는 빈 칸을 지나감
     // 판정 영역은 막대가 아닌 칸 전체
     <div
       tabIndex={0}
+      role="img"
+      aria-label={label}
       className="group relative flex h-full flex-1 items-end justify-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {entry.cost > 0 && (
