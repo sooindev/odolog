@@ -163,6 +163,30 @@ describe('MaintenanceSection', () => {
     expect(screen.getByLabelText<HTMLTextAreaElement>(/메모/).value).toBe('고치던 중')
   })
 
+  it('수정 폼을 취소하면 포커스가 그 행의 수정 버튼으로 돌아온다', async () => {
+    renderWithProviders(<Harness />)
+
+    const rows = await screen.findAllByRole('listitem')
+    const editButton = within(rows[1]).getByRole('button', { name: /수정$/ })
+    fireEvent.click(editButton)
+    screen.getByLabelText(/메모/).focus()
+    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+
+    // 안 돌아오면 페이지 맨 앞에서 다시 Tab 을 눌러 내려와야 함
+    expect(document.activeElement).toBe(editButton)
+  })
+
+  it('새 기록 폼을 취소하면 포커스가 다시 보이는 추가 버튼으로 간다', async () => {
+    renderWithProviders(<Harness />)
+
+    await screen.findAllByRole('listitem')
+    fireEvent.click(screen.getByRole('button', { name: '이력 추가' }))
+    screen.getByLabelText(/메모/).focus()
+    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '이력 추가' }))
+  })
+
   /** 첫 행을 고쳐 저장. 다시 읽은 쪽은 nextItems */
   async function editFirstRow(nextItems: MaintenanceRecordResponse[]) {
     vi.mocked(updateRecord).mockResolvedValue(record('recordAAAAAA', '고친 메모', '2026-09-01'))

@@ -115,7 +115,7 @@ class FuelEfficiencyTest {
     @Test
     @DisplayName("물리적으로 불가능한 구간은 평균에서 빼고 뺀 개수를 알려준다")
     void impossibleSegmentExcluded() {
-        // 자리수 오타 기록 하나. 제외하지 않으면 평균 16만 km/L
+        // 자릿수 오타 기록 하나. 제외하지 않으면 평균 16만 km/L
         FuelEfficiency result = FuelEfficiency.of(ascending(
                 record(10000, "30.00"),
                 record(10500, "25.00"),

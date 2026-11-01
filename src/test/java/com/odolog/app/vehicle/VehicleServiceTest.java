@@ -131,7 +131,7 @@ class VehicleServiceTest {
         vehicle.updateOdometer(5000000);
         when(vehicleRepository.findLockedByPublicId("V10")).thenReturn(Optional.of(vehicle));
 
-        // 자리수 오타 복구 경로
+        // 자릿수 오타 복구 경로
         vehicleService.updateOdometer(1L, "V10", new UpdateOdometerRequest(500000, true));
 
         assertThat(vehicle.getOdometer()).isEqualTo(500000);

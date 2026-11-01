@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -53,6 +53,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
   })
   usePageInRange(data ?? null, setPage)
 
+  const addButtonRef = useRef<HTMLButtonElement>(null)
   const list = useRecordList<MaintenanceRecordResponse>({
     setPage,
     remove: (recordId) => deleteRecord(vehicleId, recordId),
@@ -62,6 +63,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
       onChanged()
       return invalidateAfterMaintenance(queryClient, vehicleId)
     },
+    addButtonRef,
   })
   const { editing, setEditing, isDeleting } = list
   const { shown, changePage, error } = useShownPage({
@@ -120,7 +122,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
               ))}
             </select>
 
-            <Button size="sm" variant="secondary" onClick={() => setEditing('new')}>
+            <Button ref={addButtonRef} size="sm" variant="secondary" onClick={list.openNew}>
               {t.maintenance.add}
             </Button>
           </div>
@@ -213,7 +215,7 @@ export function MaintenanceSection({ vehicleId, currentOdometer, view, onViewCha
                     size="xs"
                     variant="ghost"
                     disabled={isDeleting(record.id)}
-                    onClick={() => list.edit(record)}
+                    onClick={(event) => list.edit(record, event.currentTarget)}
                     aria-label={t.common.editOf(`${t.serviceTypes[record.type]} ${f.date(record.serviceDate)}`)}
                   >
                     {t.common.edit}

@@ -275,7 +275,7 @@ class AccountRestoreServiceTest {
     @Test
     @DisplayName("있던 차량은 파일의 차량 값으로 올리지 않는다 — 손으로 낮춘 주행거리를 되살리지 않게")
     void mergedVehicleIgnoresFileOdometer() {
-        // 자리수 오타를 정정해 낮춘 차. 옛 백업에는 오타 값이 남아 있음
+        // 자릿수 오타를 정정해 낮춘 차. 옛 백업에는 오타 값이 남아 있음
         Vehicle vehicle = existing("12가1212", 10L);
         vehicle.updateOdometer(40000);
         when(userService.findByIdForUpdate(1L)).thenReturn(owner);

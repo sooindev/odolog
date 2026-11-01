@@ -493,7 +493,7 @@ class FuelRecordServiceTest {
         when(fuelRecordRepository.findPrevious(
                 eq(10L), anyInt(), any())).thenReturn(Optional.empty());
 
-        // 자리수 오타 정정
+        // 자릿수 오타 정정
         fuelRecordService.update(1L, "V10", "R1",
                 new FuelRecordUpdateRequest(null, 100000, null, null, null, null, null, null));
 

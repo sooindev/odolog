@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 
@@ -11,6 +11,7 @@ import { FormActions } from '@/shared/ui/layout/page'
 import { ErrorText } from '@/shared/ui/state'
 import { useI18n } from '@/shared/i18n/I18nContext'
 import { errorMessage } from '@/shared/i18n/errorMessage'
+import { useFocusReturn } from '@/shared/lib/hooks/useFocusReturn'
 
 /** 탈퇴 요청은 세션 종료까지 함께라 AuthContext 의 withdraw 사용 */
 export function WithdrawCard() {
@@ -22,6 +23,9 @@ export function WithdrawCard() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // 취소하면 포커스를 탈퇴 버튼으로. 안 하면 페이지 맨 앞으로 떨어짐
+  const openButtonRef = useRef<HTMLButtonElement>(null)
+  useFocusReturn(open, null, openButtonRef)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -56,6 +60,8 @@ export function WithdrawCard() {
                     id="withdraw-password"
                     type="password"
                     required
+                    // 펼치자마자 입력. 열고 Tab 을 더 눌러야 하면 안 됨
+                    autoFocus
                     autoComplete="current-password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
@@ -89,6 +95,7 @@ export function WithdrawCard() {
             <p className="text-caption text-muted-foreground">{t.profile.withdraw.note}</p>
             {/* 채우지 않은 빨간 버튼 */}
             <Button
+              ref={openButtonRef}
               variant="destructive"
               size="sm"
               className="-ml-3.5"

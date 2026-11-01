@@ -92,22 +92,25 @@ export function FuelSummaryCard({ vehicleId }: { vehicleId: string }) {
 
         {!loading && data !== undefined && (
           <>
-            {data.averageEfficiency === null ? (
-              <p className="text-caption leading-relaxed text-muted-foreground">
-                {data.resetPointId !== null
-                  ? t.fuel.summary.afterReset
-                  : data.recordCount < 2
-                    ? t.fuel.summary.firstRecord
-                    : // 이유를 하나로 단정하지 않음. 주유량을 비운 기록만 있어도 여기로 옴
-                      t.fuel.summary.noSegment}
-              </p>
-            ) : (
-              <div className="flex items-baseline gap-3" aria-live="polite" aria-atomic="true">
-                {/* 히어로 숫자라 tabular-nums 미사용 */}
-                <span className="text-display text-strong">{f.efficiencyNumber(data.averageEfficiency)}</span>
-                <span className="text-muted-foreground">{f.efficiencyUnit}</span>
-              </div>
-            )}
+            {/* live 영역은 안내·값 둘 다를 감싸 늘 그림. 값이 생길 때 같이 생기면 낭독기가 첫 평균을 놓침 */}
+            <div aria-live="polite" aria-atomic="true">
+              {data.averageEfficiency === null ? (
+                <p className="text-caption leading-relaxed text-muted-foreground">
+                  {data.resetPointId !== null
+                    ? t.fuel.summary.afterReset
+                    : data.recordCount < 2
+                      ? t.fuel.summary.firstRecord
+                      : // 이유를 하나로 단정하지 않음. 주유량을 비운 기록만 있어도 여기로 옴
+                        t.fuel.summary.noSegment}
+                </p>
+              ) : (
+                <div className="flex items-baseline gap-3">
+                  {/* 히어로 숫자라 tabular-nums 미사용 */}
+                  <span className="text-display text-strong">{f.efficiencyNumber(data.averageEfficiency)}</span>
+                  <span className="text-muted-foreground">{f.efficiencyUnit}</span>
+                </div>
+              )}
+            </div>
 
             {/* 초기화 이후 구간만의 값임을 명시 */}
             {data.resetPointId !== null && data.averageEfficiency !== null && (

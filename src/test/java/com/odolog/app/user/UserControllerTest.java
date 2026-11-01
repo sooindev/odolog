@@ -134,8 +134,12 @@ class UserControllerTest {
         when(userService.isPasswordCurrent(1L, "encoded")).thenReturn(true);
 
         LoginRequest request = new LoginRequest("test@odolog.com", "password1234");
+        // 로그인 전부터 있던 세션. 고정 공격으로 심어 둔 id 일 수 있음
+        MockHttpSession before = new MockHttpSession();
+        String beforeId = before.getId();
 
         var result = mockMvc.perform(post("/api/users/login")
+                        .session(before)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -147,6 +151,7 @@ class UserControllerTest {
         HttpSession session = result.getRequest().getSession(false);
         assertThat(session).isNotNull();
         assertThat(session.getAttribute(SessionConst.LOGIN_USER_ID)).isEqualTo(1L);
+        assertThat(session.getId()).isNotEqualTo(beforeId);
         // 비밀번호 변경 시 종료 대상 목록에 등록
         verify(sessionRegistry).register(eq(1L), same(session));
         // 성공한 로그인은 IP 한도를 깎지 않음

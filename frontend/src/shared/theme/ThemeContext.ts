@@ -11,7 +11,7 @@ export interface ThemeContextValue {
   theme: Theme
   /** 실제 적용된 값 */
   resolved: 'light' | 'dark'
-  /** origin: 원형 전환의 시작점. 생략 시 화면 가운데 */
+  /** origin: 원형 전환의 시작점. 생략 시 화면 위 가운데 */
   setTheme: (theme: Theme, origin?: HTMLElement | null) => void
 }
 

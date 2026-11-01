@@ -16,7 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 트랜잭션 경계 검증. 실제 컨테이너를 띄우는 유일한 서비스 테스트
+ * 차량 서비스의 트랜잭션 경계 검증. 실제 컨테이너를 띄움
  * Mockito 는 @Transactional 미적용이라 readOnly 오설정을 못 잡음
  * 이 클래스에 @Transactional 금지. 서비스 설정이 무시됨
  */

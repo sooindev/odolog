@@ -73,7 +73,6 @@ export const ko = {
 
   errors: {
     network: '서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.',
-    http: (status: number) => `요청에 실패했습니다 (HTTP ${status})`,
     /** code 별 문구. field·분이 필요한 것은 함수 */
     codes: {
       VALIDATION_FAILED: (field: string) => `${field} 값을 확인해 주세요.`,
@@ -185,7 +184,8 @@ export const ko = {
   forgotPassword: {
     title: '비밀번호 재설정',
     description: '가입할 때 쓴 주소로 재설정 링크를 보냅니다.',
-    hint: '가입할 때 쓴 주소로 재설정 링크를 보냅니다.',
+    /** 위 설명과 다른 정보. 칸에 포커스가 가면 낭독기는 이것만 읽음 */
+    hint: '링크는 30분 동안 쓸 수 있습니다.',
     submit: '재설정 링크 받기',
     submitting: '보내는 중…',
     failed: '요청에 실패했습니다.',
@@ -362,7 +362,7 @@ export const ko = {
       submit: '갱신',
       failed: '주행거리 갱신에 실패했습니다.',
       bigJump: (from: string, to: string) =>
-        `${from} 에서 ${to} 로 크게 뜁니다.\n자리수를 확인해 주세요.\n\n이대로 저장할까요?`,
+        `${from} 에서 ${to} 로 크게 뜁니다.\n자릿수를 확인해 주세요.\n\n이대로 저장할까요?`,
       decrease: (current: string) =>
         `현재 기록된 ${current} 보다 낮습니다.\n잘못 입력한 값을 고치는 경우에만 진행하세요.\n계기판을 교체한 경우에는 기록이 주행거리 순으로 정렬돼 연비와 다음 정비가 맞지 않게 됩니다.`,
       conflict: (message: string, current: string) => `${message} (현재 ${current})`,
@@ -378,9 +378,9 @@ export const ko = {
 
   odometerHints: {
     past: (base: string) => `차량에 기록된 ${base} 보다 작습니다. 과거 기록이면 그대로 두세요.`,
-    bigJump: (base: string) => `차량에 기록된 ${base} 에서 크게 뜁니다. 자리수를 확인해 주세요.`,
+    bigJump: (base: string) => `차량에 기록된 ${base} 에서 크게 뜁니다. 자릿수를 확인해 주세요.`,
     bigJumpConfirm: (from: string, to: string) =>
-      `주행거리가 ${from} 에서 ${to} 로 크게 뜁니다.\n자리수가 틀리면 차량 주행거리가 그 값에 묶입니다.\n\n이대로 저장할까요?`,
+      `주행거리가 ${from} 에서 ${to} 로 크게 뜁니다.\n자릿수가 틀리면 차량 주행거리가 그 값에 묶입니다.\n\n이대로 저장할까요?`,
   },
 
   serviceTypes: {
@@ -513,7 +513,7 @@ export const ko = {
       warnNoVolume: '· 주유량이 비어 있어 이번 구간의 연비를 계산할 수 없습니다.',
       warnNoCost: '· 결제 금액이 비어 있어 유류비 합계와 단가에서 빠집니다.',
       warnBigJump: (from: string, to: string) =>
-        `· 주행거리가 ${from} 에서 ${to} 로 크게 뜁니다.\n  자리수가 틀리면 차량 주행거리가 그 값에 묶입니다.`,
+        `· 주행거리가 ${from} 에서 ${to} 로 크게 뜁니다.\n  자릿수가 틀리면 차량 주행거리가 그 값에 묶입니다.`,
     },
     summary: {
       title: '연비',

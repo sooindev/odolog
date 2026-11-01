@@ -147,6 +147,20 @@ class FlywayMigrationTest {
     }
 
     @Test
+    @DisplayName("문자열로 저장하는 enum 컬럼의 길이도 엔티티와 다르면 잡는다 — 짧으면 긴 종류 이름이 저장되지 않음")
+    void detectsEnumLengthDrift() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("ALTER TABLE maintenance_records MODIFY COLUMN type VARCHAR(10) NOT NULL");
+
+        try {
+            assertThat(SchemaDrift.find(entityManagerFactory, dataSource))
+                    .anySatisfy(drift -> assertThat(drift).contains("maintenance_records.type").contains("길이"));
+        } finally {
+            jdbc.execute("ALTER TABLE maintenance_records MODIFY COLUMN type VARCHAR(30) NOT NULL");
+        }
+    }
+
+    @Test
     @DisplayName("마이그레이션한 스키마의 nullable·유니크·길이·정렬 규칙·외래키·인덱스가 엔티티와 같다")
     void migratedSchemaMatchesNullabilityAndUniqueConstraints() throws Exception {
         assertThat(SchemaDrift.find(entityManagerFactory, dataSource)).isEmpty();

@@ -59,7 +59,7 @@ test('정비 이력 등록·수정·삭제, 폼을 연 채 다른 행을 고르�
   await expect(history.getByText('타이어 A')).toHaveCount(0)
 })
 
-test('주행거리를 낮추면 확인을 거쳐 정정된다 — 자리수 오타의 유일한 복구 경로', async ({ page }) => {
+test('주행거리를 낮추면 확인을 거쳐 정정된다 — 자릿수 오타의 유일한 복구 경로', async ({ page }) => {
   await signUp(page, uniqueEmail('odometer'))
   await registerVehicle(page, '22가2222', 500000)
 

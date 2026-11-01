@@ -6,7 +6,7 @@ package com.odolog.app.common.validation;
  */
 public final class InputLimits {
 
-    /** 주행거리 상한(km). 정상 입력은 통과, 자리수 실수는 차단 */
+    /** 주행거리 상한(km). 정상 입력은 통과, 자릿수 실수는 차단 */
     public static final long MAX_ODOMETER = 2_000_000L;
 
     /**

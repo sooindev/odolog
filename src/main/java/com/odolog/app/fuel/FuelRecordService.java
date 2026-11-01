@@ -110,7 +110,7 @@ public class FuelRecordService {
         if (request.fueledAt() != null) record.changeFueledAt(request.fueledAt());
         if (request.odometer() != null) {
             record.changeOdometer(request.odometer());
-            // 수정에도 같은 규칙. 자리수 오타 정정 반영
+            // 수정에도 같은 규칙. 자릿수 오타 정정 반영
             record.getVehicle().liftOdometerTo(request.odometer());
         }
         // 비움이 값보다 우선

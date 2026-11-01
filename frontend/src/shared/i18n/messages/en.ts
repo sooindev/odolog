@@ -77,7 +77,6 @@ export const en: Messages = {
 
   errors: {
     network: 'Couldn’t reach the server. Check your connection and try again.',
-    http: (status: number) => `Request failed (HTTP ${status})`,
     codes: {
       VALIDATION_FAILED: (field: string) => `Please check ${field}.`,
       MALFORMED_BODY: (field: string) => `${capitalize(field)} isn’t in a valid format.`,
@@ -181,13 +180,13 @@ export const en: Messages = {
     failed: 'Couldn’t create your account.',
     haveAccount: 'Already have an account?',
     login: 'Log in',
-    agreement: (terms: string, privacy: string) => `By signing up you agree to the ${terms} and ${privacy}.`,
+    agreement: (terms: string, privacy: string) => `By signing up you agree to the ${terms} and the ${privacy} Policy.`,
   },
 
   forgotPassword: {
     title: 'Reset password',
     description: 'We’ll email a reset link to the address you signed up with.',
-    hint: 'We’ll send the link to the address you signed up with.',
+    hint: 'The link works for 30 minutes.',
     submit: 'Send reset link',
     submitting: 'Sending…',
     failed: 'Request failed.',
@@ -420,7 +419,7 @@ export const en: Messages = {
     add: 'Add service',
     loadFailed: 'Couldn’t load service history.',
     empty: 'No service records yet.',
-    emptyFiltered: (type: string) => `No ${type} records. Choose “All types” above to see everything.`,
+    emptyFiltered: (type: string) => `No records for ${type}. Choose “All types” above to see everything.`,
     deleteConfirm: 'Delete this service record?',
     deleteFailed: 'Couldn’t delete.',
     form: {
@@ -486,7 +485,7 @@ export const en: Messages = {
     partialMerged: '· counted in the next full fill-up',
     afterPartial: 'Previous fill-up wasn’t full',
     litersUnknown: 'A fill-up in this stretch has no amount',
-    mergedIntoPrevious: '· fuel counted in its economy',
+    mergedIntoPrevious: '· fuel counted in the previous fill-up’s economy',
     baseline: 'Baseline',
     fromNext: '· calculated from the next fill-up',
     fromNextFull: '· calculated from the next full tank',

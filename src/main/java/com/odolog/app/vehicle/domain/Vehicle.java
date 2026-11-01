@@ -97,7 +97,7 @@ public class Vehicle extends BaseTimeEntity {
 
     /**
      * 정정. 감소도 반영
-     * 자리수 오타용. force 로만 도달
+     * 자릿수 오타용. force 로만 도달
      */
     public void correctOdometer(int odometer) {
         this.odometer = odometer;

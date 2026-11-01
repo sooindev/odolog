@@ -191,7 +191,7 @@ class VehicleControllerTest {
     }
 
     @Test
-    @DisplayName("주행거리에 상한이 있다 — 자리수를 크게 잘못 넣으면 차량이 그 값에 묶인다")
+    @DisplayName("주행거리에 상한이 있다 — 자릿수를 크게 잘못 넣으면 차량이 그 값에 묶인다")
     void updateOdometerUpperBound() throws Exception {
         // 주행거리 상한. 한 번 들어간 큰 값은 force 정정으로만 복구
         mockMvc.perform(patch("/api/vehicles/10/odometer")

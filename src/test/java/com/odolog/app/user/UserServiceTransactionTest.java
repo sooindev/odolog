@@ -1,7 +1,10 @@
 package com.odolog.app.user;
 
+import com.odolog.app.user.domain.PasswordResetToken;
 import com.odolog.app.user.domain.User;
 import com.odolog.app.user.dto.request.ChangePasswordRequest;
+import com.odolog.app.user.dto.request.LoginRequest;
+import com.odolog.app.user.dto.request.PasswordResetConfirmRequest;
 import com.odolog.app.user.dto.request.SignUpRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,7 +16,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +37,9 @@ class UserServiceTransactionTest {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private PasswordResetService passwordResetService;
 
     @Autowired
     private UserRepository userRepository;
@@ -79,5 +89,33 @@ class UserServiceTransactionTest {
         userService.changePassword(user.getId(), new ChangePasswordRequest("password1234", "newpassword1234"));
 
         assertThat(inTransaction).containsExactly(false, false, false);
+    }
+
+    @Test
+    @DisplayName("로그인의 BCrypt 는 트랜잭션 밖이다")
+    void loginMatchesOutsideTransaction() {
+        userService.signUp(new SignUpRequest("login@odolog.com", "password1234", "로그인", null, null, null, null));
+        inTransaction.clear();
+
+        userService.login(new LoginRequest("login@odolog.com", "password1234"), "127.0.0.1");
+
+        assertThat(inTransaction).containsExactly(false);
+    }
+
+    @Test
+    @DisplayName("재설정 확정의 BCrypt 는 트랜잭션 밖이다")
+    void resetConfirmHashesOutsideTransaction() throws Exception {
+        User user = userService.signUp(new SignUpRequest("reset@odolog.com", "password1234", "재설정", null, null, null, null));
+        passwordResetTokenRepository.save(new PasswordResetToken(user, sha256("raw-token"), LocalDateTime.now().plusMinutes(10)));
+        inTransaction.clear();
+
+        passwordResetService.confirm(new PasswordResetConfirmRequest("raw-token", "newpassword1234"));
+
+        assertThat(inTransaction).containsExactly(false);
+    }
+
+    private static String sha256(String raw) throws Exception {
+        return HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8)));
     }
 }

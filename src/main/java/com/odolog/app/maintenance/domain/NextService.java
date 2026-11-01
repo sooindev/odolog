@@ -123,7 +123,7 @@ public record NextService(
                 || (nextDate != null && !today.isBefore(nextDate));
 
         // 지난 것은 곧이 아님. 경계는 지남과 같이 딱 그 값·그 날 포함
-        // 범위는 주기의 마지막 1/5 을 넘지 않음. 짧은 주기면 정비한 날부터 늘 곧
+        // 범위는 주기의 마지막 1/5 을 넘지 않음. 짧은 주기도 정비 직후부터 곧이 되지 않게
         boolean dueSoon = !overdue
                 && ((nextOdometer != null && currentOdometer >= soonFromOdometer(record.getServiceOdometer(), intervalKm))
                 || (nextDate != null && !today.isBefore(soonFromDate(record.getServiceDate(), nextDate))));

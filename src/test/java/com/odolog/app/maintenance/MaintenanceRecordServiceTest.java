@@ -277,14 +277,14 @@ class MaintenanceRecordServiceTest {
     }
 
     @Test
-    @DisplayName("말일 보정 — 1/31 에 6개월을 더하면 7/31 이다")
+    @DisplayName("말일 보정 — 8/31 에 6개월을 더하면 다음 해 2/28 이다")
     void nextServiceHandlesMonthEnd() {
         Vehicle vehicle = createVehicle(10L);
         NextServiceResponse response = onlyType(vehicle,
-                record(1L, vehicle, ServiceType.ENGINE_OIL, 10000, LocalDate.of(2026, 1, 31)));
+                record(1L, vehicle, ServiceType.ENGINE_OIL, 10000, LocalDate.of(2026, 8, 31)));
 
-        // plusMonths 사용. 달 길이 자동 반영
-        assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2026, 7, 31));
+        // plusMonths 사용. 없는 날(2/31)은 그 달 말일로
+        assertThat(response.nextServiceDate()).isEqualTo(LocalDate.of(2027, 2, 28));
     }
 
     @Test
@@ -330,7 +330,7 @@ class MaintenanceRecordServiceTest {
         when(maintenanceRecordRepository.findByPublicIdAndVehicleId("R100", 10L))
                 .thenReturn(Optional.of(existing));
 
-        // 자리수 오타 정정
+        // 자릿수 오타 정정
         maintenanceRecordService.update(1L, "V10", "R100", new MaintenanceRecordUpdateRequest(
                 null, null, null, 60000, null, null, null));
 

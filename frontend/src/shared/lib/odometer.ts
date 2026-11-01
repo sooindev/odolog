@@ -6,9 +6,9 @@ export function looksPast(value: number, base: number) {
 }
 
 /**
- * 자리수 오타로 보이는 급증
+ * 자릿수 오타로 보이는 급증
  * 올라간 값은 force 정정으로만 복구되어 감소보다 위험
- * 3배 이상이면서 1만km 이상 증가. 배수만이면 새 차 오탐, 절대량만이면 자리수 오타 누락
+ * 3배 이상이면서 1만km 이상 증가. 배수만이면 새 차 오탐, 절대량만이면 자릿수 오타 누락
  * 기존 값 0 은 제외(첫 입력)
  */
 export function looksBigJump(value: number, base: number) {

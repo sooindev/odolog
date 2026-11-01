@@ -39,7 +39,7 @@ final class RestoreKeys {
                 + "|" + record.totalCost() + "|" + currency;
     }
 
-    /** DB 는 32.40, 파일은 32.4 일 수 있어 자리수 맞춤 */
+    /** DB 는 32.40, 파일은 32.4 일 수 있어 자릿수 맞춤 */
     private static String litersKey(BigDecimal liters) {
         return liters == null ? "null" : liters.stripTrailingZeros().toPlainString();
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FuelForm } from '@/features/fuel/components/FuelForm'
@@ -36,6 +36,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
   usePageInRange(data ?? null, setPage)
 
   // 삭제 시 다음 기록 연비 상승 안내. 구간이 적으면 서버가 못 잡는 경우 대비
+  const addButtonRef = useRef<HTMLButtonElement>(null)
   const list = useRecordList<FuelRecordResponse>({
     setPage,
     remove: (recordId) => deleteFuelRecord(vehicleId, recordId),
@@ -45,6 +46,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
       onChanged()
       return invalidateAfterFuel(queryClient, vehicleId)
     },
+    addButtonRef,
   })
   const { editing, setEditing, isDeleting } = list
   const { shown, changePage, error } = useShownPage({
@@ -73,7 +75,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-3">
         <CardTitle className="min-w-0">{t.fuel.title}</CardTitle>
         {editing === 'closed' && (
-          <Button size="sm" variant="secondary" onClick={() => setEditing('new')}>
+          <Button ref={addButtonRef} size="sm" variant="secondary" onClick={list.openNew}>
             {t.fuel.add}
           </Button>
         )}
@@ -221,7 +223,7 @@ export function FuelSection({ vehicleId, currentOdometer, onChanged }: Props) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => list.edit(record)}
+                        onClick={(event) => list.edit(record, event.currentTarget)}
                         disabled={isDeleting(record.id)}
                         aria-label={t.common.editOf(`${f.date(record.fueledAt)} ${f.distance(record.odometer)}`)}
                       >

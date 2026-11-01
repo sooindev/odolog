@@ -217,8 +217,9 @@ final class SchemaDrift {
         Column column = field.getAnnotation(Column.class);
         if (column != null) {
             String name = column.name().isBlank() ? snake(field.getName()) : column.name();
-            // 길이는 문자열만. 다른 타입의 length 는 기본값(255)이라 의미 없음
-            Integer length = field.getType() == String.class ? column.length() : null;
+            // 길이는 문자열과 문자열로 저장하는 enum 만. 다른 타입의 length 는 기본값(255)이라 의미 없음
+            boolean textual = field.getType() == String.class || field.getType().isEnum();
+            Integer length = textual ? column.length() : null;
             return new ExpectedColumn(name, column.nullable(), length, collationOf(column.columnDefinition()));
         }
 
@@ -234,10 +235,12 @@ final class SchemaDrift {
             try (ResultSet rows = statement.executeQuery()) {
                 while (rows.next()) {
                     long maxLength = rows.getLong("CHARACTER_MAXIMUM_LENGTH");
+                    // wasNull 은 직전에 읽은 칸을 봄. 다른 칸을 읽기 전에 받아 둠
+                    Integer length = rows.wasNull() ? null : (int) maxLength;
                     columns.put(rows.getString("COLUMN_NAME").toLowerCase(),
                             new DbColumn("YES".equals(rows.getString("IS_NULLABLE")),
                                     rows.getString("COLUMN_TYPE"),
-                                    rows.wasNull() ? null : (int) maxLength,
+                                    length,
                                     rows.getString("COLLATION_NAME")));
                 }
             }
