@@ -567,6 +567,59 @@ H-9 는 2026-10-16 19:24(서울)에 `Pacific/Kiritimati`(오늘이 이미 10/17)
 
 **PWA 는 여기 없다** — 할지 말지를 눈 확인 뒤에 정하기로 해서 **6-G** 에 뒀다.
 
+### 2026-11-02 전체 점검
+
+저장소의 모든 파일(326개)을 일곱 갈래(백엔드 셋·백엔드 테스트·프론트 둘·문서)로 나눠 읽었다. 높음(데이터 손실·권한 우회)은 없었다.
+자동 검사는 모두 통과했다: `./gradlew test` 454 · `npm run test` 136 · oxlint · tsc · `npm run build`.
+아래는 모두 코드로 다시 확인했다(10번만 추정).
+
+**중간**
+- [ ] 1. `ConfigParityTest` 의 로그 레벨 단언 둘은 실패할 수 없다 — `lookup` 이 키를 점마다 잘라 `org.hibernate.SQL` 이 늘 null.
+      운영 `application.yml` 에 `org.hibernate.orm.jdbc.bind: trace` 를 넣어도 통과한다
+- [ ] 2. `SchemaDrift` 가 컬럼을 엔티티 → DB 한 방향으로만 본다 — DB 에만 남은 `NOT NULL` 컬럼(V7 금액 BIGINT 때 옛 컬럼을 안 지우면)은
+      운영 INSERT 만 500. 숫자 정밀도·스케일(`DECIMAL(6,2)`)도 안 본다
+- [ ] 3. README 의 터미널 실행 명령에 `SPRING_PROFILES_ACTIVE=dev` 가 없고, 테스트 뒤 남은 `SPRING_SESSION` 표를 지우라는 안내도 없다
+      (테스트를 돌린 뒤 따라 하면 `baseline-on-migrate` 로 V1 을 건너뛰어 기동 실패). `CLAUDE.md` 쪽 명령은 맞다
+
+**낮음 — 동작**
+- [ ] 4. 가져오기가 두 번째 차량부터는 차량 잠금이 첫 조회가 아니다(`AccountRestoreService` 92, 루프 안). 가져오는 몇 초 사이 다른 탭에서
+      파일 속 뒤쪽 차량의 주행거리·정보를 바꾸면 1020 → 409 로 가져오기 전체가 롤백된다(다시 누르면 됨). 차량 행을 안 바꾸는 저장이면
+      방금 커밋된 기록을 중복 판정에서 못 봐 같은 기록이 하나 더 들어갈 수 있다. 후보: 루프 전에 파일의 차량을 한 번에 잠금 조회
+- [ ] 5. 시작하기 카드가 네 단계를 다 끝내면 `quickOpen` 을 보지 않고 사라진다(`GettingStartedCard` 74) — 빠른 정비가 일부만 저장된 채
+      주유를 저장하면 폼과 실패 문구가 같이 사라지고, 저장된 정비는 정비 목록에 안 보인다(`invalidateAfterFuel` 은 정비 목록을 안 건드림)
+- [ ] 6. 주유 행: 연비 구간을 못 닫은 가득 주유가 직전 기록과 주행거리가 같으면 서버의 `efficiencyGap` 을 버리고 "직전 기록과 같은 주행거리"만
+      보인다(`FuelSection` 161~174). 1km 다르면 진짜 이유(주유량 모름·출발이 덜 채움)가 나온다
+- [ ] 7. 한 줄 이름 정규식이 잉글랜드·스코틀랜드·웨일스 깃발 이모지를 400 으로 거부한다 — 태그 문자(U+E0020~E007F)도 Cf. 규칙 14-1 의 "합성 이모지 허용" 과 다르다
+- [ ] 8. 갤런을 소수 셋째 자리로 받지만 저장은 0.01L 라 0.001gal 단위 값의 62% 가 다시 열면 0.001 어긋난다(10.124 → 10.123).
+      `FuelForm` 216 의 "0.003gal 이 가장 작은 값" 주석도 틀림(0.002 도 0.01L)
+- [ ] 9. '곧' 설명(사전 ko 450·en 453, `maintenance/api/types.ts` 81)에 주기 4/5 상한이 빠졌다 — 2개월 주기면 실제로는 약 12일 전에 켜진다
+- [ ] 10. (추정) 마지막 쪽을 다 지운 뒤 앞 쪽 조회가 서버 오류로 실패하면 `usePageInRange` 와 `useShownPage` 가 N-1 ↔ N 을 오가며 요청을 연달아 보낸다
+
+**낮음 — 화면·접근성**
+- [ ] 11. 연비 추이 평균선이 라벨 높이의 절반만큼 아래에 그려진다(`FuelSummaryCard` 209, `h-0` 없음). 홈 차트는 맞다
+- [ ] 12. 연비 추이 막대가 Tab 으로 지나가는데 역할·이름이 없다(`FuelSummaryCard` 222) — 홈 월별 막대(658a6ac)와 같은 결함
+- [ ] 13. 차량 정보 수정 폼·빠른 정비 폼이 닫히면 포커스가 body 로 떨어진다 — `useFocusReturn` 이 안 붙었다
+- [ ] 14. 연비 카드 통계 타일 값에 `tabular-nums`(`FuelSummaryCard` 267) — DESIGN 7번
+- [ ] 15. 드럼 휠의 고르지 않은 옵션이 `text-faint`(`date-input` 239) — 탭으로 고르는 값이라 DESIGN 2번과 부딪힌다. 피커 관례일 수 있어 정할 일
+
+**낮음 — 테스트**
+- [ ] 16. `NextServiceTest.boundaryIsOverdue` 가 날짜 경계(오늘 = 다음 날짜)를 안 본다 — `!isBefore` 를 `isAfter` 로 바꿔도 통과
+- [ ] 17. `VehicleListServiceTest` 111 — 첫 차에 TIRE 기록이 없어 다른 차의 주기가 새어 들어가도 통과(차량별 주기 필터를 지워도 통과)
+- [ ] 18. `AccountRestoreServiceTest.liftsOdometer` 이름이 지금 동작과 반대("파일의 값까지 따라 오른다")
+- [ ] 19. `AccountWithdrawalServiceTransactionTest` 39 "새 자식 테이블이 생기면 여기서 실패" — 그 표에 행을 넣지 않으면 실패하지 않는다
+- [ ] 20. `VehicleRemovalServiceTransactionTest` 93 — 두 요청이 겹치는지가 `Thread.sleep(30)` 에 달렸다
+- [ ] 21. 주유 목록 고정 정렬(`FIXED_SORT`)과 정비 목록의 `SortGuard` 호출을 지워도 실패하는 테스트가 없다(규칙 19)
+- [ ] 22. 가입 리미터 키의 `signup:` 접두사를 검증하는 테스트가 없다(`any()` 로 받음)
+- [ ] 23. `FlywayMigrationTest` 가 메서드 순서에 기댄다 — 기준점 경로 테스트가 먼저 돌면 "새 DB" 테스트들이 기준점 스키마를 본다
+
+**낮음 — 주석·문서**
+- [ ] 24. 낡은 주석: `FuelRecordResponse` 13(구간 미성립에도 distance 를 채움) · `HomeSummaryResponse` 16·40·83(금액 빈 기록은 통화와 무관하게 셈, 정비 cost 도 null) ·
+      `ClientIp` 10(로그인도 씀) · `LoginAttemptLimiter` 88("계정|IP" — 실제 구분자는 공백) · `VehicleDetailPage` 126(격자 주석이 오류 줄 위에)
+- [ ] 25. 낡은 문서: README 진행 상황(R-23~R-27 → R-23~R-34, 10-31 점검 빠짐) · README 115 `retryAfterMinutes?` 빠짐 · README 751 IP 키 되돌림 빠짐 ·
+      `CLAUDE.md` 의 SchemaDrift 설명(길이·enum·정렬 규칙·FK·인덱스도 보고, 일부러 어긋낸 경우는 일곱) · `renderWithProviders` 목록(FuelSection·GettingStartedCard·ScreenErrorBoundary 빠짐) ·
+      규칙 15 `refund` 가 IP 키만이라는 말 빠짐 · `frontend/README.md` 테스트 수(97·14 → 136·20)와 CORS 위치 · QA.md 46(폰 넷은 끝남)·413(테스트 수) ·
+      `mermaid/d1~d4.png` 를 아무 문서도 참조하지 않고 d1 의 필터 순서가 옛것
+
 ---
 
 단계를 완료할 때마다 `HISTORY.md` 맨 위에 항목을 더하고, 해당 줄을 위 체크리스트에서 제거한다.
