@@ -574,7 +574,7 @@ H-9 는 2026-10-16 19:24(서울)에 `Pacific/Kiritimati`(오늘이 이미 10/17)
 아래는 모두 코드로 다시 확인했다(10번만 추정).
 
 **중간**
-- [ ] 1. `ConfigParityTest` 의 로그 레벨 단언 둘은 실패할 수 없다 — `lookup` 이 키를 점마다 잘라 `org.hibernate.SQL` 이 늘 null.
+- [x] 1. (2026-11-02 완료) `ConfigParityTest` 의 로그 레벨 단언 둘은 실패할 수 없다 — `lookup` 이 키를 점마다 잘라 `org.hibernate.SQL` 이 늘 null.
       운영 `application.yml` 에 `org.hibernate.orm.jdbc.bind: trace` 를 넣어도 통과한다
 - [ ] 2. `SchemaDrift` 가 컬럼을 엔티티 → DB 한 방향으로만 본다 — DB 에만 남은 `NOT NULL` 컬럼(V7 금액 BIGINT 때 옛 컬럼을 안 지우면)은
       운영 INSERT 만 500. 숫자 정밀도·스케일(`DECIMAL(6,2)`)도 안 본다

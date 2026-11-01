@@ -52,8 +52,8 @@ class ConfigParityTest {
     void baseConfigIsSafeWithoutProfile() throws IOException {
         Map<String, Object> main = load(Path.of("src/main/resources/application.yml"));
 
-        assertThat(lookup(main, "logging.level.org.hibernate.orm.jdbc.bind")).isNotEqualTo("trace");
-        assertThat(lookup(main, "logging.level.org.hibernate.SQL")).isNotEqualTo("debug");
+        assertThat(lookup(main, "logging.level.org.hibernate.orm.jdbc.bind")).isEqualTo("info");
+        assertThat(lookup(main, "logging.level.org.hibernate.SQL")).isEqualTo("info");
         assertThat(lookup(main, "spring.jpa.show-sql")).isNotEqualTo(true);
         assertThat(lookup(main, "springdoc.api-docs.enabled")).isEqualTo(false);
         assertThat(lookup(main, "springdoc.swagger-ui.enabled")).isEqualTo(false);
@@ -68,14 +68,19 @@ class ConfigParityTest {
     }
 
     @SuppressWarnings("unchecked")
-    private Object lookup(Map<String, Object> root, String dottedKey) {
-        Object current = root;
-        for (String part : dottedKey.split("\\.")) {
-            if (!(current instanceof Map)) {
-                return null;
-            }
-            current = ((Map<String, Object>) current).get(part);
+    private Object lookup(Map<String, Object> map, String dottedKey) {
+        // 점이 든 키(로거 이름 org.hibernate.SQL)는 키 하나. 남은 부분 전체로 먼저 찾음
+        if (map.containsKey(dottedKey)) {
+            return map.get(dottedKey);
         }
-        return current;
+        for (int dot = dottedKey.indexOf('.'); dot > 0; dot = dottedKey.indexOf('.', dot + 1)) {
+            if (map.get(dottedKey.substring(0, dot)) instanceof Map<?, ?> child) {
+                Object found = lookup((Map<String, Object>) child, dottedKey.substring(dot + 1));
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 }

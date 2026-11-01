@@ -20,6 +20,13 @@
 
 ---
 
+- [x] 2026-11-02 전체 점검 1번 — `ConfigParityTest` 의 로그 레벨 단언이 실패할 수 없던 것 (2026-11-02)
+      → `lookup` 이 키를 점마다 잘라 `logging.level.org.hibernate.SQL` 을 `level → org → hibernate → SQL` 로 찾았다. YAML 에서 로거 이름은
+        점이 든 키 하나라 늘 null 이었고, `isNotEqualTo("trace")` 는 null 에도 통과했다. 이제 남은 부분 전체를 키로 먼저 찾고, 없으면 점 앞까지를 키로 내려간다.
+        단언도 "trace 가 아니다" 에서 "info 다" 로 바꿨다 — 아니다 단언은 못 찾은 키(null)와 대소문자만 바꾼 `TRACE` 를 그대로 통과시킨다.
+        운영 설정의 바인딩 로그를 잠깐 `trace` 로 바꿔 실패하는 것을 확인했다.
+        대안: 스프링의 `YamlPropertiesFactoryBean` 으로 평평하게 펴서 읽기 — 스프링과 같은 규칙이지만 값이 문자열·Boolean 으로 섞여 나와 나머지 단언까지 손봐야 했다
+
 - [x] 2026-10-31 전체 점검 11~19번 — 접근성·문구·테스트·주석 (2026-11-01)
       → 11 포커스: 탈퇴 폼 비밀번호 칸에 `autoFocus`. 폼이 닫히며 포커스가 body 로 떨어지면 연 버튼으로 되돌리는 `shared/lib/hooks/useFocusReturn` 을 만들어
         탈퇴 카드와 `useRecordList` 가 쓴다. 수정 폼은 누른 `수정` 버튼(`event.currentTarget` — 사파리는 클릭한 버튼에 포커스를 주지 않아 `activeElement` 로는 못 받는다),
